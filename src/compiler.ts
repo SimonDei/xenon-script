@@ -10,6 +10,7 @@ import stdFloat from "./prelude/std/Float.kl" with { type: "text" };
 import stdInt from "./prelude/std/int.kl" with { type: "text" };
 import stdUint from "./prelude/std/uint.kl" with { type: "text" };
 import stdJSON from "./prelude/std/JSON.kl" with { type: "text" };
+import stdPromise from "./prelude/std/Promise.kl" with { type: "text" };
 import { SourceFile } from "./source.ts";
 
 /** Package of the built-in prelude; reserved for the compiler. */
@@ -22,6 +23,7 @@ export const PRELUDE: SourceInput[] = [
   { path: "klass/int.kl", text: stdInt },
   { path: "klass/uint.kl", text: stdUint },
   { path: "klass/JSON.kl", text: stdJSON },
+  { path: "klass/Promise.kl", text: stdPromise },
 ];
 
 export interface SourceInput {

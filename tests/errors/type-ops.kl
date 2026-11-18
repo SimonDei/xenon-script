@@ -8,7 +8,7 @@ package {
       trace(m is Main, m as Main)
       trace(s is Main, n as Main)
       trace(d as int, d as Boolean)
-      trace(d is Vector<int>, d is *)
+      trace(d is Array<int>, d is *)
       trace(d is Mian)
       var o:Object = {}
       delete o.a

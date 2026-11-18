@@ -21,6 +21,6 @@ native('Date') class Clock {
 
 native class String {
   function toUpperCase():String
-  function split(separator:String):Vector<String>
-  function split(separator:RegExp):Vector<String>
+  function split(separator:String):Array<String>
+  function split(separator:RegExp):Array<String>
 }

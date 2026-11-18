@@ -12,7 +12,7 @@ package {
       return 'Hi ' + who
     }
 
-    private static function sum(...values:Vector<Float>):Float {
+    private static function sum(...values:Array<Float>):Float {
       return 0
     }
 

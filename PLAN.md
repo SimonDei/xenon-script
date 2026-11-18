@@ -29,7 +29,9 @@
 - [~] G3: std library — infrastructure done (`src/prelude/std/*.kl` loaded with the prelude, no output; conformance test `tests/std.test.ts` checks every member against Bun incl. return types on sample values; `examples/std`). Types declared: `Boolean`, `Float` (JS `Number`; members shared by `int`/`uint`; overloads where JS has no real default, e.g. `toPrecision()`; `parseInt`/`MAX_SAFE_INTEGER` are `Float`; `is…` tests take `*`; the `Number` global is hidden with a fix-it to `Float`), `int`, `uint` (separate files; AS3-style `MAX_VALUE`/`MIN_VALUE` as `inline` constants — compile-time literals, no runtime object; `native('Number') … extends Float` so they keep the number members, `valueOf()` returns `int`/`uint`; inherited statics like `int.parseInt` stay `Float`), `JSON` (namespace: hidden constructor, `new JSON()` is K0415; overloaded `stringify` with function/key-list replacer and int/String indent; `rawJSON`/`isRawJSON` left out as not yet portable). Fixes along the way: `Boolean(x)`/`String(x)`/`Float(x)` stay casts when a std class has that name; method closures on primitives emit `x.m.bind(x)`; `new Boolean(…)` explains wrapper objects; overload notes print signatures as declared; integer literals before `.` are parenthesized in JS (`(255).toString(16)`); the conformance test also checks static constants' values against their types; `inline` constants allowed in natives; a typedef naming a class (or a primitive with a std class) works as a value: `Int.MAX_VALUE`, `Int(x)`, `Bool(x)`; `Int`/`UInt`/`Bool`/`Any`/`Void` moved from the compiler's built-in table to prelude typedefs
 - [x] Root files may leave out `package { … }` (top-level package only; subfolders keep it, K0010 with a wrapping fix-it)
 - [x] Part D (partial): VS Code syntax highlighting only — `packages/vscode-klass` (TextMate grammar, language configuration, README with install steps), tested with VS Code's tokenizer (`tests/grammar.test.ts`); no language server / IntelliSense yet
-- [ ] Part G: rest of G3 (`String`, `Array`/`Vector<T>`, `Math`, `RegExp`, `Promise<T>`, `Map`, `Set`, `Date`, `console`), G4 migration
+- [x] One array type (decided 2026-11-18): `Vector<T>` removed, `Array<T>` is the typed array and a bare `Array` is `Array<*>`; `*` as a type argument is a wildcard (`Box<int>` fits `Box<*>` and back); `Vector` is K0424 with a fix-it; `is Array<int>` is K0394 (`is Array` works)
+- [x] `Promise<T>` is a std native class (`src/prelude/std/Promise.kl`, written by the user) instead of a compiler built-in; `async`/`await` use it; reserved words are allowed as member names (`function catch(…)`, `p.finally(…)`)
+- [ ] Part G: rest of G3 (`String`, `Array<T>`, `Math`, `RegExp`, `Map`, `Set`, `Date`, `console`), G4 migration
 - [ ] Part D (VS Code extension) and Later items
 
 ## Context
@@ -37,7 +39,7 @@
 
 Decisions so far:
 - AS3 syntax & semantics: `package {}`, `public class`, `var`/`const`, `function`, postfix `:Type`, constructor named like the class, `override`, getters/setters, `trace()`.
-- Deviations from AS3: generics written `Vector<T>` (no dot), `Float` instead of `Number`, `final` usable on classes, methods, fields, locals and parameters, an `inline` modifier for compile-time constants that are substituted at every use site, and `typedef` (Haxe-style aliases, structural shapes and function types).
+- Deviations from AS3: generics written `Array<T>` (no dot, unlike AS3's `Vector.<T>`; Klass has one array type), `Float` instead of `Number`, `final` usable on classes, methods, fields, locals and parameters, an `inline` modifier for compile-time constants that are substituted at every use site, and `typedef` (Haxe-style aliases, structural shapes and function types).
 - Static types from day one. Priority class features: inheritance + `super`, visibility, static members. Plus **enums**.
 - Modern JS additions: **async/await, arrow functions, `?.` / `??`, destructuring & spread**. Strings use single quotes only; template strings are written `$'Hi {name}'`.
 - **Optional semicolons** (JS-style automatic semicolon insertion).
@@ -76,7 +78,7 @@ Working name **Klass**, extension `.kl`.
 | `step` | after a range in a loop header: `0..n step 2` |
 | `static` block | `static { ... }` inside a class body |
 
-**Built-in type names** (predeclared, not keywords; shadowing is a compile error): `int` `uint` `Float` `String` `Boolean` `Object` `Array` `Vector` `Function` `Promise` `Class` `RegExp`, plus the dynamic type `*`. **Built-in typedefs** (prelude): `Int` `UInt` `Void` `Bool` `Any` (see A2). **Built-in classes** (prelude): `Exception` `ArgumentException` `TypeException` `RangeException` `StateException` `NotImplementedException` (see A6c). `Error` and the JS error classes are hidden.
+**Built-in type names** (predeclared, not keywords; shadowing is a compile error): `int` `uint` `Float` `String` `Boolean` `Object` `Array` `Function` `Class` `RegExp`, plus the dynamic type `*`. **Built-in typedefs** (prelude): `Int` `UInt` `Void` `Bool` `Any` (see A2). **Built-in classes** (prelude): `Exception` `ArgumentException` `TypeException` `RangeException` `StateException` `NotImplementedException` (see A6c). `Error` and the JS error classes are hidden.
 
 **Built-in global functions**: `trace` (→ `console.log`), cast functions `int()` `uint()` `Float()` `String()` `Boolean()`.
 
@@ -115,8 +117,7 @@ JS output: `out/com/zoo/Dog.js`, an ES module with `export class Dog`, relative 
 | `void` | return type only | — |
 | `*` | dynamic/untyped; anything goes, no checks; may be `undefined` | any |
 | `Object` | any non-null object, member access unchecked | object |
-| `Array` | untyped array (elements `*`) | Array |
-| `Vector<T>` | typed array | Array |
+| `Array<T>` | typed array; a bare `Array` is `Array<*>` (any elements) | Array |
 | `Function` | any callable (untyped) | function |
 | `Promise<T>` | result of `async` functions / JS promises | Promise |
 | `Class` | a class reference | constructor |
@@ -135,7 +136,7 @@ public typedef Void = void       // src/prelude/Prelude.kl (only the prelude may
 ```
 `Int` and `int` are the same type everywhere (messages print the underlying type, `int`). `Void` is only valid where `void` is (return types, function types, `Promise<Void>`; elsewhere K0421). As values they stand for their class like any typedef: `Int.MAX_VALUE`, `Int(x)`, `Bool(x)`. User code cannot redeclare these names (K0028).
 
-Generic syntax is `Name<T>` with no dot (unlike AS3's `Vector.<T>`). Type arguments only appear in type positions (after `:`, `new`, `as`, `is`, and inside other type arguments), so the parser never confuses `<` with less-than. Nested generics like `Vector<Vector<int>>` are handled by splitting `>>` into two `>` tokens in type positions.
+Generic syntax is `Name<T>` with no dot (unlike AS3's `Vector.<T>`). Type arguments only appear in type positions (after `:`, `new`, `as`, `is`, and inside other type arguments), so the parser never confuses `<` with less-than. Nested generics like `Array<Array<int>>` are handled by splitting `>>` into two `>` tokens in type positions.
 
 **`null` vs `undefined`**: Klass has one "no value", `null`. The `undefined` literal exists only for JS compatibility (e.g. passing it to a library that distinguishes the two) and every use produces **warning K0840**:
 ```
@@ -184,7 +185,7 @@ Block-scoped (`let`/`const` in output) — a deliberate break from AS3's functio
 | Do-while | `do {...} while (c)` | same |
 | C-style for | `for (var i:int = 0; i < n; i++) {...}` | `for (let i = 0; ...)` |
 | For-in (keys) | `for (var k:String in obj) {...}` | `for (const k in obj)` (arrays: index strings, like AS3) |
-| For-of (values) | `for (var v:T of coll) {...}`, `for (var [k, v]:* of map) {...}` — replaces AS3's `for each` (`for each (...)` is a parse error with a hint to use `of`) | `for (const v of coll)` — always plain `for...of`. The source must be iterable (Array, Vector, String, Map, Set, any JS iterable, `*`). A source typed `Object` is K0390 with the fix-it `Object.values(obj)` |
+| For-of (values) | `for (var v:T of coll) {...}`, `for (var [k, v]:* of map) {...}` — replaces AS3's `for each` (`for each (...)` is a parse error with a hint to use `of`) | `for (const v of coll)` — always plain `for...of`. The source must be iterable (Array, String, Map, Set, any JS iterable, `*`). A source typed `Object` is K0390 with the fix-it `Object.values(obj)` |
 | Range loop | `for (var i:int of 0..10) {...}` — see below | `for (let i = 0; i < 10; i++)` |
 | Break / continue | `break;` `continue;` (no labels for now; `ident:` at statement start is a parse error with a "labels are not supported yet" hint) | same |
 | Return | `return expr;` | same |
@@ -277,7 +278,7 @@ Deliberately excluded: labels (for now), `with` (breaks static typing), `goto`, 
 - Bitwise `& | ^ << >> >>>`
 - Assignment `= += -= *= /= %= **= &= |= ^= <<= >>= >>>= &&= ||= ??=`
 - Type operators `is`, `as`, `typeof`, `in`, `delete`
-- Literals: numbers (`0xFF`, `1_000`, `1e3`), strings `'…'` and template strings `$'Hi {name}'` (see below), regex `~/ab+c/gi` (see below), arrays `[1, 2, ...rest]`, objects `{ a: 1, b, [key]: v, ...other }`, typed vectors from context `var v:Vector<int> = [1, 2, 3]` or explicitly `new Vector<int>([1, 2, 3])`
+- Literals: numbers (`0xFF`, `1_000`, `1e3`), strings `'…'` and template strings `$'Hi {name}'` (see below), regex `~/ab+c/gi` (see below), arrays `[1, 2, ...rest]`, objects `{ a: 1, b, [key]: v, ...other }`, typed arrays from context `var v:Array<int> = [1, 2, 3]`
 - Calls with spread `f(...args)`, `new Foo(...)`, indexing `a[i]`, `super(...)`, `super.m()`
 - Function expressions `function(x:int):int { return x * 2 }` (dynamic `this`) and arrows `(x:int):int => x * 2`, `async (u:String):Promise<*> => await fetch(u)` (lexical `this`)
 - Local named functions inside methods: `function helper(n:int):int {...}`
@@ -453,7 +454,7 @@ Rules:
 **Const methods** (C++-style, shallow for now):
 ```actionscript
 public class Inventory {
-  private var items:Vector<Item> = []
+  private var items:Array<Item> = []
   private var total:Float = 0
 
   public function count():int const { return items.length }
@@ -741,7 +742,7 @@ Tests: `tests/*.test.ts` (unit per stage), golden e2e over `examples/<name>/` (c
 17. **Error quality pass** – parser recovery everywhere, secondary labels on all type errors, "did you mean", fix-it `help:` suggestions, unclosed-delimiter tracking, warnings (unused, untyped, `===` usage, `undefined`), always-false comparison errors, error codes + `klass explain`.
 17b. **Watch mode** – `klass watch` with incremental recompilation (Part F).
 
-Later: the **standard library and generics** are planned in Part G. `dynamic` classes, first-class `Range` values, a `while` clause on range loops (`for (var n:int of 2.. while !s.has(x))`), labels, `Bun.serve()` playground, and the VS Code extension in Part D (which also brings `.d.ts` typing and source maps). From step 1 on, follow the "what the compiler must do now" list in Part D.
+Later: the **standard library and generics** are planned in Part G. `dynamic` classes, first-class `Range` values, a `while` clause on range loops (`for (var n:int of 2.. while !s.has(x))`), labels, **explicit type arguments on calls** (see Part G1), `Bun.serve()` playground, and the VS Code extension in Part D (which also brings `.d.ts` typing and source maps). From step 1 on, follow the "what the compiler must do now" list in Part D.
 
 ---
 
@@ -850,7 +851,7 @@ Common flags: `--project klass.json`, `--src src`, `--out out`, `--main Main`, `
 
 ## Part G — Generics and the standard library
 
-Decided 2026-11-18: the standard library is **hand-written Klass declarations** of the JS built-ins (curated types: `int` vs `Float`, nullability, `Vector<T>`), not generated from `lib.d.ts` (TS unions/overloads/`undefined` map poorly; `.d.ts` stays the source for the long tail — DOM, Node, npm — in Part D). This needs **full generics**, which user code gets too (reversing the earlier "no user generics" decision).
+Decided 2026-11-18: the standard library is **hand-written Klass declarations** of the JS built-ins (curated types: `int` vs `Float`, nullability, `Array<T>`), not generated from `lib.d.ts` (TS unions/overloads/`undefined` map poorly; `.d.ts` stays the source for the long tail — DOM, Node, npm — in Part D). This needs **full generics**, which user code gets too (reversing the earlier "no user generics" decision).
 
 ### G1. Generics
 ```actionscript
@@ -870,17 +871,22 @@ var c:Box<int> = new Box(5)                            // T inferred from the co
 ```
 - Type parameters on classes, interfaces, methods, local functions and typedefs. **No bounds** (decided 2026-11-18: `T extends X` is skipped for now), so inside a generic body a `T` value can only be stored, passed on, compared with `==` and assigned to `Object`/`*`.
 - Member types are substituted per use (`Box<int>.get()` is `int`); method type arguments are **inferred** from the arguments (and from the expected type for arrows); explicit type arguments at call sites are not supported at first (`<` stays unambiguous: type arguments only appear in type positions, after `new`, and in declarations).
-- Generic types are **invariant** (`Vector<Dog>` is not a `Vector<Animal>`).
+- **Later: explicit type arguments on calls**, `Promise.reject<int>('boom')`, `Box.of<Float>(1)`, `parse<Config>(text)`. Needed when nothing determines a type parameter: no argument mentions it and there's no expected type (today such a call is K0797, and the workaround is a typed variable: `var p:Promise<int> = Promise.reject('boom')`).
+  - Parsing: `name<…>(` after an identifier or member access is ambiguous with `<` comparisons (`a < b > (c)`). Use the TypeScript/C# rule: speculatively parse a type-argument list and accept it only if it closes with `>` directly followed by `(`; otherwise backtrack and parse a comparison.
+  - Checking: explicit arguments replace inference for that call (count must match the method's type parameters, K0422/K0423); partial lists are not allowed.
+  - Output: erased, nothing changes in the JS.
+  - Until then: give `name<…>(` a clear error instead of today's `<`-comparison cascade ("type arguments can't be written on calls yet; give the result a type: `var p:Promise<int> = …`").
+- Generic types are **invariant** (`Array<Dog>` is not an `Array<Animal>`), except that `*` as a type argument is a **wildcard** on either side: any `Box<T>` fits a `Box<*>` and back (writes through it are unchecked, as with `*` everywhere). So a bare `Array` (= `Array<*>`) accepts every typed array.
 - **Erased at runtime** (JS has no generics): `x is Box` works, `x is Box<int>` is an error; no code changes in the output.
-- `Vector<T>` and `Promise<T>` stop being special: they become ordinary generic native classes from the std library.
+- `Promise<T>` is no longer special: it's an ordinary generic native class from the std library (done). `Array<T>` follows with the std `Array` declaration.
 
 ### G2. Native declarations
 ```actionscript
 public native class String {
   function get length():int
   function indexOf(search:String, from:int = 0):int
-  function split(separator:String):Vector<String>
-  function split(separator:RegExp):Vector<String>      // overloads: native declarations only
+  function split(separator:String):Array<String>
+  function split(separator:RegExp):Array<String>      // overloads: native declarations only
 }
 ```
 - `native` classes/interfaces/members describe existing JS objects: no bodies, **no generated code**, member names map 1:1 to JS.
@@ -890,7 +896,7 @@ public native class String {
 - Globals (`Math`, `JSON`, `console`, …) become typed by their declarations; JS globals without a declaration stay `*`.
 
 ### G3. The standard library
-- Files in `src/prelude/std/*.kl`, auto-imported like the prelude: `String`, `Boolean`, `Number` methods, `Array` and `Vector<T>`, `Math`, `JSON`, `RegExp`, `Promise<T>`, `Map<K, V>`, `Set<T>`, `Date`, `console`.
+- Files in `src/prelude/std/*.kl`, auto-imported like the prelude: `String`, `Boolean`, `Number` methods, `Array<T>`, `Math`, `JSON`, `RegExp`, `Promise<T>`, `Map<K, V>`, `Set<T>`, `Date`, `console`.
 - Typing rules: **`int` where the result is always whole** (`length`, `indexOf`, `charCodeAt`, `getFullYear`, …); `Math.floor/round/ceil` stay `Float` (results can exceed the `int` range); JS `T | undefined` results become nullable `T` (`find`, `Map.get`, `pop`).
 - A **conformance test** checks that every declared member exists at runtime in Bun.
 - One file per type (`std/Boolean.kl`, package `klass`), each listed in `PRELUDE` (`src/compiler.ts`); the test fails if a file isn't loaded. Users can't declare a class with a std name (K0028).
@@ -922,7 +928,7 @@ These are cheap if built in from step 1 and painful to retrofit:
 1. **Precise spans** on every token and AST node (start/end offsets, not just line/col).
 2. **Error-tolerant parser**: recovers at statement/member boundaries and produces a partial AST with error nodes, so half-typed code still gets completions.
 3. **Mapping-aware emitter**: codegen writes through a `CodeWriter` that records `(klassSpan → outputSpan)` mappings; used for JS source maps (milestone) and for the virtual TS file.
-4. **Second emit target `ts`**: same codegen with type annotations kept (`int`/`Float` → `number`, `Vector<T>` → `T[]`, typedefs → `type`, shapes → object types, `*` → `any`, visibility → TS `private`/`protected`). Add once the JS backend is stable (after milestone 15b).
+4. **Second emit target `ts`**: same codegen with type annotations kept (`int`/`Float` → `number`, `Array<T>` → `T[]`, typedefs → `type`, shapes → object types, `*` → `any`, visibility → TS `private`/`protected`). Add once the JS backend is stable (after milestone 15b).
 5. **Compiler as a library**: `compileProject` works on in-memory files (`Map<path, text>`), incremental per-file re-checking, no `process.exit` in the core.
 6. Checker results queryable by position (symbol at offset, type of expression) for Klass-only features.
 

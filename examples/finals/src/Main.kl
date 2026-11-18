@@ -1,7 +1,7 @@
 package {
   public class Main {
     public static final STARTED:String
-    public static final PRIMES:Vector<int> = []
+    public static final PRIMES:Array<int> = []
     private static var instances:int = 0
 
     static {

@@ -46,19 +46,19 @@ error[K0393]: `as Boolean` is not possible: `Boolean` can never be null
    |
 help: convert with `Boolean(x)`, or test with `x is Boolean`
 
-error[K0394]: `Vector<int>` can't be checked at runtime
+error[K0394]: `Array<int>` can't be checked at runtime
   --> type-ops.kl:11:18
    |
-11 |       trace(d is Vector<int>, d is *)
-   |                  ^^^^^^^^^^^
+11 |       trace(d is Array<int>, d is *)
+   |                  ^^^^^^^^^^
    |
 help: check `is Array`; element types are not known at runtime
 
 error[K0394]: `*` can't be checked at runtime
-  --> type-ops.kl:11:36
+  --> type-ops.kl:11:35
    |
-11 |       trace(d is Vector<int>, d is *)
-   |                                    ^
+11 |       trace(d is Array<int>, d is *)
+   |                                   ^
 
 error[K0420]: cannot find type `Mian`
   --> type-ops.kl:12:18

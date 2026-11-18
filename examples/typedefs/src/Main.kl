@@ -44,7 +44,7 @@ package {
       return Math.hypot(q.x - p.x, q.y - p.y)
     }
 
-    private function fold(xs:Vector<int>, f:Reducer, start:int):int {
+    private function fold(xs:Array<int>, f:Reducer, start:int):int {
       var acc:int = start
       for (var x:int of xs) acc = f(acc, x)
       return acc

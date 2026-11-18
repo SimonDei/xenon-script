@@ -3,7 +3,7 @@ package {
 
   public class Main {
     public function Main() {
-      var all:Vector<IShape> = [new Circle(1), new Square(2), new Cube(1)]
+      var all:Array<IShape> = [new Circle(1), new Square(2), new Cube(1)]
       for (var s:IShape of all) {
         trace(s.name, s.draw(), int(s.area() * 100) / 100, s is IScalable, s is Cube)
       }

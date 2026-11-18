@@ -14,7 +14,7 @@ package {
       trace('field', String(pos))
 
       // object and index are evaluated once
-      var path:Vector<Vec2> = [new Vec2(0, 0), new Vec2(1, 1)]
+      var path:Array<Vec2> = [new Vec2(0, 0), new Vec2(1, 1)]
       next(path)[index()] += new Vec2(5, 5)
       trace('path', String(path[1]), 'calls', Main.calls)
 
@@ -29,7 +29,7 @@ package {
       trace(String(adder + new Vec2(1, 1)))
     }
 
-    private function next(v:Vector<Vec2>):Vector<Vec2> {
+    private function next(v:Array<Vec2>):Array<Vec2> {
       Main.calls++
       return v
     }

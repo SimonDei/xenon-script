@@ -4,7 +4,7 @@ package com.zoo {
   public class Animal {
     private static var count:int = 0
     public final name:String
-    private var eaten:Vector<Food> = []
+    private var eaten:Array<Food> = []
 
     public function Animal(name:String) {
       this.name = name

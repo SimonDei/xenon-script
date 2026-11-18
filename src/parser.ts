@@ -380,7 +380,7 @@ export class Parser {
 
   /**
    * `enum Name { A, B = 2, C }` / `enum Level { Low = 'low' }` — stored as a ClassDecl whose
-   * members are static `const` fields of the enum type, plus a static `values():Vector<Name>`.
+   * members are static `const` fields of the enum type, plus a static `values():Array<Name>`.
    */
   private parseEnum(modifiers: A.Modifiers, start: number): A.ClassDecl {
     this.expect("enum");
@@ -406,7 +406,7 @@ export class Parser {
       kind: "Method",
       modifiers: { visibility: { value: "public", span: name.span }, static: name.span },
       name: { name: "values", span: name.span }, isConstructor: false, params: [],
-      returnType: { kind: "TypeName", name: [{ name: "Vector", span: name.span }], args: [enumType(name.span)], span: name.span },
+      returnType: { kind: "TypeName", name: [{ name: "Array", span: name.span }], args: [enumType(name.span)], span: name.span },
       isConst: false, span: name.span,
     });
     return { kind: "Class", isEnum: true, modifiers, name, implements: [], members, span };
@@ -468,7 +468,7 @@ export class Parser {
 
     if (this.is("var") || this.is("const") || this.is("final")) {
       const decl = this.advance().value as A.Field["decl"];
-      const name = this.ident("a field name");
+      const name = this.memberName(); // keywords allowed, as in JS (`var default:int`)
       const type = this.eat(":") ? this.parseType() : undefined;
       const init = this.eat("=") ? this.parseExpr() : undefined;
       this.endStatement();
@@ -478,10 +478,10 @@ export class Parser {
     if (this.is("function")) {
       this.advance();
       let accessor: "get" | "set" | undefined;
-      if ((this.isIdent("get") || this.isIdent("set")) && this.peekTok().kind === "ident") {
+      if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword")) {
         accessor = this.advance().value as "get" | "set";
       }
-      let name = this.ident("a method name");
+      let name = this.memberName(); // keywords allowed, as in JS (`function catch(…)`)
       // `function operator+(…)`: an operator method; the symbol is part of the name.
       if (name.name === "operator" && this.tok.kind === "punct" && !this.is("(") && !this.tok.nl) {
         const sym = this.advance();

@@ -27,7 +27,7 @@ package {
       trace(names.join(' '))
 
       // for-of / for-in
-      var letters:Vector<String> = ['a', 'b', 'c']
+      var letters:Array<String> = ['a', 'b', 'c']
       var joined:String = ''
       for (var ch:String of letters) {
         if (ch == 'b') continue

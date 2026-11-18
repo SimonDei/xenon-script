@@ -581,7 +581,7 @@
         },
         {
           "name": "support.type.builtin.klass",
-          "match": "\\b(?:Object|Array|Vector|Function|Promise|Class|RegExp)\\b"
+          "match": "\\b(?:Object|Array|Function|Promise|Class|RegExp)\\b"
         },
         {
           "name": "support.class.exception.klass",

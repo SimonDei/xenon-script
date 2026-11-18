@@ -16,7 +16,7 @@ export interface ShapeMemberNode {
 }
 
 export type TypeNode =
-  | { kind: "TypeName"; name: Ident[]; args: TypeNode[]; span: Span } // Dog, com.zoo.Dog, Vector<int>
+  | { kind: "TypeName"; name: Ident[]; args: TypeNode[]; span: Span } // Dog, com.zoo.Dog, Array<int>
   | { kind: "AnyType"; span: Span } // *
   | { kind: "VoidType"; span: Span }
   | { kind: "ShapeType"; members: ShapeMemberNode[]; span: Span } // { x:Float, ?label:String }

@@ -13,7 +13,7 @@ package {
       trace('point', x, y, dist)
 
       // array patterns: holes, defaults, rest, typed vectors
-      var list:Vector<int> = [10, 20, 30, 40, 50]
+      var list:Array<int> = [10, 20, 30, 40, 50]
       var [first, , third, ...tail] = list
       var sum:int = first + third
       trace(first, third, tail.length, sum)
@@ -32,7 +32,7 @@ package {
       // for-of with patterns
       var scores:* = new Map([['ann', 3], ['bob', 5]])
       for (var [who, score] of scores) trace(who, score)
-      var points:Vector<Point> = [new Point(1, 2), new Point(3, 4)]
+      var points:Array<Point> = [new Point(1, 2), new Point(3, 4)]
       var total:int = 0
       for (var { x: px, y: py } of points) total += px * py
       trace('total', total)

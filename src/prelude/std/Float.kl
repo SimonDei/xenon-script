@@ -25,7 +25,7 @@ package klass {
     /** Formatted for a locale tag like `'de-DE'`; `options` are `Intl.NumberFormat` options. */
     function toLocaleString(locale:String, options:* = null):String
     /** Formatted for the first supported locale in the list. */
-    function toLocaleString(locales:Vector<String>, options:* = null):String
+    function toLocaleString(locales:Array<String>, options:* = null):String
     /** The number itself. */
     function valueOf():Float
 

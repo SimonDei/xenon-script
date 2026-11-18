@@ -7,14 +7,14 @@ package {
       var a:Box<int> = new Box<int>(5)
       var b:Box<String> = a.map((n) => 'n=' + n)          // U inferred as String
       var c:Box<Float> = new Box(2.5)                      // T inferred from the argument
-      var d:Box<Vector<int>> = Box.of([1, 2, 3])           // V inferred from the vector
+      var d:Box<Array<int>> = Box.of([1, 2, 3])            // V inferred from the array
       trace(a.get() + 1, b.get().toUpperCase(), c.get() * 2, d.get().length)
 
       var lengths:Box<int> = b.map((s) => s.length).map((n) => n * 10)
       trace(lengths.get())
 
       // generic interface with concrete arguments
-      var words:Vector<Word> = [new Word('pear'), new Word('fig'), new Word('banana')]
+      var words:Array<Word> = [new Word('pear'), new Word('fig'), new Word('banana')]
       trace(best(words).text, best([new Word('x'), new Word('yy')]).text)
 
       // generic and non-generic subclasses of a generic class
@@ -24,6 +24,11 @@ package {
       trace(counter.get())
       var tagged:Tagged<String> = new Tagged('v', 'tag')
       trace(tagged.get(), tagged.tag)
+
+      // `*` as a type argument is a wildcard: any `Box<T>` fits a `Box<*>`, any array fits `Array`
+      var boxes:Array<Box<*>> = [a, b, c]
+      var ints:Array<int> = [4, 5, 6]
+      trace(boxes.length, total(ints), total([1.5, 2.5]))
 
       // generic typedefs, including a recursive one
       var p:Pair<String, int> = { first: 'age', second: 31 }
@@ -36,18 +41,25 @@ package {
       trace(q.first, q.second)
 
       // the expected type fills in what the arguments can't
-      var empty:Vector<String> = makeList()
+      var empty:Array<String> = makeList()
       empty.push('only')
       trace(empty.length)
     }
 
-    private function best(items:Vector<Word>):Word {
+    private function best(items:Array<Word>):Word {
       var top:Word = items[0]
       for (var w:Word of items) if (w.compareTo(top) > 0) top = w
       return top
     }
 
-    private function makeList<T>():Vector<T> { return [] }
+    private function makeList<T>():Array<T> { return [] }
+
+    /** Takes any array (`Array` = `Array<*>`): elements are `*`. */
+    private function total(values:Array):Float {
+      var sum:Float = 0
+      for (var v:* of values) sum += v
+      return sum
+    }
   }
 }
 

@@ -59,8 +59,8 @@ const cases: [string, string, string, number?][] = [
   ["using u:User = new User('42')", "u", "variable.other.declaration.klass"],
   ["private static inline final MAX_HP:int = 100", "MAX_HP", "variable.other.declaration.klass"],
   // types
-  ["var a:Vector<Int> = []", "Vector", "support.type.builtin.klass"],
-  ["var a:Vector<Int> = []", "Int", "support.type.primitive.klass"],
+  ["var a:Array<Int> = []", "Array", "support.type.builtin.klass"],
+  ["var a:Array<Int> = []", "Int", "support.type.primitive.klass"],
   ["var x:* = null", "*", "support.type.dynamic.klass"],
   ["var f:(Int) -> Void = g", "->", "storage.type.function.arrow.klass"],
   ["var f:(Int) -> Void = g", "Void", "support.type.primitive.klass"],

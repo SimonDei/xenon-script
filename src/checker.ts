@@ -6,7 +6,7 @@ import { JS_GLOBALS } from "./globals.ts";
 import { cover, type SourceFile, type Span, span, spanText } from "./source.ts";
 import { suggest } from "./suggest.ts";
 import {
-  arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, GENERIC_BUILTINS, isDynamic, isNullable, isNumeric, isPrim,
+  arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, arrayOf, elementOf, isDynamic, isNullable, isNumeric, isPrim,
   bind, eraseParams, memberTypeIn, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
   supertypeArgs, T, type Type, type TypeParamInfo, typeToString, unify,
 } from "./types.ts";
@@ -449,6 +449,23 @@ class Env {
       (name === "int" || name === "uint" ? natives.find((c) => c.decl.name.name === "Float") : undefined);
   }
 
+  /** The std library's `Promise<T>` (src/prelude/std/Promise.kl). */
+  get promiseClass(): ClassInfo | undefined {
+    return this.classes.get("klass.Promise");
+  }
+
+  /** `Promise<T>`: the type of an `async` function's result. */
+  promiseOf(arg: Type): Type {
+    const info = this.promiseClass;
+    return info ? { kind: "class", info, args: [arg] } : T.any;
+  }
+
+  /** The `T` of a `Promise<T>`, or undefined for other types. */
+  promiseArg(t: Type): Type | undefined {
+    if (t.kind === "class" && t.info === this.promiseClass) return t.args?.[0] ?? T.any;
+    return undefined;
+  }
+
   /** The prelude's `Exception` class. */
   get exception(): ClassInfo | undefined {
     return this.classes.get("klass.Exception");
@@ -575,14 +592,16 @@ class Env {
       if (node.args.length > 0) this.diags.error("K0423", `type parameter \`${name}\` doesn't take type arguments`, node.span);
       return { kind: "typeParam", param };
     }
-    if (name in GENERIC_BUILTINS) {
-      const want = GENERIC_BUILTINS[name]!;
-      if (node.args.length !== want) {
-        this.diags.error("K0422", `\`${name}\` needs ${want} type argument${want === 1 ? "" : "s"}`, node.span)
-          .help(`for example \`${name}<int>\``);
+    if (name === "Array" || (name === "Vector" && !this.lookupClass(scope, name, whole))) {
+      if (name === "Vector") {
+        this.diags.error("K0424", "`Vector` is called `Array<T>` in Klass", node.name[0]!.span, "unknown type")
+          .help("use `Array<T>`: a typed array (a bare `Array` is `Array<*>`)", [{ span: node.name[0]!.span, text: "Array" }]);
+      }
+      if (node.args.length > 1) {
+        this.diags.error("K0422", "`Array` takes 1 type argument, the element type", node.span, `${node.args.length} given`);
         return T.error;
       }
-      return { kind: "builtin", name: name as "Vector", args: node.args.map((a) => this.resolveType(a, scope, name === "Promise", tparams)) };
+      return arrayOf(node.args[0] ? this.resolveType(node.args[0], scope, false, tparams) : T.any);
     }
     const builtin = BUILTIN_TYPES[name];
     if (builtin && node.args.length > 0) this.diags.error("K0423", `\`${name}\` doesn't take type arguments`, node.span);
@@ -634,7 +653,9 @@ class Env {
   private genericClass(node: A.TypeNode & { kind: "TypeName" }, info: ClassInfo, scope: FileScope, tparams: TypeParamScope | undefined, allowRaw: boolean): Type {
     if (info.typeParams.length > 0 && node.args.length === 0 && allowRaw) return this.classType(node, info);
     if (!this.checkArgCount(node, info.decl.name.name, info.typeParams.length, true)) return this.classType(node, info);
-    return this.classType(node, info, node.args.map((a) => this.resolveType(a, scope, false, tparams)));
+    // `Promise<void>` (an async function without a result) is the one place `void` is a type argument.
+    const allowVoid = info === this.promiseClass;
+    return this.classType(node, info, node.args.map((a) => this.resolveType(a, scope, allowVoid, tparams)));
   }
 
   /** K0422/K0423: the number of type arguments must match the declaration. */
@@ -843,7 +864,7 @@ class Env {
           .note("the parent destructor runs right after this one");
         own.async = inherited.async; // reported; avoid follow-up interface mismatches
       }
-      const ret: Type = own.async ? { kind: "builtin", name: "Promise", args: [T.void] } : T.void;
+      const ret: Type = own.async ? this.promiseOf(T.void) : T.void;
       const userDispose = info.members.get("dispose");
       if (userDispose) {
         this.diags.error("K0805", "a class with a destructor already has `dispose()`", userDispose.decl.name.span)
@@ -1346,8 +1367,8 @@ class Env {
     const params = m.params.map((p, i) => {
       const type = p.type ? this.resolveType(p.type, scope, false, tparams) : this.untyped(p.name.span, `parameter \`${p.name.name}\``);
       if (p.rest && i !== m.params.length - 1) this.diags.error("K0208", "a rest parameter must be the last parameter", p.span);
-      if (p.rest && p.type && !(type.kind === "builtin" && (type.name === "Array" || type.name === "Vector")) && !isDynamic(type)) {
-        this.diags.error("K0209", "a rest parameter must be an `Array` or `Vector`", p.type.span);
+      if (p.rest && p.type && !elementOf(type) && !isDynamic(type)) {
+        this.diags.error("K0209", "a rest parameter must be an `Array`, e.g. `...names:Array<String>`", p.type.span);
       }
       if (p.init) sawOptional = true;
       else if (sawOptional && !p.rest) {
@@ -2288,7 +2309,8 @@ class BodyChecker {
     const scope = new Scope(outer);
     const t = this.valueExpr(s.iterable, outer);
     let element: Type = T.any;
-    if (t.kind === "builtin" && t.name === "Vector") element = t.args[0]!;
+    const arrayElement = elementOf(t);
+    if (arrayElement) element = arrayElement;
     else if (isPrim(t, "String")) element = T.String;
     else if (t.kind === "builtin" && t.name === "Object") {
       const e = s.iterable.span;
@@ -2437,9 +2459,10 @@ class BodyChecker {
       if (!assignable(t, expected)) this.mismatch(e, t, expected, origin);
       return;
     }
-    // Array literals take their type from context: `var v:Vector<int> = [1, 2]`.
-    if (e.kind === "Array" && expected.kind === "builtin" && expected.name === "Vector") {
-      const element = expected.args[0]!;
+    // Array literals take their type from context: `var v:Array<int> = [1, 2]`.
+    const expectedElement = e.kind === "Array" ? elementOf(expected) : undefined;
+    if (e.kind === "Array" && expectedElement) {
+      const element = expectedElement;
       for (const el of e.elements) {
         if (el.kind === "Spread") this.valueExpr(el.arg, scope);
         else this.checkAssign(el, element, origin, scope);
@@ -2542,11 +2565,12 @@ class BodyChecker {
         const obj = this.valueExpr(e.object, scope);
         const idx = this.valueExpr(e.index, scope);
         if (isPrim(obj, "String")) return T.String;
-        if (obj.kind === "builtin" && obj.name === "Vector") {
+        const element = elementOf(obj);
+        if (element && !isDynamic(element)) {
           if (!isNumeric(idx) && !isDynamic(idx)) {
-            this.diags.error("K0308", "mismatched types", e.index.span, `a \`Vector\` index is an \`int\`, found \`${typeToString(idx)}\``);
+            this.diags.error("K0308", "mismatched types", e.index.span, `an \`Array\` index is an \`int\`, found \`${typeToString(idx)}\``);
           }
-          return obj.args[0]!;
+          return element;
         }
         return obj.kind === "error" ? T.error : T.any;
       }
@@ -2982,12 +3006,13 @@ class BodyChecker {
       case "ArrayPattern": {
         let element: Type = T.any;
         let rest: Type = T.Array;
-        if (source.kind === "builtin" && source.name === "Vector") {
-          element = source.args[0]!;
+        const sourceElement = elementOf(source);
+        if (sourceElement) {
+          element = sourceElement;
           rest = source;
         } else if (isPrim(source, "String")) element = T.String;
         else if (source.kind === "error") element = T.error;
-        else if (!isDynamic(source) && !(source.kind === "builtin" && (source.name === "Array" || source.name === "Object"))) {
+        else if (!isDynamic(source) && !(source.kind === "builtin" && source.name === "Object")) {
           this.diags.error("K0770", `\`${typeToString(source)}\` values can't be destructured with \`[…]\``, p.span);
           element = T.error;
         }
@@ -3036,7 +3061,8 @@ class BodyChecker {
 
   /** For an async function declared `:Promise<T>`, returns `T` (what `return` statements produce). */
   private asyncResult(declared: Type, node?: A.TypeNode): Type {
-    if (declared.kind === "builtin" && declared.name === "Promise") return declared.args[0] ?? T.any;
+    const arg = this.env.promiseArg(declared);
+    if (arg) return arg;
     if (isDynamic(declared)) return T.any;
     const d = this.diags.error("K0763", "an `async` function must return a `Promise<T>`", node?.span ?? this.method?.asyncAt, `found \`${typeToString(declared)}\``);
     if (node && declared.kind !== "void") d.help(`return \`Promise<${typeToString(declared)}>\``, [{ span: node.span, text: `Promise<${typeToString(declared)}>` }]);
@@ -3118,8 +3144,8 @@ class BodyChecker {
     // The function's type: a declared return type wins; an expression body gives its own type.
     let ret: Type;
     if (f.returnType || contextRet) ret = sig.ret;
-    else if (f.body.kind === "Block") ret = f.async ? { kind: "builtin", name: "Promise", args: [T.any] } : T.any;
-    else ret = f.async ? { kind: "builtin", name: "Promise", args: [bodyRet] } : bodyRet;
+    else if (f.body.kind === "Block") ret = f.async ? this.env.promiseOf(T.any) : T.any;
+    else ret = f.async ? this.env.promiseOf(bodyRet) : bodyRet;
     return { kind: "method", params: sig.params, ret };
   }
 
@@ -3131,7 +3157,8 @@ class BodyChecker {
       if (m) d.help(`make \`${m.name}\` async`, [{ span: m.asyncAt, text: "async " }]);
     }
     const t = this.valueExpr(e.arg, scope);
-    if (t.kind === "builtin" && t.name === "Promise") return t.args[0] ?? T.any;
+    const arg = this.env.promiseArg(t);
+    if (arg) return arg;
     if (isDynamic(t)) return T.any;
     this.diags.warning("K0762", "`await` on a value that isn't a `Promise`", e.arg.span, `this is \`${typeToString(t)}\``)
       .note("awaiting a plain value just returns it");
@@ -3192,17 +3219,18 @@ class BodyChecker {
     args.forEach((a, i) => {
       const pattern = patternAt(i);
       if (a.kind === "Function" || a.kind === "Spread" || !pattern) return;
-      if (a.kind === "Array" && pattern.kind === "builtin" && pattern.name === "Vector") {
+      const patternElement = a.kind === "Array" ? elementOf(pattern) : undefined;
+      if (a.kind === "Array" && patternElement) {
         for (const el of a.elements) {
           if (el.kind === "Spread") continue;
           const t = this.valueExpr(el, scope);
           this.preTyped.set(el, t);
-          unify(pattern.args[0]!, t, set, out);
+          unify(patternElement, t, set, out);
         }
         return;
       }
       if (a.kind === "Object" && pattern.kind === "shape") return; // checked against the shape later
-      if (a.kind === "Array" && pattern.kind === "typeParam") return; // decided last (it might be a `Vector<…>`)
+      if (a.kind === "Array" && pattern.kind === "typeParam") return; // decided last (it might be an `Array<…>`)
       const t = this.valueExpr(a, scope);
       this.preTyped.set(a, t);
       unify(pattern, t, set, out);
@@ -3264,7 +3292,7 @@ class BodyChecker {
         if (p.rest) pt = pt.kind === "builtin" && pt.args.length === 1 ? pt.args[0]! : T.any;
         if (isDynamic(pt) || a.kind === "Spread") return true;
         if (a.kind === "Function") return pt.kind === "method" || (pt.kind === "builtin" && (pt.name === "Function" || pt.name === "Object"));
-        if (a.kind === "Array") return pt.kind === "builtin" && (pt.name === "Array" || pt.name === "Vector" || pt.name === "Object");
+        if (a.kind === "Array") return pt.kind === "builtin" && (pt.name === "Array" || pt.name === "Object");
         if (a.kind === "Object") return pt.kind === "shape" || (pt.kind === "builtin" && pt.name === "Object");
         const t = types[i]!;
         if (assignable(t, pt)) return true;
@@ -3602,7 +3630,7 @@ class BodyChecker {
     if (target.kind === "error") return e.op === "is" ? T.Boolean : T.error;
     if (!check) {
       const d = this.diags.error("K0394", `\`${typeToString(target)}\` can't be checked at runtime`, t.span);
-      if (target.kind === "builtin" && target.name === "Vector") d.help("check `is Array`; element types are not known at runtime");
+      if (elementOf(target)) d.help("check `is Array`; element types are not known at runtime");
       return e.op === "is" ? T.Boolean : T.error;
     }
     this.env.result.typeChecks.set(e, check);
@@ -3961,11 +3989,11 @@ function runtimeCheck(t: Type): RuntimeCheck | undefined {
       return undefined;
     case "builtin":
       switch (t.name) {
-        case "Array": return { kind: "array" };
+        // `x is Array` (any array); `is Array<int>` can't be checked: elements aren't typed at runtime.
+        case "Array": return isDynamic(t.args[0] ?? T.any) ? { kind: "array" } : undefined;
         case "Object": return { kind: "object" };
         case "Function": case "Class": return { kind: "typeof", tag: "function" };
         case "RegExp": return { kind: "js", name: "RegExp" };
-        case "Promise": return { kind: "js", name: "Promise" };
       }
       return undefined;
     default:

@@ -37,7 +37,7 @@ package {
       return 'n=' + n + suffix
     }
 
-    public static function sum(...values:Vector<Float>):Float {
+    public static function sum(...values:Array<Float>):Float {
       var total:Float = 0
       var i:int = 0
       while (i < values.length) {

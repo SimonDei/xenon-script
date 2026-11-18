@@ -35,8 +35,8 @@ error[K0308]: mismatched types
  7 |       var total:Float = sum(1, 2, 'three')
    |                                   ^^^^^^^ expected `Float`, found `String`
 ...
-15 |     private static function sum(...values:Vector<Float>):Float {
-   |                                           ------------- parameter declared here
+15 |     private static function sum(...values:Array<Float>):Float {
+   |                                           ------------ parameter declared here
    |
 help: convert the value with `Float()`
    |

@@ -40,8 +40,8 @@ error[K0604]: no overload of `split` accepts (int)
 6 |       trace(t.toUppercase(), t.newApi(), c.getYear(), t.split(5))
   |                                                       ^^^^^^^ no matching overload
   |
-  = note: `split(separator:String):Vector<String>`
-  = note: `split(separator:RegExp):Vector<String>`
+  = note: `split(separator:String):Array<String>`
+  = note: `split(separator:RegExp):Array<String>`
 
 error[K0820]: native members can't have a body
   --> natives.kl:17:27

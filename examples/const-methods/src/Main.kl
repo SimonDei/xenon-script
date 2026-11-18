@@ -23,7 +23,7 @@ class Item {
 }
 
 class Inventory implements IReport {
-  private var items:Vector<Item> = []
+  private var items:Array<Item> = []
   private var total:Float = 0
   public static var reports:int = 0
 

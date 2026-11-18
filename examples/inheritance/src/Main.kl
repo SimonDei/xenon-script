@@ -3,7 +3,7 @@ package {
 
   public class Main {
     public function Main() {
-      var all:Vector<Animal> = [new Animal('Generic'), new Dog('Rex', 3), new Puppy('Bit')]
+      var all:Array<Animal> = [new Animal('Generic'), new Dog('Rex', 3), new Puppy('Bit')]
       for (var a:Animal of all) trace(a.describe())
 
       var rex:Dog = all[1] as Dog

@@ -19,7 +19,7 @@ package {
 
       // methods used as values stay bound to their primitive
       var show:() -> String = ready.toString
-      var parts:Vector<() -> String> = [show, true.toString]
+      var parts:Array<() -> String> = [show, true.toString]
       for (var f:() -> String of parts) trace(f())
 
       // `Bool` is the prelude alias of `Boolean`: same members
@@ -40,7 +40,7 @@ package {
 
       // replacer and reviver are typed functions
       trace(JSON.stringify(data, (key:String, value:*):* => key == 'age' ? value * 7 : value))
-      var doubled:Vector<int> = JSON.parse('[1, 2, 3]', (key:String, value:*):* => value is int ? value * 2 : value)   // `*` assigns to any type
+      var doubled:Array<int> = JSON.parse('[1, 2, 3]', (key:String, value:*):* => value is int ? value * 2 : value)   // `*` assigns to any type
       trace(doubled.length, doubled[2])
 
       // invalid input throws a JS SyntaxError, caught as an Exception

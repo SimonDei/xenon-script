@@ -3,7 +3,7 @@ import type { ClassInfo } from "./checker.ts";
 export type PrimName = "int" | "uint" | "Float" | "String" | "Boolean";
 
 /** Built-in reference types that are not (yet) modelled member by member. */
-export type BuiltinName = "Object" | "Array" | "Function" | "RegExp" | "Class" | "Vector" | "Promise";
+export type BuiltinName = "Object" | "Array" | "Function" | "RegExp" | "Class";
 
 /** A type parameter (`T` in `class Box<T>` or `function map<U>()`), compared by identity. */
 export interface TypeParamInfo {
@@ -59,7 +59,8 @@ export const T = {
   any: { kind: "any" } as Type,
   error: { kind: "error" } as Type,
   Object: { kind: "builtin", name: "Object", args: [] } as Type,
-  Array: { kind: "builtin", name: "Array", args: [] } as Type,
+  /** The untyped array `Array` = `Array<*>`. */
+  Array: { kind: "builtin", name: "Array", args: [{ kind: "any" }] } as Type,
   Function: { kind: "builtin", name: "Function", args: [] } as Type,
   RegExp: { kind: "builtin", name: "RegExp", args: [] } as Type,
 };
@@ -78,8 +79,15 @@ export const BUILTIN_TYPES: Record<string, Type> = {
   Class: { kind: "builtin", name: "Class", args: [] },
 };
 
-/** Generic built-ins and their parameter count. */
-export const GENERIC_BUILTINS: Record<string, number> = { Vector: 1, Promise: 1 };
+/** `Array<T>`: the typed array (one element type). A bare `Array` is `Array<*>`. */
+export function arrayOf(element: Type): Type {
+  return { kind: "builtin", name: "Array", args: [element] };
+}
+
+/** The element type of an `Array<T>` (`*` for a bare `Array`), or undefined for other types. */
+export function elementOf(t: Type): Type | undefined {
+  return t.kind === "builtin" && t.name === "Array" ? t.args[0] ?? T.any : undefined;
+}
 
 export function isNumeric(t: Type): boolean {
   return t.kind === "prim" && (t.name === "int" || t.name === "uint" || t.name === "Float");
@@ -107,7 +115,7 @@ export function typeToString(t: Type): string {
     case "null": return "null";
     case "any": return "*";
     case "error": return "{error}";
-    case "builtin": return t.args.length ? `${t.name}<${t.args.map(typeToString).join(", ")}>` : t.name;
+    case "builtin": return t.args.length && !t.args.every(isDynamic) ? `${t.name}<${t.args.map(typeToString).join(", ")}>` : t.name;
     case "class": return t.args?.length ? `${t.info.decl.name.name}<${t.args.map(typeToString).join(", ")}>` : t.info.decl.name.name;
     case "typeParam": return t.param.name;
     case "classRef": return `Class<${t.info.decl.name.name}>`;
@@ -214,14 +222,15 @@ export function assignable(from: Type, to: Type): boolean {
     if (!to.args?.length) return true;
     // Generic types are invariant: compare the arguments as seen from the target class.
     const seen = supertypeArgs(from.info, from.args ?? [], to.info);
-    return !seen || seen.length === 0 || to.args.every((a, i) => sameType(a, seen[i] ?? T.any) || isDynamic(seen[i] ?? T.any));
+    // `*` as a type argument is a wildcard on either side: `Box<int>` fits `Box<*>` and back.
+    return !seen || seen.length === 0 || to.args.every((a, i) => sameType(a, seen[i] ?? T.any) || isDynamic(a) || isDynamic(seen[i] ?? T.any));
   }
   if (to.kind === "builtin") {
     if (to.name === "Function") return from.kind === "method" || (from.kind === "builtin" && from.name === "Function");
     if (to.name === "Class") return from.kind === "classRef" || (from.kind === "builtin" && from.name === "Class");
     if (from.kind !== "builtin" || from.name !== to.name) return false;
-    // Untyped `Array`/`Vector` arguments are compatible with any element type.
-    return to.args.length === 0 || from.args.length === 0 || to.args.every((a, i) => sameType(a, from.args[i]!));
+    // `*` element types are a wildcard: `Array<int>` fits `Array` (= `Array<*>`) and back.
+    return to.args.every((a, i) => sameType(a, from.args[i] ?? T.any) || isDynamic(a) || isDynamic(from.args[i] ?? T.any));
   }
   if (to.kind === "classRef") return from.kind === "classRef" && isSubclass(from.info, to.info);
   return false;

@@ -12,8 +12,8 @@ package {
       trace(price.toFixed(2), count.toFixed(1), Float.MAX_SAFE_INTEGER > 1e15)
 
       var csv:String = 'a,b;c'
-      var byComma:Vector<String> = csv.split(',')             // split(String)
-      var byAny:Vector<String> = csv.split(~/[,;]/)            // split(RegExp)
+      var byComma:Array<String> = csv.split(',')             // split(String)
+      var byAny:Array<String> = csv.split(~/[,;]/)            // split(RegExp)
       trace(byComma.length, byAny.length, csv.toUpperCase().padStart(7, '*'))
 
       // a generic native class, and a Klass class extending it
@@ -50,8 +50,8 @@ native class String {
   function get length():int
   function toUpperCase():String
   function padStart(length:int, fill:String = ' '):String
-  function split(separator:String):Vector<String>
-  function split(separator:RegExp):Vector<String>
+  function split(separator:String):Array<String>
+  function split(separator:RegExp):Array<String>
 }
 
 native class Map<K, V> {

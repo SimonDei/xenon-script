@@ -6,8 +6,8 @@ error[K0604]: no overload of `stringify` accepts (*, int)
   |
   = note: `stringify(value:*, replacer:(key:String, value:*) -> * = null, space:int = 0):String`
   = note: `stringify(value:*, replacer:(key:String, value:*) -> *, space:String):String`
-  = note: `stringify(value:*, keys:Vector<String>, space:int = 0):String`
-  = note: `stringify(value:*, keys:Vector<String>, space:String):String`
+  = note: `stringify(value:*, keys:Array<String>, space:int = 0):String`
+  = note: `stringify(value:*, keys:Array<String>, space:String):String`
 
 error[K0604]: no overload of `parse` accepts (int)
  --> std-json.kl:6:13

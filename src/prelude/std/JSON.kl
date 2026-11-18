@@ -1,7 +1,7 @@
 // Standard library: JavaScript's `JSON` object. It's a namespace with static methods only,
 // so the constructor is hidden.
 //
-// Parsed values are `*`: give them a type with `as` (a typedef shape, `Vector<…>`, …).
+// Parsed values are `*`: give them a type with `as` (a typedef shape, `Array<…>`, …).
 // Not declared (not in every engine yet): `JSON.rawJSON`, `JSON.isRawJSON`; use `(JSON as *)`.
 package klass {
   public native class JSON {
@@ -20,7 +20,7 @@ package klass {
     /** Indents with the string `space` (at most 10 characters), e.g. `'\t'`. */
     static function stringify(value:*, replacer:(key:String, value:*) -> *, space:String):String
     /** Only the listed property names are included. */
-    static function stringify(value:*, keys:Vector<String>, space:int = 0):String
-    static function stringify(value:*, keys:Vector<String>, space:String):String
+    static function stringify(value:*, keys:Array<String>, space:int = 0):String
+    static function stringify(value:*, keys:Array<String>, space:String):String
   }
 }

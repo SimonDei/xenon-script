@@ -1,0 +1,11 @@
+public class Main {
+  public function Main() {
+    var old:Vector<int> = [1, 2]
+    var pair:Array<int, String> = []
+    var ints:Array<int> = [1, 2, 'three']
+    var anything:Array = ints                 // fine: a bare `Array` is `Array<*>`
+    var back:Array<int> = anything            // fine: `*` elements are unchecked
+    var words:Array<String> = ints
+    trace(old, pair, back, words, ints['0'], anything is Array, anything is Array<int>)
+  }
+}
