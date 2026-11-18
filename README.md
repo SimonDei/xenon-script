@@ -19,6 +19,14 @@ public class Main {
 }
 ```
 
+## Standard library
+
+The built-in types are declared in Klass itself, in `src/prelude/std/*.kl` (no import needed), and
+checked against the JavaScript runtime by `tests/std.test.ts`:
+`String`, `Float`/`int`/`uint`, `Boolean`, `Array<T>`, `Map<K, V>`, `Set<T>`, `Iterator<T>`, `Promise<T>`,
+`RegExp`, `Date`, `JSON`, `Math` and `console`. `examples/std` shows each of them in use.
+JavaScript globals without a declaration yet (`fetch`, `setTimeout`, `process`, `Object`, …) are untyped `*`.
+
 ## Usage
 
 ```bash

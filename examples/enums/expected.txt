@@ -8,4 +8,5 @@ high HIGH true
 valid low
 invalid medium
 valid high
+invalid extreme
 true false

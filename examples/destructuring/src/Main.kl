@@ -30,8 +30,8 @@ package {
       trace('q', q.x, q.y)
 
       // for-of with patterns
-      var scores:* = new Map([['ann', 3], ['bob', 5]])
-      for (var [who, score] of scores) trace(who, score)
+      var scores:Map<String, int> = new Map([['ann', 3], ['bob', 5]])
+      for (var [who, score] of scores) trace(who.toUpperCase(), score + 1)      // typed: who is a String, score an int
       var points:Array<Point> = [new Point(1, 2), new Point(3, 4)]
       var total:int = 0
       for (var { x: px, y: py } of points) total += px * py

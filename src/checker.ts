@@ -2,7 +2,7 @@ import type * as A from "./ast.ts";
 import type { DiagnosticBag, DiagnosticBuilder, Edit } from "./diagnostics.ts";
 import { type ConstValue, fits, type Fold, fold } from "./consteval.ts";
 import { breaksOut, completes, mentions } from "./flow.ts";
-import { JS_GLOBALS } from "./globals.ts";
+import { GLOBAL_HINTS, JS_GLOBALS } from "./globals.ts";
 import { cover, type SourceFile, type Span, span, spanText } from "./source.ts";
 import { suggest } from "./suggest.ts";
 import {
@@ -2723,6 +2723,11 @@ class BodyChecker {
     const d = this.diags.error("K0425", `cannot find \`${name}\` in this scope`, e.span, "not found in this scope");
     const s = suggest(name, [...scope.names(), ...allMemberNames(this.info), ...this.scope.classes.keys(), ...this.scope.jsImports, ...BUILTIN_FNS]);
     if (name === "Number") d.help("JavaScript's `Number` is called `Float` in Klass", [{ span: e.span, text: "Float" }]);
+    else if (GLOBAL_HINTS[name]) {
+      const hint = GLOBAL_HINTS[name]!;
+      if (hint.note) d.note(hint.note);
+      d.help(`use \`${hint.use}\``, [{ span: e.span, text: hint.use }]);
+    }
     else if (s) d.help(`a name with a similar spelling exists: \`${s}\``, [{ span: e.span, text: s }]);
     else if (name in ERROR_HINTS) {
       d.help(`use \`${ERROR_HINTS[name]}\` (JavaScript error classes are hidden in Klass)`, [{ span: e.span, text: ERROR_HINTS[name]! }]);

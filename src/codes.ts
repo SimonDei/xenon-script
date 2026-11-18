@@ -127,7 +127,7 @@ export const CODES: Record<string, CodeInfo> = {
   K0422: c("wrong number of type arguments", "A generic type needs one type argument per type parameter, e.g. `Map<String, int>`; `Array<T>` takes one (a bare `Array` is `Array<*>`)."),
   K0424: c("`Vector` is `Array<T>`", "Klass has one array type: `Array<T>` with the element type (a bare `Array` is `Array<*>`, any elements).", "var names:Vector<String> = []", "var names:Array<String> = []"),
   K0423: c("unexpected type arguments", "Only generic types take type arguments: `Array<T>` and classes declared with type parameters, like `Promise<T>` or `Map<K, V>`."),
-  K0425: c("name not found", "No variable, member, class or import with this name is in scope."),
+  K0425: c("name not found", "No variable, member, class or import with this name is in scope. Some JavaScript globals are hidden on purpose and come with a hint: `Number` is `Float`, `Error` is `Exception`, and `parseInt`, `parseFloat`, `isNaN`, `isFinite`, `NaN` and `Infinity` are `Float.parseInt`, … (the global versions convert their argument)."),
   K0426: c("member not found", "The type has no member with this name."),
   K0427: c("member of null", "`null` has no members."),
   K0430: c("package not found", "No classes exist in this package."),

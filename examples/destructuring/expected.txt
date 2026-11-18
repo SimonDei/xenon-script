@@ -4,7 +4,7 @@ point 3 4 5
 7 -1
 swapped 2 1
 q 5 6
-ann 3
-bob 5
+ANN 4
+BOB 6
 total 14
 1 true none 1024 true undefined [50,60]

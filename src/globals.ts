@@ -1,4 +1,9 @@
-/** JavaScript globals usable from Klass code, all typed `*` (A0/A7). `Error` and its subclasses are deliberately absent (A6c). */
+/**
+ * JavaScript globals usable from Klass code, all typed `*` (A0/A7): the ones the standard library
+ * (src/prelude/std) doesn't declare yet. `Error` and its subclasses are deliberately absent (A6c),
+ * and so are the global number functions and values (`GLOBAL_HINTS`): `parseInt`, `isNaN`, … coerce
+ * their argument, the `Float` statics don't.
+ */
 export const JS_GLOBALS = new Set([
   "Object", "Symbol", "WeakMap", "WeakSet",
   "WeakRef", "Proxy", "Reflect", "Intl", "BigInt", "ArrayBuffer", "DataView", "Uint8Array", "Int8Array",
@@ -7,8 +12,17 @@ export const JS_GLOBALS = new Set([
   "fetch", "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "structuredClone",
   "globalThis", "process", "Bun", "document", "window", "navigator", "location", "localStorage", "performance",
   "crypto", "atob", "btoa", "encodeURIComponent", "decodeURIComponent", "encodeURI", "decodeURI",
-  "isNaN", "isFinite", "parseInt", "parseFloat", "NaN", "Infinity",
   "EventTarget", "Event", "CustomEvent", "MessageChannel", "MessagePort", "BroadcastChannel", "WebSocket", "Worker",
   "ReadableStream", "WritableStream", "TransformStream", "File", "FileReader", "Intl", "WeakRef", "FinalizationRegistry",
   "AsyncDisposableStack", "DisposableStack", "requestAnimationFrame", "cancelAnimationFrame", "alert", "HTMLElement",
 ]);
+
+/** Hidden JS globals and what to use instead (reported as a hint on "cannot find"). */
+export const GLOBAL_HINTS: Record<string, { use: string; note?: string }> = {
+  parseInt: { use: "Float.parseInt" },
+  parseFloat: { use: "Float.parseFloat" },
+  isNaN: { use: "Float.isNaN", note: "the global `isNaN` converts its argument first (`isNaN('abc')` is true); `Float.isNaN` doesn't" },
+  isFinite: { use: "Float.isFinite", note: "the global `isFinite` converts its argument first; `Float.isFinite` doesn't" },
+  NaN: { use: "Float.NaN", note: "test for it with `Float.isNaN(x)`: `x == NaN` is always false" },
+  Infinity: { use: "Float.POSITIVE_INFINITY" },
+};

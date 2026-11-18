@@ -31,7 +31,8 @@
 - [x] Part D (partial): VS Code syntax highlighting only — `packages/vscode-klass` (TextMate grammar, language configuration, README with install steps), tested with VS Code's tokenizer (`tests/grammar.test.ts`); no language server / IntelliSense yet
 - [x] One array type (decided 2026-11-18): `Vector<T>` removed, `Array<T>` is the typed array and a bare `Array` is `Array<*>`; `*` as a type argument is a wildcard (`Box<int>` fits `Box<*>` and back); `Vector` is K0424 with a fix-it; `is Array<int>` is K0394 (`is Array` works)
 - [x] `Promise<T>` is a std native class (`src/prelude/std/Promise.kl`, written by the user) instead of a compiler built-in; `async`/`await` use it; reserved words are allowed as member names (`function catch(…)`, `p.finally(…)`)
-- [ ] Part G: G4 migration (examples and tests tightened where typed built-ins now catch mistakes; `globals.ts` shrinks to the globals without a declaration)
+- [x] G4: migration — examples typed where they were only untyped for lack of built-in types (`Map<String, int>` in destructuring/interop, `Array<String>` from parsed JSON in enums); `globals.ts` holds only the JS globals without a declaration, and the coercing global functions/values (`parseInt`, `parseFloat`, `isNaN`, `isFinite`, `NaN`, `Infinity`) are hidden with `Float.…` fix-its (`tests/errors/globals`); README gains a standard-library section
+- [ ] Part G follow-ups (G5): `Object` statics, top-level native functions (`setTimeout`, `fetch`, …), nullable primitives, overload choice by array-literal elements, tuple types, a `RegExp` match type; then source maps and the language server (Part D)
 - [ ] Part D (VS Code extension) and Later items
 
 ## Context
@@ -907,6 +908,20 @@ public native class String {
 - Examples and tests updated where typed built-ins now catch mistakes; `globals.ts` shrinks to the globals that have no declaration yet.
 
 Milestones: G1 generics → G2 native declarations → G3 std library → G4 migration. Later: generate further declarations from `.d.ts` (Part D) in the same `native` form.
+
+### G5. Follow-ups (not started)
+Left over from G3/G4, roughly in the order they pay off:
+
+1. **`Object` statics.** `Object.keys/values/entries/assign/freeze/isFrozen/seal/fromEntries/hasOwn/getPrototypeOf` are the most used untyped global. Declare a std native class `Object` for the statics only (the `Object` *type* stays built in, its instance members stay unchecked), like `Array` supplies the members of the built-in array type. `Object.keys(o):Array<String>`, `Object.entries(o):Array<Array<*>>`, `fromEntries(pairs:Array<Array<*>>):Object`.
+2. **Top-level native functions.** `setTimeout`, `setInterval`, `clearTimeout`, `fetch`, `structuredClone`, `queueMicrotask`, `encodeURIComponent`/`decodeURIComponent`/`encodeURI`/`decodeURI`, `atob`/`btoa` are free functions, and Klass has no top-level functions to declare them with. Sketch: a `native function` declaration at package level in a std file (no body, emitted as nothing, referenced by its JS name, overloads allowed as in native classes), auto-visible like the other prelude names. `setTimeout(callback:() -> Void, ms:int = 0):*` (the timer handle is a `Timeout` object in Node/Bun and an int in browsers, so it stays `*` until the platform is chosen), `fetch(url:String, options:* = null):Promise<*>` (typing `Response` is the `.d.ts` question below).
+3. **Platform APIs through `.d.ts`.** `process`, `Bun`, `URL`, `TextEncoder`, streams, `WebSocket`, `crypto`, `performance`, the DOM: too many and too platform-specific for hand-written declarations. They arrive with `.d.ts` support (Part D, milestone 23), which also types npm packages, in the same `native` form.
+4. **Nullable primitives.** `Map<String, int>.get` and `Array<int>.pop()` return `undefined` when empty, but `int` can't be null, so the checker refuses `== null` on them and the declaration can't say "maybe absent" (documented in `Map.kl` and `Array.kl`: check `has`/`length` first). Options: an `int?` type (nullable form of any type), or `Optional<T>`-style return types in the std declarations. Needs a language decision.
+5. **Overload choice by array-literal elements.** Today every array literal matches the first array-typed overload, so typed and wildcard overloads can't coexist (`Promise.all<T>(Array<Promise<T>>)` next to `all(Array<Promise<*>>)` for mixed lists). Match literals on their element types instead.
+6. **Tuple types** (`[int, String]`) would type `Promise.all` exactly, `Map` pairs and `new Map([['a', 1]])` (inferring `K` and `V`), `entries()`, and `Array.entries()` (today `Array<*>`). A larger feature; see also variadic generics.
+7. **Match type for `RegExp.exec` / `String.match`.** The array with `index`, `input` and `groups` is `Array<String>` with untyped extras. A built-in array-with-properties type, or a native class extending `Array<String>`, would type `match.groups.year`.
+8. **Small diagnostics:** a hint for `Math.min([1, 2])` (spread it: `Math.min(...values)`); a clear error for `name<…>(…)` until explicit call type arguments exist (see G1).
+9. **`Function` and typed callbacks.** An untyped `Function` value can't be passed where a typed callback is expected (`nums.map(fn)` with `fn:Function` is an error; declare `fn:(int) -> int`). Decide whether `Function` should convert implicitly like `*` or stay strict; strict is the current, deliberate behavior.
+10. **Declarations not yet written:** `Object` instance members (`hasOwnProperty`, …), `Symbol`, `BigInt`, `WeakMap`/`WeakSet`/`WeakRef`, typed arrays, `Intl`, `Iterator.concat`, `RegExp.escape`, `Map.getOrInsert*`, `Array.copyWithin`/`fromAsync` — each as it's needed, in the existing style (`src/prelude/std/<Name>.kl` + the conformance test + a section in `examples/std`).
 
 ## Part D — Later: VS Code extension with IntelliSense via the TypeScript 5 API
 

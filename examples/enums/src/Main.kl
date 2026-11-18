@@ -17,8 +17,8 @@ package {
       trace(level, String(level).toUpperCase(), level == Level.High)
 
       // raw data → enum: `as` checks the value against the enum's members
-      var raw:* = JSON.parse('["low", "medium", "high"]')
-      for (var r:* of raw) {
+      var raw:Array<String> = JSON.parse('["low", "medium", "high", "extreme"]')   // parsed JSON is `*`: give it a type
+      for (var r:String of raw) {
         if (var l:Level = r as Level) trace('valid', l)
         else trace('invalid', r)
       }

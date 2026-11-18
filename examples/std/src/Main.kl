@@ -176,7 +176,7 @@ package {
       var seen:Seen = new Seen()
       seen.add('x')
       for (var s:String of seen) trace(s.toUpperCase())
-      trace(new Set([NaN, NaN]).size)      // NaN is equal to NaN inside a Set
+      trace(new Set([Float.NaN, Float.NaN]).size)      // NaN is equal to NaN inside a Set
     }
 
     private function iterators():void {

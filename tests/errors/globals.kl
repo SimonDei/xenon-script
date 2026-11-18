@@ -1,0 +1,8 @@
+public class Main {
+  public function Main() {
+    var n:Float = parseInt('42')
+    var f:Float = parseFloat('3.5')
+    trace(isNaN('abc'), isFinite(n), n == NaN, f < Infinity)
+    trace(Float.parseInt('42'), Float.isNaN(f), Float.NaN, Float.POSITIVE_INFINITY)
+  }
+}
