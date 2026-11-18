@@ -1,0 +1,10 @@
+error[K0102]: expected `;` or a line break, found keyword `var`
+ --> missing-semicolon.kl:4:21
+  |
+4 |       var a:int = 1 var b:int = 2
+  |                     ^^^ unexpected token
+  |
+help: end the statement here
+  |
+4 |       var a:int = 1; var b:int = 2
+  |                    +

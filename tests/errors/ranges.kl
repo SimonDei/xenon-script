@@ -1,0 +1,13 @@
+package {
+  public class Main {
+    public function Main() {
+      var f:Float = 2.5
+      for (var i:int of 0..10 step 0) {}
+      for (var i:int of 10..0 step -1) {}
+      for (var i:int of 0..f) {}
+      for (var i:int of 0..10) i = 5
+      for (var i:int of 3..3) {}
+      var r:* = 0..10
+    }
+  }
+}

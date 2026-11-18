@@ -1,0 +1,9 @@
+package events {
+  public typedef Config = {
+    url:String,
+    retries:int,
+    final timeoutMs:Float,
+    ?onDone:Handler,
+    headers:{ accept:String }
+  }
+}

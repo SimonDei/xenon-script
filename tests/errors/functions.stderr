@@ -1,0 +1,116 @@
+error[K0761]: constructors can't be `async`
+ --> functions.kl:5:12
+  |
+5 |     public async function Main() {
+  |            ^^^^^
+
+error[K0760]: `await` is only allowed inside `async` functions
+  --> functions.kl:10:19
+   |
+10 |       var x:int = await load()
+   |                   ^^^^^^^^^^^^
+   |
+help: make `load` async
+   |
+ 9 |     private async function load():Promise<int> {
+   |             ++++++
+
+error[K0763]: an `async` function must return a `Promise<T>`
+  --> functions.kl:14:34
+   |
+14 |     private async function bad():int {
+   |                                  ^^^ found `int`
+   |
+help: return `Promise<int>`
+   |
+14 |     private async function bad():Promise<int> {
+   |                                  ~~~~~~~~~~~~
+
+warning[K0762]: `await` on a value that isn't a `Promise`
+  --> functions.kl:19:28
+   |
+19 |       var s:String = await 'plain'
+   |                            ^^^^^^^ this is `String`
+   |
+   = note: awaiting a plain value just returns it
+
+error[K0308]: mismatched types
+  --> functions.kl:20:14
+   |
+18 |     private async function fine():Promise<String> {
+   |                                   --------------- expected because of this return type
+...
+20 |       return 5
+   |              ^ expected `String`, found `int`
+   |
+help: convert the value with `String()`
+   |
+20 |       return String(5)
+   |              +++++++ +
+
+error[K0513]: final `once` can't be assigned inside a loop or a function
+  --> functions.kl:25:39
+   |
+24 |       final once:int
+   |             ---- declared `final` here
+25 |       var set:Function = ():void => { once = 1 }
+   |                                       ^^^^
+   |
+   = note: the loop or function could run more than once
+
+error[K0308]: mismatched types
+  --> functions.kl:26:42
+   |
+26 |       var f:Function = (x:int):String => x
+   |                                ------    ^ expected `String`, found `int`
+   |                                |
+   |                                expected because of this return type
+   |
+help: convert the value with `String()`
+   |
+26 |       var f:Function = (x:int):String => String(x)
+   |                                          +++++++ +
+
+error[K0314]: not all code paths of this function return a value
+  --> functions.kl:27:61
+   |
+27 |       var g:Function = function():int { if (n > 0) return 1 }
+   |                                   ---                       ^ execution can reach the end here
+   |                                   |
+   |                                   returns `int`
+
+error[K0737]: `super` can't be used inside a `function` expression
+  --> functions.kl:28:48
+   |
+28 |       var h:Function = function():void { trace(super.toString()) }
+   |                                                ^^^^^
+   |
+help: use an arrow function, which keeps `this` and `super`
+
+error[K0340]: `break` outside of a loop or `switch`
+  --> functions.kl:30:39
+   |
+30 |         var k:Function = ():void => { break }
+   |                                       ^^^^^
+
+warning[K0850]: missing type annotation on return type; it is untyped (`*`)
+  --> functions.kl:32:16
+   |
+32 |       function helper(a) { return a }
+   |                ^^^^^^
+   |
+help: add a type, or `:*` to make it explicitly dynamic
+   |
+32 |       function helper(a):* { return a }
+   |                         ++
+
+warning[K0850]: missing type annotation on parameter `a`; it is untyped (`*`)
+  --> functions.kl:32:23
+   |
+32 |       function helper(a) { return a }
+   |                       ^
+   |
+help: add a type, or `:*` to make it explicitly dynamic
+   |
+32 |       function helper(a:*) { return a }
+   |                        ++

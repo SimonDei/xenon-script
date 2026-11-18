@@ -1,0 +1,83 @@
+error[K0750]: only `Exception`s can be thrown
+ --> exceptions.kl:4:13
+  |
+4 |       throw 'failed'
+  |             ^^^^^^^^ this is `String`
+  |
+help: wrap the message in an exception
+  |
+4 |       throw new Exception('failed')
+  |             ++++++++++++++        +
+
+error[K0750]: only `Exception`s can be thrown
+ --> exceptions.kl:8:13
+  |
+8 |       throw 42
+  |             ^^ this is `int`
+
+error[K0420]: cannot find type `Error`
+  --> exceptions.kl:12:13
+   |
+12 |       var e:Error = new Error('x')
+   |             ^^^^^ not found
+   |
+help: use `Exception` (JavaScript error classes are hidden in Klass)
+   |
+12 |       var e:Exception = new Error('x')
+   |             ~~~~~~~~~
+
+error[K0420]: cannot find type `Error`
+  --> exceptions.kl:12:25
+   |
+12 |       var e:Error = new Error('x')
+   |                         ^^^^^ not found
+   |
+help: use `Exception` (JavaScript error classes are hidden in Klass)
+   |
+12 |       var e:Error = new Exception('x')
+   |                         ~~~~~~~~~
+
+error[K0420]: cannot find type `TypeError`
+  --> exceptions.kl:13:17
+   |
+13 |       throw new TypeError('bad')
+   |                 ^^^^^^^^^ not found
+   |
+help: use `TypeException` (JavaScript error classes are hidden in Klass)
+   |
+13 |       throw new TypeException('bad')
+   |                 ~~~~~~~~~~~~~
+
+error[K0753]: unreachable `catch`
+  --> exceptions.kl:21:18
+   |
+19 |       } catch (e:Exception) {
+   |                  --------- catches `Exception`
+...
+21 |       } catch (e:StateException) {
+   |                  ^^^^^^^^^^^^^^ `StateException` is already caught above
+
+error[K0752]: `catch (e:*)` is not allowed: everything caught is an `Exception`
+  --> exceptions.kl:24:23
+   |
+24 |       try {} catch (e:*) {}
+   |                       ^
+   |
+help: catch `Exception`
+   |
+24 |       try {} catch (e:Exception) {}
+   |                       ~~~~~~~~~
+
+error[K0751]: `String` is not an `Exception` and can't be caught
+  --> exceptions.kl:25:23
+   |
+25 |       try {} catch (e:String) {}
+   |                       ^^^^^^
+   |
+   = note: catch `Exception` or one of its subclasses
+
+error[K0100]: expected `catch` or `finally`, found `}`
+  --> exceptions.kl:27:5
+   |
+27 |     }
+   |     ^ expected `catch` or `finally`

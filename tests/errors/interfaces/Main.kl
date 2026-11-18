@@ -1,0 +1,10 @@
+package {
+  public class Main {
+    public function Main() {
+      var s:IShape = new IShape()
+      var w:Wrong = new Wrong()
+      var shape:IShape = w
+      var b:Base = shape
+    }
+  }
+}

@@ -1,0 +1,38 @@
+error[K0390]: an `Object` is not iterable
+ --> loops.kl:7:23
+  |
+7 |       for (var v:* of obj) {}
+  |                       ^^^ plain objects can't be used with `of`
+  |
+help: iterate over its values
+  |
+7 |       for (var v:* of Object.values(obj)) {}
+  |                       ++++++++++++++   +
+
+error[K0391]: `int` is not iterable
+ --> loops.kl:8:23
+  |
+8 |       for (var v:* of n) {}
+  |                       ^
+
+error[K0308]: mismatched types
+ --> loops.kl:9:18
+  |
+9 |       for (var w:int of words) {}
+  |                - ^^^ the elements are `String`
+  |                |
+  |                `w` declared as `int`
+
+error[K0308]: mismatched types
+  --> loops.kl:10:18
+   |
+10 |       for (var k:int in obj) {}
+   |                - ^^^ the keys are `String`
+   |                |
+   |                `k` declared as `int`
+
+error[K0100]: the loop variable must be declared here
+  --> loops.kl:11:12
+   |
+11 |       for (x of words) {}
+   |            ^ write `var x:Type`

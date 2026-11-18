@@ -1,0 +1,5 @@
+package {
+  public final class Film extends Media {
+    override public function get price():Float { return 9.99 }
+  }
+}

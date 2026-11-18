@@ -1,0 +1,22 @@
+package {
+  import zoo.*
+
+  public class Main {
+    public function Main() {
+      var all:Vector<Animal> = [new Animal('Generic'), new Dog('Rex', 3), new Puppy('Bit')]
+      for (var a:Animal of all) trace(a.describe())
+
+      var rex:Dog = all[1] as Dog
+      rex.name = 'Max'
+      trace(rex.name, rex.tricks, rex.id(), String(rex))
+      trace(Dog.created, Puppy.created, all[2] is Dog, all[0] is Dog)
+
+      Dog.created++
+      trace(Animal.created)
+
+      var reg:Registry = new Registry()
+      for (var a:Animal of all) reg.add(a)
+      trace(reg.size, reg.has('animal:Bit'), reg is Map)
+    }
+  }
+}

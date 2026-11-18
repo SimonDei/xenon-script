@@ -1,0 +1,13 @@
+0 NaN false
+count is 3, doubled 6
+Hello, WORLD
+zero
+one
+many
+false true true
+3 4294967295 3.5
+512 9 4
+a	b it's braces {ok}
+true file.kl
+3 1 fallback
+42

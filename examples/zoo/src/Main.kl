@@ -1,0 +1,19 @@
+package {
+  import com.zoo.*
+  import com.zoo.food.*
+  import com.zoo.util.Logger
+
+  public class Main {
+    public function Main() {
+      var rex:Animal = new Animal('Rex')
+      var tom:com.zoo.Animal = new com.zoo.Animal('Tom')
+      var bone:Food = new Food('bone', 120)
+      rex.feed(bone)
+      rex.feed(new Food('meat', 300))
+      tom.feed(new Food('fish', 90))
+      Logger.log('%s ate %d kcal, %s ate %d kcal', rex.name, rex.calories, tom.name, tom.calories)
+      Logger.log(bone.describe())
+      Logger.log('population: %d', Animal.population)
+    }
+  }
+}

@@ -1,0 +1,11 @@
+package shapes {
+  public class Square implements IShape {
+    protected var side:Float
+
+    public function Square(side:Float) { this.side = side }
+
+    public function area():Float { return side * side }
+    public function get name():String { return 'square' }
+    public function draw():String { return '[]' }
+  }
+}

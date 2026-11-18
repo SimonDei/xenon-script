@@ -1,0 +1,12 @@
+package {
+  public class Main {
+    public function Main() {
+      var s:String = 'a'
+      var n:int = 1
+      var b:Boolean = true
+      trace(s - n, b * 2, -s, !n)
+      trace(n == 'one', s != null, n == null)
+      trace(this + this)
+    }
+  }
+}

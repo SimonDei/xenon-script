@@ -1,0 +1,72 @@
+package {
+  public class Main {
+    private static var calls:int = 0
+    private var pos:Vec2 = new Vec2(0, 0)
+
+    public function Main() {
+      var a:Vec2 = new Vec2(1, 2)
+      var b:Vec2 = a + new Vec2(3, 4)
+      b += a
+      trace('pos: ' + b, String(a + b + b))
+
+      pos += new Vec2(10, 10)
+      pos += pos
+      trace('field', String(pos))
+
+      // object and index are evaluated once
+      var path:Vector<Vec2> = [new Vec2(0, 0), new Vec2(1, 1)]
+      next(path)[index()] += new Vec2(5, 5)
+      trace('path', String(path[1]), 'calls', Main.calls)
+
+      // the result type can differ from the class
+      var total:Money = new Coins(3) + new Coins(4)
+      trace(String(total))
+
+      // inherited and overridden operators, and operators through an interface
+      var s:Scaled = new Scaled(1, 1)
+      trace(String(s + new Vec2(1, 1)))
+      var adder:IAddable = new Vec2(2, 2)
+      trace(String(adder + new Vec2(1, 1)))
+    }
+
+    private function next(v:Vector<Vec2>):Vector<Vec2> {
+      Main.calls++
+      return v
+    }
+
+    private function index():int {
+      Main.calls++
+      return 1
+    }
+  }
+}
+
+interface IAddable {
+  function operator+(other:Vec2):Vec2 const
+}
+
+class Vec2 implements IAddable {
+  public final x:Float
+  public final y:Float
+  public function Vec2(x:Float, y:Float) { this.x = x; this.y = y }
+
+  public function operator+(other:Vec2):Vec2 const { return new Vec2(x + other.x, y + other.y) }
+
+  override public function toString():String { return $'({x}, {y})' }
+}
+
+class Scaled extends Vec2 {
+  override public function operator+(other:Vec2):Vec2 const { return new Vec2(x + other.x * 10, y + other.y * 10) }
+}
+
+class Coins {
+  private final n:int
+  public function Coins(n:int) { this.n = n }
+  public function operator+(other:Coins):Money const { return new Money((n + other.n) * 25) }
+}
+
+class Money {
+  private final cents:int
+  public function Money(cents:int) { this.cents = cents }
+  override public function toString():String { return '$' + int(cents / 100) + '.' + cents % 100 }
+}

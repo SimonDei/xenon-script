@@ -1,0 +1,74 @@
+package {
+  import util.*
+
+  public class Main {
+    public function Main() {
+      // explicit and inferred type arguments
+      var a:Box<int> = new Box<int>(5)
+      var b:Box<String> = a.map((n) => 'n=' + n)          // U inferred as String
+      var c:Box<Float> = new Box(2.5)                      // T inferred from the argument
+      var d:Box<Vector<int>> = Box.of([1, 2, 3])           // V inferred from the vector
+      trace(a.get() + 1, b.get().toUpperCase(), c.get() * 2, d.get().length)
+
+      var lengths:Box<int> = b.map((s) => s.length).map((n) => n * 10)
+      trace(lengths.get())
+
+      // generic interface with concrete arguments
+      var words:Vector<Word> = [new Word('pear'), new Word('fig'), new Word('banana')]
+      trace(best(words).text, best([new Word('x'), new Word('yy')]).text)
+
+      // generic and non-generic subclasses of a generic class
+      var counter:Counter = new Counter()
+      counter.set(41)
+      counter.bump()
+      trace(counter.get())
+      var tagged:Tagged<String> = new Tagged('v', 'tag')
+      trace(tagged.get(), tagged.tag)
+
+      // generic typedefs, including a recursive one
+      var p:Pair<String, int> = { first: 'age', second: 31 }
+      var list:Chain<String> = { value: 'a', next: { value: 'b' } }
+      trace(p.first, p.second + 1, list.value + list.next.value)
+
+      // local generic function and swap
+      function swap<A, B>(x:Pair<A, B>):Pair<B, A> { return { first: x.second, second: x.first } }
+      var q:Pair<int, String> = swap(p)
+      trace(q.first, q.second)
+
+      // the expected type fills in what the arguments can't
+      var empty:Vector<String> = makeList()
+      empty.push('only')
+      trace(empty.length)
+    }
+
+    private function best(items:Vector<Word>):Word {
+      var top:Word = items[0]
+      for (var w:Word of items) if (w.compareTo(top) > 0) top = w
+      return top
+    }
+
+    private function makeList<T>():Vector<T> { return [] }
+  }
+}
+
+typedef Pair<A, B> = { first:A, second:B }
+typedef Chain<T> = { value:T, ?next:Chain<T> }
+
+class Word implements IComparable<Word> {
+  public final text:String
+  public function Word(text:String) { this.text = text }
+  public function compareTo(other:Word):int { return text.length - other.text.length }
+}
+
+class Counter extends Box<int> {
+  public function Counter() { super(0) }
+  public function bump():void { set(get() + 1) }
+}
+
+class Tagged<T> extends Box<T> {
+  public final tag:String
+  public function Tagged(value:T, tag:String) {
+    super(value)
+    this.tag = tag
+  }
+}

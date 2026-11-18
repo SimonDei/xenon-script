@@ -1,0 +1,91 @@
+warning[K0870]: unused import `a.*`
+ --> imports/Main.kl:2:3
+  |
+2 |   import a.*
+  |   ^^^^^^^^^^ nothing in this file uses it
+  |
+help: remove the import
+
+warning[K0870]: unused import `b.*`
+ --> imports/Main.kl:3:3
+  |
+3 |   import b.*
+  |   ^^^^^^^^^^ nothing in this file uses it
+  |
+help: remove the import
+
+warning[K0870]: unused import `a.Dog`
+ --> imports/Main.kl:4:3
+  |
+4 |   import a.Dog
+  |   ^^^^^^^^^^^^ nothing in this file uses it
+  |
+help: remove the import
+
+error[K0432]: `Dog` is imported more than once
+ --> imports/Main.kl:5:10
+  |
+4 |   import a.Dog
+  |          ----- already imported here
+5 |   import b.Dog
+  |          ^^^^^ this import
+  |
+help: import one of them under another name, or use a qualified name
+
+warning[K0871]: `c.Bird` is imported twice
+ --> imports/Main.kl:7:3
+  |
+6 |   import c.Bird
+  |          ------ first imported here
+7 |   import c.Bird
+  |   ^^^^^^^^^^^^^
+
+error[K0435]: `Secret` is file-private and can't be imported
+ --> imports/Main.kl:8:10
+  |
+8 |   import c.Secret
+  |          ^^^^^^^^
+  |
+ ::: imports/c/Bird.kl:5:7
+  |
+5 | class Secret {}
+  |       ------ declared after the package block, so only its own file can use it
+
+error[K0430]: package `d` not found
+ --> imports/Main.kl:9:10
+  |
+9 |   import d.*
+  |          ^
+
+error[K0431]: cannot find class `b.Cta`
+  --> imports/Main.kl:10:10
+   |
+10 |   import b.Cta
+   |          ^^^^^ not found
+   |
+help: a class with a similar name exists: `b.Cat`
+   |
+10 |   import b.Cat
+   |          ~~~~~
+
+warning[K0870]: unused import `lodash`
+  --> imports/Main.kl:11:3
+   |
+11 |   import _ from 'lodash'
+   |   ^^^^^^^^^^^^^^^^^^^^^^ nothing in this file uses it
+   |
+help: remove the import
+
+warning[K0870]: unused import `node:fs`
+  --> imports/Main.kl:12:3
+   |
+12 |   import { readFile } from 'node:fs'
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ nothing in this file uses it
+   |
+help: remove the import
+
+error[K0420]: cannot find type `Fish`
+  --> imports/Main.kl:18:16
+   |
+18 |       var fish:Fish = null
+   |                ^^^^ not found

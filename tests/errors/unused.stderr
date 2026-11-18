@@ -1,0 +1,61 @@
+warning[K0862]: private field `count` is never used
+ --> unused.kl:3:17
+  |
+3 |     private var count:int = 0
+  |                 ^^^^^ declared here
+  |
+help: remove it, or use it
+
+warning[K0862]: private field `_cache` is never used
+ --> unused.kl:4:17
+  |
+4 |     private var _cache:* = null
+  |                 ^^^^^^ declared here
+  |
+help: remove it, or use it
+
+warning[K0862]: private field `instances` is never used
+ --> unused.kl:6:24
+  |
+6 |     private static var instances:int = 0
+  |                        ^^^^^^^^^ declared here
+  |
+help: remove it, or use it
+
+warning[K0861]: variable `temp` is never used
+ --> unused.kl:9:11
+  |
+9 |       var temp:int = 5
+  |           ^^^^ never read
+  |
+help: remove it, or prefix the name with `_` if that's intended
+  |
+9 |       var _temp:int = 5
+  |           +
+
+warning[K0861]: local function `helper` is never used
+  --> unused.kl:13:16
+   |
+13 |       function helper():void {}
+   |                ^^^^^^ never read
+   |
+help: remove it, or prefix the name with `_` if that's intended
+   |
+13 |       function _helper():void {}
+   |                +
+
+warning[K0862]: private method `forgotten` is never used
+  --> unused.kl:18:22
+   |
+18 |     private function forgotten():void {}
+   |                      ^^^^^^^^^ declared here
+   |
+help: remove it, or use it
+
+warning[K0862]: private property `secret` is never used
+  --> unused.kl:19:26
+   |
+19 |     private function get secret():int { return 1 }
+   |                          ^^^^^^ declared here
+   |
+help: remove it, or use it

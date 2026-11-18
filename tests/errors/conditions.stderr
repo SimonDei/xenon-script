@@ -1,0 +1,35 @@
+error[K0310]: condition must be a `Boolean`
+ --> conditions.kl:6:11
+  |
+6 |       if (count) trace('yes')
+  |           ^^^^^ expected `Boolean`, found `int`
+  |
+help: compare explicitly
+  |
+6 |       if (count != 0) trace('yes')
+  |                +++++
+
+error[K0310]: condition must be a `Boolean`
+ --> conditions.kl:7:14
+  |
+7 |       while (name) {}
+  |              ^^^^ expected `Boolean`, found `String`
+  |
+help: check for null explicitly
+  |
+7 |       while (name != null) {}
+  |                  ++++++++
+
+error[K0315]: `&&` needs `Boolean` operands
+ --> conditions.kl:8:24
+  |
+8 |       if (count > 0 && name) trace('both')
+  |                        ^^^^ this is `String`
+
+warning[K0317]: `??` has no effect: `int` can never be null
+ --> conditions.kl:9:25
+  |
+9 |       var x:int = count ?? 1
+  |                   ----- ^^
+  |                   |
+  |                   `int`

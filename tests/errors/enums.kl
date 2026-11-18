@@ -1,0 +1,25 @@
+package {
+  public class Main {
+    public function Main() {
+      var d:Direction = 1
+      var n:int = Direction.Up
+      trace(d == 1, d == Color.Red, d < Direction.Down)
+      var c:Color = new Color()
+      trace(Direction.Sideways)
+      switch (d) {
+        case Direction.Up: trace('up')
+        case Direction.Up: trace('again')
+      }
+    }
+  }
+}
+
+enum Direction { Up, Down, Left }
+enum Color { Red, Green }
+enum Mixed { A = 1, B = 'b' }
+enum Strings { X = 'x', Y }
+enum Dup { One = 1, Uno = 1 }
+enum Bad { Half = 0.5, Flag = true }
+enum Clash { values }
+enum Computed { Now = Main.stamp() }
+class Sub extends Color {}

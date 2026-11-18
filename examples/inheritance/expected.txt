@@ -1,0 +1,7 @@
+Generic says ...
+Dog Rex says woof
+little Dog Bit says woof (squeaky)
+Dog Max 3 animal:Max [Animal Dog Max]
+3 3 true false
+4
+3 true true

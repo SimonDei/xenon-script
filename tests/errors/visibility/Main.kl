@@ -1,0 +1,17 @@
+package {
+  import zoo.*
+  import zoo.Hidden
+  import other.Dog
+
+  public class Main {
+    public function Main() {
+      var dog:Dog = new Dog()
+      trace(dog._name, dog.legs, dog.zone)
+      var h:zoo.Hidden = null
+      var s:Singleton = new Singleton()
+      trace(Singleton.instance != null)
+    }
+  }
+}
+
+class Clone extends zoo.Singleton {}

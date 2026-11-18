@@ -1,0 +1,8 @@
+package {
+  public class Main {
+    public function Main() {
+      var n:int = 3
+      trace("it's", `n = ${n}`)
+    }
+  }
+}

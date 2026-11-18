@@ -1,0 +1,41 @@
+error[K0340]: `break` outside of a loop or `switch`
+ --> flow.kl:4:7
+  |
+4 |       break
+  |       ^^^^^
+
+warning[K0860]: unreachable code
+ --> flow.kl:5:7
+  |
+5 |       while (true) {
+  |       ^^^^^^^^^^^^^^ this is never executed
+
+error[K0341]: `continue` outside of a loop
+  --> flow.kl:11:29
+   |
+11 |       switch (2) { default: continue }
+   |                             ^^^^^^^^
+
+error[K0314]: not all code paths of `sign` return a value
+  --> flow.kl:17:5
+   |
+14 |     private function sign(n:int):int {
+   |                                  --- returns `int`
+...
+17 |     }
+   |     ^ execution can reach the end of the method here
+
+error[K0314]: not all code paths of `first` return a value
+  --> flow.kl:21:5
+   |
+19 |     private function first(xs:Array):String {
+   |                                      ------ returns `String`
+...
+21 |     }
+   |     ^ execution can reach the end of the method here
+
+warning[K0860]: unreachable code
+  --> flow.kl:36:7
+   |
+36 |       trace('never')
+   |       ^^^^^^^^^^^^^^ this is never executed

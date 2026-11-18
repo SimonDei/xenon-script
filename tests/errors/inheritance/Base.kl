@@ -1,0 +1,15 @@
+package {
+  public class Base {
+    public var size:int = 0
+    public static var count:int = 0
+
+    public function Base(label:String) {}
+
+    public function speak():String { return '' }
+    public function move(dx:int, dy:int):void {}
+    public final function id():String { return '' }
+    public function get area():Float { return 0 }
+    protected function hidden():void {}
+    public static function make():Base { return null }
+  }
+}

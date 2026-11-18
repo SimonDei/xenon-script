@@ -1,0 +1,6 @@
+package {
+  public class Partial implements IShape {
+    public function area():int { return 1 }
+    private function get name():String { return '' }
+  }
+}

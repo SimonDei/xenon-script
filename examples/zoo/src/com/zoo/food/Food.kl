@@ -1,0 +1,18 @@
+package com.zoo.food {
+  import com.zoo.Animal
+
+  public class Food {
+    public final kind:String
+    public final calories:int
+    public var eatenBy:Animal = null
+
+    public function Food(kind:String, calories:int) {
+      this.kind = kind
+      this.calories = calories
+    }
+
+    public function describe():String {
+      return eatenBy == null ? kind : $'{kind} (eaten by {eatenBy.name})'
+    }
+  }
+}

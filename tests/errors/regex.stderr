@@ -1,0 +1,19 @@
+error[K0351]: invalid regular expression
+ --> regex.kl:4:24
+  |
+4 |       var a:RegExp = ~/(ab/g
+  |                        ^^^ missing )
+
+error[K0350]: unknown regular expression flag `z`
+ --> regex.kl:5:28
+  |
+5 |       var b:RegExp = ~/ab/gz
+  |                            ^
+  |
+  = note: valid flags are d g i m s u v y
+
+error[K0100]: expected an expression, found `/`
+ --> regex.kl:6:17
+  |
+6 |       var c:* = /ab/
+  |                 ^ regex literals start with `~`: `~/…/`

@@ -1,0 +1,10 @@
+error[K0425]: cannot find `mesage` in this scope
+ --> unknown-name.kl:5:13
+  |
+5 |       trace(mesage)
+  |             ^^^^^^ not found in this scope
+  |
+help: a name with a similar spelling exists: `message`
+  |
+5 |       trace(message)
+  |             ~~~~~~~

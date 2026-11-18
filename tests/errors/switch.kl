@@ -1,0 +1,14 @@
+package {
+  public class Main {
+    public function Main() {
+      var n:int = 2
+      switch (n) {
+        case 1: trace('a')
+        case 'two': trace('b')
+        case 1: trace('c')
+        default: trace('d')
+        default: trace('e')
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+package {
+  import zoo.Animal
+
+  // A Klass class extending a JavaScript class.
+  public class Registry extends Map {
+    public function add(a:Animal):void {
+      set(a.id(), a)
+    }
+  }
+}

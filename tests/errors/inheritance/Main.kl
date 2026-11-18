@@ -1,0 +1,7 @@
+package {
+  public class Main {
+    public function Main() {
+      var n:NoCtor = new NoCtor(1)
+    }
+  }
+}

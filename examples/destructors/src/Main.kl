@@ -1,0 +1,68 @@
+package {
+  public class Main {
+    public static var log:Array = []
+
+    public function Main() {
+      scoped()
+      trace(Main.log.join(' | '))
+      Main.log = []
+
+      try {
+        using f:File = new File('data.txt')
+        throw new StateException('disk on fire')
+      } catch (e:StateException) {
+        Main.log.push('caught ' + e.message)
+      }
+      trace(Main.log.join(' | '))
+      Main.log = []
+
+      var early:File = new File('early.txt')
+      early.dispose()
+      early.dispose()                      // second call: no-op
+      using (a:File = new File('a'), b:Lock = new Lock('b')) {
+        Main.log.push('in block')
+      }
+      using (early) Main.log.push('expression form')
+      trace(Main.log.join(' | '))
+      var thing:* = early
+      var other:* = Main.log
+      trace(thing is IDisposable, other is IDisposable)
+
+      run()
+    }
+
+    private function scoped():void {
+      using first:File = new File('first')
+      using second:Lock = new Lock('second')
+      Main.log.push('working')
+    }                                       // second, then first
+
+    private async function run():Promise<void> {
+      await using conn:Connection = new Connection()
+      Main.log = ['connected']
+    }
+  }
+}
+
+class File {
+  private final name:String
+  public function File(name:String) { this.name = name }
+  public ~File() { Main.log.push('close ' + name) }
+}
+
+class Lock extends File {
+  public function Lock(name:String) { super(name + '.lock') }
+  public ~Lock() {
+    Main.log.push('unlock')
+    if (Main.log.length > 0) return         // the parent destructor still runs
+    Main.log.push('not reached')
+  }
+}
+
+class Connection {
+  public async ~Connection() {
+    await Promise.resolve()
+    Main.log.push('disconnected')
+    trace(Main.log.join(' | '))
+  }
+}

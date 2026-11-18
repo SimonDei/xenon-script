@@ -1,0 +1,23 @@
+{
+  "name": "klass",
+  "module": "src/compiler.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "klass": "src/cli.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "klass": "bun src/cli.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "lodash": "4.17.21",
+    "vscode-oniguruma": "2.0.1",
+    "vscode-textmate": "9.2.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

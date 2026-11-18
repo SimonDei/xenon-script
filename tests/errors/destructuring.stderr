@@ -1,0 +1,58 @@
+error[K0770]: `int` values can't be destructured with `{…}`
+ --> destructuring.kl:8:11
+  |
+8 |       var { a } = n
+  |           ^^^^^
+
+error[K0770]: `Main` values can't be destructured with `[…]`
+ --> destructuring.kl:9:11
+  |
+9 |       var [b] = this
+  |           ^^^
+
+error[K0426]: no member `sise` on `Main`
+  --> destructuring.kl:10:19
+   |
+10 |       var { size, sise, helper, count } = this
+   |                   ^^^^ unknown member
+   |
+help: a member with a similar name exists: `size`
+
+error[K0771]: method `helper` can't be destructured
+  --> destructuring.kl:10:25
+   |
+10 |       var { size, sise, helper, count } = this
+   |                         ^^^^^^ it would lose `this`
+   |
+help: call it on the object instead
+
+error[K0413]: `count` is static and can't be destructured from an instance
+  --> destructuring.kl:10:33
+   |
+10 |       var { size, sise, helper, count } = this
+   |                                 ^^^^^
+
+error[K0308]: mismatched types
+  --> destructuring.kl:11:16
+   |
+11 |       var [x = 'text']:Vector<int> = [1]
+   |                ^^^^^^ expected `int`, found `String`
+   |
+help: convert the value with `int()`
+   |
+11 |       var [x = int('text')]:Vector<int> = [1]
+   |                ++++      +
+
+error[K0501]: cannot assign twice to final `f1`
+  --> destructuring.kl:14:7
+   |
+13 |       final [f1, f2] = [1, 2]
+   |              -- declared `final` here
+14 |       f1 = 3
+   |       ^^
+
+error[K0100]: expected `of` (destructuring works with `for … of`), found keyword `in`
+  --> destructuring.kl:17:23
+   |
+17 |       for (var [k, v] in {}) {}
+   |                       ^^ expected `of` (destructuring works with `for … of`)

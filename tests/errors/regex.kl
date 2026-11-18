@@ -1,0 +1,9 @@
+package {
+  public class Main {
+    public function Main() {
+      var a:RegExp = ~/(ab/g
+      var b:RegExp = ~/ab/gz
+      var c:* = /ab/
+    }
+  }
+}

@@ -1,0 +1,4 @@
+[book] Klass in Action: 12.5 false false
+[media] The Compiler: 9.99 true true
+total 22.490000000000002
+StateException Product is abstract

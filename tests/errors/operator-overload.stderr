@@ -1,0 +1,86 @@
+error[K0308]: mismatched types
+ --> operator-overload.kl:5:19
+  |
+5 |       var w:Vec = v + 'text'
+  |             ---   ^^^^^^^^^^ expected `Vec`, found `String`
+  |             |
+  |             expected because of this type
+
+error[K0308]: mismatched types
+  --> operator-overload.kl:6:23
+   |
+ 6 |       var x:Vec = v + 5
+   |                       ^ expected `Vec`, found `int`
+...
+17 |   public function operator+(other:Vec):Vec const { return this }
+   |                                   --- `operator+` parameter declared here
+
+error[K0315]: cannot apply `+` to `int` and `Vec`
+ --> operator-overload.kl:7:21
+  |
+7 |       var y:Vec = 5 + v
+  |                   - ^ - `Vec`
+  |                   |
+  |                   `int`
+
+error[K0370]: `+` is not defined for `Dog`
+ --> operator-overload.kl:9:15
+  |
+9 |       trace(d + d)
+  |             - ^
+  |             |
+  |             `Dog`
+  |
+  = note: concatenating with a `String` works; other uses need `operator+`
+
+error[K0603]: `operator+` is private to `Hidden`
+  --> operator-overload.kl:11:15
+   |
+11 |       trace(h + h)
+   |               ^ private member
+...
+25 |   private function operator+(o:Hidden):Hidden { return o }
+   |                    --------- declared `private` here
+
+error[K0371]: only `operator+` is supported for now
+  --> operator-overload.kl:18:19
+   |
+18 |   public function operator-(other:Vec):Vec { return this }
+   |                   ^^^^^^^^^ `operator-`
+   |
+   = note: `-`, `*`, `/`, `==` and unary `-` may follow later
+
+error[K0373]: `operator+` must be an instance method
+  --> operator-overload.kl:19:10
+   |
+19 |   public static function operator+(a:Vec):Vec { return a }
+   |          ^^^^^^
+
+error[K0201]: `operator+` is declared more than once in `Vec`
+  --> operator-overload.kl:19:26
+   |
+17 |   public function operator+(other:Vec):Vec const { return this }
+   |                   --------- first declared here
+...
+19 |   public static function operator+(a:Vec):Vec { return a }
+   |                          ^^^^^^^^^ duplicate declaration
+
+error[K0372]: `operator+` takes exactly one (required) parameter: the right operand
+  --> operator-overload.kl:29:19
+   |
+29 |   public function operator+(a:Bad, b:Bad):void {}
+   |                   ^^^^^^^^^
+
+error[K0372]: `operator+` must return a value
+  --> operator-overload.kl:29:43
+   |
+29 |   public function operator+(a:Bad, b:Bad):void {}
+   |                                           ^^^^
+
+error[K0902]: cannot use non-const method `operator+` in const method `sum`
+  --> operator-overload.kl:34:52
+   |
+33 |   public function operator+(o:Strict):Strict { return o }
+   |                   --------- `operator+` is not `const`
+34 |   public function sum():Strict const { return this + this }
+   |                                                    ^

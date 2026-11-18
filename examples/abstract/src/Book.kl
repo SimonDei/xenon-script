@@ -1,0 +1,8 @@
+package {
+  public class Book extends Product {
+    public function Book(title:String) { super(title) }
+
+    override public function get price():Float { return 12.5 }
+    override public function category():String { return 'book' }
+  }
+}

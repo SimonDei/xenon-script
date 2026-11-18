@@ -1,0 +1,7 @@
+package {
+  public class Orphan {
+    public function Orphan() {
+      super()
+    }
+  }
+}

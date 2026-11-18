@@ -1,0 +1,121 @@
+error[K0717]: a class can't be both `abstract` and `final`
+ --> abstract/Both.kl:2:19
+  |
+2 |   public abstract final class Both {}
+  |                   ^^^^^
+  |
+  = note: an abstract class only makes sense when it is extended
+
+error[K0712]: `run` is abstract, but `Loose` isn't
+ --> abstract/Loose.kl:3:12
+  |
+3 |     public abstract function run():void
+  |            ^^^^^^^^
+  |
+help: make the class abstract
+  |
+2 |   public abstract class Loose {
+  |          +++++++++
+
+error[K0714]: `noBody` has no body
+ --> abstract/Loose.kl:4:21
+  |
+4 |     public function noBody():void
+  |                     ^^^^^^
+  |
+help: add a body
+  |
+4 |     public function noBody():void {}
+  |                                  +++
+
+error[K0710]: `Shape` is abstract and can't be instantiated
+ --> abstract/Main.kl:4:25
+  |
+4 |       var s:Shape = new Shape()
+  |                         ^^^^^
+  |
+ ::: abstract/Shape.kl:2:10
+  |
+2 |   public abstract class Shape {
+  |          -------- declared `abstract` here
+  |
+help: create an instance of a concrete subclass
+
+error[K0415]: `n` is a `int` and can't be instantiated with `new`
+ --> abstract/Main.kl:6:21
+  |
+6 |       var x:* = new n()
+  |                     ^
+
+error[K0716]: abstract members can't be `private`
+ --> abstract/Shape.kl:5:5
+  |
+5 |     private abstract function hidden():void
+  |     ^^^^^^^
+  |
+  = note: subclasses couldn't see it to implement it
+
+error[K0716]: abstract members can't be `static`
+ --> abstract/Shape.kl:6:21
+  |
+6 |     public abstract static function make():Shape
+  |                     ^^^^^^
+
+error[K0713]: abstract members can't have a body
+ --> abstract/Shape.kl:7:46
+  |
+7 |     public abstract function withBody():void { }
+  |                                              ^^^
+  |
+  = note: subclasses provide the implementation
+
+error[K0715]: fields can't be `abstract`
+ --> abstract/Shape.kl:8:12
+  |
+8 |     public abstract var size:int
+  |            ^^^^^^^^
+  |
+help: declare an abstract getter instead
+
+error[K0711]: `Square` doesn't implement the abstract member `sides`
+ --> abstract/Square.kl:2:16
+  |
+2 |   public class Square extends Shape {
+  |                ^^^^^^ inherits 1 abstract member
+  |
+ ::: abstract/Shape.kl:4:34
+  |
+4 |     public abstract function get sides():int
+  |                                  ----- declared abstract in `Shape`
+  |
+help: add the missing members (the stubs throw `NotImplementedException`)
+  |
++ |     override public function get sides():int { throw new NotImplementedException() }
+4 |   }
+
+error[K0720]: `area` overrides `Shape.area` but is not marked `override`
+ --> abstract/Square.kl:3:21
+  |
+3 |     public function area():Float { return super.area() }
+  |                     ^^^^ overrides `Shape.area`
+  |
+ ::: abstract/Shape.kl:3:30
+  |
+3 |     public abstract function area():Float
+  |                              ---- original declared here
+  |
+help: add `override`
+  |
+3 |     override public function area():Float { return super.area() }
+  |     +++++++++
+
+error[K0718]: `Shape.area` is abstract and has no implementation to call
+ --> abstract/Square.kl:3:43
+  |
+3 |     public function area():Float { return super.area() }
+  |                                           ^^^^^^^^^^
+  |
+ ::: abstract/Shape.kl:3:30
+  |
+3 |     public abstract function area():Float
+  |                              ---- declared abstract here

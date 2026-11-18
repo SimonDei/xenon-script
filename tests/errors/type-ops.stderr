@@ -1,0 +1,86 @@
+warning[K0397]: this test is always true unless the value is null
+ --> type-ops.kl:8:15
+  |
+8 |       trace(m is Main, m as Main)
+  |             - ^^^^^^^
+  |             |
+  |             already `Main`
+
+warning[K0397]: unnecessary cast
+ --> type-ops.kl:8:26
+  |
+8 |       trace(m is Main, m as Main)
+  |                        - ^^^^^^^
+  |                        |
+  |                        already `Main`
+
+error[K0396]: `String` values can never be `Main`
+ --> type-ops.kl:9:15
+  |
+9 |       trace(s is Main, n as Main)
+  |             - ^^^^^^^
+  |             |
+  |             `String`
+
+error[K0396]: `int` values can never be `Main`
+ --> type-ops.kl:9:26
+  |
+9 |       trace(s is Main, n as Main)
+  |                        - ^^^^^^^
+  |                        |
+  |                        `int`
+
+error[K0393]: `as int` is not possible: `int` can never be null
+  --> type-ops.kl:10:15
+   |
+10 |       trace(d as int, d as Boolean)
+   |               ^^^^^^
+   |
+help: convert with `int(x)`, or test with `x is int`
+
+error[K0393]: `as Boolean` is not possible: `Boolean` can never be null
+  --> type-ops.kl:10:25
+   |
+10 |       trace(d as int, d as Boolean)
+   |                         ^^^^^^^^^^
+   |
+help: convert with `Boolean(x)`, or test with `x is Boolean`
+
+error[K0394]: `Vector<int>` can't be checked at runtime
+  --> type-ops.kl:11:18
+   |
+11 |       trace(d is Vector<int>, d is *)
+   |                  ^^^^^^^^^^^
+   |
+help: check `is Array`; element types are not known at runtime
+
+error[K0394]: `*` can't be checked at runtime
+  --> type-ops.kl:11:36
+   |
+11 |       trace(d is Vector<int>, d is *)
+   |                                    ^
+
+error[K0420]: cannot find type `Mian`
+  --> type-ops.kl:12:18
+   |
+12 |       trace(d is Mian)
+   |                  ^^^^ not found
+   |
+help: a type with a similar name exists: `Main`
+   |
+12 |       trace(d is Main)
+   |                  ~~~~
+
+error[K0316]: can't `delete` a property of `Main`
+  --> type-ops.kl:15:14
+   |
+15 |       delete m.helper
+   |              ^^^^^^^^
+   |
+   = note: `delete` only works on `*` and `Object` values
+
+error[K0316]: `delete` needs a property access
+  --> type-ops.kl:16:14
+   |
+16 |       delete n
+   |              ^

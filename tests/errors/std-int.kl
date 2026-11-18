@@ -1,0 +1,13 @@
+package {
+  public class Main {
+    public function Main() {
+      var n:int = 255
+      int.MAX_VALUE = 0
+      var a:int = uint.MAX_VALUE
+      var b:uint = Int.MIN_VALUE
+      var c:int = n.valueOf() / 2
+      var d:int = int.parseInt('7')
+      trace(int.MAX_VLUE, new int(), a, b, c, d)
+    }
+  }
+}

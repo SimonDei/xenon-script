@@ -1,0 +1,50 @@
+error[K0506]: `writeOnly` has a setter but no getter
+  --> accessors.kl:7:13
+   |
+ 7 |       trace(writeOnly)
+   |             ^^^^^^^^^ can't be read
+...
+13 |     public function set writeOnly(v:int):int { _v = v; return v }
+   |                         --------- setter declared here
+
+error[K0506]: `writeOnly` has a setter but no getter
+  --> accessors.kl:9:7
+   |
+ 9 |       writeOnly += 1
+   |       ^^^^^^^^^ can't be read
+...
+13 |     public function set writeOnly(v:int):int { _v = v; return v }
+   |                         --------- setter declared here
+
+error[K0607]: a method can't be taken as a value through `?.`
+  --> accessors.kl:10:31
+   |
+10 |       var f:Function = other?.helper
+   |                               ^^^^^^
+   |
+help: call it, or check for null first
+
+error[K0211]: a setter's return type must be `void`
+  --> accessors.kl:13:42
+   |
+13 |     public function set writeOnly(v:int):int { _v = v; return v }
+   |                                          ^^^
+   |
+help: use `:void`
+   |
+13 |     public function set writeOnly(v:int):void { _v = v; return v }
+   |                                          ~~~~
+
+error[K0312]: `writeOnly` can't return a value
+  --> accessors.kl:13:63
+   |
+13 |     public function set writeOnly(v:int):int { _v = v; return v }
+   |                                                               ^
+
+error[K0212]: a getter and its setter must have the same visibility
+  --> accessors.kl:16:26
+   |
+15 |     public function get mixed():int { return _v }
+   |                         ----- `public`
+16 |     private function set mixed(v:int):void { _v = v }
+   |                          ^^^^^ `private`

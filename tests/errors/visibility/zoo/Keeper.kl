@@ -1,0 +1,9 @@
+package zoo {
+  public class Keeper {
+    public function Keeper(a:Animal) {
+      trace(a.tag, a.zone)
+      trace(a.legs)
+      a.secret()
+    }
+  }
+}

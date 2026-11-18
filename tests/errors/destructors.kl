@@ -1,0 +1,41 @@
+package {
+  public class Main {
+    public function Main() {
+      using n:int = 5
+      using p:Plain = new Plain()
+      using s:Sock = new Sock()
+      var leak:Res = new Res()
+      leak.touch()
+      var kept:Res = new Res()
+      Main.keep(kept)
+      await using r:Res = new Res()
+    }
+
+    public static function keep(r:Res):void {}
+  }
+}
+
+class Plain {}
+
+class Res {
+  public function touch():void {}
+  public ~Res() {}
+}
+
+class Sock {
+  public async ~Sock() {}
+}
+
+class Bad {
+  private ~Bad(x:int):void {}
+  public ~Other() {}
+  public function dispose():void {}
+}
+
+class SyncChild extends Sock {
+  public ~SyncChild() {}
+}
+
+class Manual implements IDisposable {
+  public function dispose():void {}
+}

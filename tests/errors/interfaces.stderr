@@ -1,0 +1,109 @@
+error[K0783]: `Base` is not an interface
+ --> interfaces/IBad.kl:2:33
+  |
+2 |   public interface IBad extends Base, IShape {
+  |                                 ^^^^ interfaces can only extend interfaces
+
+error[K0781]: interfaces can't have fields
+ --> interfaces/IBad.kl:3:9
+  |
+3 |     var size:int
+  |         ^^^^
+  |
+help: declare a getter instead: `function get x():T`
+
+error[K0782]: interface members are always `public`
+ --> interfaces/IBad.kl:4:5
+  |
+4 |     private function hidden():void
+  |     ^^^^^^^
+
+error[K0782]: interface members can't be `static`
+ --> interfaces/IBad.kl:5:5
+  |
+5 |     static function make():IBad
+  |     ^^^^^^
+
+error[K0780]: interface members can't have a body
+ --> interfaces/IBad.kl:6:30
+  |
+6 |     function withBody():void { trace('x') }
+  |                              ^^^^^^^^^^^^^^
+  |
+  = note: the implementing class provides the body
+
+error[K0701]: inheritance cycle
+ --> interfaces/ILoopA.kl:2:35
+  |
+2 |   public interface ILoopA extends ILoopB {}
+  |                                   ^^^^^^ `ILoopB` leads back to `ILoopA`
+
+error[K0786]: `IShape` is an interface and can't be instantiated
+ --> interfaces/Main.kl:4:26
+  |
+4 |       var s:IShape = new IShape()
+  |                          ^^^^^^
+  |
+help: create an instance of a class that implements it
+
+error[K0308]: mismatched types
+ --> interfaces/Main.kl:7:20
+  |
+7 |       var b:Base = shape
+  |             ----   ^^^^^ expected `Base`, found `IShape`
+  |             |
+  |             expected because of this type
+
+error[K0787]: `Partial` doesn't implement `move`
+ --> interfaces/Partial.kl:2:16
+  |
+2 |   public class Partial implements IShape {
+  |                ^^^^^^^ missing 1 interface member
+  |
+ ::: interfaces/IShape.kl:5:14
+  |
+5 |     function move(dx:int, dy:int):void
+  |              ---- required by `IShape`
+  |
+help: add the missing members (the stubs throw `NotImplementedException`)
+  |
++ |     public function move(dx:int, dy:int):void { throw new NotImplementedException() }
+5 |   }
+
+error[K0788]: `Partial.name` doesn't match `IShape.name`
+ --> interfaces/Partial.kl:4:26
+  |
+4 |     private function get name():String { return '' }
+  |                          ^^^^
+  |
+ ::: interfaces/IShape.kl:4:18
+  |
+4 |     function get name():String
+  |                  ---- required by this interface member
+  |
+  = note: it must be `public` (it is `private`)
+
+error[K0785]: `IShape` is an interface
+ --> interfaces/Wrong.kl:2:30
+  |
+2 |   public class Wrong extends IShape implements Base {
+  |                              ^^^^^^ can't be extended by a class
+  |
+help: use `implements`
+
+error[K0784]: `Base` is not an interface
+ --> interfaces/Wrong.kl:2:48
+  |
+2 |   public class Wrong extends IShape implements Base {
+  |                                                ^^^^ only interfaces can be implemented
+  |
+help: use `extends` for a superclass
+
+error[K0721]: `area` doesn't override anything
+ --> interfaces/Wrong.kl:3:5
+  |
+3 |     override public function area():Float { return 0 }
+  |     ^^^^^^^^ nothing to override
+  |
+  = note: it implements `IShape.area`; implementing an interface member doesn't use `override`
+  = note: `Wrong` has no superclass

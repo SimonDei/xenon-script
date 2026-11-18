@@ -1,0 +1,7 @@
+package shapes {
+  public class Circle {
+    public final r:Float
+    public function Circle(r:Float) { this.r = r }
+    public function area():Float { return Math.PI * r * r }
+  }
+}

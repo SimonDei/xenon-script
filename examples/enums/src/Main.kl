@@ -1,0 +1,55 @@
+package {
+  import net.Status
+
+  public class Main {
+    private static inline final START:Direction = Direction.Up
+    private static inline const FIRST_ERROR:int = int(Status.NotFound) + 0
+    private var heading:Direction = START
+
+    public function Main() {
+      for (var d:Direction of Direction.values()) trace(d, name(d), turn(d))
+      trace(Status.Ok, Status.Created, FIRST_ERROR, Status.values().length)
+
+      heading = turn(turn(heading))
+      trace('heading', heading == Direction.Down, heading != Direction.Up)
+
+      var level:Level = Level.High
+      trace(level, String(level).toUpperCase(), level == Level.High)
+
+      // raw data → enum: `as` checks the value against the enum's members
+      var raw:* = JSON.parse('["low", "medium", "high"]')
+      for (var r:* of raw) {
+        if (var l:Level = r as Level) trace('valid', l)
+        else trace('invalid', r)
+      }
+      var code:* = 404
+      trace(code is Status, 999 is Status)
+    }
+
+    private function name(d:Direction):String {
+      switch (d) {
+        case Direction.Up: return 'north'
+        case Direction.Down: return 'south'
+        case Direction.Left: return 'west'
+        case Direction.Right: return 'east'
+      }
+      return '?'
+    }
+
+    private function turn(d:Direction):Direction {
+      switch (d) {
+        case Direction.Up: return Direction.Right
+        case Direction.Right: return Direction.Down
+        case Direction.Down: return Direction.Left
+        default: return Direction.Up
+      }
+    }
+  }
+}
+
+enum Direction { Up, Down, Left, Right }
+
+enum Level {
+  Low = 'low'
+  High = 'high'
+}

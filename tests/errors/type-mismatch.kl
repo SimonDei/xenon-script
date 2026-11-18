@@ -1,0 +1,16 @@
+package {
+  public class Main {
+    private var age:int = 0
+
+    public function Main() {
+      age = 'three'
+      var half:int = age / 2
+      var ratio:Float = 0.5
+      var count:int = ratio
+      var u:uint = 5
+      var neg:uint = -1
+      var name:String = 42
+      var flag:Boolean = null
+    }
+  }
+}

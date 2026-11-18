@@ -1,0 +1,23 @@
+package {
+  public class Main {
+    private var a:int = (1 + 
+    private var b:String = 'ok'
+
+    public function Main() {
+      var x:int = 5 +* 3
+      trace(b)
+      if (x > ) trace('x')
+      var y:int = x
+      trace(y
+      trace('after')
+    }
+
+    public function other():int {
+      return x +
+    }
+
+    public function fine():void {
+      trace('fine')
+    }
+  }
+}

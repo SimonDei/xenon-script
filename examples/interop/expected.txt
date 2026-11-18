@@ -1,0 +1,17 @@
+[[1,2],[3,4],[5]] Klass 6
+true .kl
+1 {"ok":true,"list":[1,2]} 9
+Circle
+Shape box
+String
+uint
+Float
+int
+Boolean
+null
+Map
+Array
+RegExp
+true true 314
+first is a circle with r = 2
+{"level":3} 1

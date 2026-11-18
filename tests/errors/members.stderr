@@ -1,0 +1,84 @@
+error[K0426]: no member `lable` on `Main`
+ --> members.kl:7:18
+  |
+7 |       trace(this.lable)
+  |                  ^^^^^ unknown member
+  |
+help: a member with a similar name exists: `label`
+  |
+7 |       trace(this.label)
+  |                  ~~~~~
+
+error[K0413]: `count` is static; access it through the class
+ --> members.kl:8:18
+  |
+8 |       trace(this.count)
+  |                  ^^^^^
+  |
+help: use `Main.count`
+  |
+8 |       trace(Main.count)
+  |             ~~~~~~~~~~
+
+error[K0414]: `label` is an instance member; it can't be accessed through the class
+ --> members.kl:9:18
+  |
+4 |     private var label:String = 'x'
+  |                 ----- declared here
+...
+9 |       trace(Main.label)
+  |                  ^^^^^
+
+error[K0420]: cannot find type `Number`
+  --> members.kl:10:13
+   |
+10 |       var t:Number = 1
+   |             ^^^^^^ not found
+   |
+help: Klass calls floating-point numbers `Float`
+   |
+10 |       var t:Float = 1
+   |             ~~~~~
+
+warning[K0850]: variable `u` has no type annotation; it is untyped (`*`)
+  --> members.kl:11:11
+   |
+11 |       var u = 5
+   |           ^
+   |
+help: add the type of the initializer
+   |
+11 |       var u:int = 5
+   |            ++++
+
+error[K0420]: cannot find type `Errror`
+  --> members.kl:12:13
+   |
+12 |       var e:Errror = null
+   |             ^^^^^^ not found
+
+error[K0504]: `size` has a getter but no setter
+  --> members.kl:18:7
+   |
+15 |     public function get size():int { return 1 }
+   |                         ---- getter declared here
+...
+18 |       size = 2
+   |       ^^^^
+
+error[K0312]: `oops` can't return a value
+  --> members.kl:19:14
+   |
+17 |     private function oops():void {
+   |                             ---- declared `void` here
+...
+19 |       return 5
+   |              ^
+
+error[K0313]: `needs` must return a `String`
+  --> members.kl:23:7
+   |
+22 |     private function needs():String {
+   |                              ------ return type declared here
+23 |       return
+   |       ^^^^^^ missing return value

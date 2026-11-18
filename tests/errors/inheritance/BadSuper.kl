@@ -1,0 +1,9 @@
+package {
+  public class BadSuper extends Base {
+    private var tag:String = 'b'
+
+    public function BadSuper() {
+      super(tag + this.tag)
+    }
+  }
+}

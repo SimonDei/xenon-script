@@ -1,0 +1,65 @@
+package {
+  public class Main {
+    public function Main() {
+      // object patterns: renaming, defaults, nesting, rest
+      var user:* = { name: 'Ann', age: 31, address: { city: 'Oslo', zip: '0150' }, admin: false }
+      var { name, age, role = 'guest', address: { city }, ...others } = user
+      trace(name, age, role, city, JSON.stringify(others))
+
+      // typed sources: binding types come from the class
+      var p:Point = new Point(3, 4)
+      final { x, y } = p
+      var dist:Float = Math.sqrt(x * x + y * y)
+      trace('point', x, y, dist)
+
+      // array patterns: holes, defaults, rest, typed vectors
+      var list:Vector<int> = [10, 20, 30, 40, 50]
+      var [first, , third, ...tail] = list
+      var sum:int = first + third
+      trace(first, third, tail.length, sum)
+      var [only, missing = -1] = [7]
+      trace(only, missing)
+
+      // destructuring assignment: swap, assign into fields
+      var a:int = 1
+      var b:int = 2
+      [a, b] = [b, a]
+      trace('swapped', a, b)
+      var q:Point = new Point(0, 0)
+      [q.x, q.y] = [5, 6]
+      trace('q', q.x, q.y)
+
+      // for-of with patterns
+      var scores:* = new Map([['ann', 3], ['bob', 5]])
+      for (var [who, score] of scores) trace(who, score)
+      var points:Vector<Point> = [new Point(1, 2), new Point(3, 4)]
+      var total:int = 0
+      for (var { x: px, y: py } of points) total += px * py
+      trace('total', total)
+
+      // other modern syntax
+      var cache:* = {}
+      cache.hits ??= 0
+      cache.hits += 1
+      var ok:Boolean = true
+      ok &&= total > 10
+      var label:String = null
+      label ??= 'none'
+      var power:Float = 2
+      power **= 10
+      var merged:* = { ...user, admin: true }
+      var maybe:* = null
+      trace(cache.hits, ok, label, power, merged.admin, maybe?.call?.(), JSON.stringify([...list, 60].slice(-2)))
+    }
+  }
+}
+
+class Point {
+  public var x:int
+  public var y:int
+
+  public function Point(x:int, y:int) {
+    this.x = x
+    this.y = y
+  }
+}

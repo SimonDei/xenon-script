@@ -1,0 +1,95 @@
+package {
+  // The standard library: members of built-in types come from native declarations
+  // in the prelude (src/prelude/std), available in every file without an import.
+  public class Main {
+    public function Main() {
+      booleans()
+      json()
+      numbers()
+      integers()
+    }
+
+    private function booleans():void {
+      var ready:Boolean = 3 > 2
+      var label:String = ready.toString()                  // 'true'
+      trace(label, label.length, (1 > 2).toString(), false.valueOf())
+
+      // Boolean(x) is the conversion, not a constructor call
+      trace(Boolean(0), Boolean('x'), Boolean(null))
+
+      // methods used as values stay bound to their primitive
+      var show:() -> String = ready.toString
+      var parts:Vector<() -> String> = [show, true.toString]
+      for (var f:() -> String of parts) trace(f())
+
+      // `Bool` is the prelude alias of `Boolean`: same members
+      var flag:Bool = !ready
+      trace(flag.toString(), Bool(1))                        // `Bool(x)` is the `Boolean(x)` conversion
+    }
+
+    private function json():void {
+      // parse gives `*`: an unchecked `as` gives it a shape
+      var p:Point = JSON.parse('{"x": 1, "y": 2.5}') as Point
+      trace(p.x + p.y)
+
+      var data:* = { name: 'Rex', tags: ['dog', 'good'], age: 3 }
+      trace(JSON.stringify(data))
+      trace(JSON.stringify(data, ['name', 'age']))             // only these keys
+      trace(JSON.stringify(data, null, 1))                     // indent by 1 space
+      trace(JSON.stringify([1, [2]], null, '..'))              // indent string
+
+      // replacer and reviver are typed functions
+      trace(JSON.stringify(data, (key:String, value:*):* => key == 'age' ? value * 7 : value))
+      var doubled:Vector<int> = JSON.parse('[1, 2, 3]', (key:String, value:*):* => value is int ? value * 2 : value)   // `*` assigns to any type
+      trace(doubled.length, doubled[2])
+
+      // invalid input throws a JS SyntaxError, caught as an Exception
+      try {
+        JSON.parse('{oops}')
+      } catch (e:Exception) {
+        trace('parse failed:', e.name)
+      }
+    }
+
+    private function numbers():void {
+      // `Float`, `int` and `uint` share the members of JavaScript's Number
+      var price:Float = 1234.5678
+      var mask:int = 255
+      trace(price.toFixed(2), price.toPrecision(3), price.toExponential(1), mask.toString(16), mask.toString(2))
+      trace((0.1 + 0.2).toFixed(2), 3.75.toFixed(1), (255).toString(16))
+      trace(price.toLocaleString('en-US'), price.toLocaleString(['de-DE'], { maximumFractionDigits: 1 }))
+
+      // statics compile to `Number.…`
+      trace(Float.MAX_SAFE_INTEGER, Float.EPSILON < 1e-15, Float.MIN_VALUE > 0, Float.NEGATIVE_INFINITY)
+      trace(Float.parseInt('ff', 16), Float.parseFloat('3.5kg'), Float.isNaN(Float.parseInt('x')))
+
+      // `is…` tests take any value, e.g. parsed JSON
+      var raw:* = JSON.parse('[2, 2.5, "3", 9007199254740993]')
+      for (var v:* of raw) trace(v, Float.isInteger(v), Float.isFinite(v), Float.isSafeInteger(v))
+
+      // parseInt can be NaN or beyond the int range: it's a Float, convert explicitly
+      var count:int = int(Float.parseInt('42'))
+      trace(count + 1)
+    }
+
+    private static inline final HALF:int = (int.MAX_VALUE >> 1) + 1   // range constants fold at compile time
+
+    private function integers():void {
+      // AS3-style range constants (inline: they compile to literals)
+      trace(int.MIN_VALUE, int.MAX_VALUE, uint.MIN_VALUE, uint.MAX_VALUE, HALF)
+      trace(Int.MAX_VALUE, UInt.MAX_VALUE)                         // the prelude aliases work too
+
+      // int and uint keep the number members, with whole-number results where guaranteed
+      var flags:uint = 0xF0
+      var same:uint = flags.valueOf()
+      trace(flags.toString(2), same, (-42).toString(16), Int(7.9), UInt(-1) == uint.MAX_VALUE)
+
+      // clamping with the constants
+      var big:Float = 1e12
+      var clamped:int = big > int.MAX_VALUE ? int.MAX_VALUE : int(big)
+      trace(clamped)
+    }
+  }
+}
+
+typedef Point = { x:Float, y:Float }

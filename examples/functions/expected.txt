@@ -1,0 +1,9 @@
+2,4,6,8 2,4
+sum 10
+obj / sum
+55 true true
+counter 13
+5! = 120
+async 3 big
+all 2,4
+waited 5

@@ -1,0 +1,5 @@
+package {
+  public class Square extends Shape {
+    public function area():Float { return super.area() }
+  }
+}

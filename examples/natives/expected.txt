@@ -1,0 +1,6 @@
+1970 2 true
+3.14 42.0 true
+2 3 **A,B;C
+2 32 false
+2 1 true
+c

@@ -1,0 +1,7 @@
+package {
+  public class Main {
+    public function Main() {
+      for each (var v:* in []) {}
+    }
+  }
+}

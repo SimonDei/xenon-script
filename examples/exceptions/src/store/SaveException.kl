@@ -1,0 +1,10 @@
+package store {
+  public class SaveException extends Exception {
+    public final path:String
+
+    public function SaveException(path:String, message:String) {
+      super(message)
+      this.path = path
+    }
+  }
+}

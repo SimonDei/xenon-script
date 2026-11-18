@@ -1,0 +1,28 @@
+package {
+  import game.Config
+
+  public class Main {
+    private static inline final HALF_HP:int = Config.MAX_HP / 2
+    private static inline final RATIO:Float = HALF_HP / 3
+    private static inline final DEBUG:Boolean = HALF_HP > 40 && !false
+    private static inline const NEG:int = -HALF_HP
+
+    public function Main() {
+      inline const LOW:int = HALF_HP - Config.STEP
+      trace(Config.TITLE, Config.MAX_HP, HALF_HP, LOW, NEG)
+      trace(RATIO, DEBUG, int(RATIO * 10) / 10)
+      for (var hp:int of 0..=Config.MAX_HP step Config.STEP) trace(hp, describe(hp))
+      var big:uint = 2 ** 31
+      trace(big, 5 - NEG)
+    }
+
+    private function describe(hp:int):String {
+      switch (hp) {
+        case Config.MAX_HP: return 'full'
+        case HALF_HP: return 'half'
+        case 0: return 'dead'
+        default: return hp > HALF_HP ? 'ok' : 'low'
+      }
+    }
+  }
+}

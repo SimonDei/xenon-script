@@ -1,0 +1,3 @@
+boot 2,3,5,7,11,13,17,19 1 MAIN
+7 lucky odd
+-2 negative even

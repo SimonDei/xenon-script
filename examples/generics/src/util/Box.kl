@@ -1,0 +1,14 @@
+package util {
+  public class Box<T> {
+    private var value:T
+
+    public function Box(value:T) { this.value = value }
+
+    public function get():T { return value }
+    public function set(v:T):void { value = v }
+
+    public function map<U>(f:(value:T) -> U):Box<U> { return new Box<U>(f(value)) }
+
+    public static function of<V>(v:V):Box<V> { return new Box(v) }
+  }
+}

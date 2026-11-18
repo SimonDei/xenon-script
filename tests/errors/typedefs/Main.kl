@@ -1,0 +1,36 @@
+package {
+  import geom.Point
+  import geom.Hidden
+
+  public class Main {
+    public function Main() {
+      var p:Point = { x: 1, yy: 2, id: 1 }
+      var q:Point = { x: 'one', y: 2 }
+      p.id = 5
+      trace(p.z)
+      var r:Reducer = (a:int, b:String):int => a
+      var s:Reducer = (a, b) => 'text'
+      var t:Reducer = this.notReducer
+      if (p is Point) trace('?')
+      var u:Point = new Vec()
+      var fine:Point = new Spot()
+    }
+
+    public function notReducer(x:String):int { return 0 }
+  }
+}
+
+typedef Reducer = (acc:int, value:int) -> int
+typedef Loop = Loop
+typedef A = B
+typedef B = A
+
+class Vec {
+  public var x:Float = 0
+}
+
+class Spot {
+  public var x:Float = 0
+  public var y:Float = 0
+  public var id:int = 1
+}

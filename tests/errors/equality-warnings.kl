@@ -1,0 +1,8 @@
+package {
+  public class Main {
+    public function Main() {
+      var x:* = null
+      if (x === undefined) trace('none')
+    }
+  }
+}

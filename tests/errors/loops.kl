@@ -1,0 +1,14 @@
+package {
+  public class Main {
+    public function Main() {
+      var obj:Object = { a: 1 }
+      var n:int = 3
+      var words:Vector<String> = ['a']
+      for (var v:* of obj) {}
+      for (var v:* of n) {}
+      for (var w:int of words) {}
+      for (var k:int in obj) {}
+      for (x of words) {}
+    }
+  }
+}

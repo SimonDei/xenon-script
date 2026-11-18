@@ -1,0 +1,125 @@
+error[K0308]: mismatched types
+ --> enums.kl:4:25
+  |
+4 |       var d:Direction = 1
+  |             ---------   ^ expected `Direction`, found `int`
+  |             |
+  |             expected because of this type
+
+error[K0308]: mismatched types
+ --> enums.kl:5:19
+  |
+5 |       var n:int = Direction.Up
+  |             ---   ^^^^^^^^^^^^ expected `int`, found `Direction`
+  |             |
+  |             expected because of this type
+
+error[K0309]: this comparison is always false
+ --> enums.kl:6:15
+  |
+6 |       trace(d == 1, d == Color.Red, d < Direction.Down)
+  |             - ^^ - `int`
+  |             |
+  |             `Direction`
+  |
+  = note: `==` never converts between types in Klass
+
+error[K0309]: this comparison is always false
+ --> enums.kl:6:23
+  |
+6 |       trace(d == 1, d == Color.Red, d < Direction.Down)
+  |                     - ^^ --------- `Color`
+  |                     |
+  |                     `Direction`
+  |
+  = note: `==` never converts between types in Klass
+
+error[K0315]: cannot apply `<` to `Direction` and `Direction`
+ --> enums.kl:6:39
+  |
+6 |       trace(d == 1, d == Color.Red, d < Direction.Down)
+  |                                     - ^ -------------- `Direction`
+  |                                     |
+  |                                     `Direction`
+
+error[K0815]: `Color` is an enum; use one of its members
+ --> enums.kl:7:25
+  |
+7 |       var c:Color = new Color()
+  |                         ^^^^^
+  |
+help: for example `Color.Red`
+
+error[K0426]: no static member `Sideways` on `Direction`
+ --> enums.kl:8:23
+  |
+8 |       trace(Direction.Sideways)
+  |                       ^^^^^^^^ unknown member
+
+warning[K0814]: this `switch` doesn't handle `Direction.Down`, `Direction.Left`
+ --> enums.kl:9:15
+  |
+9 |       switch (d) {
+  |               ^
+  |
+help: add the missing cases, or a `default:`
+
+error[K0343]: duplicate `case`
+  --> enums.kl:11:14
+   |
+10 |         case Direction.Up: trace('up')
+   |              ------------ first used here
+11 |         case Direction.Up: trace('again')
+   |              ^^^^^^^^^^^^
+
+error[K0811]: an enum can't mix numbers and strings
+  --> enums.kl:19:25
+   |
+19 | enum Mixed { A = 1, B = 'b' }
+   |                         ^^^ this is a String
+
+error[K0812]: `Y` needs a value
+  --> enums.kl:20:25
+   |
+20 | enum Strings { X = 'x', Y }
+   |                         ^ members of a `String` enum need explicit values
+
+error[K0813]: `Uno` has the same value as `One`
+  --> enums.kl:21:27
+   |
+21 | enum Dup { One = 1, Uno = 1 }
+   |            ---            ^ = 1
+   |            |
+   |            first member with this value
+
+error[K0811]: enum values must be `int`s or `String`s
+  --> enums.kl:22:19
+   |
+22 | enum Bad { Half = 0.5, Flag = true }
+   |                   ^^^ found 0.5
+
+error[K0811]: enum values must be `int`s or `String`s
+  --> enums.kl:22:31
+   |
+22 | enum Bad { Half = 0.5, Flag = true }
+   |                               ^^^^ found true
+
+error[K0816]: `values` is reserved in enums
+  --> enums.kl:23:14
+   |
+23 | enum Clash { values }
+   |              ^^^^^^
+   |
+   = note: `Enum.values()` lists all members
+
+error[K0817]: enum values must be compile-time constants
+  --> enums.kl:24:23
+   |
+24 | enum Computed { Now = Main.stamp() }
+   |                       ^^^^^^^^^^^^ function calls are not compile-time constants
+
+error[K0700]: enum `Color` can't be extended
+  --> enums.kl:25:19
+   |
+25 | class Sub extends Color {}
+   |                   ^^^^^

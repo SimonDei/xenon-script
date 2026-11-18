@@ -1,0 +1,26 @@
+package {
+  public class Main {
+    public static var count:int = 0
+    private var label:String = 'x'
+
+    public function Main() {
+      trace(this.lable)
+      trace(this.count)
+      trace(Main.label)
+      var t:Number = 1
+      var u = 5
+      var e:Errror = null
+    }
+
+    public function get size():int { return 1 }
+
+    private function oops():void {
+      size = 2
+      return 5
+    }
+
+    private function needs():String {
+      return
+    }
+  }
+}

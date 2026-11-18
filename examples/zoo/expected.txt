@@ -1,0 +1,3 @@
+[zoo] Rex ate 420 kcal, Tom ate 90 kcal
+[zoo] bone (eaten by Rex)
+[zoo] population: 2

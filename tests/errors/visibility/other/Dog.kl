@@ -1,0 +1,13 @@
+package other {
+  import zoo.Animal
+
+  public class Dog extends Animal {
+    public function Dog() {
+      super()
+      trace(legs, tag)
+      grow()
+      trace(_name)
+      secret()
+    }
+  }
+}

@@ -1,0 +1,19 @@
+package {
+  public class Main {
+    public function Main() {
+      var items:Vector<Product> = [new Book('Klass in Action'), new Film('The Compiler')]
+      for (var p:Product of items) trace(p.label(), p is Media, p is Film)
+      var total:Float = 0
+      for (var p:IPriced of items) total += p.price
+      trace('total', total)
+
+      // the runtime guard protects plain JS callers
+      var ctor:* = Product
+      try {
+        new ctor('x')
+      } catch (e:StateException) {
+        trace(e.name, e.message)
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+package {
+  public interface IBad extends Base, IShape {
+    var size:int
+    private function hidden():void
+    static function make():IBad
+    function withBody():void { trace('x') }
+  }
+}

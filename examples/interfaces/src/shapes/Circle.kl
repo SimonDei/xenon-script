@@ -1,0 +1,12 @@
+package shapes {
+  public class Circle implements IShape, IScalable {
+    private var r:Float
+
+    public function Circle(r:Float) { this.r = r }
+
+    public function area():Float { return Math.PI * r * r }
+    public function get name():String { return 'circle' }
+    public function draw():String { return '()' }
+    public function scale(factor:Float):void { r *= factor }
+  }
+}

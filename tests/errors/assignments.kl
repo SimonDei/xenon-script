@@ -1,0 +1,22 @@
+package {
+  public class Main {
+    public static const MAX:int = 10
+    private final id:String
+    private var total:int
+
+    public function Main() {
+      id = 'a'
+      const limit:int = 5
+      limit = 6
+      final once:int = 1
+      once = 2
+      MAX = 11
+      total += 0.5
+      total /= 2
+    }
+
+    private function later():void {
+      id = 'b'
+    }
+  }
+}

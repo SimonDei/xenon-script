@@ -1,0 +1,24 @@
+package {
+  public class Main {
+    private static inline final A:int = B + 1
+    private static inline final B:int = A
+    private static inline final C:int = now()
+    private static inline final D:int = 7 / 2
+    private static inline final E:uint = -1
+    private static inline var F:int = 1
+    private inline final G:int = 1
+    private static inline final H:String
+    private static inline final I:int = C + 1
+    private static var plain:int = 3
+    private static inline final J:int = plain * 2
+
+    public function Main() {
+      inline var x:int = 1
+      inline const y:Array = []
+    }
+
+    private static function now():int { return 1 }
+
+    public inline function f():void {}
+  }
+}

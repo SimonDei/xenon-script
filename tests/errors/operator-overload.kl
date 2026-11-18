@@ -1,0 +1,35 @@
+package {
+  public class Main {
+    public function Main() {
+      var v:Vec = new Vec()
+      var w:Vec = v + 'text'
+      var x:Vec = v + 5
+      var y:Vec = 5 + v
+      var d:Dog = new Dog()
+      trace(d + d)
+      var h:Hidden = new Hidden()
+      trace(h + h)
+    }
+  }
+}
+
+class Vec {
+  public function operator+(other:Vec):Vec const { return this }
+  public function operator-(other:Vec):Vec { return this }
+  public static function operator+(a:Vec):Vec { return a }
+}
+
+class Dog {}
+
+class Hidden {
+  private function operator+(o:Hidden):Hidden { return o }
+}
+
+class Bad {
+  public function operator+(a:Bad, b:Bad):void {}
+}
+
+class Strict {
+  public function operator+(o:Strict):Strict { return o }
+  public function sum():Strict const { return this + this }
+}

@@ -1,0 +1,25 @@
+# Normalize line endings: LF in the repository and in working copies on every platform.
+# Error snapshots (*.stderr), expected outputs and the generated JS are compared byte for byte,
+# so a CRLF checkout (Windows with core.autocrlf) would break the tests.
+* text=auto eol=lf
+
+# Klass sources: diff as code; GitHub has no Klass grammar, ActionScript is the closest.
+*.kl text eol=lf diff=java linguist-language=ActionScript
+
+# Shell scripts must stay LF even when edited on Windows.
+*.sh text eol=lf
+
+# Binary files: never touch line endings or diff as text.
+*.wasm binary
+*.vsix binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Generated files: collapsed in GitHub diffs and excluded from language statistics.
+bun.lock linguist-generated
+tests/errors/*.stderr linguist-generated
+examples/*/expected.txt linguist-generated

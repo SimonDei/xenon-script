@@ -1,0 +1,32 @@
+package {
+  public class Main {
+    public function Main() {
+      var a:Box = null
+      var b:Box<int, String> = null
+      var c:Box<int> = new Box<int>('text')
+      var d:Box<String> = new Box(5)
+      var e:Box<Float> = new Box<int>(1)
+      var f:* = new Box()
+      trace(a, b, c, d, e, f)
+      var g:Box<int> = new Box(1)
+      if (g is Box<int>) trace('?')
+      var h:int = g.map((n) => 'x').get()
+      var none:* = pick()
+      var t:String<int> = null
+      trace(h, none, t)
+    }
+
+    private function pick<T>():T { return null }
+  }
+}
+
+class Dup<T, T> {}
+
+class Box<T> {
+  private var value:T
+  public function Box(value:T) { this.value = value }
+  public function get():T { return value }
+  public function map<U>(f:(value:T) -> U):Box<U> { return new Box<U>(f(value)) }
+  public function bad(x:T):int { return x.length + x }
+  public static function make():T { return null }
+}

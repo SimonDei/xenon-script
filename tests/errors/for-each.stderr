@@ -1,0 +1,7 @@
+error[K0106]: `for each` is written `for (var v:T of coll)` in Klass
+ --> for-each.kl:4:7
+  |
+4 |       for each (var v:* in []) {}
+  |       ^^^^^^^^
+  |
+help: use `of`: `for (var v:T of collection)`

@@ -1,0 +1,16 @@
+package {
+  public class Main {
+    public function Main() {
+      var ready:Boolean = true
+      var wrapped:* = new Boolean(ready)
+      trace(wrapped, ready.toStrng(), ready.length, (ready as *).length)
+      trace(Boolean.parse('true'))
+      var s:String = ready.valueOf()
+      trace(s)
+    }
+  }
+}
+
+native class Boolean {
+  function toString():String
+}

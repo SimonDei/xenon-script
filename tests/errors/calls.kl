@@ -1,0 +1,21 @@
+package {
+  public class Main {
+    public function Main() {
+      greet('Ann', 3)
+      greet()
+      var n:int = greet('Bob')
+      var total:Float = sum(1, 2, 'three')
+      trace(nothing())
+    }
+
+    private function greet(who:String):String {
+      return 'Hi ' + who
+    }
+
+    private static function sum(...values:Vector<Float>):Float {
+      return 0
+    }
+
+    private function nothing():void {}
+  }
+}

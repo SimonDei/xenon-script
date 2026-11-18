@@ -1,0 +1,224 @@
+error[K0736]: instance member `tag` can't be used before `super(...)` returns
+ --> inheritance/BadSuper.kl:6:13
+  |
+6 |       super(tag + this.tag)
+  |             ^^^
+
+error[K0736]: `this` can't be used before `super(...)` returns
+ --> inheritance/BadSuper.kl:6:19
+  |
+6 |       super(tag + this.tag)
+  |                   ^^^^
+
+error[K0724]: `size` is already declared in `Base`
+ --> inheritance/Child.kl:3:16
+  |
+3 |     public var size:int = 1
+  |                ^^^^ redeclared here
+  |
+ ::: inheritance/Base.kl:3:16
+  |
+3 |     public var size:int = 0
+  |                ---- inherited member
+  |
+  = note: fields can't be overridden; use the inherited one or pick another name
+
+error[K0731]: the constructor must call `super(...)` first
+ --> inheritance/Child.kl:5:21
+  |
+5 |     public function Child() {
+  |                     ^^^^^ `Base`'s constructor needs arguments
+  |
+ ::: inheritance/Base.kl:6:21
+  |
+6 |     public function Base(label:String) {}
+  |                     ---- `Base` constructor
+  |
+help: call the parent constructor first
+  |
+5 |     public function Child() { super(…)
+  |                              +++++++++
+
+error[K0732]: `super(...)` must be the first statement of the constructor
+ --> inheritance/Child.kl:7:7
+  |
+7 |       super('x')
+  |       ^^^^^^^^^^
+
+error[K0720]: `speak` overrides `Base.speak` but is not marked `override`
+  --> inheritance/Child.kl:10:21
+   |
+10 |     public function speak():String { return 'hi' }
+   |                     ^^^^^ overrides `Base.speak`
+   |
+  ::: inheritance/Base.kl:8:21
+   |
+ 8 |     public function speak():String { return '' }
+   |                     ----- original declared here
+   |
+help: add `override`
+   |
+10 |     override public function speak():String { return 'hi' }
+   |     +++++++++
+
+error[K0722]: `move` doesn't match the member it overrides
+  --> inheritance/Child.kl:11:30
+   |
+11 |     override public function move(dx:Float, dy:int):int { return 0 }
+   |                              ^^^^
+   |
+  ::: inheritance/Base.kl:9:21
+   |
+ 9 |     public function move(dx:int, dy:int):void {}
+   |                     ---- `Base.move` declared here
+   |
+   = note: parameter `dx` is `Float` instead of `int`
+   = note: returns `int` instead of `void`
+
+error[K0723]: `Base.id` is `final` and can't be overridden
+  --> inheritance/Child.kl:12:30
+   |
+12 |     override public function id():String { return '' }
+   |                              ^^
+   |
+  ::: inheritance/Base.kl:10:12
+   |
+10 |     public final function id():String { return '' }
+   |            ----- declared `final` here
+
+error[K0722]: `area` doesn't match the member it overrides
+  --> inheritance/Child.kl:13:34
+   |
+13 |     override public function get area():int { return 0 }
+   |                                  ^^^^
+   |
+  ::: inheritance/Base.kl:11:25
+   |
+11 |     public function get area():Float { return 0 }
+   |                         ---- `Base.area` declared here
+   |
+   = note: type `int` instead of `Float`
+
+error[K0721]: `hiden` doesn't override anything
+  --> inheritance/Child.kl:14:5
+   |
+14 |     override public function hiden():void {}
+   |     ^^^^^^^^ nothing to override
+   |
+help: the parent has a member with a similar name: `hidden`
+   |
+14 |     override public function hidden():void {}
+   |                              ~~~~~~
+
+error[K0722]: `hidden` doesn't match the member it overrides
+  --> inheritance/Child.kl:15:30
+   |
+15 |     override public function hidden():void {}
+   |                              ^^^^^^
+   |
+  ::: inheritance/Base.kl:12:24
+   |
+12 |     protected function hidden():void {}
+   |                        ------ `Base.hidden` declared here
+   |
+   = note: visibility: `public` instead of `protected`
+
+error[K0725]: instance member `count` conflicts with static `Base.count`
+  --> inheritance/Child.kl:16:21
+   |
+16 |     public function count():void {}
+   |                     ^^^^^
+   |
+  ::: inheritance/Base.kl:4:23
+   |
+ 4 |     public static var count:int = 0
+   |                       ----- static member
+
+error[K0721]: static members can't be overridden
+  --> inheritance/Child.kl:17:5
+   |
+17 |     override public static function make():Base { return null }
+   |     ^^^^^^^^
+   |
+   = note: a static member with a parent's name simply hides it
+
+error[K0720]: `toString` overrides `Object.toString` but is not marked `override`
+  --> inheritance/Child.kl:18:21
+   |
+18 |     public function toString():String { return '' }
+   |                     ^^^^^^^^ overrides `Object.toString`
+   |
+help: add `override`
+   |
+18 |     override public function toString():String { return '' }
+   |     +++++++++
+
+error[K0726]: fields can't be overridden
+  --> inheritance/Child.kl:19:5
+   |
+19 |     override public var extra:int = 0
+   |     ^^^^^^^^
+   |
+help: remove `override`
+
+error[K0732]: `super(...)` is only allowed in a constructor
+  --> inheritance/Child.kl:22:7
+   |
+22 |       super('again')
+   |       ^^^^^^^^^^^^^^
+
+error[K0734]: `super` can only be used as `super(...)` or `super.member`
+  --> inheritance/Child.kl:23:17
+   |
+23 |       var s:* = super
+   |                 ^^^^^
+
+error[K0735]: fields can't be accessed through `super`
+  --> inheritance/Child.kl:24:13
+   |
+24 |       trace(super.size)
+   |             ^^^^^^^^^^
+   |
+help: use `this.size`
+   |
+24 |       trace(this.size)
+   |             ~~~~
+
+error[K0701]: inheritance cycle
+ --> inheritance/CycleA.kl:2:31
+  |
+2 |   public class CycleA extends CycleB {}
+  |                               ^^^^^^ CycleA extends CycleB extends CycleA
+
+error[K0308]: mismatched types
+ --> inheritance/Main.kl:4:33
+  |
+4 |       var n:NoCtor = new NoCtor(1)
+  |                                 ^ expected `String`, found `int`
+  |
+ ::: inheritance/Base.kl:6:32
+  |
+6 |     public function Base(label:String) {}
+  |                                ------ parameter declared here
+  |
+help: convert the value with `String()`
+  |
+4 |       var n:NoCtor = new NoCtor(String(1))
+  |                                 +++++++ +
+
+error[K0733]: `Orphan` has no superclass
+ --> inheritance/Orphan.kl:4:7
+  |
+4 |       super()
+  |       ^^^^^
+
+error[K0702]: `Final` is `final` and can't be extended
+ --> inheritance/Sub.kl:2:28
+  |
+2 |   public class Sub extends Final {}
+  |                            ^^^^^
+  |
+ ::: inheritance/Final.kl:2:10
+  |
+2 |   public final class Final {}
+  |          ----- declared `final` here

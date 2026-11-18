@@ -1,0 +1,21 @@
+package {
+  public class Main {
+    public function Main() {
+      var m:Main = this
+      var s:String = 'x'
+      var n:int = 3
+      var d:* = null
+      trace(m is Main, m as Main)
+      trace(s is Main, n as Main)
+      trace(d as int, d as Boolean)
+      trace(d is Vector<int>, d is *)
+      trace(d is Mian)
+      var o:Object = {}
+      delete o.a
+      delete m.helper
+      delete n
+    }
+
+    public var helper:int = 1
+  }
+}

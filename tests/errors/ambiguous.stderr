@@ -1,0 +1,14 @@
+error[K0433]: `Item` is ambiguous
+ --> ambiguous/Main.kl:7:16
+  |
+7 |       var item:Item = null
+  |                ^^^^ imported by more than one wildcard import
+  |
+  = note: it could be `x.Item` or `y.Item`
+help: add an explicit import, e.g. `import x.Item;`
+
+error[K0420]: cannot find type `Shark`
+ --> ambiguous/Main.kl:9:17
+  |
+9 |       var shark:Shark = null
+  |                 ^^^^^ not found

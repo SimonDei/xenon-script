@@ -1,0 +1,27 @@
+package com.zoo {
+  import com.zoo.food.Food
+
+  public class Animal {
+    private static var count:int = 0
+    public final name:String
+    private var eaten:Vector<Food> = []
+
+    public function Animal(name:String) {
+      this.name = name
+      count++
+    }
+
+    public function feed(food:Food):void {
+      eaten.push(food)
+      food.eatenBy = this
+    }
+
+    public function get calories():int {
+      var total:int = 0
+      for (var f:Food of eaten) total += f.calories
+      return total
+    }
+
+    public static function get population():int { return count }
+  }
+}

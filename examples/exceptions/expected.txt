@@ -1,0 +1,9 @@
+0 ok
+1 save failed at /data/db
+2 bad argument: i must not be 2
+3 other: NotImplementedException
+Exception true true
+type: true true
+range: RangeException
+0, 1, 2, 3, inner finally, outer caught busy
+SaveException: disk full /tmp/x SaveException

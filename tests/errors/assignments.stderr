@@ -1,0 +1,53 @@
+error[K0501]: cannot assign twice to const `limit`
+  --> assignments.kl:10:7
+   |
+ 9 |       const limit:int = 5
+   |             ----- declared `const` here
+10 |       limit = 6
+   |       ^^^^^
+
+error[K0501]: cannot assign twice to final `once`
+  --> assignments.kl:12:7
+   |
+11 |       final once:int = 1
+   |             ---- declared `final` here
+12 |       once = 2
+   |       ^^^^
+
+error[K0501]: cannot assign to constant `MAX`
+  --> assignments.kl:13:7
+   |
+ 3 |     public static const MAX:int = 10
+   |                         --- declared `const` here
+...
+13 |       MAX = 11
+   |       ^^^
+
+error[K0308]: mismatched types
+  --> assignments.kl:14:7
+   |
+ 5 |     private var total:int
+   |                       --- `total` declared as `int` here
+...
+14 |       total += 0.5
+   |       ^^^^^^^^^^^^ `+=` produces `Float`, but the target is `int`
+
+error[K0308]: mismatched types
+  --> assignments.kl:15:7
+   |
+ 5 |     private var total:int
+   |                       --- `total` declared as `int` here
+...
+15 |       total /= 2
+   |       ^^^^^^^^^^ `/=` produces `Float`, but the target is `int`
+   |
+help: use `x = int(x / y)` for integer division
+
+error[K0502]: `id` is `final` and can only be assigned in the constructor of its class
+  --> assignments.kl:19:7
+   |
+ 4 |     private final id:String
+   |                   -- declared `final` here
+...
+19 |       id = 'b'
+   |       ^^

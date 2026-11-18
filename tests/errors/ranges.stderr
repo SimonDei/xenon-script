@@ -1,0 +1,53 @@
+error[K0330]: a range `step` can't be 0
+ --> ranges.kl:5:36
+  |
+5 |       for (var i:int of 0..10 step 0) {}
+  |                                    ^ the step must be positive
+
+warning[K0331]: range `10..0` is empty and runs 0 times
+ --> ranges.kl:6:25
+  |
+6 |       for (var i:int of 10..0 step -1) {}
+  |                         ^^^^^
+  |
+  = note: ranges never count down; use a C-style `for` for that
+
+error[K0330]: ranges can't count down
+ --> ranges.kl:6:36
+  |
+6 |       for (var i:int of 10..0 step -1) {}
+  |                                    ^^ the step must be positive
+  |
+help: use a C-style `for`, e.g. `for (var i:int = 10; i >= 0; i--)`
+
+error[K0334]: range bounds must be `int` or `uint`
+ --> ranges.kl:7:28
+  |
+7 |       for (var i:int of 0..f) {}
+  |                            ^ found `Float`
+
+error[K0332]: the range loop variable `i` can't be assigned
+ --> ranges.kl:8:32
+  |
+8 |       for (var i:int of 0..10) i = 5
+  |                -               ^
+  |                |
+  |                declared by the range loop here
+  |
+  = note: use a `while` loop or a C-style `for` to control the counter yourself
+
+warning[K0331]: range `3..3` is empty and runs 0 times
+ --> ranges.kl:9:25
+  |
+9 |       for (var i:int of 3..3) {}
+  |                         ^^^^
+  |
+  = note: ranges never count down; use a C-style `for` for that
+
+error[K0333]: ranges are only supported in `for (… of …)` loops
+  --> ranges.kl:10:18
+   |
+10 |       var r:* = 0..10
+   |                  ^^
+   |
+help: for example `for (var i:int of 0..10) { … }`

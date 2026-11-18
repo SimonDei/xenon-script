@@ -1,0 +1,23 @@
+package {
+  public class Main {
+    private var secret:int = 1
+    public var size:int = 2
+
+    public function Main() {
+      var n:int = 5
+      var { a } = n
+      var [b] = this
+      var { size, sise, helper, count } = this
+      var [x = 'text']:Vector<int> = [1]
+      var { length } = 'abc'
+      final [f1, f2] = [1, 2]
+      f1 = 3
+      var s:String = 'x';
+      [s] = [42]
+      for (var [k, v] in {}) {}
+    }
+
+    public function helper():void {}
+    public static var count:int = 0
+  }
+}

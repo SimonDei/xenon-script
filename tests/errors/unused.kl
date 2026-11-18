@@ -1,0 +1,21 @@
+package {
+  public class Main {
+    private var count:int = 0
+    private var _cache:* = null
+    private var written:int = 0
+    private static var instances:int = 0
+
+    public function Main() {
+      var temp:int = 5
+      var _ignored:int = 6
+      var used:int = 7
+      written = used
+      function helper():void {}
+      var f:Function = (x:int):int => x
+      trace(f)
+    }
+
+    private function forgotten():void {}
+    private function get secret():int { return 1 }
+  }
+}

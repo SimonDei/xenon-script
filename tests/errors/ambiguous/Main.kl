@@ -1,0 +1,12 @@
+package {
+  import x.*
+  import y.*
+
+  public class Main {
+    public function Main() {
+      var item:Item = null
+      var fish:Fish = new Fish()
+      var shark:Shark = null
+    }
+  }
+}

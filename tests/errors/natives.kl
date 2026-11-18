@@ -1,0 +1,26 @@
+package {
+  public class Main {
+    public function Main() {
+      var c:Clock = new Clock(true)
+      var t:String = 'abc'
+      trace(t.toUppercase(), t.newApi(), c.getYear(), t.split(5))
+      var ok:* = (t as *).newApi()
+      trace(ok)
+    }
+  }
+}
+
+native('Date') class Clock {
+  function Clock()
+  function Clock(ms:Float)
+  function getFullYear():int
+  function getMonth():int { return 0 }
+  var offset:int = 5
+  static { trace('x') }
+}
+
+native class String {
+  function toUpperCase():String
+  function split(separator:String):Vector<String>
+  function split(separator:RegExp):Vector<String>
+}

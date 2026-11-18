@@ -1,0 +1,15 @@
+package zoo {
+  public class Animal {
+    private var _name:String = 'a'
+    protected var legs:int = 4
+    internal var tag:String = 't'
+    var zone:int = 1
+    private static var counter:int = 0
+
+    public function Animal() {}
+
+    public function get name():String { return _name }
+    private function secret():void {}
+    protected function grow():void {}
+  }
+}

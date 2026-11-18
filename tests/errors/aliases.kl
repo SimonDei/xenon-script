@@ -1,0 +1,14 @@
+package {
+  public class Main {
+    public function Main() {
+      var v:Void = null
+      var x:Itn = 1
+      var y:Int<String> = 2
+      var fine:() -> Void = ():Void => trace(Bool(x), Int(1.5), Any)
+      trace(v, x, y, fine)
+    }
+  }
+}
+
+class Int {}
+typedef Bool = int

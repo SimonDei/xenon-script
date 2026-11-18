@@ -1,0 +1,56 @@
+package {
+  public class Main {
+    public function Main() {
+      var inv:Inventory = new Inventory()
+      inv.add(new Item('pen', 2))
+      inv.add(new Item('book', 12))
+      trace(inv.count(), inv.isEmpty, inv.report(), inv.priciest())
+
+      var r:IReport = new Summary(inv)
+      trace(r.report())
+    }
+  }
+}
+
+interface IReport {
+  function report():String const
+}
+
+class Item {
+  public final name:String
+  public final price:Float
+  public function Item(name:String, price:Float) { this.name = name; this.price = price }
+}
+
+class Inventory implements IReport {
+  private var items:Vector<Item> = []
+  private var total:Float = 0
+  public static var reports:int = 0
+
+  public function add(i:Item):void {
+    items.push(i)
+    total += i.price
+  }
+
+  public function count():int const { return items.length }
+
+  public function get isEmpty():Boolean const { return items.length == 0 }
+
+  public function report():String const {
+    Inventory.reports++                      // static state isn't `this`
+    var names:Array = items.map((i:Item):String => i.name + (isEmpty ? '' : '')) // arrows keep the restriction (const getter is fine)
+    return $'{count()} items ({names.join(', ')}), total {total}'
+  }
+
+  public function priciest():String const {
+    var best:Item = null
+    for (var i:Item of items) if (best == null || i.price > best.price) best = i
+    return best == null ? 'none' : best.name
+  }
+}
+
+class Summary implements IReport {
+  private final inv:Inventory
+  public function Summary(inv:Inventory) { this.inv = inv }
+  public function report():String const { return 'summary: ' + inv.count() + ' items, ' + Inventory.reports + ' reports' }
+}

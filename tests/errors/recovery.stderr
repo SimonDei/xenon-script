@@ -1,0 +1,31 @@
+error[K0100]: expected an expression, found keyword `private`
+ --> recovery.kl:4:5
+  |
+4 |     private var b:String = 'ok'
+  |     ^^^^^^^ expected an expression
+
+error[K0100]: expected an expression, found `*`
+ --> recovery.kl:7:22
+  |
+7 |       var x:int = 5 +* 3
+  |                      ^ expected an expression
+
+error[K0100]: expected an expression, found `)`
+ --> recovery.kl:9:15
+  |
+9 |       if (x > ) trace('x')
+  |               ^ expected an expression
+
+error[K0101]: expected `)`, found `trace`
+  --> recovery.kl:12:7
+   |
+11 |       trace(y
+   |            - unclosed `(` opened here
+12 |       trace('after')
+   |       ^^^^^ expected `)`
+
+error[K0100]: expected an expression, found `}`
+  --> recovery.kl:17:5
+   |
+17 |     }
+   |     ^ expected an expression

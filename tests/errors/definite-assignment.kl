@@ -1,0 +1,51 @@
+package {
+  public class Main {
+    private final id:String
+    private final name:String = 'fixed'
+    private final size:int
+    public static final VERSION:String
+    public static final ORIGIN:String
+
+    static {
+      VERSION = '1.0'
+      VERSION = '1.1'
+    }
+
+    public function Main() {
+      var flag:Boolean = id == null
+      trace(this.id)
+      if (flag) id = 'a'
+      name = 'other'
+      if (flag) return
+      size = 1
+    }
+
+    private function locals(flag:Boolean):void {
+      final a:int
+      trace(a)
+      if (flag) a = 1
+      trace(a)
+
+      final b:int
+      if (flag) b = 1
+      else b = 2
+      trace(b)
+      b = 3
+
+      final c:int
+      for (var i:int of 0..3) c = i
+
+      final d:int
+      if (flag) d = 1
+      d = 2
+
+      final e:int
+      e = e + 1
+    }
+  }
+
+}
+
+class Helper {
+  private final never:int
+}

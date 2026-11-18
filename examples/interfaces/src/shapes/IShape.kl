@@ -1,0 +1,6 @@
+package shapes {
+  public interface IShape extends IDrawable {
+    function area():Float
+    function get name():String
+  }
+}

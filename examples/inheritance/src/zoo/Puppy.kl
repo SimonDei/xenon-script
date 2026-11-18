@@ -1,0 +1,11 @@
+package zoo {
+  public final class Puppy extends Dog {
+    public function Puppy(name:String) {
+      super(name, 1)
+    }
+
+    override public function speak():String { return super.speak() + ' (squeaky)' }
+
+    override public function describe():String { return 'little ' + super.describe() }
+  }
+}

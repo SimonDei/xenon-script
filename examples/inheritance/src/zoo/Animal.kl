@@ -1,0 +1,22 @@
+package zoo {
+  public class Animal {
+    public static var created:int = 0
+    protected var _name:String
+
+    public function Animal(name:String) {
+      _name = name
+      created++
+    }
+
+    public function speak():String { return '...' }
+
+    public function describe():String { return $'{name} says {speak()}' }
+
+    public function get name():String { return _name }
+    public function set name(value:String):void { _name = value }
+
+    public final function id():String { return 'animal:' + _name }
+
+    override public function toString():String { return $'[Animal {name}]' }
+  }
+}

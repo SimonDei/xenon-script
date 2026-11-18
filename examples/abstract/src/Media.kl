@@ -1,0 +1,6 @@
+package {
+  // Abstract subclass: implements one member, leaves the other open; no constructor of its own.
+  public abstract class Media extends Product {
+    override public function category():String { return 'media' }
+  }
+}

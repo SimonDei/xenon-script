@@ -1,0 +1,22 @@
+warning[K0841]: `===` is the same as `==` in Klass
+ --> equality-warnings.kl:5:13
+  |
+5 |       if (x === undefined) trace('none')
+  |             ^^^
+  |
+  = note: `==` and `!=` are always strict in Klass
+help: use `==`
+  |
+5 |       if (x == undefined) trace('none')
+  |             ~~
+
+warning[K0840]: `undefined` is only supported for JavaScript compatibility
+ --> equality-warnings.kl:5:17
+  |
+5 |       if (x === undefined) trace('none')
+  |                 ^^^^^^^^^ use `null` instead
+  |
+help: compare with `null`: `x == null` matches both null and undefined
+  |
+5 |       if (x === null) trace('none')
+  |                 ~~~~

@@ -1,0 +1,7 @@
+package {
+  public class Wrong extends IShape implements Base {
+    override public function area():Float { return 0 }
+    public function get name():String { return '' }
+    public function move(dx:int, dy:int):void {}
+  }
+}

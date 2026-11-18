@@ -1,0 +1,14 @@
+package {
+  public class Main {
+    public function Main() {
+      var price:Float = 9.99
+      var n:int = 255
+      trace(Number.isInteger(price), new Float(3), price.toFixd(2))
+      var big:int = Float.MAX_SAFE_INTEGER
+      var parsed:int = Float.parseInt('7')
+      trace(n.toString('16'), price.toPrecision(2.5), big, parsed)
+      Float.NaN = 0
+      var j:Number = 1
+    }
+  }
+}

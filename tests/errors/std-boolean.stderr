@@ -1,0 +1,59 @@
+error[K0415]: `Boolean` can't be instantiated with `new`
+ --> std-boolean.kl:5:27
+  |
+5 |       var wrapped:* = new Boolean(ready)
+  |                           ^^^^^^^
+  |
+  = note: in JavaScript this creates a wrapper object, which is always truthy and never `==` a primitive value
+help: to convert a value, call `Boolean(x)` without `new`
+  |
+5 -       var wrapped:* = new Boolean(ready)
+5 +       var wrapped:* = Boolean(ready)
+
+error[K0426]: no member `toStrng` on `Boolean`
+ --> std-boolean.kl:6:28
+  |
+6 |       trace(wrapped, ready.toStrng(), ready.length, (ready as *).length)
+  |                            ^^^^^^^ unknown member
+  |
+help: a member with a similar name exists: `toString`
+  |
+6 |       trace(wrapped, ready.toString(), ready.length, (ready as *).length)
+  |                            ~~~~~~~~
+
+error[K0426]: no member `length` on `Boolean`
+ --> std-boolean.kl:6:45
+  |
+6 |       trace(wrapped, ready.toStrng(), ready.length, (ready as *).length)
+  |                                             ^^^^^^ unknown member
+  |
+help: if this JavaScript API exists, use it dynamically: `(ready as *).length`
+
+error[K0426]: no static member `parse` on `Boolean`
+ --> std-boolean.kl:7:21
+  |
+7 |       trace(Boolean.parse('true'))
+  |                     ^^^^^ unknown member
+  |
+help: if this JavaScript API exists, use it dynamically: `(Boolean as *).parse`
+
+error[K0308]: mismatched types
+ --> std-boolean.kl:8:22
+  |
+8 |       var s:String = ready.valueOf()
+  |             ------   ^^^^^^^^^^^^^^^ expected `String`, found `Boolean`
+  |             |
+  |             expected because of this type
+  |
+help: convert the value with `String()`
+  |
+8 |       var s:String = String(ready.valueOf())
+  |                      +++++++               +
+
+error[K0028]: `Boolean` is the name of a built-in class
+  --> std-boolean.kl:14:14
+   |
+14 | native class Boolean {
+   |              ^^^^^^^
+   |
+   = note: the standard library declares `Boolean` for every file; pick another name

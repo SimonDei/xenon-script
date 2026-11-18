@@ -1,0 +1,6 @@
+package shapes {
+  public class Shape {
+    public final name:String
+    public function Shape(name:String) { this.name = name }
+  }
+}

@@ -1,0 +1,8 @@
+6 N=5 5 3
+30
+banana yy
+42
+v tag
+age 32 ab
+31 age
+1

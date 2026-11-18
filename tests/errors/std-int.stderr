@@ -1,0 +1,79 @@
+error[K0501]: cannot assign to constant `MAX_VALUE`
+  --> std-int.kl:5:11
+   |
+ 5 |       int.MAX_VALUE = 0
+   |           ^^^^^^^^^
+   |
+  ::: <klass prelude>/klass/int.kl:16:32
+   |
+16 |     public static inline const MAX_VALUE:int = 2147483647
+   |                                --------- declared `const` here
+
+error[K0308]: mismatched types
+ --> std-int.kl:6:19
+  |
+6 |       var a:int = uint.MAX_VALUE
+  |             ---   ^^^^^^^^^^^^^^ expected `int`, found `uint`
+  |             |
+  |             expected because of this type
+  |
+help: convert the value with `int()`
+  |
+6 |       var a:int = int(uint.MAX_VALUE)
+  |                   ++++              +
+
+error[K0308]: mismatched types
+ --> std-int.kl:7:20
+  |
+7 |       var b:uint = Int.MIN_VALUE
+  |             ----   ^^^^^^^^^^^^^ expected `uint`, found `int`
+  |             |
+  |             expected because of this type
+  |
+help: convert the value with `uint()`
+  |
+7 |       var b:uint = uint(Int.MIN_VALUE)
+  |                    +++++             +
+
+error[K0308]: mismatched types
+ --> std-int.kl:8:19
+  |
+8 |       var c:int = n.valueOf() / 2
+  |             ---   ^^^^^^^^^^^^^^^ expected `int`, found `Float`
+  |             |
+  |             expected because of this type
+  |
+help: convert the value with `int()`
+  |
+8 |       var c:int = int(n.valueOf() / 2)
+  |                   ++++               +
+
+error[K0308]: mismatched types
+ --> std-int.kl:9:19
+  |
+9 |       var d:int = int.parseInt('7')
+  |             ---   ^^^^^^^^^^^^^^^^^ expected `int`, found `Float`
+  |             |
+  |             expected because of this type
+  |
+help: convert the value with `int()`
+  |
+9 |       var d:int = int(int.parseInt('7'))
+  |                   ++++                 +
+
+error[K0426]: no static member `MAX_VLUE` on `int`
+  --> std-int.kl:10:17
+   |
+10 |       trace(int.MAX_VLUE, new int(), a, b, c, d)
+   |                 ^^^^^^^^ unknown member
+   |
+help: a member with a similar name exists: `MAX_VALUE`
+   |
+10 |       trace(int.MAX_VALUE, new int(), a, b, c, d)
+   |                 ~~~~~~~~~
+
+error[K0415]: `int` can't be instantiated with `new`
+  --> std-int.kl:10:31
+   |
+10 |       trace(int.MAX_VLUE, new int(), a, b, c, d)
+   |                               ^^^

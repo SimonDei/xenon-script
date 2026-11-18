@@ -1,0 +1,11 @@
+package {
+  public abstract class Shape {
+    public abstract function area():Float
+    public abstract function get sides():int
+    private abstract function hidden():void
+    public abstract static function make():Shape
+    public abstract function withBody():void { }
+    public abstract var size:int
+    public function describe():String { return 'shape' }
+  }
+}

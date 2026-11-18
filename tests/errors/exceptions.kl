@@ -1,0 +1,41 @@
+package {
+  public class Main {
+    public function Main() {
+      throw 'failed'
+    }
+
+    private function f():void {
+      throw 42
+    }
+
+    private function g():void {
+      var e:Error = new Error('x')
+      throw new TypeError('bad')
+    }
+
+    private function h():void {
+      try {
+        trace(1)
+      } catch (e:Exception) {
+        trace(2)
+      } catch (e:StateException) {
+        trace(3)
+      }
+      try {} catch (e:*) {}
+      try {} catch (e:String) {}
+      try {}
+    }
+
+    private function k():int {
+      try {
+        return 1
+      } catch (e) {
+        throw e
+      }
+    }
+
+    private function m(x:*):void {
+      throw x
+    }
+  }
+}

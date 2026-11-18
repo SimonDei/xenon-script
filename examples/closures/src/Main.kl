@@ -1,0 +1,52 @@
+package {
+  public class Main {
+    private var clicks:int = 0
+    private var prefix:String = '#'
+
+    public function Main() {
+      var target:* = new EventTarget()
+      target.addEventListener('click', onClick)
+      target.dispatchEvent(new Event('click'))
+      target.dispatchEvent(new Event('click'))
+      target.removeEventListener('click', onClick)   // same function: really removed
+      target.dispatchEvent(new Event('click'))
+      trace('clicks:', clicks, onClick == this.onClick)
+
+      // a bound method keeps `this` when called by someone else
+      trace([1, 2, 3].map(format).join(' '))
+
+      var loud:Loud = new Loud()
+      var f:Function = loud.shout
+      trace(f('hi'), loud.parentShout()('hi'), f == loud.shout)
+
+      var t:Temperature = new Temperature()
+      t.celsius = 25
+      trace(t.fahrenheit)
+    }
+
+    private function onClick(e:*):void {
+      clicks++
+    }
+
+    private function format(n:int):String {
+      return prefix + n
+    }
+  }
+}
+
+class Base {
+  public function shout(s:String):String { return s + '!' }
+}
+
+class Loud extends Base {
+  override public function shout(s:String):String { return s.toUpperCase() + '!!' }
+
+  public function parentShout():Function { return super.shout }
+}
+
+class Temperature {
+  private var _c:Float = 0
+
+  public function set celsius(v:Float):void { _c = v }
+  public function get fahrenheit():Float { return _c * 9 / 5 + 32 }
+}

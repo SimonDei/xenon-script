@@ -1,0 +1,14 @@
+package {
+  // Abstract: implements IPriced but leaves `price` to subclasses.
+  public abstract class Product implements IPriced {
+    protected final title:String
+
+    protected function Product(title:String) { this.title = title }
+
+    public abstract function get price():Float
+    public abstract function category():String
+
+    // template method calling abstract members
+    public function label():String { return $'[{category()}] {title}: {price}' }
+  }
+}

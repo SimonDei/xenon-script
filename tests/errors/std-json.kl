@@ -1,0 +1,12 @@
+package {
+  public class Main {
+    public function Main() {
+      var data:* = { a: 1 }
+      trace(JSON.stringify(data, 2))                  // JS habit: indent without a replacer
+      trace(JSON.parse(42), JSON.stringfy(data))
+      var codec:* = new JSON()
+      var n:int = JSON.stringify(data)
+      trace(codec, n, JSON.parse('[]', (k:String):* => k))
+    }
+  }
+}

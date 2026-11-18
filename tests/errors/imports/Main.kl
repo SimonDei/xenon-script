@@ -1,0 +1,23 @@
+package {
+  import a.*
+  import b.*
+  import a.Dog
+  import b.Dog
+  import c.Bird
+  import c.Bird
+  import c.Secret
+  import d.*
+  import b.Cta
+  import _ from 'lodash'
+  import { readFile } from 'node:fs'
+
+  public class Main {
+    public function Main() {
+      var cat:Cat = null
+      var bird:Bird = null
+      var fish:Fish = null
+    }
+  }
+}
+
+class Cat {}

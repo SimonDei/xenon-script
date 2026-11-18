@@ -1,0 +1,12 @@
+package {
+  public class Main {
+    public function Main() {
+      var count:int = 3
+      var name:String = 'x'
+      if (count) trace('yes')
+      while (name) {}
+      if (count > 0 && name) trace('both')
+      var x:int = count ?? 1
+    }
+  }
+}

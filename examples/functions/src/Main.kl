@@ -1,0 +1,70 @@
+package {
+  import { setTimeout as delay } from 'node:timers/promises'
+
+  public class Main {
+    private var total:int = 0
+    private var label:String = 'sum'
+
+    public function Main() {
+      // arrows: lexical `this`, expression or block bodies
+      var double:Function = (x:int):int => x * 2
+      var nums:Array = [1, 2, 3, 4]
+      trace(nums.map(double).join(','), nums.filter((n:int):Boolean => n % 2 == 0).join(','))
+      nums.forEach((n:int):void => {
+        total += n
+      })
+      trace(label, total)
+
+      // function expressions: dynamic `this`, but bare member names still mean this instance (AS3)
+      var obj:* = { name: 'obj', who: function():String { return this.name + ' / ' + label } }
+      trace(obj.who())
+
+      // local functions are hoisted and can be recursive
+      trace(fib(10), isEven(10), isOdd(7))
+      function fib(n:int):int {
+        return n < 2 ? n : fib(n - 1) + fib(n - 2)
+      }
+      function isEven(n:int):Boolean { return n == 0 ? true : isOdd(n - 1) }
+      function isOdd(n:int):Boolean { return n == 0 ? false : isEven(n - 1) }
+
+      // closures capture locals
+      var counter:Function = makeCounter(10)
+      counter()
+      counter()
+      trace('counter', counter())
+
+      // a named function expression can call itself
+      var fact:Function = function f(n:int):int { return n <= 1 ? 1 : n * f(n - 1) }
+      trace('5! =', fact(5))
+
+      run()
+    }
+
+    private function makeCounter(start:int):Function {
+      var count:int = start
+      return ():int => ++count
+    }
+
+    private async function run():Promise<void> {
+      var a:int = await slowAdd(1, 2)
+      var b:String = await describe(a)
+      trace('async', a, b)
+      var results:Array = await Promise.all([slowAdd(1, 1), slowAdd(2, 2)])
+      trace('all', results.join(','))
+      var later:Function = async (ms:int):Promise<String> => {
+        await delay(ms)
+        return 'waited ' + ms
+      }
+      trace(await later(5))
+    }
+
+    private async function slowAdd(a:int, b:int):Promise<int> {
+      await delay(1)
+      return a + b
+    }
+
+    private async function describe(n:int):Promise<String> {
+      return n > 2 ? 'big' : 'small'
+    }
+  }
+}

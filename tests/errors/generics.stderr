@@ -1,0 +1,111 @@
+error[K0422]: `Box` needs 1 type argument
+ --> generics.kl:4:13
+  |
+4 |       var a:Box = null
+  |             ^^^ missing type arguments
+  |
+help: for example `Box<int>`; `new` and `is`/`as` can leave them out
+
+error[K0422]: `Box` needs 1 type argument
+ --> generics.kl:5:13
+  |
+5 |       var b:Box<int, String> = null
+  |             ^^^^^^^^^^^^^^^^ 2 given
+  |
+help: for example `Box<int>`
+
+error[K0308]: mismatched types
+  --> generics.kl:6:37
+   |
+ 6 |       var c:Box<int> = new Box<int>('text')
+   |                                     ^^^^^^ expected `int`, found `String`
+...
+27 |   public function Box(value:T) { this.value = value }
+   |                             - parameter declared here
+   |
+help: convert the value with `int()`
+   |
+ 6 |       var c:Box<int> = new Box<int>(int('text'))
+   |                                     ++++      +
+
+error[K0308]: mismatched types
+ --> generics.kl:7:27
+  |
+7 |       var d:Box<String> = new Box(5)
+  |             -----------   ^^^^^^^^^^ expected `Box<String>`, found `Box<int>`
+  |             |
+  |             expected because of this type
+
+error[K0308]: mismatched types
+ --> generics.kl:8:26
+  |
+8 |       var e:Box<Float> = new Box<int>(1)
+  |             ----------   ^^^^^^^^^^^^^^^ expected `Box<Float>`, found `Box<int>`
+  |             |
+  |             expected because of this type
+
+error[K0601]: this call takes 1 argument but 0 were given
+  --> generics.kl:9:17
+   |
+ 9 |       var f:* = new Box()
+   |                 ^^^^^^^^^ missing `value:*`
+...
+27 |   public function Box(value:T) { this.value = value }
+   |                   --- `constructor` defined here
+
+error[K0797]: can't infer the type of `T`
+ --> generics.kl:9:21
+  |
+9 |       var f:* = new Box()
+  |                     ^^^ type arguments are inferred from the arguments
+  |
+help: pass arguments that determine it, or assign the result to a variable with a type
+
+error[K0394]: `Box<int>` can't be checked at runtime
+  --> generics.kl:12:16
+   |
+12 |       if (g is Box<int>) trace('?')
+   |                ^^^^^^^^ type arguments are erased
+   |
+help: test the class: `is Box`
+
+error[K0308]: mismatched types
+  --> generics.kl:13:19
+   |
+13 |       var h:int = g.map((n) => 'x').get()
+   |             ---   ^^^^^^^^^^^^^^^^^^^^^^^ expected `int`, found `String`
+   |             |
+   |             expected because of this type
+   |
+help: convert the value with `int()`
+   |
+13 |       var h:int = int(g.map((n) => 'x').get())
+   |                   ++++                       +
+
+error[K0423]: `String` doesn't take type arguments
+  --> generics.kl:15:13
+   |
+15 |       var t:String<int> = null
+   |             ^^^^^^^^^^^
+
+error[K0796]: type parameter `T` is declared twice
+  --> generics.kl:23:14
+   |
+23 | class Dup<T, T> {}
+   |              ^
+
+error[K0426]: no member `length` on type parameter `T`
+  --> generics.kl:30:43
+   |
+30 |   public function bad(x:T):int { return x.length + x }
+   |                                           ^^^^^^ unknown member
+   |
+   = note: a type parameter can be any type, so it has no members; type parameter bounds are not supported
+
+error[K0420]: cannot find type `T`
+  --> generics.kl:31:33
+   |
+31 |   public static function make():T { return null }
+   |                                 ^ not found
+   |
+   = note: `T` is a type parameter of `Box`, which static members can't use (there's no instance to give it a type)

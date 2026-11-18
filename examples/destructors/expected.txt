@@ -1,0 +1,5 @@
+working | unlock | close second.lock | close first
+close data.txt | caught disk on fire
+close early.txt | in block | unlock | close b.lock | close a | expression form
+true false
+connected | disconnected

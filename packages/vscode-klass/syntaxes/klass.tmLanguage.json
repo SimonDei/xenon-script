@@ -1,0 +1,693 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Klass",
+  "scopeName": "source.klass",
+  "fileTypes": [
+    "kl"
+  ],
+  "patterns": [
+    {
+      "include": "#code"
+    }
+  ],
+  "repository": {
+    "code": {
+      "patterns": [
+        {
+          "include": "#comments"
+        },
+        {
+          "include": "#strings"
+        },
+        {
+          "include": "#regex"
+        },
+        {
+          "include": "#numbers"
+        },
+        {
+          "include": "#package"
+        },
+        {
+          "include": "#import"
+        },
+        {
+          "include": "#native"
+        },
+        {
+          "include": "#type-declaration"
+        },
+        {
+          "include": "#typedef"
+        },
+        {
+          "include": "#function-declaration"
+        },
+        {
+          "include": "#destructor"
+        },
+        {
+          "include": "#variable-declaration"
+        },
+        {
+          "include": "#for-header"
+        },
+        {
+          "include": "#dynamic-type"
+        },
+        {
+          "include": "#keywords"
+        },
+        {
+          "include": "#builtin-types"
+        },
+        {
+          "include": "#constants"
+        },
+        {
+          "include": "#types"
+        },
+        {
+          "include": "#function-call"
+        },
+        {
+          "include": "#operators"
+        },
+        {
+          "include": "#punctuation"
+        },
+        {
+          "include": "#braces"
+        },
+        {
+          "include": "#parens"
+        }
+      ]
+    },
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.documentation.klass",
+          "begin": "/\\*\\*(?!/)",
+          "end": "\\*/",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.begin.klass"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.end.klass"
+            }
+          },
+          "patterns": [
+            {
+              "name": "storage.type.class.doc.klass",
+              "match": "(?<=\\s|\\*)@[A-Za-z]+\\b"
+            },
+            {
+              "name": "markup.inline.raw.klass",
+              "match": "`[^`\\n]*`"
+            }
+          ]
+        },
+        {
+          "name": "comment.block.klass",
+          "begin": "/\\*",
+          "end": "\\*/",
+          "captures": {
+            "0": {
+              "name": "punctuation.definition.comment.klass"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#suppression"
+            }
+          ]
+        },
+        {
+          "name": "comment.line.double-slash.klass",
+          "begin": "//",
+          "end": "$",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.comment.klass"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#suppression"
+            }
+          ]
+        }
+      ]
+    },
+    "suppression": {
+      "match": "\\b(klass-allow)\\s+((?:K\\d{4}[\\s,]*)+)",
+      "captures": {
+        "1": {
+          "name": "keyword.other.suppression.klass"
+        },
+        "2": {
+          "name": "constant.other.error-code.klass"
+        }
+      }
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.template.klass",
+          "begin": "\\$'",
+          "end": "'|(?=$)",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.template.begin.klass"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.template.end.klass"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#escapes"
+            },
+            {
+              "include": "#interpolation"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.klass",
+          "begin": "'",
+          "end": "'|(?=$)",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.klass"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.klass"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#escapes"
+            }
+          ]
+        },
+        {
+          "name": "invalid.illegal.string.double.klass",
+          "match": "\"(?:[^\"\\\\\\n]|\\\\.)*\"?"
+        },
+        {
+          "name": "invalid.illegal.string.backtick.klass",
+          "match": "`(?:[^`\\\\]|\\\\.)*`?"
+        }
+      ]
+    },
+    "escapes": {
+      "patterns": [
+        {
+          "name": "constant.character.escape.klass",
+          "match": "\\\\(?:[nrt0bfv'\\\\{}\\\"`$]|x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|u\\{[0-9A-Fa-f]{1,6}\\})"
+        },
+        {
+          "name": "invalid.illegal.escape.klass",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "interpolation": {
+      "name": "meta.interpolation.klass",
+      "contentName": "meta.embedded.line.klass",
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.begin.klass"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.interpolation.end.klass"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#code"
+        }
+      ]
+    },
+    "braces": {
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.block.begin.klass"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.block.end.klass"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#code"
+        }
+      ]
+    },
+    "regex": {
+      "name": "string.regexp.klass",
+      "match": "(~/)((?:[^/\\\\\\[\\n]|\\\\.|\\[(?:[^\\]\\\\\\n]|\\\\.)*\\])+)(/)([dgimsuvy]*)",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.string.begin.klass"
+        },
+        "2": {
+          "patterns": [
+            {
+              "name": "constant.character.escape.regexp.klass",
+              "match": "\\\\."
+            },
+            {
+              "name": "constant.other.character-class.regexp.klass",
+              "match": "\\[(?:[^\\]\\\\]|\\\\.)*\\]"
+            },
+            {
+              "name": "keyword.operator.quantifier.regexp.klass",
+              "match": "[*+?]|\\{\\d+(?:,\\d*)?\\}"
+            },
+            {
+              "name": "keyword.control.anchor.regexp.klass",
+              "match": "[$^]|\\\\b"
+            }
+          ]
+        },
+        "3": {
+          "name": "punctuation.definition.string.end.klass"
+        },
+        "4": {
+          "name": "keyword.other.flag.regexp.klass"
+        }
+      }
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.klass",
+          "match": "\\b0[xX][0-9A-Fa-f_]+\\b"
+        },
+        {
+          "name": "constant.numeric.binary.klass",
+          "match": "\\b0[bB][01_]+\\b"
+        },
+        {
+          "name": "constant.numeric.octal.klass",
+          "match": "\\b0[oO][0-7_]+\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.klass",
+          "match": "(?:\\b\\d(?:_?\\d)*(?:\\.(?!\\.)\\d(?:_?\\d)*)?|\\.\\d(?:_?\\d)*)(?:[eE][+-]?\\d(?:_?\\d)*)?\\b"
+        }
+      ]
+    },
+    "package": {
+      "match": "\\b(package)\\b(?:\\s+([\\w.]+))?",
+      "captures": {
+        "1": {
+          "name": "keyword.other.package.klass"
+        },
+        "2": {
+          "name": "entity.name.namespace.klass"
+        }
+      }
+    },
+    "import": {
+      "patterns": [
+        {
+          "match": "\\b(import)\\s+((?:[A-Za-z_$][\\w$]*\\.)*)([A-Za-z_$][\\w$]*|\\*)(?=\\s*(?:;|$))",
+          "captures": {
+            "1": {
+              "name": "keyword.control.import.klass"
+            },
+            "2": {
+              "name": "entity.name.namespace.klass"
+            },
+            "3": {
+              "name": "entity.name.type.klass"
+            }
+          }
+        },
+        {
+          "begin": "\\b(import)\\b",
+          "end": "(?=;|$)",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.import.klass"
+            }
+          },
+          "patterns": [
+            {
+              "name": "keyword.control.from.klass",
+              "match": "\\b(?:from|as)\\b"
+            },
+            {
+              "name": "keyword.operator.wildcard.klass",
+              "match": "\\*"
+            },
+            {
+              "include": "#strings"
+            },
+            {
+              "name": "variable.other.readwrite.alias.klass",
+              "match": "[A-Za-z_$][\\w$]*"
+            },
+            {
+              "include": "#punctuation"
+            }
+          ]
+        }
+      ]
+    },
+    "native": {
+      "match": "\\b(native)\\s*(\\()\\s*('[^'\\n]*')\\s*(\\))",
+      "captures": {
+        "1": {
+          "name": "storage.modifier.klass"
+        },
+        "2": {
+          "name": "punctuation.section.parens.begin.klass"
+        },
+        "3": {
+          "name": "string.quoted.single.klass"
+        },
+        "4": {
+          "name": "punctuation.section.parens.end.klass"
+        }
+      }
+    },
+    "type-declaration": {
+      "patterns": [
+        {
+          "match": "\\b(class|interface|enum)\\s+([A-Za-z_$][\\w$]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.$1.klass"
+            },
+            "2": {
+              "name": "entity.name.type.$1.klass"
+            }
+          }
+        },
+        {
+          "match": "\\b(extends|implements)\\b",
+          "name": "storage.modifier.$1.klass"
+        }
+      ]
+    },
+    "typedef": {
+      "match": "\\b(typedef)\\s+([A-Za-z_$][\\w$]*)",
+      "captures": {
+        "1": {
+          "name": "storage.type.typedef.klass"
+        },
+        "2": {
+          "name": "entity.name.type.alias.klass"
+        }
+      }
+    },
+    "function-declaration": {
+      "match": "\\b(function)\\b(?:\\s+(?:(get|set)\\s+(?=[A-Za-z_$][\\w$]*))?(operator\\s*\\+|[A-Za-z_$][\\w$]*))?",
+      "captures": {
+        "1": {
+          "name": "storage.type.function.klass"
+        },
+        "2": {
+          "name": "storage.type.property.klass"
+        },
+        "3": {
+          "name": "entity.name.function.klass"
+        }
+      }
+    },
+    "destructor": {
+      "match": "(~)\\s*([A-Z][\\w$]*)(?=\\s*\\()",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.destructor.klass"
+        },
+        "2": {
+          "name": "entity.name.function.destructor.klass"
+        }
+      }
+    },
+    "variable-declaration": {
+      "patterns": [
+        {
+          "match": "\\b(var|const|using)\\s+(?!(?:namespace|use|with|yield|let|goto)\\b)([A-Za-z_$][\\w$]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.$1.klass"
+            },
+            "2": {
+              "name": "variable.other.declaration.klass"
+            }
+          }
+        },
+        {
+          "match": "\\b(final)\\s+(?!(?:class|interface|enum|function|typedef|public|private|protected|internal|static|inline|abstract|override|dynamic|async|native|final)\\b)([A-Za-z_$][\\w$]*)",
+          "captures": {
+            "1": {
+              "name": "storage.type.final.klass"
+            },
+            "2": {
+              "name": "variable.other.declaration.klass"
+            }
+          }
+        }
+      ]
+    },
+    "for-header": {
+      "begin": "\\b(for)\\s*(\\()",
+      "end": "\\)",
+      "beginCaptures": {
+        "1": {
+          "name": "keyword.control.loop.klass"
+        },
+        "2": {
+          "name": "punctuation.section.parens.begin.klass"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.parens.end.klass"
+        }
+      },
+      "patterns": [
+        {
+          "name": "keyword.control.loop.klass",
+          "match": "\\b(?:of|step)\\b"
+        },
+        {
+          "include": "#code"
+        }
+      ]
+    },
+    "parens": {
+      "begin": "\\(",
+      "end": "\\)",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.section.parens.begin.klass"
+        }
+      },
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.section.parens.end.klass"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#code"
+        }
+      ]
+    },
+    "dynamic-type": {
+      "match": "(?<=:)\\s*(\\*)",
+      "captures": {
+        "1": {
+          "name": "support.type.dynamic.klass"
+        }
+      }
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "storage.modifier.const.klass",
+          "match": "\\bconst\\b(?=\\s*(?:\\{|;|$|//))"
+        },
+        {
+          "name": "keyword.control.conditional.klass",
+          "match": "\\b(?:if|else|switch|case|default)\\b"
+        },
+        {
+          "name": "keyword.control.loop.klass",
+          "match": "\\b(?:while|do|for|break|continue)\\b"
+        },
+        {
+          "name": "keyword.control.flow.klass",
+          "match": "\\b(?:return|throw|await)\\b"
+        },
+        {
+          "name": "keyword.control.exception.klass",
+          "match": "\\b(?:try|catch|finally)\\b"
+        },
+        {
+          "name": "keyword.operator.expression.klass",
+          "match": "\\b(?:new|is|as|typeof|delete|in)\\b"
+        },
+        {
+          "name": "storage.modifier.klass",
+          "match": "\\b(?:public|private|protected|internal|static|inline|abstract|override|dynamic|async|native|final)\\b"
+        },
+        {
+          "name": "storage.type.klass",
+          "match": "\\b(?:function|var|const|using|class|interface|enum|typedef)\\b"
+        },
+        {
+          "name": "variable.language.klass",
+          "match": "\\b(?:this|super)\\b"
+        },
+        {
+          "name": "support.function.trace.klass",
+          "match": "\\btrace\\b"
+        },
+        {
+          "name": "invalid.illegal.reserved.klass",
+          "match": "\\b(?:namespace|use|with|yield|let|goto)\\b"
+        }
+      ]
+    },
+    "builtin-types": {
+      "patterns": [
+        {
+          "name": "support.type.primitive.klass",
+          "match": "\\b(?:int|uint|void|Float|String|Boolean|Int|UInt|Bool|Void|Any)\\b"
+        },
+        {
+          "name": "support.type.builtin.klass",
+          "match": "\\b(?:Object|Array|Vector|Function|Promise|Class|RegExp)\\b"
+        },
+        {
+          "name": "support.class.exception.klass",
+          "match": "\\b(?:Exception|ArgumentException|TypeException|RangeException|StateException|NotImplementedException)\\b"
+        }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        {
+          "name": "constant.language.boolean.klass",
+          "match": "\\b(?:true|false)\\b"
+        },
+        {
+          "name": "constant.language.null.klass",
+          "match": "\\bnull\\b"
+        },
+        {
+          "name": "constant.language.undefined.klass",
+          "match": "\\bundefined\\b"
+        },
+        {
+          "name": "variable.other.constant.klass",
+          "match": "\\b[A-Z][A-Z0-9_]+\\b(?!\\s*[.(<])"
+        }
+      ]
+    },
+    "types": {
+      "name": "entity.name.type.klass",
+      "match": "\\b[A-Z][\\w$]*\\b"
+    },
+    "function-call": {
+      "match": "([A-Za-z_$][\\w$]*)\\s*(?=\\()",
+      "captures": {
+        "1": {
+          "name": "entity.name.function.call.klass"
+        }
+      }
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "storage.type.function.arrow.klass",
+          "match": "=>|->"
+        },
+        {
+          "name": "keyword.operator.spread.klass",
+          "match": "\\.\\.\\."
+        },
+        {
+          "name": "keyword.operator.range.klass",
+          "match": "\\.\\.=?"
+        },
+        {
+          "name": "keyword.operator.optional.klass",
+          "match": "\\?\\."
+        },
+        {
+          "name": "keyword.operator.assignment.compound.klass",
+          "match": ">>>=|<<=|>>=|\\*\\*=|&&=|\\|\\|=|\\?\\?=|[-+*/%&|^]="
+        },
+        {
+          "name": "keyword.operator.comparison.klass",
+          "match": "===|!==|==|!=|<=|>=|<|>"
+        },
+        {
+          "name": "keyword.operator.logical.klass",
+          "match": "&&|\\|\\||\\?\\?|!"
+        },
+        {
+          "name": "keyword.operator.bitwise.klass",
+          "match": ">>>|<<|>>|[&|^~]"
+        },
+        {
+          "name": "keyword.operator.increment.klass",
+          "match": "\\+\\+|--"
+        },
+        {
+          "name": "keyword.operator.arithmetic.klass",
+          "match": "\\*\\*|[-+*/%]"
+        },
+        {
+          "name": "keyword.operator.assignment.klass",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.ternary.klass",
+          "match": "\\?|:"
+        }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        {
+          "name": "punctuation.terminator.statement.klass",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.separator.comma.klass",
+          "match": ","
+        },
+        {
+          "name": "punctuation.accessor.klass",
+          "match": "\\."
+        }
+      ]
+    }
+  }
+}

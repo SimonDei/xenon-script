@@ -1,0 +1,16 @@
+1 4 9 16 
+321
+0,1,2,3,4,0,5,10,0,10,20
+value_2 value_3 value_4
+acXYZ
+one+two
+0 zero
+1 small1
+2 small2
+3 big
+found b
+no zz
+item x
+item y
+tries 3
+-1 0 1

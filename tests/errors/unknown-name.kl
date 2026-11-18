@@ -1,0 +1,8 @@
+package {
+  public class Main {
+    public function Main() {
+      var message:String = 'hello'
+      trace(mesage)
+    }
+  }
+}

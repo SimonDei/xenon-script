@@ -1,0 +1,9 @@
+package {
+  public class Main {
+    public function Main() {
+      var s:Shape = new Shape()
+      var n:int = 3
+      var x:* = new n()
+    }
+  }
+}

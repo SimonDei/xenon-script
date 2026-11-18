@@ -1,0 +1,11 @@
+package {
+  public class Main {
+    private var count:int = 0
+
+    public function Main() {}
+
+    public static function helper():void {
+      trace(count)
+    }
+  }
+}

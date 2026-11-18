@@ -1,0 +1,27 @@
+package {
+  public class Child extends Base {
+    public var size:int = 1
+
+    public function Child() {
+      trace('first')
+      super('x')
+    }
+
+    public function speak():String { return 'hi' }
+    override public function move(dx:Float, dy:int):int { return 0 }
+    override public function id():String { return '' }
+    override public function get area():int { return 0 }
+    override public function hiden():void {}
+    override public function hidden():void {}
+    public function count():void {}
+    override public static function make():Base { return null }
+    public function toString():String { return '' }
+    override public var extra:int = 0
+
+    private function helper():void {
+      super('again')
+      var s:* = super
+      trace(super.size)
+    }
+  }
+}

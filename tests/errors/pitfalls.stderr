@@ -1,0 +1,60 @@
+error[K0322]: `=` assigns; it can't be used as a condition
+ --> pitfalls.kl:7:16
+  |
+7 |       if (done = true) trace('always')
+  |                ^ assignment
+  |
+  = note: to bind a value and test it, use `if (var x:T = …)`
+help: compare with `==`
+  |
+7 |       if (done == true) trace('always')
+  |                ~~
+
+error[K0322]: `=` assigns; it can't be used as a condition
+ --> pitfalls.kl:8:16
+  |
+8 |       while (x = 2) {}
+  |                ^ assignment
+  |
+  = note: to bind a value and test it, use `if (var x:T = …)`
+help: compare with `==`
+  |
+8 |       while (x == 2) {}
+  |                ~~
+
+error[K0313]: `total` must return a `int`
+  --> pitfalls.kl:13:7
+   |
+12 |     private function total():int {
+   |                              --- return type declared here
+13 |       return
+   |       ^^^^^^ missing return value
+14 |         1 + 2
+   |         - this is a separate statement
+   |
+   = note: a line break after `return` ends the statement; put the value on the same line
+
+warning[K0860]: unreachable code
+  --> pitfalls.kl:14:9
+   |
+14 |         1 + 2
+   |         ^^^^^ this is never executed
+
+warning[K0860]: unreachable code
+  --> pitfalls.kl:19:9
+   |
+19 |         42
+   |         ^^ this is never executed
+   |
+   = note: a line break after `return` ends the statement; to return this value, put it on the same line as `return`
+
+warning[K0840]: `undefined` is only supported for JavaScript compatibility
+  --> pitfalls.kl:26:13
+   |
+26 |       trace(undefined)
+   |             ^^^^^^^^^ use `null` instead
+   |
+help: use `null`
+   |
+26 |       trace(null)
+   |             ~~~~

@@ -1,0 +1,3 @@
+package events {
+  public typedef Handler = (e:*) -> void
+}

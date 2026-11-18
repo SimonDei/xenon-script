@@ -1,0 +1,50 @@
+package {
+  public class Main {
+    public static const LIMIT:uint = 4000000000
+    private static var created:int = 0
+    private var _name:String = 'anon'
+    private final id:int
+
+    public function Main() {
+      id = ++created
+      trace(id, LIMIT, Main.LIMIT > 0)
+
+      var half:int = int(7 / 2)
+      var exact:Float = 7 / 2
+      var mixed:Float = half + exact
+      trace(half, exact, mixed, 2 ** 10, 17 % 5, 1 << 4, -8 >> 1, -8 >>> 28)
+
+      name = 'Klass'
+      trace(name, name.length, describe(3), describe(1, '!'))
+
+      var maybe:String = null
+      trace(maybe ?? 'default', maybe == null, maybe != null)
+      var picked:String = half > 2 ? 'big' : 'small'
+      trace(picked, !(half > 2), typeof half)
+
+      var dyn:* = { a: 1 }
+      trace(dyn.a + 1, dyn.missing == null)
+
+      var total:Float = Main.sum(1, 2, 3.5)
+      var none:Float = Main.sum()
+      trace(total, none)
+    }
+
+    public function get name():String { return _name }
+    public function set name(value:String):void { _name = value.toUpperCase() }
+
+    private function describe(n:int, suffix:String = '.'):String {
+      return 'n=' + n + suffix
+    }
+
+    public static function sum(...values:Vector<Float>):Float {
+      var total:Float = 0
+      var i:int = 0
+      while (i < values.length) {
+        total += values[i]
+        i++
+      }
+      return total
+    }
+  }
+}

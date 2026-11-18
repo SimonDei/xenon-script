@@ -1,0 +1,17 @@
+package zoo {
+  public class Dog extends Animal {
+    private var _tricks:int
+
+    public function Dog(name:String, tricks:int = 0) {
+      super(name)
+      _tricks = tricks
+    }
+
+    override public function speak():String { return 'woof' }
+
+    // Only the getter is overridden; the inherited setter keeps working.
+    override public function get name():String { return 'Dog ' + super.name }
+
+    public function get tricks():int { return _tricks }
+  }
+}

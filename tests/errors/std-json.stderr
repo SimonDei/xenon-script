@@ -1,0 +1,51 @@
+error[K0604]: no overload of `stringify` accepts (*, int)
+ --> std-json.kl:5:13
+  |
+5 |       trace(JSON.stringify(data, 2))                  // JS habit: indent without a replacer
+  |             ^^^^^^^^^^^^^^ no matching overload
+  |
+  = note: `stringify(value:*, replacer:(key:String, value:*) -> * = null, space:int = 0):String`
+  = note: `stringify(value:*, replacer:(key:String, value:*) -> *, space:String):String`
+  = note: `stringify(value:*, keys:Vector<String>, space:int = 0):String`
+  = note: `stringify(value:*, keys:Vector<String>, space:String):String`
+
+error[K0604]: no overload of `parse` accepts (int)
+ --> std-json.kl:6:13
+  |
+6 |       trace(JSON.parse(42), JSON.stringfy(data))
+  |             ^^^^^^^^^^ no matching overload
+  |
+  = note: `parse(text:String):*`
+  = note: `parse(text:String, reviver:(key:String, value:*) -> *):*`
+
+error[K0426]: no static member `stringfy` on `JSON`
+ --> std-json.kl:6:34
+  |
+6 |       trace(JSON.parse(42), JSON.stringfy(data))
+  |                                  ^^^^^^^^ unknown member
+  |
+help: a member with a similar name exists: `stringify`
+  |
+6 |       trace(JSON.parse(42), JSON.stringify(data))
+  |                                  ~~~~~~~~~
+
+error[K0415]: `JSON` can't be instantiated with `new`
+ --> std-json.kl:7:25
+  |
+7 |       var codec:* = new JSON()
+  |                         ^^^^
+  |
+  = note: `JSON` only has static members, e.g. `JSON.parse(…)`
+
+error[K0308]: mismatched types
+ --> std-json.kl:8:19
+  |
+8 |       var n:int = JSON.stringify(data)
+  |             ---   ^^^^^^^^^^^^^^^^^^^^ expected `int`, found `String`
+  |             |
+  |             expected because of this type
+  |
+help: convert the value with `int()`
+  |
+8 |       var n:int = int(JSON.stringify(data))
+  |                   ++++                    +

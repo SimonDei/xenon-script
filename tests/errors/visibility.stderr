@@ -1,0 +1,151 @@
+error[K0441]: class `zoo.Hidden` is internal to package `zoo`
+ --> visibility/Main.kl:3:10
+  |
+3 |   import zoo.Hidden
+  |          ^^^^^^^^^^ not visible here
+  |
+ ::: visibility/zoo/Hidden.kl:2:9
+  |
+2 |   class Hidden {}
+  |         ------ declared without `public`
+  |
+help: make the class `public` to use it from other packages
+  |
+2 |   public class Hidden {}
+  |   +++++++
+
+error[K0603]: `_name` is private to `Animal`
+ --> visibility/Main.kl:9:17
+  |
+9 |       trace(dog._name, dog.legs, dog.zone)
+  |                 ^^^^^ private member
+  |
+ ::: visibility/zoo/Animal.kl:3:17
+  |
+3 |     private var _name:String = 'a'
+  |                 ----- declared `private` here
+  |
+help: use the public getter `name`
+  |
+9 |       trace(dog.name, dog.legs, dog.zone)
+  |                 ~~~~
+
+error[K0603]: `legs` is protected in `Animal`
+ --> visibility/Main.kl:9:28
+  |
+9 |       trace(dog._name, dog.legs, dog.zone)
+  |                            ^^^^ protected member
+  |
+ ::: visibility/zoo/Animal.kl:4:19
+  |
+4 |     protected var legs:int = 4
+  |                   ---- declared `protected` here
+
+error[K0603]: `zone` is internal to package `zoo`
+ --> visibility/Main.kl:9:38
+  |
+9 |       trace(dog._name, dog.legs, dog.zone)
+  |                                      ^^^^ internal member
+  |
+ ::: visibility/zoo/Animal.kl:6:9
+  |
+6 |     var zone:int = 1
+  |         ---- declared `internal` here
+
+error[K0441]: class `zoo.Hidden` is internal to package `zoo`
+  --> visibility/Main.kl:10:13
+   |
+10 |       var h:zoo.Hidden = null
+   |             ^^^^^^^^^^ not visible here
+   |
+  ::: visibility/zoo/Hidden.kl:2:9
+   |
+ 2 |   class Hidden {}
+   |         ------ declared without `public`
+   |
+help: make the class `public` to use it from other packages
+   |
+ 2 |   public class Hidden {}
+   |   +++++++
+
+error[K0603]: the constructor of `Singleton` is private to `Singleton`
+  --> visibility/Main.kl:11:29
+   |
+11 |       var s:Singleton = new Singleton()
+   |                             ^^^^^^^^^ private member
+   |
+  ::: visibility/zoo/Singleton.kl:5:22
+   |
+ 5 |     private function Singleton() {}
+   |                      --------- declared `private` here
+
+error[K0603]: the constructor of `Singleton` (inherited) is private to `Singleton`
+  --> visibility/Main.kl:17:7
+   |
+17 | class Clone extends zoo.Singleton {}
+   |       ^^^^^ private member
+   |
+  ::: visibility/zoo/Singleton.kl:5:22
+   |
+ 5 |     private function Singleton() {}
+   |                      --------- declared `private` here
+
+error[K0603]: `tag` is internal to package `zoo`
+ --> visibility/other/Dog.kl:7:19
+  |
+7 |       trace(legs, tag)
+  |                   ^^^ internal member
+  |
+ ::: visibility/zoo/Animal.kl:5:18
+  |
+5 |     internal var tag:String = 't'
+  |                  --- declared `internal` here
+
+error[K0603]: `_name` is private to `Animal`
+ --> visibility/other/Dog.kl:9:13
+  |
+9 |       trace(_name)
+  |             ^^^^^ private member
+  |
+ ::: visibility/zoo/Animal.kl:3:17
+  |
+3 |     private var _name:String = 'a'
+  |                 ----- declared `private` here
+  |
+help: use the public getter `name`
+  |
+9 |       trace(name)
+  |             ~~~~
+
+error[K0603]: `secret` is private to `Animal`
+  --> visibility/other/Dog.kl:10:7
+   |
+10 |       secret()
+   |       ^^^^^^ private member
+   |
+  ::: visibility/zoo/Animal.kl:12:22
+   |
+12 |     private function secret():void {}
+   |                      ------ declared `private` here
+
+error[K0603]: `legs` is protected in `Animal`
+ --> visibility/zoo/Keeper.kl:5:15
+  |
+5 |       trace(a.legs)
+  |               ^^^^ protected member
+  |
+ ::: visibility/zoo/Animal.kl:4:19
+  |
+4 |     protected var legs:int = 4
+  |                   ---- declared `protected` here
+
+error[K0603]: `secret` is private to `Animal`
+  --> visibility/zoo/Keeper.kl:6:9
+   |
+ 6 |       a.secret()
+   |         ^^^^^^ private member
+   |
+  ::: visibility/zoo/Animal.kl:12:22
+   |
+12 |     private function secret():void {}
+   |                      ------ declared `private` here

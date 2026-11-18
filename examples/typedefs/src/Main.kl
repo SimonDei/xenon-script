@@ -1,0 +1,61 @@
+package {
+  import geom.Point
+  import events.*
+
+  public class Main {
+    public function Main() {
+      // shapes: object literals are checked member by member
+      var a:Point = { x: 1, y: 2 }
+      var b:Point = { x: 4, y: 6, label: 'B' }
+      trace(dist(a, b), b.label, a.label == null)
+
+      // class instances fit structurally (public instance members)
+      var v:Vec = new Vec(3, 4)
+      trace(dist(a, v))
+
+      // function types: contextual parameter types for arrows
+      var add:Reducer = (acc, n) => acc + n
+      var mul:Reducer = (acc:int, n:int):int => acc * n
+      trace(fold([1, 2, 3, 4], add, 0), fold([1, 2, 3, 4], mul, 1))
+
+      var log:Array = []
+      var cfg:Config = { url: '/api', retries: 3, timeoutMs: 1500, onDone: (e) => log.push('done ' + e), headers: { accept: 'json' } }
+      cfg.retries++
+      if (cfg.onDone != null) cfg.onDone(cfg.retries)
+      trace(cfg.url, cfg.headers.accept, log.join())
+
+      // shaping untyped data (unchecked cast, erased at runtime)
+      var loaded:Config = JSON.parse('{"url":"/x","retries":1,"timeoutMs":10,"headers":{"accept":"text"}}') as Config
+      trace(loaded.url, loaded.headers.accept)
+
+      // recursive shapes and inline types
+      var list:Node = { value: 1, next: { value: 2, next: { value: 3 } } }
+      var total:int = 0
+      while (var n:Node = list) {
+        total += n.value
+        list = n.next
+      }
+      var pair:{ first:String, second:int } = { first: 'sum', second: total }
+      var twice:(int) -> int = (n) => n * 2
+      trace(pair.first, pair.second, twice(pair.second))
+    }
+
+    private function dist(p:Point, q:Point):Float {
+      return Math.hypot(q.x - p.x, q.y - p.y)
+    }
+
+    private function fold(xs:Vector<int>, f:Reducer, start:int):int {
+      var acc:int = start
+      for (var x:int of xs) acc = f(acc, x)
+      return acc
+    }
+  }
+}
+
+typedef Node = { value:int, ?next:Node }
+
+class Vec {
+  public var x:Float
+  public var y:Float
+  public function Vec(x:Float, y:Float) { this.x = x; this.y = y }
+}

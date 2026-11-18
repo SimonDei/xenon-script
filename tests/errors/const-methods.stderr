@@ -1,0 +1,121 @@
+error[K0901]: cannot change `total` in const method `report`
+  --> const-methods.kl:15:7
+   |
+15 |       total = 0
+   |       ^^^^^ assigns `this.total`
+   |
+   = note: a `const` method doesn't change the object; remove `const` if it has to
+
+error[K0901]: cannot change `total` in const method `report`
+  --> const-methods.kl:16:12
+   |
+16 |       this.total += 1
+   |            ^^^^^ assigns `this.total`
+   |
+   = note: a `const` method doesn't change the object; remove `const` if it has to
+
+error[K0901]: cannot change `_v` in const method `report`
+  --> const-methods.kl:17:7
+   |
+17 |       _v++
+   |       ^^ assigns `this._v`
+   |
+   = note: a `const` method doesn't change the object; remove `const` if it has to
+
+error[K0901]: cannot change `v` in const method `report`
+  --> const-methods.kl:18:7
+   |
+18 |       v = 3
+   |       ^ assigns `this.v`
+   |
+   = note: a `const` method doesn't change the object; remove `const` if it has to
+
+error[K0902]: cannot use non-const method `add` in const method `report`
+  --> const-methods.kl:19:7
+   |
+ 9 |     public function add(x:*):void { items.push(x) }
+   |                     --- `add` is not `const`
+...
+19 |       add(1)
+   |       ^^^
+   |
+   = note: it might change the object; mark it `const` if it doesn't
+
+error[K0902]: cannot use non-const method `add` in const method `report`
+  --> const-methods.kl:20:12
+   |
+ 9 |     public function add(x:*):void { items.push(x) }
+   |                     --- `add` is not `const`
+...
+20 |       this.add(2)
+   |            ^^^
+   |
+   = note: it might change the object; mark it `const` if it doesn't
+
+error[K0902]: cannot use non-const getter `v` in const method `report`
+  --> const-methods.kl:21:13
+   |
+10 |     public function get v():int { return _v }
+   |                         - `v` is not `const`
+...
+21 |       trace(v)
+   |             ^
+   |
+   = note: it might change the object; mark it `const` if it doesn't
+
+error[K0902]: cannot use non-const method `add` in const method `report`
+  --> const-methods.kl:22:24
+   |
+ 9 |     public function add(x:*):void { items.push(x) }
+   |                     --- `add` is not `const`
+...
+22 |       var f:Function = add
+   |                        ^^^
+   |
+   = note: it might change the object; mark it `const` if it doesn't
+
+error[K0901]: cannot change `total` in const method `report`
+  --> const-methods.kl:24:37
+   |
+24 |       var g:Function = ():void => { total = 1 }
+   |                                     ^^^^^ assigns `this.total`
+   |
+   = note: a `const` method doesn't change the object; remove `const` if it has to
+
+error[K0903]: static methods can't be `const`
+  --> const-methods.kl:29:28
+   |
+29 |     public static function make():Main const { return null }
+   |                            ^^^^
+   |
+   = note: `const` restricts `this`, which static methods don't have
+
+error[K0903]: setters can't be `const`
+  --> const-methods.kl:30:25
+   |
+30 |     public function set w(x:int):void const {}
+   |                         ^
+   |
+   = note: `const` means the method doesn't change `this`
+
+error[K0788]: `Square.area` doesn't match `IShape.area`
+  --> const-methods.kl:39:19
+   |
+35 |   function area():Float const
+   |            ---- required by this interface member
+...
+39 |   public function area():Float { return 1 }
+   |                   ^^^^
+   |
+   = note: the interface member is `const`, so the implementation must be `const` too
+
+error[K0722]: `size` doesn't match the member it overrides
+  --> const-methods.kl:47:28
+   |
+43 |   public function size():int const { return 0 }
+   |                   ---- `Base.size` declared here
+...
+47 |   override public function size():int { return 1 }
+   |                            ^^^^
+   |
+   = note: the original is `const`, so the override must be `const` too

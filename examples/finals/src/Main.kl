@@ -1,0 +1,50 @@
+package {
+  public class Main {
+    public static final STARTED:String
+    public static final PRIMES:Vector<int> = []
+    private static var instances:int = 0
+
+    static {
+      STARTED = 'boot'
+      for (var n:int of 2..20) {
+        if (Main.isPrime(n)) PRIMES.push(n)
+      }
+    }
+
+    private final id:int
+    private final label:String
+
+    public function Main(name:String = 'main') {
+      instances++
+      id = instances
+      if (name.length > 3) label = name.toUpperCase()
+      else label = name
+      trace(STARTED, PRIMES.join(','), id, label)
+      describe(7)
+      describe(-2)
+    }
+
+    private function describe(n:int):void {
+      final kind:String
+      switch (n) {
+        case 7:
+          kind = 'lucky'
+          break
+        default:
+          kind = n < 0 ? 'negative' : 'plain'
+      }
+      final parity:String
+      if (n % 2 == 0) parity = 'even'
+      else parity = 'odd'
+      trace(n, kind, parity)
+    }
+
+    private static function isPrime(n:int):Boolean {
+      for (var d:int of 2..n) {
+        if (d * d > n) break
+        if (n % d == 0) return false
+      }
+      return true
+    }
+  }
+}
