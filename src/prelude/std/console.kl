@@ -1,0 +1,47 @@
+// Standard library: JavaScript's `console` object. A namespace with static methods only (like
+// `JSON`), so the constructor is hidden and `trace(…)` stays the short form of `console.log(…)`.
+//
+// Declared: the methods Bun, Node and browsers share. Runtime-specific ones (Bun's `write`,
+// `record`, Node's `createTask`, …) are reachable through `(console as *)`.
+package klass {
+  public native class console {
+    private function console()
+
+    /** Prints values separated by spaces. A first argument like `'%s is %d'` is a format string. */
+    static function log(...data:Array):void
+    static function info(...data:Array):void
+    static function debug(...data:Array):void
+    /** Like `log`, to the error stream. */
+    static function warn(...data:Array):void
+    static function error(...data:Array):void
+    /** Like `log`, followed by the current call stack. (Not Klass's `trace(…)`.) */
+    static function trace(...data:Array):void
+
+    /** Prints `data` only if `condition` is false. Doesn't throw. */
+    static function assert(condition:Boolean = false, ...data:Array):void
+    static function clear():void
+
+    /** Prints how often it was called with this label (default `'default'`). */
+    static function count(label:String = 'default'):void
+    static function countReset(label:String = 'default'):void
+
+    /** Prints an object's structure; `options` are the runtime's inspect options. */
+    static function dir(value:*, options:* = null):void
+    static function dirxml(...data:Array):void
+    /** Prints rows of an array or object as a table, limited to the given column names. */
+    static function table(data:*):void
+    static function table(data:*, columns:Array<String>):void
+
+    /** Indents everything printed until the matching `groupEnd()`. */
+    static function group(...label:Array):void
+    /** Like `group`, collapsed in browser consoles. */
+    static function groupCollapsed(...label:Array):void
+    static function groupEnd():void
+
+    /** Starts a timer; `timeEnd` prints the elapsed time and stops it. */
+    static function time(label:String = 'default'):void
+    static function timeEnd(label:String = 'default'):void
+    /** Prints the elapsed time without stopping the timer, followed by `data`. */
+    static function timeLog(label:String = 'default', ...data:Array):void
+  }
+}

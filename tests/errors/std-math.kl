@@ -1,0 +1,10 @@
+public class Main {
+  public function Main() {
+    var whole:int = Math.floor(2.7)         // floor gives a Float: convert when you know it fits
+    var rounded:int = Math.round(1.5)
+    var i:int = Math.imul(3, 4)             // fine: always a 32-bit int
+    var bad:int = Math.imul(1.5, 2)         // imul takes ints
+    trace(Math.sqroot(4), Math.max('3', 4), Math.pow(2), Math.PI = 3)
+    trace(Math.min([1, 2]), new Math(), whole, rounded, i, bad)
+  }
+}

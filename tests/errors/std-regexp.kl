@@ -1,0 +1,14 @@
+public class Main {
+  public function Main() {
+    var digits:RegExp = ~/\d+/g
+    var bad:RegExp = new RegExp()
+    var also:RegExp = new RegExp(5)
+    var text:String = digits.exec('a1')            // exec gives the match array, not a String
+    var found:Boolean = digits.exec('a1')
+    var n:int = digits.lastIndex
+    digits.lastIndex = 'zero'
+    digits.global = true                           // flags can't change after creation
+    trace(digits.tset('x'), digits.test(5), digits.matches, bad, also, text, found, n)
+    trace(RegExp.escape('a.b'), digits.source.length, new RegExp('(', 'g'))
+  }
+}

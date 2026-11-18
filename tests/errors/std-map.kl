@@ -1,0 +1,17 @@
+public class Main {
+  public function Main() {
+    var ages:Map<String, int> = new Map<String, int>()
+    ages.set('ann', 'thirty')
+    ages.set(7, 30)
+    var name:String = ages.get('ann')
+    var wrong:Map<String, String> = ages
+    for (var [key, value]:* of ages) {
+      trace(key.toFixed(2), value.toUpperCase())
+    }
+    trace(ages.contains('ann'), ages.length, new Map(5), ages.keys().toArray().join(1))
+    ages.size = 3
+    var any:Map<*, *> = ages                      // fine: `*` is a wildcard type argument
+    var bare:Map = new Map()                      // type arguments can only be left out in `new`, `is` and `as`
+    trace(name, wrong, any, bare)
+  }
+}

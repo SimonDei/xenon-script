@@ -449,6 +449,33 @@ class Env {
       (name === "int" || name === "uint" ? natives.find((c) => c.decl.name.name === "Float") : undefined);
   }
 
+  /** The std library's `Set<T>` and `Iterator<T>`: the types `for … of` knows the element type of. */
+  private iterableClasses(): ClassInfo[] {
+    return ["klass.Set", "klass.Iterator"].flatMap((q) => this.classes.get(q) ?? []);
+  }
+
+  /** The `[K, V]` of a `Map<K, V>` (or a subclass of one), for `for (var [k, v]:* of map)`. */
+  mapArgs(t: Type): [Type, Type] | undefined {
+    const map = this.classes.get("klass.Map");
+    if (!map || t.kind !== "class" || !isSubclass(t.info, map)) return undefined;
+    const args = supertypeArgs(t.info, t.args ?? [], map) ?? [];
+    return [args[0] ?? T.any, args[1] ?? T.any];
+  }
+
+  /** The `T` of a `Set<T>` or `Iterator<T>` (or a subclass of one), for `for … of`. */
+  iterableElement(t: Type): Type | undefined {
+    if (t.kind !== "class") return undefined;
+    for (const base of this.iterableClasses()) {
+      if (isSubclass(t.info, base)) return supertypeArgs(t.info, t.args ?? [], base)?.[0] ?? T.any;
+    }
+    return undefined;
+  }
+
+  /** The std library's `RegExp` (src/prelude/std/RegExp.kl): the type of `~/…/` literals. */
+  get regexpClass(): ClassInfo | undefined {
+    return this.classes.get("klass.RegExp");
+  }
+
   /** The std library's `Promise<T>` (src/prelude/std/Promise.kl). */
   get promiseClass(): ClassInfo | undefined {
     return this.classes.get("klass.Promise");
@@ -625,7 +652,7 @@ class Env {
       if (td.params.length === 0) return target;
       const args = node.args.map((a) => this.resolveType(a, scope, false, tparams));
       const t = subst(target, bind(td.params, args));
-      return t.kind === "shape" || t.kind === "method" ? { ...t, alias: `${td.decl.name.name}<${args.map(typeToString).join(", ")}>` } : t;
+      return t.kind === "shape" || t.kind === "method" ? { ...t, alias: td.decl.name.name, aliasArgs: args } : t;
     }
     if (this.isJsImport(scope, name)) return T.any; // JS classes are dynamic until .d.ts support
     const d = this.diags.error("K0420", `cannot find type \`${name}\``, whole, "not found");
@@ -2309,7 +2336,7 @@ class BodyChecker {
     const scope = new Scope(outer);
     const t = this.valueExpr(s.iterable, outer);
     let element: Type = T.any;
-    const arrayElement = elementOf(t);
+    const arrayElement = elementOf(t) ?? this.env.iterableElement(t);
     if (arrayElement) element = arrayElement;
     else if (isPrim(t, "String")) element = T.String;
     else if (t.kind === "builtin" && t.name === "Object") {
@@ -2325,7 +2352,15 @@ class BodyChecker {
       this.diags.error("K0391", `\`${typeToString(t)}\` is not iterable`, s.iterable.span);
       element = T.error;
     }
-    this.loopVar(s.variable, element, scope, "elements");
+    // A map yields `[key, value]` pairs; destructuring them types `key` as `K` and `value` as `V`.
+    const kv = this.env.mapArgs(t);
+    if (kv) element = T.Array;
+    const pattern = s.variable.pattern;
+    if (kv && pattern?.kind === "ArrayPattern" && (!s.variable.type || isDynamic(this.resolveT(s.variable.type, this.scope)))) {
+      pattern.elements.forEach((el, i) => {
+        if (el) this.bindPattern(el, i < 2 ? kv[i]! : T.any, scope, s.variable.decl === "var" ? "var" : s.variable.decl);
+      });
+    } else this.loopVar(s.variable, element, scope, "elements");
     this.loopBody(() => this.nested(s.body, scope));
   }
 
@@ -2526,8 +2561,10 @@ class BodyChecker {
       case "Template":
         for (const p of e.parts) if (p.kind === "expr") this.valueExpr(p.expr, scope);
         return T.String;
-      case "Regex":
-        return T.RegExp;
+      case "Regex": {
+        const regexp = this.env.regexpClass;
+        return regexp ? { kind: "class", info: regexp } : T.any;
+      }
       case "Bool":
         return T.Boolean;
       case "Null":
@@ -3993,7 +4030,6 @@ function runtimeCheck(t: Type): RuntimeCheck | undefined {
         case "Array": return isDynamic(t.args[0] ?? T.any) ? { kind: "array" } : undefined;
         case "Object": return { kind: "object" };
         case "Function": case "Class": return { kind: "typeof", tag: "function" };
-        case "RegExp": return { kind: "js", name: "RegExp" };
       }
       return undefined;
     default:

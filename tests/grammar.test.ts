@@ -46,7 +46,7 @@ const cases: [string, string, string, number?][] = [
   ["public interface IShape {", "IShape", "entity.name.type.interface.klass"],
   ["public enum Direction { Up, Down }", "Direction", "entity.name.type.enum.klass"],
   ["public typedef Point = { x:Float, ?label:String }", "Point", "entity.name.type.alias.klass"],
-  ["native('Date') class Clock {", "'Date'", "string.quoted.single.klass"],
+  ["native('Date') class Moment {", "'Date'", "string.quoted.single.klass"],
   ["public function speak():String {", "speak", "entity.name.function.klass"],
   ["public function get name():String const {", "get", "storage.type.property.klass"],
   ["public function get name():String const {", "name", "entity.name.function.klass"],

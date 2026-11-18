@@ -3,7 +3,7 @@ import type { ClassInfo } from "./checker.ts";
 export type PrimName = "int" | "uint" | "Float" | "String" | "Boolean";
 
 /** Built-in reference types that are not (yet) modelled member by member. */
-export type BuiltinName = "Object" | "Array" | "Function" | "RegExp" | "Class";
+export type BuiltinName = "Object" | "Array" | "Function" | "Class";
 
 /** A type parameter (`T` in `class Box<T>` or `function map<U>()`), compared by identity. */
 export interface TypeParamInfo {
@@ -18,6 +18,8 @@ export interface MethodType {
   typeParams?: TypeParamInfo[];
   /** Typedef name, for messages (`Reducer` instead of `(acc:int, value:int) -> int`). */
   alias?: string;
+  /** Type arguments of a generic typedef (`Callback<int>`); substituted along with the type. */
+  aliasArgs?: Type[];
 }
 
 /** A member of a structural shape `{ x:Float, ?label:String, final id:int }`. */
@@ -33,6 +35,7 @@ export interface ShapeType {
   kind: "shape";
   members: Map<string, ShapeMember>;
   alias?: string;
+  aliasArgs?: Type[];
 }
 
 export type Type =
@@ -62,7 +65,6 @@ export const T = {
   /** The untyped array `Array` = `Array<*>`. */
   Array: { kind: "builtin", name: "Array", args: [{ kind: "any" }] } as Type,
   Function: { kind: "builtin", name: "Function", args: [] } as Type,
-  RegExp: { kind: "builtin", name: "RegExp", args: [] } as Type,
 };
 
 /** Names the compiler itself knows in type positions. (`Int`, `Bool`, `Void` & co. are prelude typedefs.) */
@@ -75,7 +77,6 @@ export const BUILTIN_TYPES: Record<string, Type> = {
   Object: T.Object,
   Array: T.Array,
   Function: T.Function,
-  RegExp: T.RegExp,
   Class: { kind: "builtin", name: "Class", args: [] },
 };
 
@@ -120,16 +121,21 @@ export function typeToString(t: Type): string {
     case "typeParam": return t.param.name;
     case "classRef": return `Class<${t.info.decl.name.name}>`;
     case "method": {
-      if (t.alias) return t.alias;
+      if (t.alias) return aliasText(t);
       const ps = t.params.map((p) => `${p.rest ? "..." : ""}${p.name ? p.name + ":" : ""}${typeToString(p.type)}${p.optional ? "?" : ""}`);
       return `(${ps.join(", ")}) -> ${typeToString(t.ret)}`;
     }
     case "shape": {
-      if (t.alias) return t.alias;
+      if (t.alias) return aliasText(t);
       const ms = [...t.members.values()].map((m) => `${m.readonly ? "final " : ""}${m.optional ? "?" : ""}${m.name}:${typeToString(m.type())}`);
       return `{ ${ms.join(", ")} }`;
     }
   }
+}
+
+/** `Reducer`, or `Callback<int>` for a generic typedef. */
+function aliasText(t: { alias?: string; aliasArgs?: Type[] }): string {
+  return t.aliasArgs?.length ? `${t.alias}<${t.aliasArgs.map(typeToString).join(", ")}>` : t.alias!;
 }
 
 export function sameType(a: Type, b: Type): boolean {
@@ -266,6 +272,7 @@ export function subst(t: Type, map: Map<TypeParamInfo, Type>): Type {
         ...t,
         params: t.params.map((p) => ({ ...p, type: subst(p.type, map) })),
         ret: subst(t.ret, map),
+        ...(t.aliasArgs ? { aliasArgs: t.aliasArgs.map((a) => subst(a, map)) } : {}),
       };
     case "shape": {
       const members = new Map<string, ShapeMember>();
@@ -273,7 +280,7 @@ export function subst(t: Type, map: Map<TypeParamInfo, Type>): Type {
         let cached: Type | undefined;
         members.set(k, { ...m, type: () => (cached ??= subst(m.type(), map)) });
       }
-      return { ...t, members };
+      return { ...t, members, ...(t.aliasArgs ? { aliasArgs: t.aliasArgs.map((a) => subst(a, map)) } : {}) };
     }
     default: return t;
   }

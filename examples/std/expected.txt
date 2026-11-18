@@ -37,3 +37,60 @@ parse failed: Exception
 2147483647 4294967295
 11110000 240 -2a 7 true
 2147483647
+values: 1 true [ 1, 2 ]
+cart has 3 items
+visits: 1
+visits: 2
+group
+  indented
+as a value
+7 -1 3 -2 4 -1
+7 1 5 -Infinity
+1024 12 true true
+true 0 31
+2024-02-29T12:00:00.000Z 1970-01-01T00:00:00.000Z true
+2024 2 29 4 12
+2020-03-02T00:00:00.000Z 1583127000000 2020-03-02T05:30:00.000Z
+1704067200000 true true
+{"at":"1970-01-01T00:00:00.000Z"} Thu, 29 Feb 2024 12:00:00 GMT 2/29/2024
+true null
+invalid date: RangeException
+3 2 true true false 1
+6
+each 3
+each 1
+each 2
+3,1,2,4 3,2 1
+true false true
+X
+1
+false 3
+rest 1
+rest 2
+rest 5
+rest 4
+true
+6,10,8 3,1 5,4
+a0
+b1
+true false
+5 15
+3/3
+1/1
+2/2
+5/5
+4/4
+2024-02 2024 02 3
+true true (\d{4})-(\d{2}) 0
+3 true false 0 /\w+/g
+bb 4
+i 1999 3
+3 32 false true false 2
+ANN 31
+CID 40
+71
+2 3
+ann,cid 31,40 2
+ann 31
+cid 40
+ad bbcc 2

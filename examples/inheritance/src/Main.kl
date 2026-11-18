@@ -16,7 +16,7 @@ package {
 
       var reg:Registry = new Registry()
       for (var a:Animal of all) reg.add(a)
-      trace(reg.size, reg.has('animal:Bit'), reg is Map)
+      trace(reg.size, reg.has('animal:Bit'), (reg as *) is Map)
     }
   }
 }

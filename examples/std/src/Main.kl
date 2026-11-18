@@ -7,6 +7,13 @@ package {
       json()
       numbers()
       integers()
+      logging()
+      maths()
+      dates()
+      sets()
+      iterators()
+      regexps()
+      maps()
     }
 
     private function booleans():void {
@@ -89,7 +96,157 @@ package {
       var clamped:int = big > int.MAX_VALUE ? int.MAX_VALUE : int(big)
       trace(clamped)
     }
+
+    private function logging():void {
+      // `console` is a namespace of typed static methods; `trace(…)` is the short form of `console.log(…)`
+      console.log('values:', 1, true, [1, 2])
+      console.info('%s has %d items', 'cart', 3)           // printf-style formatting
+      console.count('visits')
+      console.count('visits')
+      console.group('group')
+      console.log('indented')
+      console.groupEnd()
+      console.assert(1 + 1 == 2, 'not printed')               // warn/error go to stderr
+      var write:Function = console.log
+      write('as a value')
+    }
+
+    private function maths():void {
+      // rounding gives a Float (it can be NaN or exceed the int range): convert when it fits
+      var cell:int = int(Math.floor(7.9))
+      trace(cell, Math.round(-1.5), Math.ceil(2.1), Math.trunc(-2.9), Math.abs(-4), Math.sign(-8))
+
+      // max/min/hypot take any number of values; an array is spread
+      var scores:Array<Float> = [3, 9.5, 1]
+      trace(Math.max(1, cell, 2.5), Math.min(...scores), Math.hypot(3, 4), Math.max())
+
+      trace(Math.pow(2, 10), Math.sqrt(144), Math.PI > 3.14, Math.atan2(1, 1) * 4 == Math.PI)
+      var roll:int = 1 + int(Math.random() * 6)
+      trace(roll >= 1 && roll <= 6, Math.imul(65536, 65536), Math.clz32(1))
+    }
+
+    private function dates():void {
+      // constructors: parts (local time), text, milliseconds, copy. Months count from 0.
+      var leap:Date = new Date('2024-02-29T12:00:00Z')
+      var epoch:Date = new Date(0)
+      var copy:Date = new Date(leap)
+      trace(leap.toISOString(), epoch.toISOString(), copy.getTime() == leap.getTime())
+      trace(leap.getUTCFullYear(), leap.getUTCMonth() + 1, leap.getUTCDate(), leap.getUTCDay(), leap.getUTCHours())
+
+      // setters return the new time value; a day past the end of the month rolls over
+      var d:Date = new Date(Date.UTC(2020, 0, 31))
+      d.setUTCMonth(1)
+      trace(d.toISOString(), d.setUTCHours(5, 30), d.toISOString())
+
+      // times are Floats (milliseconds): compare with getTime(), dates don't compare directly
+      trace(Date.parse('2024-01-01T00:00:00Z'), Date.now() > 1.7e12, epoch.getTime() < leap.getTime())
+      trace(JSON.stringify({ at: epoch }), leap.toUTCString(), leap.toLocaleDateString('en-US', { timeZone: 'UTC' }))
+
+      // an invalid date isn't an error until it's formatted; check getTime() when input is untrusted
+      var bad:Date = new Date('not a date')
+      trace(Float.isNaN(bad.getTime()), bad.toJSON())
+      try {
+        bad.toISOString()
+      } catch (e:RangeException) {
+        trace('invalid date:', e.name)
+      }
+    }
+
+    private function sets():void {
+      // T is inferred from the array; duplicates collapse; add() returns the set, so calls chain
+      var ids:Set<int> = new Set([3, 1, 3, 2])
+      var tags:Set<String> = new Set<String>()
+      tags.add('red').add('green').add('red')
+      trace(ids.size, tags.size, ids.has(2), tags.delete('green'), tags.delete('blue'), tags.size)
+
+      // for…of is typed: n is an int
+      var total:int = 0
+      for (var n:int of ids) total += n
+      trace(total)
+      ids.forEach((value:int, key:int, owner:Set<int>):Void => trace('each', value))
+
+      // set algebra returns new sets; spread them into arrays to print
+      var other:Set<int> = new Set([2, 3, 4])
+      trace([...ids.union(other)].join(','), [...ids.intersection(other)].join(','), [...ids.difference(other)].join(','))
+      trace(new Set([1]).isSubsetOf(ids), ids.isSupersetOf(other), ids.isDisjointFrom(new Set([9])))
+
+      // a Klass class can extend Set: the loop variable follows the type argument
+      var seen:Seen = new Seen()
+      seen.add('x')
+      for (var s:String of seen) trace(s.toUpperCase())
+      trace(new Set([NaN, NaN]).size)      // NaN is equal to NaN inside a Set
+    }
+
+    private function iterators():void {
+      // values()/keys()/entries() return an Iterator<T>: single-use, consumed by for…of, toArray() or next()
+      var ids:Set<int> = new Set([3, 1, 2, 5, 4])
+      var it:Iterator<int> = ids.values()
+      var first:IteratorResult<int> = it.next()
+      trace(first.done, first.value)
+      for (var n:int of it) trace('rest', n)
+      trace(it.next().done)                       // used up
+
+      // lazy helpers: nothing runs until the end of the chain is consumed; U is inferred from the callback
+      var big:Array<int> = ids.values().map((n:int, i:int):int => n * 2).filter((n:int, i:int):Boolean => n > 4).toArray()
+      trace(big.join(','), ids.values().take(2).toArray().join(','), ids.values().drop(3).toArray().join(','))
+      for (var w:String of Iterator.from(['a', 'b']).map((s:String, i:int):String => s + i)) trace(w)
+      trace(ids.values().some((n:int, i:int):Boolean => n > 4), ids.values().every((n:int, i:int):Boolean => n > 4))
+      trace(ids.values().find((n:int, i:int):Boolean => n > 3), ids.values().reduce((sum:int, n:int, i:int):int => sum + n))
+      for (var pair:Array<int> of ids.entries()) trace(pair.join('/'))
+    }
+
+    private function regexps():void {
+      // `~/…/flags` literals and `new RegExp(text, flags)` are both a RegExp
+      var date:RegExp = ~/(\d{4})-(\d{2})/
+      var m:Array<String> = date.exec('on 2024-02-29')
+      trace(m[0], m[1], m[2], (m as *).index)             // index, input and groups are untyped extras
+      trace(date.exec('nothing') == null, date.test('1999-12'), date.source, date.flags.length)
+
+      // a global regex remembers where it stopped: lastIndex
+      var word:RegExp = new RegExp('\\w+', 'g')
+      var count:int = 0
+      while (word.exec('a bb ccc') != null) count++
+      trace(count, word.global, word.ignoreCase, word.lastIndex, word.toString())
+      word.lastIndex = 2
+      trace(word.exec('a bb ccc')[0], word.lastIndex)
+
+      // copies, optionally with other flags; named groups come through (m as *).groups
+      var copy:RegExp = new RegExp(word, 'i')
+      var named:Array<String> = ~/(?<year>\d{4})/.exec('in 1999')
+      trace(copy.flags, (named as *).groups.year, 'a-b-c'.split(~/-/).length)
+    }
+
+    private function maps():void {
+      // set() returns the map, so calls chain; get() is typed V (use has() first when V is a primitive)
+      var ages:Map<String, int> = new Map<String, int>()
+      ages.set('ann', 31).set('bob', 27).set('cid', 40)
+      trace(ages.size, ages.get('ann') + 1, ages.has('zed'), ages.delete('bob'), ages.delete('bob'), ages.size)
+
+      // destructuring a map loop types the pair: name is a String, age an int
+      var total:int = 0
+      for (var [name, age]:* of ages) {
+        total += age
+        trace(name.toUpperCase(), age)
+      }
+      trace(total)
+
+      // constructors: from [key, value] pairs (declare the types) and as a copy
+      var pairs:Map<String, int> = new Map([['x', 1], ['y', 2]])
+      var copy:Map<String, int> = new Map(pairs)
+      copy.set('z', 3)
+      trace(pairs.size, copy.size)
+
+      // keys(), values() and entries() are iterators
+      trace(ages.keys().toArray().join(','), ages.values().toArray().join(','), ages.entries().toArray().length)
+      ages.forEach((value:int, key:String, owner:Map<String, int>):Void => trace(key, value))
+
+      // Map.groupBy builds a Map<K, Array<T>> from a function of each item
+      var byLength:Map<int, Array<String>> = Map.groupBy(['a', 'bb', 'cc', 'd'], (w:String, i:int):int => w.length)
+      trace(byLength.get(1).join(''), byLength.get(2).join(''), byLength.size)
+    }
   }
 }
 
 typedef Point = { x:Float, y:Float }
+
+class Seen extends Set<String> {}

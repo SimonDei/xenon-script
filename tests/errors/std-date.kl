@@ -1,0 +1,13 @@
+public class Main {
+  public function Main() {
+    var d:Date = new Date(2024, 1, 29)
+    var a:Date = new Date(true)
+    var b:Date = new Date(2024)               // a year alone is milliseconds: fine, but not what you meant
+    var later:Boolean = new Date() > d        // dates don't convert to numbers implicitly
+    var year:String = d.getFullYear()
+    var when:Float = d.getYear()              // deprecated, not declared
+    d.setHours('5')
+    d.setMinutes()
+    trace(a, b, later, year, when, Date.parse(0), d.toISOStrng(), Date.now = 1)
+  }
+}

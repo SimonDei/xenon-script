@@ -1,8 +1,8 @@
 package {
   import zoo.Animal
 
-  // A Klass class extending a JavaScript class.
-  public class Registry extends Map {
+  // A Klass class extending a JavaScript class (declared as `native` in the standard library).
+  public class Registry extends Map<String, Animal> {
     public function add(a:Animal):void {
       set(a.id(), a)
     }

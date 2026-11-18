@@ -1,10 +1,10 @@
 package {
   public class Main {
     public function Main() {
-      // overloaded native constructor, renamed JS global (`Clock` is JS `Date`)
-      var epoch:Clock = new Clock(0)
-      var parsed:Clock = new Clock('2024-02-29T12:00:00Z')
-      trace(epoch.getUTCFullYear(), parsed.getUTCMonth() + 1, Clock.now() > 0)
+      // overloaded native constructor and static (`Date` is declared in the standard library)
+      var epoch:Date = new Date(0)
+      var parsed:Date = new Date('2024-02-29T12:00:00Z')
+      trace(epoch.getUTCFullYear(), parsed.getUTCMonth() + 1, Date.now() > 0)
 
       // primitives get their members from native classes (`Float` is in the standard library)
       var price:Float = 3.14159
@@ -16,7 +16,7 @@ package {
       var byAny:Array<String> = csv.split(~/[,;]/)            // split(RegExp)
       trace(byComma.length, byAny.length, csv.toUpperCase().padStart(7, '*'))
 
-      // a generic native class, and a Klass class extending it
+      // a generic native class from the standard library, and a Klass class extending it
       var ages:Map<String, int> = new Map<String, int>()
       ages.set('ann', 31).set('bob', 27)
       var annNextYear:int = ages.get('ann') + 1
@@ -37,27 +37,10 @@ class Registry extends Map<String, int> {
   public function add(key:String):void { set(key, size) }
 }
 
-native('Date') class Clock {
-  function Clock()
-  function Clock(ms:Float)
-  function Clock(text:String)
-  function getUTCFullYear():int
-  function getUTCMonth():int
-  static function now():Float
-}
-
 native class String {
   function get length():int
   function toUpperCase():String
   function padStart(length:int, fill:String = ' '):String
   function split(separator:String):Array<String>
   function split(separator:RegExp):Array<String>
-}
-
-native class Map<K, V> {
-  function Map()
-  function get size():int
-  function get(key:K):V
-  function set(key:K, value:V):Map<K, V>
-  function has(key:K):Boolean
 }

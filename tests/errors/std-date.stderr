@@ -1,0 +1,105 @@
+error[K0604]: no overload of `new Date` accepts (Boolean)
+ --> std-date.kl:4:22
+  |
+4 |     var a:Date = new Date(true)
+  |                      ^^^^ no matching overload
+  |
+  = note: `new Date()`
+  = note: `new Date(time:Float)`
+  = note: `new Date(text:String)`
+  = note: `new Date(date:Date)`
+  = note: `new Date(year:int, month:int, day:int = 1, hours:int = 0, minutes:int = 0, seconds:int = 0, milliseconds:int = 0)`
+
+error[K0315]: cannot apply `>` to `Date` and `Date`
+ --> std-date.kl:6:36
+  |
+6 |     var later:Boolean = new Date() > d        // dates don't convert to numbers implicitly
+  |                         ---------- ^ - `Date`
+  |                         |
+  |                         `Date`
+
+error[K0308]: mismatched types
+ --> std-date.kl:7:23
+  |
+7 |     var year:String = d.getFullYear()
+  |              ------   ^^^^^^^^^^^^^^^ expected `String`, found `int`
+  |              |
+  |              expected because of this type
+  |
+help: convert the value with `String()`
+  |
+7 |     var year:String = String(d.getFullYear())
+  |                       +++++++               +
+
+error[K0426]: no member `getYear` on `Date`
+ --> std-date.kl:8:24
+  |
+8 |     var when:Float = d.getYear()              // deprecated, not declared
+  |                        ^^^^^^^ unknown member
+  |
+help: if this JavaScript API exists, use it dynamically: `(d as *).getYear`
+
+error[K0604]: no overload of `setHours` accepts (String)
+ --> std-date.kl:9:5
+  |
+9 |     d.setHours('5')
+  |     ^^^^^^^^^^ no matching overload
+  |
+  = note: `setHours(hours:int):Float`
+  = note: `setHours(hours:int, minutes:int):Float`
+  = note: `setHours(hours:int, minutes:int, seconds:int):Float`
+  = note: `setHours(hours:int, minutes:int, seconds:int, milliseconds:int):Float`
+
+error[K0604]: no overload of `setMinutes` accepts ()
+  --> std-date.kl:10:5
+   |
+10 |     d.setMinutes()
+   |     ^^^^^^^^^^^^ no matching overload
+   |
+   = note: `setMinutes(minutes:int):Float`
+   = note: `setMinutes(minutes:int, seconds:int):Float`
+   = note: `setMinutes(minutes:int, seconds:int, milliseconds:int):Float`
+
+error[K0308]: mismatched types
+  --> std-date.kl:11:47
+   |
+11 |     trace(a, b, later, year, when, Date.parse(0), d.toISOStrng(), Date.now = 1)
+   |                                               ^ expected `String`, found `int`
+   |
+  ::: <klass prelude>/klass/Date.kl:25:32
+   |
+25 |     static function parse(text:String):Float
+   |                                ------ parameter declared here
+   |
+help: convert the value with `String()`
+   |
+11 |     trace(a, b, later, year, when, Date.parse(String(0)), d.toISOStrng(), Date.now = 1)
+   |                                               +++++++ +
+
+error[K0426]: no member `toISOStrng` on `Date`
+  --> std-date.kl:11:53
+   |
+11 |     trace(a, b, later, year, when, Date.parse(0), d.toISOStrng(), Date.now = 1)
+   |                                                     ^^^^^^^^^^ unknown member
+   |
+help: a member with a similar name exists: `toISOString`
+   |
+11 |     trace(a, b, later, year, when, Date.parse(0), d.toISOString(), Date.now = 1)
+   |                                                     ~~~~~~~~~~~
+
+error[K0505]: cannot assign to method `now`
+  --> std-date.kl:11:72
+   |
+11 |     trace(a, b, later, year, when, Date.parse(0), d.toISOStrng(), Date.now = 1)
+   |                                                                        ^^^
+
+error[K0308]: mismatched types
+  --> std-date.kl:11:78
+   |
+11 |     trace(a, b, later, year, when, Date.parse(0), d.toISOStrng(), Date.now = 1)
+   |                                                                              ^ expected `() -> Float`, found `int`
+   |
+  ::: <klass prelude>/klass/Date.kl:23:27
+   |
+23 |     static function now():Float
+   |                           ----- `now` declared as `() -> Float` here

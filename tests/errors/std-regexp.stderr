@@ -1,0 +1,105 @@
+error[K0604]: no overload of `new RegExp` accepts ()
+ --> std-regexp.kl:4:26
+  |
+4 |     var bad:RegExp = new RegExp()
+  |                          ^^^^^^ no matching overload
+  |
+  = note: `new RegExp(pattern:String, flags:String = '')`
+  = note: `new RegExp(source:RegExp)`
+  = note: `new RegExp(source:RegExp, flags:String)`
+
+error[K0604]: no overload of `new RegExp` accepts (int)
+ --> std-regexp.kl:5:27
+  |
+5 |     var also:RegExp = new RegExp(5)
+  |                           ^^^^^^ no matching overload
+  |
+  = note: `new RegExp(pattern:String, flags:String = '')`
+  = note: `new RegExp(source:RegExp)`
+  = note: `new RegExp(source:RegExp, flags:String)`
+
+error[K0308]: mismatched types
+ --> std-regexp.kl:6:23
+  |
+6 |     var text:String = digits.exec('a1')            // exec gives the match array, not a String
+  |              ------   ^^^^^^^^^^^^^^^^^ expected `String`, found `Array<String>`
+  |              |
+  |              expected because of this type
+
+error[K0308]: mismatched types
+ --> std-regexp.kl:7:25
+  |
+7 |     var found:Boolean = digits.exec('a1')
+  |               -------   ^^^^^^^^^^^^^^^^^ expected `Boolean`, found `Array<String>`
+  |               |
+  |               expected because of this type
+
+error[K0308]: mismatched types
+  --> std-regexp.kl:9:24
+   |
+ 9 |     digits.lastIndex = 'zero'
+   |                        ^^^^^^ expected `int`, found `String`
+   |
+  ::: <klass prelude>/klass/RegExp.kl:43:19
+   |
+43 |     var lastIndex:int
+   |                   --- `lastIndex` declared as `int` here
+   |
+help: convert the value with `int()`
+   |
+ 9 |     digits.lastIndex = int('zero')
+   |                        ++++      +
+
+error[K0504]: `global` has a getter but no setter
+  --> std-regexp.kl:10:12
+   |
+10 |     digits.global = true                           // flags can't change after creation
+   |            ^^^^^^
+   |
+  ::: <klass prelude>/klass/RegExp.kl:31:18
+   |
+31 |     function get global():Boolean
+   |                  ------ getter declared here
+
+error[K0426]: no member `tset` on `RegExp`
+  --> std-regexp.kl:11:18
+   |
+11 |     trace(digits.tset('x'), digits.test(5), digits.matches, bad, also, text, found, n)
+   |                  ^^^^ unknown member
+   |
+help: a member with a similar name exists: `test`
+   |
+11 |     trace(digits.test('x'), digits.test(5), digits.matches, bad, also, text, found, n)
+   |                  ~~~~
+
+error[K0308]: mismatched types
+  --> std-regexp.kl:11:41
+   |
+11 |     trace(digits.tset('x'), digits.test(5), digits.matches, bad, also, text, found, n)
+   |                                         ^ expected `String`, found `int`
+   |
+  ::: <klass prelude>/klass/RegExp.kl:21:24
+   |
+21 |     function test(text:String):Boolean
+   |                        ------ parameter declared here
+   |
+help: convert the value with `String()`
+   |
+11 |     trace(digits.tset('x'), digits.test(String(5)), digits.matches, bad, also, text, found, n)
+   |                                         +++++++ +
+
+error[K0426]: no member `matches` on `RegExp`
+  --> std-regexp.kl:11:52
+   |
+11 |     trace(digits.tset('x'), digits.test(5), digits.matches, bad, also, text, found, n)
+   |                                                    ^^^^^^^ unknown member
+   |
+help: if this JavaScript API exists, use it dynamically: `(digits as *).matches`
+
+error[K0426]: no static member `escape` on `RegExp`
+  --> std-regexp.kl:12:18
+   |
+12 |     trace(RegExp.escape('a.b'), digits.source.length, new RegExp('(', 'g'))
+   |                  ^^^^^^ unknown member
+   |
+help: if this JavaScript API exists, use it dynamically: `(RegExp as *).escape`

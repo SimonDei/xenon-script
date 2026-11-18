@@ -6,10 +6,17 @@ import { DiagnosticBag } from "./diagnostics.ts";
 import { parseFile } from "./parser.ts";
 import preludeSource from "./prelude/Prelude.kl" with { type: "text" };
 import stdBoolean from "./prelude/std/Boolean.kl" with { type: "text" };
+import stdConsole from "./prelude/std/console.kl" with { type: "text" };
+import stdDate from "./prelude/std/Date.kl" with { type: "text" };
 import stdFloat from "./prelude/std/Float.kl" with { type: "text" };
 import stdInt from "./prelude/std/int.kl" with { type: "text" };
 import stdUint from "./prelude/std/uint.kl" with { type: "text" };
+import stdIterator from "./prelude/std/Iterator.kl" with { type: "text" };
 import stdJSON from "./prelude/std/JSON.kl" with { type: "text" };
+import stdMap from "./prelude/std/Map.kl" with { type: "text" };
+import stdMath from "./prelude/std/Math.kl" with { type: "text" };
+import stdRegExp from "./prelude/std/RegExp.kl" with { type: "text" };
+import stdSet from "./prelude/std/Set.kl" with { type: "text" };
 import stdPromise from "./prelude/std/Promise.kl" with { type: "text" };
 import { SourceFile } from "./source.ts";
 
@@ -19,11 +26,18 @@ export const PRELUDE_PACKAGE = "klass";
 export const PRELUDE: SourceInput[] = [
   { path: "klass/Prelude.kl", text: preludeSource },
   { path: "klass/Boolean.kl", text: stdBoolean },
+  { path: "klass/console.kl", text: stdConsole },
+  { path: "klass/Date.kl", text: stdDate },
   { path: "klass/Float.kl", text: stdFloat },
   { path: "klass/int.kl", text: stdInt },
   { path: "klass/uint.kl", text: stdUint },
+  { path: "klass/Iterator.kl", text: stdIterator },
   { path: "klass/JSON.kl", text: stdJSON },
+  { path: "klass/Map.kl", text: stdMap },
+  { path: "klass/Math.kl", text: stdMath },
   { path: "klass/Promise.kl", text: stdPromise },
+  { path: "klass/RegExp.kl", text: stdRegExp },
+  { path: "klass/Set.kl", text: stdSet },
 ];
 
 export interface SourceInput {

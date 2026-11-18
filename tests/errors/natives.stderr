@@ -1,66 +1,69 @@
-error[K0604]: no overload of `new Clock` accepts (Boolean)
- --> natives.kl:4:25
+error[K0604]: no overload of `new Date` accepts (Boolean)
+ --> natives.kl:4:24
   |
-4 |       var c:Clock = new Clock(true)
-  |                         ^^^^^ no matching overload
+4 |       var d:Date = new Date(true)
+  |                        ^^^^ no matching overload
   |
-  = note: `new Clock()`
-  = note: `new Clock(ms:Float)`
+  = note: `new Date()`
+  = note: `new Date(time:Float)`
+  = note: `new Date(text:String)`
+  = note: `new Date(date:Date)`
+  = note: `new Date(year:int, month:int, day:int = 1, hours:int = 0, minutes:int = 0, seconds:int = 0, milliseconds:int = 0)`
 
 error[K0426]: no member `toUppercase` on `String`
  --> natives.kl:6:15
   |
-6 |       trace(t.toUppercase(), t.newApi(), c.getYear(), t.split(5))
+6 |       trace(t.toUppercase(), t.newApi(), d.getYear(), t.split(5))
   |               ^^^^^^^^^^^ unknown member
   |
 help: a member with a similar name exists: `toUpperCase`
   |
-6 |       trace(t.toUpperCase(), t.newApi(), c.getYear(), t.split(5))
+6 |       trace(t.toUpperCase(), t.newApi(), d.getYear(), t.split(5))
   |               ~~~~~~~~~~~
 
 error[K0426]: no member `newApi` on `String`
  --> natives.kl:6:32
   |
-6 |       trace(t.toUppercase(), t.newApi(), c.getYear(), t.split(5))
+6 |       trace(t.toUppercase(), t.newApi(), d.getYear(), t.split(5))
   |                                ^^^^^^ unknown member
   |
 help: if this JavaScript API exists, use it dynamically: `(t as *).newApi`
 
-error[K0426]: no member `getYear` on `Clock`
+error[K0426]: no member `getYear` on `Date`
  --> natives.kl:6:44
   |
-6 |       trace(t.toUppercase(), t.newApi(), c.getYear(), t.split(5))
+6 |       trace(t.toUppercase(), t.newApi(), d.getYear(), t.split(5))
   |                                            ^^^^^^^ unknown member
   |
-help: if this JavaScript API exists, use it dynamically: `(c as *).getYear`
+help: if this JavaScript API exists, use it dynamically: `(d as *).getYear`
 
 error[K0604]: no overload of `split` accepts (int)
  --> natives.kl:6:55
   |
-6 |       trace(t.toUppercase(), t.newApi(), c.getYear(), t.split(5))
+6 |       trace(t.toUppercase(), t.newApi(), d.getYear(), t.split(5))
   |                                                       ^^^^^^^ no matching overload
   |
   = note: `split(separator:String):Array<String>`
   = note: `split(separator:RegExp):Array<String>`
 
 error[K0820]: native members can't have a body
-  --> natives.kl:17:27
+  --> natives.kl:16:23
    |
-17 |   function getMonth():int { return 0 }
-   |                           ^^^^^^^^^^^^
+16 |   function size():int { return 0 }
+   |                       ^^^^^^^^^^^^
    |
    = note: a native class only describes an existing JavaScript class
 
 error[K0821]: native fields can't have an initial value
-  --> natives.kl:18:20
+  --> natives.kl:17:20
    |
-18 |   var offset:int = 5
+17 |   var offset:int = 5
    |                    ^
    |
    = note: the value comes from JavaScript
 
 error[K0820]: native classes can't have `static` blocks
-  --> natives.kl:19:3
+  --> natives.kl:18:3
    |
-19 |   static { trace('x') }
+18 |   static { trace('x') }
    |   ^^^^^^^^^^^^^^^^^^^^^

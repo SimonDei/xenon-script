@@ -1,0 +1,13 @@
+public class Main {
+  public function Main() {
+    var ids:Set<int> = new Set([1, 2, 3])
+    var it:Iterator<int> = new Iterator()
+    var strings:Iterator<String> = ids.values()
+    var step:IteratorResult<int> = ids.values().next()
+    var text:String = step.value
+    for (var s:String of ids.values()) trace(s)
+    var doubled:Array<String> = ids.values().map((n:int, i:int):int => n * 2).toArray()
+    trace(ids.values().take('2'), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
+    trace(Iterator.from(5), ids.values().next().missing)
+  }
+}

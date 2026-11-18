@@ -1,0 +1,15 @@
+public class Main {
+  public function Main() {
+    var ids:Set<int> = new Set([1, 2])
+    ids.add('three')
+    var wrong:Set<String> = ids
+    var n:String = ids.size
+    for (var s:String of ids) trace(s)
+    ids.remove(1)
+    trace(ids.length, ids.union([1]), ids.valuez(), new Set(5), wrong, n)
+    ids.size = 3
+    var bare:Set = new Set()                     // type arguments can only be left out in `new`, `is` and `as`
+    var any:Set<*> = ids                         // fine: `*` is a wildcard type argument
+    any.add('anything')
+  }
+}

@@ -20,6 +20,10 @@ const SAMPLES: Record<string, unknown[]> = {
   Float: [0, 42, -7, 3.75, 1e21, -0.5e-7, NaN, Infinity],
   int: [0, 42, -7, 2147483647, -2147483648],
   uint: [0, 7, 4294967295],
+  Date: [new Date(0), new Date(1.7e12), new Date(2024, 1, 29, 12, 30, 15, 500)],
+  // `next` lives on the concrete iterators, not on Iterator.prototype
+  RegExp: [/ab+/gi, new RegExp('x', 'dy')],
+  Iterator: [[1, 2, 3].values(), new Set([4, 5]).values(), new Map([[1, 2]]).keys()],
 };
 
 /** Does a runtime value match a declared (primitive) type name? Unknown types aren't checked. */
@@ -77,12 +81,13 @@ for (const file of stdFiles) {
           continue;
         }
         const target = isStatic ? ctor : proto;
-        if (!(name in target)) {
+        const onSample = !isStatic && (SAMPLES[decl.name.name] ?? []).some((v) => name in Object(v));
+        if (!(name in target) && !onSample) {
           problems.push(`${where}: missing at runtime`);
           continue;
         }
         if (m.kind === "Method" && !m.accessor) {
-          const fn = target[name];
+          const fn = target[name] ?? (SAMPLES[decl.name.name] ?? []).map((v) => (Object(v) as Record<string, unknown>)[name]).find((f) => f !== undefined);
           if (typeof fn !== "function") problems.push(`${where}: declared as a method, but is a ${typeof fn}`);
           else {
             const declared = arity.get(`${isStatic}:${name}`)!;
@@ -102,7 +107,7 @@ for (const file of stdFiles) {
         if (m.kind === "Method" && (m.accessor === "set" || m.params.some((p) => !p.init && !p.rest))) continue;
         for (const sample of samples) {
           const value = m.kind === "Method" && !m.accessor
-            ? (proto[name] as (this: unknown) => unknown).call(sample)
+            ? ((Object(sample) as Record<string, (this: unknown) => unknown>)[name] as (this: unknown) => unknown).call(sample)
             : (Object(sample) as Record<string, unknown>)[name];
           if (!matches(ret, value)) problems.push(`${where}: returned ${JSON.stringify(value)} for ${JSON.stringify(sample)}`);
         }

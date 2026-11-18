@@ -1,0 +1,13 @@
+public class Main {
+  public function Main() {
+    console.lg('typo')
+    console.count(5)
+    console.assert('yes', 'text')
+    console.table([1], 'a')
+    console.time()
+    var c:* = new console()
+    var d:console = null
+    console.log = null
+    trace(c, d, (console as *).write)
+  }
+}
