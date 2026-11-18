@@ -1,7 +1,6 @@
-package {
-  public class Main {
-    public function Main() {
-      trace('hi')
-    }
+// Files directly in the source root may leave out `package { … }`.
+public class Main {
+  public function Main() {
+    trace('hi')
   }
 }

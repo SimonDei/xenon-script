@@ -143,7 +143,12 @@ function collectClasses(asts: A.KlassFile[], diags: DiagnosticBag, typedefs: Map
     }
     for (const decl of ast.privateDecls) {
       if (decl.modifiers.visibility) {
-        diags.error("K0025", "file-private classes can't have a visibility modifier", decl.modifiers.visibility.span);
+        const d = diags.error("K0025", "file-private classes can't have a visibility modifier", decl.modifiers.visibility.span);
+        if (!ast.packageSpan && ast.decls[0]) {
+          // A root file without a package block: only the declaration named after the file is shared.
+          d.note(`in \`${fileName}.kl\`, only \`${ast.decls[0].name.name}\` is visible to other files; the others are file-private`)
+            .help(`to share \`${decl.name.name}\`, move it to its own file \`${decl.name.name}.kl\``);
+        }
       }
       add(decl, true);
     }
@@ -154,7 +159,12 @@ function collectClasses(asts: A.KlassFile[], diags: DiagnosticBag, typedefs: Map
 function checkMain(classes: Map<string, ClassInfo>, main: string, files: SourceFile[], diags: DiagnosticBag): ClassInfo | undefined {
   const info = classes.get(main);
   if (!info || info.filePrivate) {
-    if (files.length > 0) {
+    // The main class's file exists but is broken: that error already explains the missing class.
+    const mainPath = `${main.split(".").join("/")}.kl`;
+    const brokenMain = files.some((f) => f.path === mainPath) && diags.items.some((d) => d.severity === "error" && d.labels.some((l) => l.span.file.path === mainPath));
+    if (brokenMain) {
+      // reported already
+    } else if (files.length > 0) {
       const d = diags.error("K0001", `main class \`${main}\` not found`);
       const candidates = [...classes.values()].filter((c) => !c.filePrivate && !c.file.file.prelude).map((c) => c.qname);
       if (candidates.length > 0) d.note(`classes in this project: ${candidates.map((c) => `\`${c}\``).join(", ")}`);

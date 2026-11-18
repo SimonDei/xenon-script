@@ -27,6 +27,7 @@
 - [x] G1: generics — type parameters on classes, interfaces, methods, local functions and typedefs (no bounds), substitution through inheritance and interfaces, invariant type arguments, inference of method/constructor type arguments from arguments (arrows: from their return type) and the expected type, raw types for `is`/`as`, erased output
 - [x] G2: native declarations — `native` / `native('JsName')` classes (no output, referenced by JS name, no imports), bodiless public members, statics and constructors, overloads with first-match selection (K0604), closed member sets with the `(x as *)` escape hatch, primitive members from natives named `String`/`Float`/`Boolean`, Klass classes extending natives (K0820/K0821 for code in natives)
 - [~] G3: std library — infrastructure done (`src/prelude/std/*.kl` loaded with the prelude, no output; conformance test `tests/std.test.ts` checks every member against Bun incl. return types on sample values; `examples/std`). Types declared: `Boolean`, `Float` (JS `Number`; members shared by `int`/`uint`; overloads where JS has no real default, e.g. `toPrecision()`; `parseInt`/`MAX_SAFE_INTEGER` are `Float`; `is…` tests take `*`; the `Number` global is hidden with a fix-it to `Float`), `int`, `uint` (separate files; AS3-style `MAX_VALUE`/`MIN_VALUE` as `inline` constants — compile-time literals, no runtime object; `native('Number') … extends Float` so they keep the number members, `valueOf()` returns `int`/`uint`; inherited statics like `int.parseInt` stay `Float`), `JSON` (namespace: hidden constructor, `new JSON()` is K0415; overloaded `stringify` with function/key-list replacer and int/String indent; `rawJSON`/`isRawJSON` left out as not yet portable). Fixes along the way: `Boolean(x)`/`String(x)`/`Float(x)` stay casts when a std class has that name; method closures on primitives emit `x.m.bind(x)`; `new Boolean(…)` explains wrapper objects; overload notes print signatures as declared; integer literals before `.` are parenthesized in JS (`(255).toString(16)`); the conformance test also checks static constants' values against their types; `inline` constants allowed in natives; a typedef naming a class (or a primitive with a std class) works as a value: `Int.MAX_VALUE`, `Int(x)`, `Bool(x)`; `Int`/`UInt`/`Bool`/`Any`/`Void` moved from the compiler's built-in table to prelude typedefs
+- [x] Root files may leave out `package { … }` (top-level package only; subfolders keep it, K0010 with a wrapping fix-it)
 - [x] Part D (partial): VS Code syntax highlighting only — `packages/vscode-klass` (TextMate grammar, language configuration, README with install steps), tested with VS Code's tokenizer (`tests/grammar.test.ts`); no language server / IntelliSense yet
 - [ ] Part G: rest of G3 (`String`, `Array`/`Vector<T>`, `Math`, `RegExp`, `Promise<T>`, `Map`, `Set`, `Date`, `console`), G4 migration
 - [ ] Part D (VS Code extension) and Later items
@@ -93,6 +94,16 @@ package com.zoo {                       // dotted package = directory com/zoo/
 
 class DogHelper { ... }                 // after the package block: file-private helper (AS3 rule)
 ```
+**Files in the source root** (the top-level package) may leave out the package block:
+```actionscript
+// src/Main.kl
+import _ from 'lodash';
+
+public class Main { ... }               // the declaration named after the file: visible to other files
+class Helper { ... }                    // any other declaration: file-private, as after a package block
+```
+A second `public` declaration in such a file is K0025 (with "move it to its own file"). Files in folders still need `package com.zoo { … }`: without it K0010 offers a fix-it wrapping the file, and the file is still read as part of that package so files importing it get no follow-up errors.
+
 JS output: `out/com/zoo/Dog.js`, an ES module with `export class Dog`, relative imports between classes, JS imports emitted as-is.
 
 ### A2. Types

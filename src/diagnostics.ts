@@ -335,8 +335,12 @@ function renderEdits(
       // Multi-line insertion: inserted lines are marked `+` in the gutter, rustc-style.
       const lines = patched.split("\n");
       const width = gutter(line).replace(/\x1b\[[0-9;]*m/g, "").length - 2;
+      // An insertion at the very end of a file leaves an empty last line: nothing to show there.
+      // (Then every remaining line is inserted text.)
+      const trailing = lines.length > 1 && lines.at(-1) === "" && original === "";
+      if (trailing) lines.pop();
       lines.forEach((l, i) => {
-        const last = i === lines.length - 1;
+        const last = i === lines.length - 1 && !trailing;
         const g = last ? gutter(line) : p.paint(`${"+".padStart(width)} |`, "bold", "green");
         out.push(`${g} ${last ? expandTabs(l) : p.paint(expandTabs(l), "green")}`);
       });

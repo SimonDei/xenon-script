@@ -1,0 +1,21 @@
+error[K0025]: file-private classes can't have a visibility modifier
+  --> no-package/Main.kl:13:1
+   |
+13 | public class Other {}
+   | ^^^^^^
+   |
+   = note: in `Main.kl`, only `Main` is visible to other files; the others are file-private
+help: to share `Other`, move it to its own file `Other.kl`
+
+error[K0010]: expected a `package` block
+ --> no-package/zoo/Dog.kl:1:1
+  |
+1 | public class Dog {
+  | ^^^^^^ this file is in the folder `zoo/`
+  |
+  = note: only files directly in the source root may leave out the package block
+help: wrap the file in its package
+  |
++ | package zoo {
+1 | public class Dog {
++ | }

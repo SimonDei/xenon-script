@@ -147,9 +147,21 @@ export class Parser {
   parseFile(): A.KlassFile {
     const result: A.KlassFile = { file: this.file, packageName: [], imports: [], decls: [], privateDecls: [] };
     if (!this.is("package")) {
-      this.diags.error("K0010", "expected a `package` block", this.tok.span, "every Klass file starts with `package`")
-        .help("wrap the file in a package block, e.g. `package { … }`");
-      return result;
+      const dir = this.file.path.includes("/") ? this.file.path.slice(0, this.file.path.lastIndexOf("/")) : "";
+      if (dir === "") return this.parseRootFile(result);
+      // Files in folders must say their package (only the top-level package may be left out).
+      const pkg = dir.split("/").join(".");
+      const text = this.file.text;
+      this.diags.error("K0010", "expected a `package` block", this.tok.span, `this file is in the folder \`${dir}/\``)
+        .note("only files directly in the source root may leave out the package block")
+        .help(`wrap the file in its package`, [
+          { span: span(this.file, 0, 0), text: `package ${pkg} {\n` },
+          { span: span(this.file, text.length, text.length), text: `${text.endsWith("\n") ? "" : "\n"}}\n` },
+        ]);
+      // Recover: read the file as if it were wrapped in that package, so its classes still exist
+      // (no follow-up "cannot find" errors in files that import them).
+      result.packageName = dir.split("/").map((name) => ({ name, span: span(this.file, 0, 0) }));
+      return this.parseRootFile(result);
     }
     const pkgTok = this.advance();
     try {
@@ -185,6 +197,38 @@ export class Parser {
         if (!(e instanceof ParseError)) throw e;
         this.syncTopLevel(start);
       }
+    }
+    return result;
+  }
+
+  /**
+   * A file directly in the source root may leave out `package { … }`: imports and declarations
+   * then sit at the top level. The declaration named after the file is the file's (package-level)
+   * declaration; any others are file-private, as if they followed a package block.
+   */
+  private parseRootFile(result: A.KlassFile): A.KlassFile {
+    const fileName = this.file.path.replace(/^.*\//, "").replace(/\.kl$/, "");
+    while (this.tok.kind !== "eof") {
+      const start = this.i;
+      try {
+        if (this.is("import")) result.imports.push(this.parseImport());
+        else if (this.is("package")) this.fail("a file without a package block can't have one later", this.tok.span, "move the declarations above into it, or remove it");
+        else {
+          const decl = this.parseTypeDecl();
+          if (decl.name.name === fileName && result.decls.length === 0) result.decls.push(decl);
+          else result.privateDecls.push(decl);
+        }
+      } catch (e) {
+        if (!(e instanceof ParseError)) throw e;
+        // No package block to close here: a `}` is part of the broken code, keep skipping.
+        do this.syncTopLevel(start); while (this.is("}") && this.advance());
+      }
+    }
+    // No declaration named after the file: take the first `public` one as the file's declaration,
+    // so the usual file-name check reports it.
+    if (result.decls.length === 0) {
+      const pub = result.privateDecls.findIndex((d) => d.modifiers.visibility?.value === "public");
+      if (pub >= 0) result.decls.push(...result.privateDecls.splice(pub, 1));
     }
     return result;
   }

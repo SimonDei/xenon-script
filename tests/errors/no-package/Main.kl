@@ -1,0 +1,13 @@
+import zoo.Dog
+
+public class Main {
+  public function Main() {
+    trace(new Dog().name, new Helper().id)
+  }
+}
+
+class Helper {
+  public var id:int = 1
+}
+
+public class Other {}

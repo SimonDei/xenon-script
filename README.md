@@ -4,18 +4,17 @@ A class-based, statically typed language in the style of ActionScript 3 that com
 vanilla ES-module JavaScript and can import any JavaScript/npm library.
 
 ```actionscript
-package {
-  import { basename } from 'node:path'
+// a file in the source root may leave out `package { … }`; in folders: `package com.zoo { … }`
+import { basename } from 'node:path'
 
-  public class Main {
-    private var count:int
-    public static const GREETING:String = 'Hello'
+public class Main {
+  private var count:int
+  public static const GREETING:String = 'Hello'
 
-    public function Main() {
-      count += 2
-      trace($'{GREETING}, count is {count}')   // template strings: $'…{expr}…'
-      trace(~/^ma/i.test(basename('/x/Main.kl')))
-    }
+  public function Main() {
+    count += 2
+    trace($'{GREETING}, count is {count}')   // template strings: $'…{expr}…'
+    trace(~/^ma/i.test(basename('/x/Main.kl')))
   }
 }
 ```
