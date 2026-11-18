@@ -528,6 +528,10 @@
     "keywords": {
       "patterns": [
         {
+          "name": "variable.other.property.klass",
+          "match": "(?<=[\\w$)\\]]\\.|\\?\\.)(?:package|import|class|interface|enum|typedef|extends|implements|function|var|const|final|using|public|private|protected|internal|static|inline|abstract|override|dynamic|async|native|if|else|switch|case|default|while|do|for|in|break|continue|return|throw|try|catch|finally|new|this|super|is|as|typeof|delete|await|true|false|null|undefined|void|namespace|use|with|yield|let|goto)\\b"
+        },
+        {
           "name": "storage.modifier.const.klass",
           "match": "\\bconst\\b(?=\\s*(?:\\{|;|$|//))"
         },

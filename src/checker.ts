@@ -476,6 +476,11 @@ class Env {
     return this.classes.get("klass.RegExp");
   }
 
+  /** The std library's `Array<T>` (src/prelude/std/Array.kl): the members of the built-in array type. */
+  get arrayClass(): ClassInfo | undefined {
+    return this.classes.get("klass.Array");
+  }
+
   /** The std library's `Promise<T>` (src/prelude/std/Promise.kl). */
   get promiseClass(): ClassInfo | undefined {
     return this.classes.get("klass.Promise");
@@ -2601,7 +2606,12 @@ class BodyChecker {
       case "Index": {
         const obj = this.valueExpr(e.object, scope);
         const idx = this.valueExpr(e.index, scope);
-        if (isPrim(obj, "String")) return T.String;
+        if (isPrim(obj, "String")) {
+          if (!isNumeric(idx) && !isDynamic(idx)) {
+            this.diags.error("K0308", "mismatched types", e.index.span, `a \`String\` index is an \`int\`, found \`${typeToString(idx)}\``);
+          }
+          return T.String;
+        }
         const element = elementOf(obj);
         if (element && !isDynamic(element)) {
           if (!isNumeric(idx) && !isDynamic(idx)) {
@@ -2741,8 +2751,11 @@ class BodyChecker {
     if (e.object.kind === "Super") return this.superMember(e);
     this.memberObject = e.object;
     this.memberName = e.name.name;
-    const obj = this.valueExpr(e.object, scope);
+    let obj = this.valueExpr(e.object, scope);
     this.memberObject = undefined;
+    // The built-in array type has its members from the std class `Array<T>`.
+    const arrayClass = this.env.arrayClass;
+    if (obj.kind === "builtin" && obj.name === "Array" && arrayClass) obj = { kind: "class", info: arrayClass, args: [obj.args[0] ?? T.any] };
     const name = e.name.name;
     switch (obj.kind) {
       case "any":
@@ -2770,7 +2783,6 @@ class BodyChecker {
       case "prim": {
         const cls = this.env.primClass(obj.name);
         if (!cls) {
-          if (obj.name === "String") return name === "length" ? T.int : T.any; // until the std library declares String
           this.diags.error("K0426", `no member \`${name}\` on \`${obj.name}\``, e.name.span);
           return T.error;
         }
@@ -3866,6 +3878,9 @@ class BodyChecker {
         this.diags.error("K0793", `\`${target.name.name}\` is read-only in \`${typeToString(objType)}\``, target.name.span)
           .note("it is declared `final` in the shape");
       }
+      // A primitive's members come from its std class (`s.length = 3` is a getter-only write).
+      const primCls = objType?.kind === "prim" ? this.env.primClass(objType.name) : undefined;
+      if (primCls) return { type, commit: this.memberWrite(target.name.name, primCls, target.name.span, false) };
       if (objType?.kind === "class" || objType?.kind === "classRef") {
         const own = target.object.kind === "This" || (objType.kind === "classRef" && objType.info === this.info);
         return { type, commit: this.memberWrite(target.name.name, objType.info, target.name.span, own) };

@@ -1,0 +1,197 @@
+error[K0308]: mismatched types
+ --> std-array.kl:4:15
+  |
+4 |     nums.push('four')
+  |               ^^^^^^ expected `int`, found `String`
+  |
+help: convert the value with `int()`
+  |
+4 |     nums.push(int('four'))
+  |               ++++      +
+
+error[K0308]: mismatched types
+ --> std-array.kl:5:19
+  |
+5 |     nums.length = 'x'
+  |                   ^^^ expected `int`, found `String`
+  |
+help: convert the value with `int()`
+  |
+5 |     nums.length = int('x')
+  |                   ++++   +
+
+error[K0308]: mismatched types
+ --> std-array.kl:6:30
+  |
+6 |     var text:Array<String> = nums.map((x:int, i:int):int => x * 2)
+  |              -------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Array<String>`, found `Array<int>`
+  |              |
+  |              expected because of this type
+
+error[K0308]: mismatched types
+ --> std-array.kl:7:28
+  |
+7 |     var firstText:String = nums.at(0)
+  |                   ------   ^^^^^^^^^^ expected `String`, found `int`
+  |                   |
+  |                   expected because of this type
+  |
+help: convert the value with `String()`
+  |
+7 |     var firstText:String = String(nums.at(0))
+  |                            +++++++          +
+
+error[K0426]: no member `sorted` on `Array`
+ --> std-array.kl:8:16
+  |
+8 |     trace(nums.sorted(), nums.size, nums.contains(2), nums.add(1), nums.join(1))
+  |                ^^^^^^ unknown member
+  |
+help: a member with a similar name exists: `sort`
+  |
+8 |     trace(nums.sort(), nums.size, nums.contains(2), nums.add(1), nums.join(1))
+  |                ~~~~
+
+error[K0426]: no member `size` on `Array`
+ --> std-array.kl:8:31
+  |
+8 |     trace(nums.sorted(), nums.size, nums.contains(2), nums.add(1), nums.join(1))
+  |                               ^^^^ unknown member
+  |
+help: if this JavaScript API exists, use it dynamically: `(nums as *).size`
+
+error[K0426]: no member `contains` on `Array`
+ --> std-array.kl:8:42
+  |
+8 |     trace(nums.sorted(), nums.size, nums.contains(2), nums.add(1), nums.join(1))
+  |                                          ^^^^^^^^ unknown member
+  |
+help: if this JavaScript API exists, use it dynamically: `(nums as *).contains`
+
+error[K0426]: no member `add` on `Array`
+ --> std-array.kl:8:60
+  |
+8 |     trace(nums.sorted(), nums.size, nums.contains(2), nums.add(1), nums.join(1))
+  |                                                            ^^^ unknown member
+  |
+help: if this JavaScript API exists, use it dynamically: `(nums as *).add`
+
+error[K0308]: mismatched types
+ --> std-array.kl:8:78
+  |
+8 |     trace(nums.sorted(), nums.size, nums.contains(2), nums.add(1), nums.join(1))
+  |                                                                              ^ expected `String`, found `int`
+  |
+help: convert the value with `String()`
+  |
+8 |     trace(nums.sorted(), nums.size, nums.contains(2), nums.add(1), nums.join(String(1)))
+  |                                                                              +++++++ +
+
+error[K0604]: no overload of `sort` accepts (int)
+ --> std-array.kl:9:5
+  |
+9 |     nums.sort(5)
+  |     ^^^^^^^^^ no matching overload
+  |
+  = note: `sort():Array<T>`
+  = note: `sort(compare:(a:T, b:T) -> Float):Array<T>`
+
+error[K0308]: mismatched types
+  --> std-array.kl:10:15
+   |
+10 |     nums.sort((a:String, b:String):int => 0)
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(a:int, b:int) -> Float`, found `(a:String, b:String) -> int`
+   |
+  ::: <klass prelude>/klass/Array.kl:53:27
+   |
+53 |     function sort(compare:(a:T, b:T) -> Float):Array<T>
+   |                           ------------------- parameter declared here
+
+error[K0308]: mismatched types
+  --> std-array.kl:11:23
+   |
+11 |     trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
+   |                       ^^^^^^^^^^^^^^^^ expected `(item:int, index:int, array:Array<int>) -> Boolean`, found `(x:int) -> int`
+
+error[K0308]: mismatched types
+  --> std-array.kl:11:52
+   |
+11 |     trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
+   |                                                    ^ expected `(item:int, index:int, array:Array<int>) -> Boolean`, found `int`
+
+error[K0604]: no overload of `reduce` accepts ()
+  --> std-array.kl:11:56
+   |
+11 |     trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
+   |                                                        ^^^^^^^^^^^ no matching overload
+   |
+   = note: `reduce(callback:(accumulator:T, item:T, index:int, array:Array<T>) -> T):T`
+   = note: `reduce(callback:(accumulator:U, item:T, index:int, array:Array<T>) -> U, initial:U):U`
+
+error[K0311]: this expression has no value
+  --> std-array.kl:11:71
+   |
+11 |     trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
+   |                                                                       ^^^^^^^^^^^^^^^ returns `void`
+
+error[K0308]: mismatched types
+  --> std-array.kl:11:84
+   |
+11 |     trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
+   |                                                                                    ^ expected `(item:int, index:int, array:Array<int>) -> void`, found `int`
+
+error[K0604]: no overload of `from` accepts (int)
+  --> std-array.kl:11:88
+   |
+11 |     trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
+   |                                                                                        ^^^^^^^^^^ no matching overload
+   |
+   = note: `from(source:Array<T>):Array<T>`
+   = note: `from(source:Set<T>):Array<T>`
+   = note: `from(source:Iterator<T>):Array<T>`
+   = note: `from(source:String):Array<String>`
+   = note: `from(source:Array<T>, mapper:(item:T, index:int) -> U):Array<U>`
+   = note: `from(source:Set<T>, mapper:(item:T, index:int) -> U):Array<U>`
+   = note: `from(source:Iterator<T>, mapper:(item:T, index:int) -> U):Array<U>`
+   = note: `from(source:{ length:int }, mapper:(item:*, index:int) -> U):Array<U>`
+
+error[K0604]: no overload of `slice` accepts (String)
+  --> std-array.kl:12:11
+   |
+12 |     trace(nums.slice('a'), nums.splice(), nums.indexOf('x'), nums.fill())
+   |           ^^^^^^^^^^ no matching overload
+   |
+   = note: `slice():Array<T>`
+   = note: `slice(start:int):Array<T>`
+   = note: `slice(start:int, end:int):Array<T>`
+
+error[K0604]: no overload of `splice` accepts ()
+  --> std-array.kl:12:28
+   |
+12 |     trace(nums.slice('a'), nums.splice(), nums.indexOf('x'), nums.fill())
+   |                            ^^^^^^^^^^^ no matching overload
+   |
+   = note: `splice(start:int):Array<T>`
+   = note: `splice(start:int, deleteCount:int):Array<T>`
+   = note: `splice(start:int, deleteCount:int, ...items:Array<T>):Array<T>`
+
+error[K0308]: mismatched types
+  --> std-array.kl:12:56
+   |
+12 |     trace(nums.slice('a'), nums.splice(), nums.indexOf('x'), nums.fill())
+   |                                                        ^^^ expected `int`, found `String`
+   |
+help: convert the value with `int()`
+   |
+12 |     trace(nums.slice('a'), nums.splice(), nums.indexOf(int('x')), nums.fill())
+   |                                                        ++++   +
+
+error[K0604]: no overload of `fill` accepts ()
+  --> std-array.kl:12:62
+   |
+12 |     trace(nums.slice('a'), nums.splice(), nums.indexOf('x'), nums.fill())
+   |                                                              ^^^^^^^^^ no matching overload
+   |
+   = note: `fill(value:T):Array<T>`
+   = note: `fill(value:T, start:int):Array<T>`
+   = note: `fill(value:T, start:int, end:int):Array<T>`

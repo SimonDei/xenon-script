@@ -1,0 +1,16 @@
+public class Main {
+  public function Main() {
+    var nums:Array<int> = [3, 1, 2]
+    nums.push('four')
+    nums.length = 'x'
+    var text:Array<String> = nums.map((x:int, i:int):int => x * 2)
+    var firstText:String = nums.at(0)
+    trace(nums.sorted(), nums.size, nums.contains(2), nums.add(1), nums.join(1))
+    nums.sort(5)
+    nums.sort((a:String, b:String):int => 0)
+    trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
+    trace(nums.slice('a'), nums.splice(), nums.indexOf('x'), nums.fill())
+    var bare:Array = [1, 'two']
+    trace(bare.push(true), bare.map((x:*, i:int):* => x).length, text, firstText)
+  }
+}

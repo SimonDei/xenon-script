@@ -1,6 +1,6 @@
 /** JavaScript globals usable from Klass code, all typed `*` (A0/A7). `Error` and its subclasses are deliberately absent (A6c). */
 export const JS_GLOBALS = new Set([
-  "Object", "Array", "Symbol", "WeakMap", "WeakSet",
+  "Object", "Symbol", "WeakMap", "WeakSet",
   "WeakRef", "Proxy", "Reflect", "Intl", "BigInt", "ArrayBuffer", "DataView", "Uint8Array", "Int8Array",
   "Uint16Array", "Int16Array", "Uint32Array", "Int32Array", "Float32Array", "Float64Array", "TextEncoder", "TextDecoder",
   "URL", "URLSearchParams", "AbortController", "AbortSignal", "Blob", "FormData", "Headers", "Request", "Response",

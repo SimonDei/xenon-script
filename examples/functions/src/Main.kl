@@ -7,7 +7,7 @@ package {
 
     public function Main() {
       // arrows: lexical `this`, expression or block bodies
-      var double:Function = (x:int):int => x * 2
+      var double:(int) -> int = (x:int):int => x * 2
       var nums:Array = [1, 2, 3, 4]
       trace(nums.map(double).join(','), nums.filter((n:int):Boolean => n % 2 == 0).join(','))
       nums.forEach((n:int):void => {

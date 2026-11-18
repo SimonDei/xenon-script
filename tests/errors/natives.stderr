@@ -44,7 +44,9 @@ error[K0604]: no overload of `split` accepts (int)
   |                                                       ^^^^^^^ no matching overload
   |
   = note: `split(separator:String):Array<String>`
+  = note: `split(separator:String, limit:int):Array<String>`
   = note: `split(separator:RegExp):Array<String>`
+  = note: `split(separator:RegExp, limit:int):Array<String>`
 
 error[K0820]: native members can't have a body
   --> natives.kl:16:23

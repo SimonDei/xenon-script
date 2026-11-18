@@ -17,9 +17,3 @@ native class Widget {
   var offset:int = 5
   static { trace('x') }
 }
-
-native class String {
-  function toUpperCase():String
-  function split(separator:String):Array<String>
-  function split(separator:RegExp):Array<String>
-}

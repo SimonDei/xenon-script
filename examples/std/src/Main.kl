@@ -14,6 +14,8 @@ package {
       iterators()
       regexps()
       maps()
+      strings()
+      arrays()
     }
 
     private function booleans():void {
@@ -243,6 +245,59 @@ package {
       // Map.groupBy builds a Map<K, Array<T>> from a function of each item
       var byLength:Map<int, Array<String>> = Map.groupBy(['a', 'bb', 'cc', 'd'], (w:String, i:int):int => w.length)
       trace(byLength.get(1).join(''), byLength.get(2).join(''), byLength.size)
+    }
+
+    private function strings():void {
+      var t:String = '  Hello, World  '.trim()
+      trace(t.length, t.charAt(1), t.at(-1), t.charCodeAt(0), t[4], String.fromCharCode(72, 105), '😀'.length)
+
+      // searching (positions are ints, -1 when absent) and extracting
+      trace(t.indexOf('o'), t.indexOf('o', 5), t.lastIndexOf('o'), t.includes('World'), t.startsWith('Hello'), t.endsWith('World'))
+      trace(t.slice(7), t.slice(-5), t.substring(7, 5), t.split(', ').join('|'), 'a-b-c'.split('-', 2).length)
+
+      // replace: text, regex (g = all), or a function of the match
+      trace(t.replace('o', '0'), t.replaceAll('o', '0'), t.replace(~/[aeiou]/g, '*'), 'x1y2'.replace(~/(\d)/g, '<$1>'))
+      trace(t.replaceAll(~/o/g, (m:String):String => m.toUpperCase()))
+
+      // regular expressions: match gives the match array or null; matchAll an iterator of matches
+      var m:Array<String> = 'id=42'.match(~/(\w+)=(\d+)/)
+      trace(m[1], m[2], 'no'.match(~/\d/) == null, 'a1b2'.match(~/\d/g).join(','), 'a1b2'.search(~/\d/))
+      for (var hit:Array<String> of 'a1b22'.matchAll(~/\d+/g)) trace(hit[0])
+
+      trace('ab'.repeat(3), '7'.padStart(3, '0'), '7'.padEnd(3, '.'), 'Hi'.toUpperCase(), 'b'.localeCompare('a'), 'é'.normalize('NFD').length)
+
+      // a method used as a value stays bound to its string
+      var has:(String) -> Boolean = t.includes
+      trace(has('World'), has('xyz'))
+    }
+
+    private function arrays():void {
+      // mutating methods: push/pop/shift/unshift/splice/reverse/sort/fill change the array
+      var nums:Array<int> = [3, 1, 2, 10]
+      trace(nums.push(5, 6), nums.pop(), nums.shift(), nums.unshift(0), nums.join('-'), nums.at(-1))
+      nums.sort()                                                   // by text: 0,1,10,2,3,5
+      trace(nums.join(','))
+      nums.sort((a:int, b:int):int => a - b)                        // numbers need a comparator
+      trace(nums.join(','), nums.toSorted((a:int, b:int):int => b - a).join(','), nums.join(','))
+
+      // callbacks are typed; map<U> infers U from what the callback returns
+      var labels:Array<String> = nums.map((x:int, i:int):String => 'n' + x)
+      trace(labels.join(','), nums.filter((x:int, i:int):Boolean => x > 2).length)
+      trace(nums.reduce((acc:int, x:int, i:int, all:Array<int>):int => acc + x), nums.reduce((acc:String, x:int, i:int, all:Array<int>):String => acc + x, ''))
+      trace(nums.some((x:int):Boolean => x > 9), nums.every((x:int):Boolean => x > 9), nums.find((x:int):Boolean => x > 2), nums.findIndex((x:int):Boolean => x > 2))
+
+      // copies leave the array alone; splice removes and inserts
+      var removed:Array<int> = nums.splice(1, 2, 7, 8, 9)
+      trace(removed.join(','), nums.join(','), nums.slice(-2).join(','), nums.concat([1], [2]).join(','), nums.toReversed().join(','), nums.with(0, 99)[0])
+
+      // statics: Array.isArray, Array.of, Array.from (array, set, iterator, string, or length + mapper)
+      trace(Array.isArray(nums), Array.of(1, 2).length, Array.from('abc').join('+'), Array.from(new Set([5, 6])).join(','))
+      trace(Array.from({ length: 3 }, (_:*, i:int):int => i * i).join(','), [[1], [2]].flat().length)
+
+      // iterators, and length is assignable (it cuts the array)
+      trace(nums.keys().toArray().join(','), nums.entries().toArray()[0].join(':'))
+      nums.length = 2
+      trace(nums.length, nums.includes(0), nums.indexOf(99))
     }
   }
 }

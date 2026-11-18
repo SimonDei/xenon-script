@@ -1,0 +1,15 @@
+public class Main {
+  public function Main() {
+    var s:String = 'Hello'
+    var size:String = s.length                      // length is an int
+    s.length = 3
+    trace(s.lenght, s.toUppercase(), s.contains('e'), s.trimLeft(), s.substr(1, 2))
+    trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
+    trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
+    trace(new String('x'), String.raw, s.push('!'), s[0.5], s['a'])
+    var pos:int = s.indexOf('l') + 'x'
+    var code:String = s.charCodeAt(0)
+    var parts:Array<int> = s.split(',')
+    trace(size, pos, code, parts)
+  }
+}

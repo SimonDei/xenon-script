@@ -20,6 +20,8 @@ const SAMPLES: Record<string, unknown[]> = {
   Float: [0, 42, -7, 3.75, 1e21, -0.5e-7, NaN, Infinity],
   int: [0, 42, -7, 2147483647, -2147483648],
   uint: [0, 7, 4294967295],
+  Array: [[3, 1, 2], ["b", "a"], []],
+  String: ["", "abc", "Hello World", "  padded  ", "a-b"],
   Date: [new Date(0), new Date(1.7e12), new Date(2024, 1, 29, 12, 30, 15, 500)],
   // `next` lives on the concrete iterators, not on Iterator.prototype
   RegExp: [/ab+/gi, new RegExp('x', 'dy')],

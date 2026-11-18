@@ -96,6 +96,9 @@ const cases: [string, string, string, number?][] = [
   ["trace(x ?? y, a?.b, ...rest)", "...", "keyword.operator.spread.klass"],
   ["if (x == undefined) return", "undefined", "constant.language.undefined.klass"],
   ["var let:int = 1", "let", "invalid.illegal.reserved.klass"],
+  ["trace(nums.with(0, 99), p.catch(f), x?.default)", "with", "variable.other.property.klass"],
+  ["trace(nums.with(0, 99), p.catch(f), x?.default)", "catch", "variable.other.property.klass"],
+  ["trace(nums.with(0, 99), p.catch(f), x?.default)", "default", "variable.other.property.klass"],
   ["trace(this.name, super.x)", "trace", "support.function.trace.klass"],
   ["var f:Function = async (u:String):Promise<*> => await load(u)", "await", "keyword.control.flow.klass"],
   // comments

@@ -51,6 +51,14 @@ error[K0308]: mismatched types
   |               |
   |               expected because of this type
 
+error[K0426]: no member `toFixed` on `String`
+ --> std-map.kl:9:17
+  |
+9 |       trace(key.toFixed(2), value.toUpperCase())
+  |                 ^^^^^^^ unknown member
+  |
+help: if this JavaScript API exists, use it dynamically: `(key as *).toFixed`
+
 error[K0426]: no member `toUpperCase` on `int`
  --> std-map.kl:9:35
   |
@@ -84,6 +92,17 @@ error[K0604]: no overload of `new Map` accepts (int)
    = note: `new Map()`
    = note: `new Map(pairs:Array<Array<*>>)`
    = note: `new Map(other:Map<K, V>)`
+
+error[K0308]: mismatched types
+  --> std-map.kl:11:85
+   |
+11 |     trace(ages.contains('ann'), ages.length, new Map(5), ages.keys().toArray().join(1))
+   |                                                                                     ^ expected `String`, found `int`
+   |
+help: convert the value with `String()`
+   |
+11 |     trace(ages.contains('ann'), ages.length, new Map(5), ages.keys().toArray().join(String(1)))
+   |                                                                                     +++++++ +
 
 error[K0504]: `size` has a getter but no setter
   --> std-map.kl:12:10

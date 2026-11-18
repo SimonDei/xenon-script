@@ -5,11 +5,13 @@ import { generate, type OutputFile } from "./codegen.ts";
 import { DiagnosticBag } from "./diagnostics.ts";
 import { parseFile } from "./parser.ts";
 import preludeSource from "./prelude/Prelude.kl" with { type: "text" };
+import stdArray from "./prelude/std/Array.kl" with { type: "text" };
 import stdBoolean from "./prelude/std/Boolean.kl" with { type: "text" };
 import stdConsole from "./prelude/std/console.kl" with { type: "text" };
 import stdDate from "./prelude/std/Date.kl" with { type: "text" };
 import stdFloat from "./prelude/std/Float.kl" with { type: "text" };
 import stdInt from "./prelude/std/int.kl" with { type: "text" };
+import stdString from "./prelude/std/String.kl" with { type: "text" };
 import stdUint from "./prelude/std/uint.kl" with { type: "text" };
 import stdIterator from "./prelude/std/Iterator.kl" with { type: "text" };
 import stdJSON from "./prelude/std/JSON.kl" with { type: "text" };
@@ -25,11 +27,13 @@ export const PRELUDE_PACKAGE = "klass";
 /** The prelude: runtime classes (`Prelude.kl`) and the standard library's native declarations (`std/`). */
 export const PRELUDE: SourceInput[] = [
   { path: "klass/Prelude.kl", text: preludeSource },
+  { path: "klass/Array.kl", text: stdArray },
   { path: "klass/Boolean.kl", text: stdBoolean },
   { path: "klass/console.kl", text: stdConsole },
   { path: "klass/Date.kl", text: stdDate },
   { path: "klass/Float.kl", text: stdFloat },
   { path: "klass/int.kl", text: stdInt },
+  { path: "klass/String.kl", text: stdString },
   { path: "klass/uint.kl", text: stdUint },
   { path: "klass/Iterator.kl", text: stdIterator },
   { path: "klass/JSON.kl", text: stdJSON },
