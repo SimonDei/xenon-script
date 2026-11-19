@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { join, relative, resolve } from "node:path";
-import { build, type Config } from "./build.ts";
+import { build, type Config, runCommand } from "./build.ts";
 import { ENTRY_FILE } from "./codegen.ts";
 import { explain } from "./codes.ts";
 import { watchProject } from "./watch.ts";
@@ -24,6 +24,7 @@ Options:
   --max-errors <n>   (default: 50)
   --deny-warnings    treat warnings as errors
   --quiet            only print diagnostics
+  --no-source-maps   don't write .js.map files (stack traces then show the JavaScript)
   --run              (watch) run the program after each successful build
   --no-clear         (watch) don't clear the terminal between builds
 `;
@@ -49,7 +50,7 @@ async function loadConfig(args: string[]): Promise<{
     }
     if (!a.startsWith("--")) throw new UsageError(`unexpected argument \`${a}\``);
     const name = a.slice(2);
-    if (["deny-warnings", "quiet", "run", "no-clear"].includes(name)) flags.set(name, true);
+    if (["deny-warnings", "quiet", "run", "no-clear", "no-source-maps"].includes(name)) flags.set(name, true);
     else {
       const v = args[++i];
       if (v === undefined) throw new UsageError(`missing value for \`${a}\``);
@@ -85,6 +86,7 @@ async function loadConfig(args: string[]): Promise<{
     maxErrors: Number(flags.get("max-errors") ?? project.maxErrors ?? 50),
     denyWarnings: flags.has("deny-warnings") || !!project.denyWarnings,
     quiet: flags.has("quiet"),
+    sourceMaps: !flags.has("no-source-maps") && project.sourceMaps !== false,
   };
   return { command, config, rest, root, projectPath, flags };
 }
@@ -114,7 +116,7 @@ async function main(argv: string[]): Promise<number> {
       case "run": {
         if (!(await build(config, root, true))) return 1;
         const entry = join(resolve(root, config.out), ENTRY_FILE);
-        const child = Bun.spawn(["bun", entry, ...rest], { stdio: ["inherit", "inherit", "inherit"] });
+        const child = Bun.spawn(runCommand(config, entry, rest), { stdio: ["inherit", "inherit", "inherit"] });
         return await child.exited;
       }
       case "watch":

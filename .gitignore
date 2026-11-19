@@ -12,6 +12,7 @@ examples/*/out/
 examples/*/.test-out/
 tests/.prelude-out/
 tests/.watch-project/
+tests/.sourcemap-project/
 tests/.build-project/
 
 # code coverage

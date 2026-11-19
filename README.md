@@ -54,5 +54,9 @@ bun test                                                        # unit, end-to-e
 UPDATE=1 bun test tests/errors.test.ts                          # rewrite diagnostic snapshots
 ```
 
+Builds write a source map (`.js.map`) next to every module, so debuggers, browsers and
+`node --enable-source-maps` show the `.xn` files; `xenon run` maps stack traces itself (Bun ignores
+maps of plain `.js`). `--no-source-maps` turns them off.
+
 Project layout: `src/` (compiler), `examples/<name>/src` + `expected.txt` (golden end-to-end tests),
 `tests/errors/*.xn` + `*.stderr` (rendered diagnostics snapshots).

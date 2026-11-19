@@ -1,6 +1,6 @@
 import { mkdir, readdir, rm, rmdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
-import { compileProject, type CompileResult, type SourceInput } from "./compiler.ts";
+import { type CompileOptions, compileProject, type CompileResult, type SourceInput } from "./compiler.ts";
 import { renderAll, renderSummary } from "./diagnostics.ts";
 import type { Span } from "./source.ts";
 
@@ -13,6 +13,20 @@ export interface Config {
   maxErrors: number;
   denyWarnings: boolean;
   quiet: boolean;
+  /** Emit `.js.map` files next to the output (on unless `--no-source-maps` / `"sourceMaps": false`). */
+  sourceMaps: boolean;
+}
+
+/** The command that runs a built program: with source maps, stack traces are mapped back to the `.xn` files. */
+export function runCommand(config: Config, entry: string, args: string[]): string[] {
+  const preload = config.sourceMaps ? ["--preload", join(import.meta.dir, "runtime", "stacktrace.ts")] : [];
+  return ["bun", ...preload, entry, ...args];
+}
+
+/** Compiler options for a project: maps point from the output directory back to the sources. */
+export function compileOptions(config: Config, root: string): CompileOptions {
+  const sourceRoot = relative(resolve(root, config.out), resolve(root, config.src)).split(sep).join("/");
+  return { main: config.main, maxErrors: config.maxErrors, sourceMaps: config.sourceMaps ? { sourceRoot } : undefined };
 }
 
 /** Reads every `.xn` file below the source root (paths use `/`). */
@@ -57,7 +71,7 @@ export async function build(config: Config, root: string, emit: boolean): Promis
   const srcRoot = resolve(root, config.src);
   const started = performance.now();
   const sources = await readSources(srcRoot);
-  const result = compileProject(sources, { main: config.main, maxErrors: config.maxErrors });
+  const result = compileProject(sources, compileOptions(config, root));
   const ok = report(result, config, srcRoot);
   if (!ok) return false;
   if (emit) await syncOutputs(result, resolve(root, config.out));
@@ -70,7 +84,10 @@ export async function build(config: Config, root: string, emit: boolean): Promis
 }
 
 
-/** Writes outputs whose content changed; returns how many files were written. */
+/** Source maps ride along with their module: they aren't counted as outputs of their own. */
+export const isMap = (path: string) => path.endsWith(".map");
+
+/** Writes outputs whose content changed; returns how many modules were written (maps not counted). */
 export async function writeOutputs(result: CompileResult, outDir: string): Promise<number> {
   let written = 0;
   for (const o of result.outputs) {
@@ -79,7 +96,7 @@ export async function writeOutputs(result: CompileResult, outDir: string): Promi
     const existing = Bun.file(target);
     if (!(await existing.exists()) || (await existing.text()) !== o.text) {
       await Bun.write(target, o.text);
-      written++;
+      if (!isMap(o.path)) written++;
     }
   }
   return written;
@@ -114,7 +131,7 @@ export async function removeStale(outDir: string, before: Set<string>, now: Set<
     if (now.has(path)) continue;
     const target = join(outDir, path);
     await rm(target, { force: true });
-    removed++;
+    if (!isMap(path)) removed++;
     for (let dir = dirname(target); dir.startsWith(outDir + sep); dir = dirname(dir)) {
       if ((await readdir(dir).catch(() => ["?"])).length > 0) break;
       await rmdir(dir).catch(() => {});

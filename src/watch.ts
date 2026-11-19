@@ -1,6 +1,6 @@
 import { type FSWatcher, watch } from "node:fs";
 import { join, resolve } from "node:path";
-import { type Config, readSources, report, syncOutputs } from "./build.ts";
+import { compileOptions, type Config, isMap, readSources, report, runCommand, syncOutputs } from "./build.ts";
 import { ENTRY_FILE } from "./codegen.ts";
 import { compileProject, type SourceInput } from "./compiler.ts";
 
@@ -43,7 +43,7 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
   };
 
   const startChild = () => {
-    child = Bun.spawn(["bun", join(outDir, ENTRY_FILE), ...opts.args], { stdio: ["inherit", "inherit", "inherit"] });
+    child = Bun.spawn(runCommand(config, join(outDir, ENTRY_FILE), opts.args), { stdio: ["inherit", "inherit", "inherit"] });
   };
 
   const rebuild = async () => {
@@ -68,7 +68,7 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
       }
       changed.clear();
       const sources: SourceInput[] = [...cache].sort(([a], [b]) => a.localeCompare(b)).map(([path, text]) => ({ path, text }));
-      const result = compileProject(sources, { main: config.main, maxErrors: config.maxErrors });
+      const result = compileProject(sources, compileOptions(config, root));
 
       if (opts.clear) process.stderr.write("\x1b[2J\x1b[3J\x1b[H");
       const ok = report(result, config, srcRoot);
@@ -80,7 +80,7 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
         return;
       }
       const { written, removed } = await syncOutputs(result, outDir);
-      const outputs = new Set(result.outputs.map((o) => o.path));
+      const outputs = new Set(result.outputs.map((o) => o.path).filter((p) => !isMap(p)));
       const removedNote = removed > 0 ? `, removed ${removed} stale` : "";
       process.stderr.write(`${paint("32", "✓")} built ${written} of ${outputs.size} output${outputs.size === 1 ? "" : "s"} from ${sources.length} file${sources.length === 1 ? "" : "s"}${removedNote} in ${ms} ms — watching for changes\n`);
       if (opts.run && (written > 0 || removed > 0 || !child)) {

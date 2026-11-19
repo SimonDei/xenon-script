@@ -3,6 +3,8 @@ import type * as A from "./ast.ts";
 import { type CheckResult, chainDestructor, type ClassInfo, findMember, isNative, jsNameOf, type RuntimeCheck } from "./checker.ts";
 import { isSubclass, supertypes } from "./types.ts";
 import { constToJs } from "./consteval.ts";
+import { buildSourceMap, type LineOrigin, originOf } from "./sourcemap.ts";
+import type { Span } from "./source.ts";
 
 /* JS operator precedence (higher binds tighter). */
 const P = {
@@ -88,12 +90,31 @@ function bindingNames(items: A.HeaderItem[]): string {
   return items.flatMap((i) => (i.kind === "Binding" ? [i.name.name] : [])).join(", ");
 }
 
+/**
+ * Lines of generated code, each remembering where in the Xenon source it came from (for source maps).
+ * Code built in a separate writer and spliced in as text (function bodies) carries its origins along
+ * as markers at the start of its lines: `\u0001<n>\u0002`, an index into `markers`. Generated lines
+ * never start inside a string (line breaks in strings are escaped), so the markers can't clash.
+ */
 class Writer {
   private lines: string[] = [];
+  private origins: (LineOrigin | undefined)[] = [];
   private depth = 0;
+  /** Where the lines written now come from: the statement or declaration being generated. */
+  origin?: LineOrigin;
+  constructor(private readonly markers: LineOrigin[] = []) {}
   /** Adds a line (or several, when `text` contains line breaks) at the current indentation. */
   line(text = "") {
-    for (const l of text.split("\n")) this.lines.push(l === "" ? "" : "  ".repeat(this.depth) + l);
+    for (let l of text.split("\n")) {
+      let origin = this.origin;
+      const m = /^\u0001(\d+)\u0002/.exec(l);
+      if (m) {
+        origin = this.markers[Number(m[1])];
+        l = l.slice(m[0].length);
+      }
+      this.lines.push(l === "" ? "" : "  ".repeat(this.depth) + l);
+      this.origins.push(l === "" ? undefined : origin);
+    }
   }
   indent() {
     this.depth++;
@@ -108,9 +129,23 @@ class Writer {
   /** Inserts a line at a marked position, indented one level deeper than the current depth. */
   insertAt(index: number, text: string) {
     this.lines.splice(index, 0, "  ".repeat(this.depth + 1) + text);
+    this.origins.splice(index, 0, undefined);
   }
   toString() {
     return this.lines.join("\n") + "\n";
+  }
+  /** The text with origin markers, for splicing into another writer's lines. */
+  marked(): string {
+    return this.lines.map((l, i) => {
+      const origin = this.origins[i];
+      if (!origin) return l;
+      this.markers.push(origin);
+      return `\u0001${this.markers.length - 1}\u0002${l}`;
+    }).join("\n") + "\n";
+  }
+  /** Each line with its origin. */
+  entries(): { text: string; origin?: LineOrigin }[] {
+    return this.lines.map((text, i) => ({ text, origin: this.origins[i] }));
   }
 }
 
@@ -123,14 +158,29 @@ export interface OutputFile {
 }
 
 /** Generates one ES module per public class (file-private classes go into the same module). */
-export function generate(files: A.XenonFile[], check: CheckResult, mainClass: ClassInfo): OutputFile[] {
+/**
+ * `sourceMaps`: emit a `.js.map` next to every module; `sourceRoot` is the source directory as seen
+ * from the output directory (`../src`), so the maps point at the real `.xn` files.
+ */
+export function generate(files: A.XenonFile[], check: CheckResult, mainClass: ClassInfo, sourceMaps?: { sourceRoot: string }): OutputFile[] {
   const out: OutputFile[] = [];
   // One ES module per source file: its package-level classes are exported, file-private ones are not.
   for (const file of files) {
     const first = [...file.decls, ...file.privateDecls].find((d) => d.kind === "Class" && !d.modifiers.native);
     if (!first) continue; // only typedefs and native declarations: nothing to emit
     const module = [...check.classes.values()].find((c) => c.decl === first)!.module;
-    out.push({ path: module, text: new ModuleGen(module, file, check).run() });
+    const lines = new ModuleGen(module, file, check).run();
+    let text = lines.map((l) => l.text).join("\n") + "\n";
+    if (sourceMaps) {
+      const name = posix.basename(module);
+      // The prelude has no file on disk; its map carries the text (`sourcesContent`), as all maps do.
+      const up = posix.relative(posix.dirname(module), ".");
+      const source = file.file.prelude ? posix.basename(file.file.path) : posix.join(up, sourceMaps.sourceRoot, file.file.path);
+      const map = buildSourceMap(name, source, file.file.text, lines);
+      text += `//# sourceMappingURL=${name}.map\n`;
+      out.push({ path: module + ".map", text: JSON.stringify(map) + "\n" });
+    }
+    out.push({ path: module, text });
   }
   const entry = new Writer();
   entry.line(`import { ${mainClass.decl.name.name} } from ${jsString("./" + mainClass.module)};`);
@@ -141,7 +191,9 @@ export function generate(files: A.XenonFile[], check: CheckResult, mainClass: Cl
 }
 
 class ModuleGen {
-  private w = new Writer();
+  /** Origins of lines spliced in as text (see `Writer`), shared by this module's writers. */
+  private markers: LineOrigin[] = [];
+  private w = new Writer(this.markers);
   private imports = new Map<string, ClassInfo>();
   private temps = new Map<string, number>();
   /** Temporaries to declare at the top of the current function; null outside functions. */
@@ -157,8 +209,9 @@ class ModuleGen {
     private check: CheckResult,
   ) {}
 
-  run(): string {
-    const body = new Writer();
+  /** The module's lines, each with the source position it came from. */
+  run(): { text: string; origin?: LineOrigin }[] {
+    const body = new Writer(this.markers);
     const swap = this.w;
     this.w = body;
     // Typedefs are compile-time only and emit nothing.
@@ -171,7 +224,7 @@ class ModuleGen {
       if (decl.kind !== "Class" || decl.modifiers.native) continue;
       if (!first) this.w.line();
       first = false;
-      this.classDecl(decl, exported);
+      this.from(decl, () => this.classDecl(decl, exported));
     }
     this.w = swap;
 
@@ -185,8 +238,8 @@ class ModuleGen {
       if (!rel.startsWith(".")) rel = "./" + rel;
       this.w.line(`import { ${names.sort().join(", ")} } from ${jsString(rel)};`);
     }
-    const head = this.w.toString();
-    return (head.trim() === "" ? "" : head + "\n") + body.toString();
+    const head = this.w.entries();
+    return [...(head.length === 0 ? [] : [...head, { text: "" }]), ...body.entries()];
   }
 
   private jsImport(imp: A.JsImport): string {
@@ -251,19 +304,7 @@ class ModuleGen {
       // Fields stay together; methods and static blocks are separated by blank lines.
       if (prev && (m.kind !== "Field" || prev.kind !== "Field")) this.w.line();
       prev = m;
-      if (m.kind === "Field") this.field(m);
-      else if (m.kind === "Method" && m.isDestructor) {
-        this.destructor(info, m);
-      } else if (m.kind === "Method" && !m.body) {
-        this.abstractStub(decl, m);
-      } else if (m.kind === "Method") {
-        this.method(m, !!decl.extends, m.isConstructor ? guard : undefined);
-        this.accessorDelegate(decl, m);
-      } else if (m.kind === "StaticBlock") {
-        this.w.line("static {");
-        this.functionBody(m.body);
-        this.w.line("}");
-      }
+      this.from(m, () => this.member(info, decl, m, guard));
     }
     this.enumerableIterator(info);
     this.w.dedent();
@@ -272,6 +313,23 @@ class ModuleGen {
     // subclasses inherit the marks through the prototype chain.
     const marks = [...supertypes(info)].filter((t) => t.decl.isInterface && !this.inheritedMark(info, t));
     for (const iface of marks) this.w.line(`${decl.name.name}.prototype[${this.classRef(iface)}] = true;`);
+  }
+
+  /** One member of a class body. */
+  private member(info: ClassInfo, decl: A.ClassDecl, m: A.Member, guard: string | undefined) {
+    if (m.kind === "Field") this.field(m);
+    else if (m.kind === "Method" && m.isDestructor) {
+      this.destructor(info, m);
+    } else if (m.kind === "Method" && !m.body) {
+      this.abstractStub(decl, m);
+    } else if (m.kind === "Method") {
+      this.method(m, !!decl.extends, m.isConstructor ? guard : undefined);
+      this.accessorDelegate(decl, m);
+    } else if (m.kind === "StaticBlock") {
+      this.w.line("static {");
+      this.functionBody(m.body);
+      this.w.line("}");
+    }
   }
 
   /**
@@ -421,7 +479,7 @@ class ModuleGen {
   /** Code for a function expression, arrow function or local function declaration. */
   private fn(f: A.FunctionNode): Code {
     const saved = { w: this.w, temps: this.temps, fnTemps: this.fnTemps };
-    this.w = new Writer();
+    this.w = new Writer(this.markers);
     this.temps = new Map();
     this.fnTemps = [];
     if (!f.arrow) this.dynDepth++;
@@ -440,7 +498,7 @@ class ModuleGen {
       const at = this.w.mark();
       this.blockBody(f.body);
       if (this.fnTemps.length > 0) this.w.insertAt(at, `let ${this.fnTemps.join(", ")};`);
-      const inner = this.w.toString().replace(/\n$/, "");
+      const inner = this.w.marked().replace(/\n$/, "");
       const code = inner === "" ? `${head} {}` : `${head} {\n${inner}\n}`;
       return { code, prec: f.arrow ? P.assign : P.primary };
     } finally {
@@ -469,7 +527,23 @@ class ModuleGen {
     this.w.line(`}${tail}`);
   }
 
+  /** Generates code whose lines map back to `node` (unless something inside maps them more precisely). */
+  private from<T>(node: { span: Span }, gen: () => T): T {
+    const w = this.w;
+    const saved = w.origin;
+    w.origin = originOf(node.span);
+    try {
+      return gen();
+    } finally {
+      w.origin = saved;
+    }
+  }
+
   private stmt(s: A.Stmt) {
+    this.from(s, () => this.statement(s));
+  }
+
+  private statement(s: A.Stmt) {
     switch (s.kind) {
       case "Block":
         this.w.line("{");
