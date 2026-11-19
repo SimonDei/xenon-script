@@ -24,8 +24,8 @@ public class Main {
 The built-in types are declared in XenonScript itself, in `src/prelude/std/*.xn` (no import needed), and
 checked against the JavaScript runtime by `tests/std.test.ts`:
 `String`, `Float`/`int`/`uint`, `Boolean`, `Array<T>`, `Map<K, V>`, `Set<T>`, `Iterator<T>`, `Promise<T>`,
-`RegExp`, `Date`, `JSON`, `Math` and `console`. `examples/std` shows each of them in use.
-JavaScript globals without a declaration yet (`fetch`, `setTimeout`, `process`, `Object`, …) are untyped `*`.
+`RegExp`, `Date`, `JSON`, `Math`, `Object` (the statics: `Object.keys`, `assign`, `freeze`, …) and `console`. `examples/std` shows each of them in use.
+JavaScript globals without a declaration yet (`fetch`, `setTimeout`, `process`, `Symbol`, …) are untyped `*`.
 
 ## Usage
 

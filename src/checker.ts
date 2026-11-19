@@ -3284,7 +3284,7 @@ class BodyChecker {
         return;
       }
       if (a.kind === "Object" && pattern.kind === "shape") return; // checked against the shape later
-      if (a.kind === "Array" && pattern.kind === "typeParam") return; // decided last (it might be an `Array<…>`)
+      if ((a.kind === "Array" || a.kind === "Object") && pattern.kind === "typeParam") return; // decided last (the expected type may name it: `Object.freeze({ … })`)
       const t = this.valueExpr(a, scope);
       this.preTyped.set(a, t);
       unify(pattern, t, set, out);
@@ -3299,10 +3299,10 @@ class BodyChecker {
     });
     // The expected type is the weakest source: it only fills in what the arguments left open.
     if (seed) unify(seed[0], seed[1], set, out);
-    // Array literals for a bare type parameter: if still open, the literal itself decides (`Array`).
+    // Array and object literals for a bare type parameter: if still open, the literal itself decides.
     args.forEach((a, i) => {
       const pattern = patternAt(i);
-      if (a.kind !== "Array" || pattern?.kind !== "typeParam" || out.has(pattern.param) || !set.has(pattern.param)) return;
+      if ((a.kind !== "Array" && a.kind !== "Object") || pattern?.kind !== "typeParam" || out.has(pattern.param) || !set.has(pattern.param)) return;
       const t = this.valueExpr(a, scope);
       this.preTyped.set(a, t);
       unify(pattern, t, set, out);

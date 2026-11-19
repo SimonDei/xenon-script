@@ -1,0 +1,58 @@
+// Standard library: the static functions of JavaScript's `Object`. The `Object` type itself stays
+// built into the compiler (every value but `Void` fits it, `{ … }` literals, `o['key']` indexing);
+// this class only supplies `Object.keys(…)` & co. (`new Object()` still makes an empty object).
+//
+// Typing: keys are `String`s, values and entries are `*` (an object has no single value type).
+// `assign` and `freeze` & co. return their argument with its own type.
+// Not declared: the instance members (`hasOwnProperty`, …), `defineProperties`,
+// `getOwnPropertyDescriptors`, `getOwnPropertySymbols` (no `Symbol` yet); use `(object as *)`.
+package xenon {
+  public native class Object {
+    // ---- reading ----
+    /** The own enumerable property names. */
+    static function keys(object:Object):Array<String>
+    /** The own enumerable property values. */
+    static function values(object:Object):Array<*>
+    /** The own enumerable `[key, value]` pairs. */
+    static function entries(object:Object):Array<Array<*>>
+    /** All own property names, enumerable or not (but no symbols). */
+    static function getOwnPropertyNames(object:Object):Array<String>
+    /** Does `object` have `key` itself, not through its prototype? Safer than `key in object`. */
+    static function hasOwn(object:Object, key:String):Boolean
+    static function hasOwn(object:Object, index:int):Boolean
+    /** The descriptor (`{ value, writable, enumerable, configurable }` or `{ get, set, … }`), `undefined` when missing. */
+    static function getOwnPropertyDescriptor(object:Object, key:String):*
+    /** `SameValue`: like `==`, but `NaN` equals `NaN` and `0` differs from `-0`. */
+    static function is(a:*, b:*):Boolean
+
+    // ---- building ----
+    /** Copies the own enumerable properties of the sources onto `target` and returns `target`. */
+    static function assign<T>(target:T, ...sources:Array<Object>):T
+    /** `{ [key]: value, … }` from `[key, value]` pairs. */
+    static function fromEntries(entries:Array<Array<*>>):Object
+    static function fromEntries<K, V>(entries:Map<K, V>):Object
+    /** A new object whose prototype is `prototype`; `Object.create(null)` has none. */
+    static function create(prototype:Object):Object
+    /** `descriptors` maps property names to descriptors, as for `defineProperty`. */
+    static function create(prototype:Object, descriptors:Object):Object
+    /** Groups the items by the key `callback` returns: `{ even: [2, 4], odd: [1, 3] }`. */
+    static function groupBy<T>(items:Array<T>, callback:(item:T, index:int) -> String):Object
+    static function defineProperty<T>(object:T, key:String, descriptor:*):T
+
+    // ---- prototypes ----
+    /** `null` at runtime for objects without a prototype. */
+    static function getPrototypeOf(object:Object):Object
+    static function setPrototypeOf<T>(object:T, prototype:Object):T
+
+    // ---- locking ----
+    /** Makes `object` read-only (shallow) and returns it. Writes then fail silently, or throw in strict mode (modules are strict). */
+    static function freeze<T>(object:T):T
+    static function isFrozen(object:Object):Boolean
+    /** No properties can be added or removed, but the existing ones stay writable. */
+    static function seal<T>(object:T):T
+    static function isSealed(object:Object):Boolean
+    /** No properties can be added. */
+    static function preventExtensions<T>(object:T):T
+    static function isExtensible(object:Object):Boolean
+  }
+}

@@ -1,0 +1,12 @@
+public class Main {
+  public function Main() {
+    var o:Object = { a: 1 }
+    var names:Array<int> = Object.keys(o)           // keys are Strings
+    var n:int = Object.values(o)                     // an Array, not an int
+    trace(Object.keyz(o), Object.hasOwn(o), Object.hasOwn(o, true))
+    trace(Object.entries(o, 1), Object.freeze())
+    var p:Point = Object.freeze({ x: 1, z: 2 })      // checked against the expected type
+    Object.groupBy([1, 2], (n:int):int => n)         // the callback must return a String
+  }
+}
+typedef Point = { x:Float, y:Float }

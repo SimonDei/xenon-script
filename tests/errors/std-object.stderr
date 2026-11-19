@@ -1,0 +1,96 @@
+error[X0308]: mismatched types
+ --> std-object.xn:4:28
+  |
+4 |     var names:Array<int> = Object.keys(o)           // keys are Strings
+  |               ----------   ^^^^^^^^^^^^^^ expected `Array<int>`, found `Array<String>`
+  |               |
+  |               expected because of this type
+
+error[X0308]: mismatched types
+ --> std-object.xn:5:17
+  |
+5 |     var n:int = Object.values(o)                     // an Array, not an int
+  |           ---   ^^^^^^^^^^^^^^^^ expected `int`, found `Array`
+  |           |
+  |           expected because of this type
+
+error[X0426]: no static member `keyz` on `Object`
+ --> std-object.xn:6:18
+  |
+6 |     trace(Object.keyz(o), Object.hasOwn(o), Object.hasOwn(o, true))
+  |                  ^^^^ unknown member
+  |
+help: a member with a similar name exists: `keys`
+  |
+6 |     trace(Object.keys(o), Object.hasOwn(o), Object.hasOwn(o, true))
+  |                  ~~~~
+
+error[X0604]: no overload of `hasOwn` accepts (Object)
+ --> std-object.xn:6:27
+  |
+6 |     trace(Object.keyz(o), Object.hasOwn(o), Object.hasOwn(o, true))
+  |                           ^^^^^^^^^^^^^ no matching overload
+  |
+  = note: `hasOwn(object:Object, key:String):Boolean`
+  = note: `hasOwn(object:Object, index:int):Boolean`
+
+error[X0604]: no overload of `hasOwn` accepts (Object, Boolean)
+ --> std-object.xn:6:45
+  |
+6 |     trace(Object.keyz(o), Object.hasOwn(o), Object.hasOwn(o, true))
+  |                                             ^^^^^^^^^^^^^ no matching overload
+  |
+  = note: `hasOwn(object:Object, key:String):Boolean`
+  = note: `hasOwn(object:Object, index:int):Boolean`
+
+error[X0601]: this call takes 1 argument but 2 were given
+  --> std-object.xn:7:29
+   |
+ 7 |     trace(Object.entries(o, 1), Object.freeze())
+   |                             ^ unexpected argument
+   |
+  ::: <xenon prelude>/xenon/Object.xn:17:21
+   |
+17 |     static function entries(object:Object):Array<Array<*>>
+   |                     ------- `entries` defined here
+
+error[X0797]: can't infer the type of `T`
+ --> std-object.xn:7:33
+  |
+7 |     trace(Object.entries(o, 1), Object.freeze())
+  |                                 ^^^^^^^^^^^^^ type arguments are inferred from the arguments
+  |
+help: pass arguments that determine it, or assign the result to a variable with a type
+
+error[X0601]: this call takes 1 argument but 0 were given
+  --> std-object.xn:7:33
+   |
+ 7 |     trace(Object.entries(o, 1), Object.freeze())
+   |                                 ^^^^^^^^^^^^^^^ missing `object:*`
+   |
+  ::: <xenon prelude>/xenon/Object.xn:49:21
+   |
+49 |     static function freeze<T>(object:T):T
+   |                     ------ `freeze` defined here
+
+error[X0791]: `z` is not a member of `Point`
+ --> std-object.xn:8:41
+  |
+8 |     var p:Point = Object.freeze({ x: 1, z: 2 })      // checked against the expected type
+  |                                         ^ unknown member
+  |
+help: did you mean `y`?
+  |
+8 |     var p:Point = Object.freeze({ x: 1, y: 2 })      // checked against the expected type
+  |                                         ~
+
+error[X0308]: mismatched types
+  --> std-object.xn:9:28
+   |
+ 9 |     Object.groupBy([1, 2], (n:int):int => n)         // the callback must return a String
+   |                            ^^^^^^^^^^^^^^^^ expected `(item:int, index:int) -> String`, found `(n:int) -> int`
+   |
+  ::: <xenon prelude>/xenon/Object.xn:39:57
+   |
+39 |     static function groupBy<T>(items:Array<T>, callback:(item:T, index:int) -> String):Object
+   |                                                         ----------------------------- parameter declared here

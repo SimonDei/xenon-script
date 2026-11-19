@@ -17,6 +17,7 @@ import stdIterator from "./prelude/std/Iterator.xn" with { type: "text" };
 import stdJSON from "./prelude/std/JSON.xn" with { type: "text" };
 import stdMap from "./prelude/std/Map.xn" with { type: "text" };
 import stdMath from "./prelude/std/Math.xn" with { type: "text" };
+import stdObject from "./prelude/std/Object.xn" with { type: "text" };
 import stdRegExp from "./prelude/std/RegExp.xn" with { type: "text" };
 import stdSet from "./prelude/std/Set.xn" with { type: "text" };
 import stdPromise from "./prelude/std/Promise.xn" with { type: "text" };
@@ -39,6 +40,7 @@ export const PRELUDE: SourceInput[] = [
   { path: "xenon/JSON.xn", text: stdJSON },
   { path: "xenon/Map.xn", text: stdMap },
   { path: "xenon/Math.xn", text: stdMath },
+  { path: "xenon/Object.xn", text: stdObject },
   { path: "xenon/Promise.xn", text: stdPromise },
   { path: "xenon/RegExp.xn", text: stdRegExp },
   { path: "xenon/Set.xn", text: stdSet },

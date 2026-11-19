@@ -5,6 +5,7 @@ package {
     public function Main() {
       booleans()
       json()
+      objects()
       numbers()
       integers()
       logging()
@@ -34,6 +35,24 @@ package {
       // `Bool` is the prelude alias of `Boolean`: same members
       var flag:Bool = !ready
       trace(flag.toString(), Bool(1))                        // `Bool(x)` is the `Boolean(x)` conversion
+    }
+
+    private function objects():void {
+      // Object.keys/values/entries read the own enumerable properties
+      var config:Object = { host: 'localhost', port: 8080 }
+      trace(Object.keys(config).join(','), Object.values(config).join(','), Object.entries(config)[1].join('='))
+      trace(Object.hasOwn(config, 'port'), Object.hasOwn([7], 0), Object.is(Float.NaN, Float.NaN))
+
+      // assign/freeze return their argument with its own type; the expected type names `T`
+      var origin:Point = Object.assign({ x: 0, y: 0 } as Point, { y: 5 })
+      var fixed:Point = Object.freeze({ x: 1, y: 2 })
+      trace(origin.y, Object.isFrozen(fixed), Object.isFrozen(origin))
+
+      // fromEntries builds an object from pairs or a map; groupBy sorts items into lists
+      var ages:Map<String, int> = new Map([['ann', 31], ['bob', 27]])
+      trace(JSON.stringify(Object.fromEntries(ages)), JSON.stringify(Object.fromEntries([['a', 1], ['b', 2]])))
+      var parity:Object = Object.groupBy([1, 2, 3, 4, 5], (n:int, _:int):String => n % 2 == 0 ? 'even' : 'odd')
+      trace(JSON.stringify(parity), Object.getPrototypeOf(parity) == null)
     }
 
     private function json():void {

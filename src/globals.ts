@@ -5,7 +5,7 @@
  * their argument, the `Float` statics don't.
  */
 export const JS_GLOBALS = new Set([
-  "Object", "Symbol", "WeakMap", "WeakSet",
+  "Symbol", "WeakMap", "WeakSet",
   "WeakRef", "Proxy", "Reflect", "Intl", "BigInt", "ArrayBuffer", "DataView", "Uint8Array", "Int8Array",
   "Uint16Array", "Int16Array", "Uint32Array", "Int32Array", "Float32Array", "Float64Array", "TextEncoder", "TextDecoder",
   "URL", "URLSearchParams", "AbortController", "AbortSignal", "Blob", "FormData", "Headers", "Request", "Response",
