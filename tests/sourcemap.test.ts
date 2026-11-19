@@ -1,4 +1,4 @@
-/** Source maps: every generated line maps back to its Xenon statement; `xenon run` remaps stack traces. */
+/** Source maps: every generated line maps back to its Xenon statement, every name and literal to its column; `xenon run` remaps stack traces. */
 import { afterAll, expect, test } from "bun:test";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -75,6 +75,10 @@ test("generated lines map to the statements they come from", () => {
       const seg = lines[i]?.[0];
       expect(seg, `generated line ${i + 1} (${line.trim()}) has no mapping`).toBeDefined();
       expect(sourceLines[seg![2]], `generated line ${i + 1}: ${line.trim()}`).toContain(`'${marker}'`);
+      // Column-exact: the string literal itself maps to its own position.
+      const lit = lines[i]!.find((s) => s[0] === line.indexOf(`'${marker}'`));
+      expect(lit, `generated line ${i + 1}: no segment for '${marker}'`).toBeDefined();
+      expect(sourceLines[lit![2]]!.indexOf(`'${marker}'`)).toBe(lit![3]);
       checked++;
     });
     expect(checked).toBe(module === "Main.js" ? 1 : 11); // every marker was checked

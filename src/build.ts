@@ -1,6 +1,7 @@
 import { mkdir, readdir, rm, rmdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { type CompileOptions, compileProject, type CompileResult, type SourceInput } from "./compiler.ts";
+import { entryFile } from "./codegen.ts";
 import { renderAll, renderSummary } from "./diagnostics.ts";
 import type { Span } from "./source.ts";
 
@@ -15,18 +16,22 @@ export interface Config {
   quiet: boolean;
   /** Emit `.js.map` files next to the output (on unless `--no-source-maps` / `"sourceMaps": false`). */
   sourceMaps: boolean;
+  /** `ts`: write typed TypeScript instead of JavaScript (`--target ts` / `"target": "ts"`); no source maps. */
+  target: "js" | "ts";
 }
 
 /** The command that runs a built program: with source maps, stack traces are mapped back to the `.xn` files. */
-export function runCommand(config: Config, entry: string, args: string[]): string[] {
-  const preload = config.sourceMaps ? ["--preload", join(import.meta.dir, "runtime", "stacktrace.ts")] : [];
-  return ["bun", ...preload, entry, ...args];
+export function runCommand(config: Config, outDir: string, args: string[]): string[] {
+  const maps = config.sourceMaps && config.target === "js";
+  const preload = maps ? ["--preload", join(import.meta.dir, "runtime", "stacktrace.ts")] : [];
+  return ["bun", ...preload, join(outDir, entryFile(config.target)), ...args];
 }
 
 /** Compiler options for a project: maps point from the output directory back to the sources. */
 export function compileOptions(config: Config, root: string): CompileOptions {
   const sourceRoot = relative(resolve(root, config.out), resolve(root, config.src)).split(sep).join("/");
-  return { main: config.main, maxErrors: config.maxErrors, sourceMaps: config.sourceMaps ? { sourceRoot } : undefined };
+  const sourceMaps = config.sourceMaps && config.target === "js" ? { sourceRoot } : undefined;
+  return { main: config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target };
 }
 
 /** Reads every `.xn` file below the source root (paths use `/`). */

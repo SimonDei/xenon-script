@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 import { join, relative, resolve } from "node:path";
 import { build, type Config, runCommand } from "./build.ts";
-import { ENTRY_FILE } from "./codegen.ts";
 import { explain } from "./codes.ts";
 import { watchProject } from "./watch.ts";
 
@@ -25,6 +24,7 @@ Options:
   --deny-warnings    treat warnings as errors
   --quiet            only print diagnostics
   --no-source-maps   don't write .js.map files (stack traces then show the JavaScript)
+  --target js|ts     output JavaScript (default) or typed TypeScript (.ts, no source maps)
   --run              (watch) run the program after each successful build
   --no-clear         (watch) don't clear the terminal between builds
 `;
@@ -74,6 +74,8 @@ async function loadConfig(args: string[]): Promise<{
 
   const colorFlag = (flags.get("color") as string | undefined) ?? "auto";
   if (!["auto", "always", "never"].includes(colorFlag)) throw new UsageError("--color must be auto, always or never");
+  const target = (flags.get("target") as string | undefined) ?? project.target ?? "js";
+  if (target !== "js" && target !== "ts") throw new UsageError("--target must be js or ts");
   const format = (flags.get("format") as string | undefined) ?? "pretty";
   if (format !== "pretty" && format !== "json") throw new UsageError("--format must be pretty or json");
 
@@ -87,6 +89,7 @@ async function loadConfig(args: string[]): Promise<{
     denyWarnings: flags.has("deny-warnings") || !!project.denyWarnings,
     quiet: flags.has("quiet"),
     sourceMaps: !flags.has("no-source-maps") && project.sourceMaps !== false,
+    target,
   };
   return { command, config, rest, root, projectPath, flags };
 }
@@ -115,8 +118,7 @@ async function main(argv: string[]): Promise<number> {
         return (await build(config, root, false)) ? 0 : 1;
       case "run": {
         if (!(await build(config, root, true))) return 1;
-        const entry = join(resolve(root, config.out), ENTRY_FILE);
-        const child = Bun.spawn(runCommand(config, entry, rest), { stdio: ["inherit", "inherit", "inherit"] });
+        const child = Bun.spawn(runCommand(config, resolve(root, config.out), rest), { stdio: ["inherit", "inherit", "inherit"] });
         return await child.exited;
       }
       case "watch":

@@ -58,5 +58,12 @@ Builds write a source map (`.js.map`) next to every module, so debuggers, browse
 `node --enable-source-maps` show the `.xn` files; `xenon run` maps stack traces itself (Bun ignores
 maps of plain `.js`). `--no-source-maps` turns them off.
 
+`--target ts` (or `"target": "ts"` in `xenon.json`) writes typed TypeScript instead: annotations,
+generics, `private`/`protected`, interfaces as TypeScript interfaces, typedefs as `type`, enums as
+union types. TypeScript accepts the output of every example (`tests/tsemit.test.ts`), and Bun runs it
+directly (`xenon run --target ts`). `compileProject(…, { target: "ts" })` also returns token mappings
+between each `.xn` file and its `.ts` module: the groundwork for the language server, which
+will run TypeScript over these virtual files.
+
 Project layout: `src/` (compiler), `examples/<name>/src` + `expected.txt` (golden end-to-end tests),
 `tests/errors/*.xn` + `*.stderr` (rendered diagnostics snapshots).

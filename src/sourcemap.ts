@@ -1,7 +1,7 @@
 /**
- * Source maps (version 3) for the generated JavaScript: one mapping per generated line, pointing at
- * the start of the Xenon statement or declaration it came from. Also the decoder the stack-trace
- * remapper (`src/runtime/stacktrace.ts`) uses.
+ * Source maps (version 3) for the generated JavaScript: every generated line maps to the start of
+ * the Xenon statement or declaration it came from, and every name or literal to its own position.
+ * Also the decoder the stack-trace remapper (`src/runtime/stacktrace.ts`) uses.
  */
 import type { Span } from "./source.ts";
 
@@ -41,19 +41,30 @@ export function originOf(s: Span): LineOrigin {
 }
 
 /**
- * A map for one generated file with one source. `lines[i]` is the origin of generated line `i`
- * (undefined: not mapped); each mapped line gets one segment at its first non-blank column.
+ * A map for one generated file with one source. Each generated line maps its first non-blank
+ * column to `origin` (the statement it came from; undefined: not mapped), plus the start of every
+ * token in `segments` (names and literals, for column-exact positions).
  */
-export function buildSourceMap(file: string, source: string, content: string, lines: { text: string; origin?: LineOrigin }[]): SourceMap {
+export function buildSourceMap(
+  file: string,
+  source: string,
+  content: string,
+  lines: { text: string; origin?: LineOrigin; segments?: { col: number; origin: LineOrigin }[] }[],
+): SourceMap {
   let prevLine = 0;
   let prevCol = 0;
-  const mappings = lines.map(({ text, origin }) => {
-    if (!origin) return "";
-    const genCol = text.length - text.trimStart().length;
-    const seg = vlq(genCol) + vlq(0) + vlq(origin.line - prevLine) + vlq(origin.col - prevCol);
-    prevLine = origin.line;
-    prevCol = origin.col;
-    return seg;
+  const mappings = lines.map(({ text, origin, segments = [] }) => {
+    const byCol = new Map<number, LineOrigin>();
+    if (origin) byCol.set(text.length - text.trimStart().length, origin);
+    for (const s of segments) byCol.set(s.col, s.origin); // a token at the line's start wins
+    let prevGen = 0;
+    return [...byCol].sort((a, b) => a[0] - b[0]).map(([col, at]) => {
+      const seg = vlq(col - prevGen) + vlq(0) + vlq(at.line - prevLine) + vlq(at.col - prevCol);
+      prevGen = col;
+      prevLine = at.line;
+      prevCol = at.col;
+      return seg;
+    }).join(",");
   });
   return { version: 3, file, sources: [source], sourcesContent: [content], names: [], mappings: mappings.join(";") };
 }

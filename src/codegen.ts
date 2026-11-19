@@ -1,10 +1,10 @@
 import { posix } from "node:path";
 import type * as A from "./ast.ts";
-import { type CheckResult, chainDestructor, type ClassInfo, findMember, isNative, jsNameOf, type RuntimeCheck } from "./checker.ts";
-import { isSubclass, supertypes } from "./types.ts";
+import { type CheckResult, chainDestructor, type ClassInfo, findMember, isNative, jsNameOf, type RuntimeCheck, type TypedefInfo, visibilityOf } from "./checker.ts";
+import { bind, isSubclass, nonNull, subst, supertypes, type Type } from "./types.ts";
 import { constToJs } from "./consteval.ts";
 import { buildSourceMap, type LineOrigin, originOf } from "./sourcemap.ts";
-import type { Span } from "./source.ts";
+import type { SourceFile, Span } from "./source.ts";
 
 /* JS operator precedence (higher binds tighter). */
 const P = {
@@ -152,43 +152,151 @@ class Writer {
 /** Entry module. Contains a `-` so it can never collide with a class module (Bun treats `main.js`/`Main.js` as one module). */
 export const ENTRY_FILE = "xenon-main.js";
 
+/** The entry module's file name for an output target. */
+export function entryFile(target: "js" | "ts" = "js"): string {
+  return target === "ts" ? ENTRY_FILE.replace(/\.js$/, ".ts") : ENTRY_FILE;
+}
+
+/**
+ * A range of the Xenon source and the generated code it became (offsets). Names keep their
+ * length; other tokens may change it (`trace` → `console.log`, `int` → `number`).
+ */
+export interface Mapping {
+  source: number;
+  sourceLength: number;
+  generated: number;
+  generatedLength: number;
+}
+
+/** The Xenon offset a generated offset came from (inside a mapped token), or undefined. */
+export function sourceOffsetAt(mappings: Mapping[], generated: number): number | undefined {
+  const m = mappings.find((m) => m.generated <= generated && generated < m.generated + Math.max(1, m.generatedLength));
+  return m && m.source + Math.min(generated - m.generated, Math.max(0, m.sourceLength - 1));
+}
+
+/** The generated offset of a Xenon offset (inside a mapped token), or undefined. */
+export function generatedOffsetAt(mappings: Mapping[], source: number): number | undefined {
+  const m = mappings.find((m) => m.source <= source && source < m.source + Math.max(1, m.sourceLength));
+  return m && m.generated + Math.min(source - m.source, Math.max(0, m.generatedLength - 1));
+}
+
 export interface OutputFile {
   path: string;
   text: string;
+  /** The Xenon file this module was generated from (not for maps and the entry module). */
+  source?: SourceFile;
+  /** Token mappings between `source` and `text` (TypeScript output). */
+  mappings?: Mapping[];
 }
 
-/** Generates one ES module per public class (file-private classes go into the same module). */
-/**
- * `sourceMaps`: emit a `.js.map` next to every module; `sourceRoot` is the source directory as seen
- * from the output directory (`../src`), so the maps point at the real `.xn` files.
- */
-export function generate(files: A.XenonFile[], check: CheckResult, mainClass: ClassInfo, sourceMaps?: { sourceRoot: string }): OutputFile[] {
+export interface GenerateOptions {
+  /**
+   * Emit a `.js.map` next to every module; `sourceRoot` is the source directory as seen from the
+   * output directory (`../src`), so the maps point at the real `.xn` files.
+   */
+  sourceMaps?: { sourceRoot: string };
+  /**
+   * `ts`: typed TypeScript instead of JavaScript (`.ts` modules, imports still name `.js`), with
+   * token mappings: the virtual files a TypeScript language service works on.
+   */
+  target?: "js" | "ts";
+}
+
+/** The module a source file compiles to: `com/zoo/Dog.xn` → `com/zoo/Dog.js` (a file's package matches its directory). */
+function moduleOf(file: A.XenonFile): string {
+  return file.file.path.replace(/\.xn$/, ".js");
+}
+
+/** Generates one ES module per source file with classes (file-private classes go into the same module). */
+export function generate(files: A.XenonFile[], check: CheckResult, mainClass: ClassInfo, options: GenerateOptions = {}): OutputFile[] {
+  const ts = options.target === "ts";
+  const toTs = (module: string) => (ts ? module.replace(/\.js$/, ".ts") : module);
   const out: OutputFile[] = [];
   // One ES module per source file: its package-level classes are exported, file-private ones are not.
   for (const file of files) {
-    const first = [...file.decls, ...file.privateDecls].find((d) => d.kind === "Class" && !d.modifiers.native);
-    if (!first) continue; // only typedefs and native declarations: nothing to emit
-    const module = [...check.classes.values()].find((c) => c.decl === first)!.module;
-    const lines = new ModuleGen(module, file, check).run();
+    const all = [...file.decls, ...file.privateDecls];
+    const first = all.find((d) => d.kind === "Class" && !d.modifiers.native);
+    // Only typedefs and native declarations: nothing to emit (TypeScript keeps the typedefs, as types).
+    if (!first && !(ts && !file.file.prelude && all.some((d) => d.kind === "Typedef"))) continue;
+    const module = first ? [...check.classes.values()].find((c) => c.decl === first)!.module : moduleOf(file);
+    const gen = new ModuleGen(module, file, check, ts, ts || !!options.sourceMaps);
+    const { lines, mappings } = resolveTokens(gen.run(), gen.tokens, file.file);
     let text = lines.map((l) => l.text).join("\n") + "\n";
-    if (sourceMaps) {
+    if (options.sourceMaps && !ts) {
       const name = posix.basename(module);
       // The prelude has no file on disk; its map carries the text (`sourcesContent`), as all maps do.
       const up = posix.relative(posix.dirname(module), ".");
-      const source = file.file.prelude ? posix.basename(file.file.path) : posix.join(up, sourceMaps.sourceRoot, file.file.path);
+      const source = file.file.prelude ? posix.basename(file.file.path) : posix.join(up, options.sourceMaps.sourceRoot, file.file.path);
       const map = buildSourceMap(name, source, file.file.text, lines);
       text += `//# sourceMappingURL=${name}.map\n`;
       out.push({ path: module + ".map", text: JSON.stringify(map) + "\n" });
     }
-    out.push({ path: module, text });
+    out.push({ path: toTs(module), text, source: file.file, ...(ts ? { mappings } : {}) });
   }
   const entry = new Writer();
   entry.line(`import { ${mainClass.decl.name.name} } from ${jsString("./" + mainClass.module)};`);
   entry.line();
   entry.line(`new ${mainClass.decl.name.name}();`);
-  out.push({ path: ENTRY_FILE, text: entry.toString() });
+  out.push({ path: entryFile(options.target), text: entry.toString() });
   return out;
 }
+
+/** Token markers in generated code: `\u0003<n>\u0004text\u0005` maps `text` to the source span `tokens[n]`. */
+const TOKEN = /\u0003(\d+)\u0004|\u0005/g;
+
+/** Code without token markers (for code that inspects generated text). */
+function plain(code: string): string {
+  return code.replace(TOKEN, "");
+}
+
+/**
+ * Removes the token markers: returns the clean lines, each with the source positions of its tokens
+ * (for column-exact source maps), and the token mappings as offsets.
+ */
+function resolveTokens(entries: { text: string; origin?: LineOrigin }[], tokens: Span[], file: SourceFile) {
+  const mappings: Mapping[] = [];
+  const open: { span: Span; generated: number }[] = [];
+  let offset = 0;
+  const lines = entries.map(({ text, origin }) => {
+    let clean = "";
+    let last = 0;
+    const segments: { col: number; origin: LineOrigin }[] = [];
+    for (const m of text.matchAll(TOKEN)) {
+      clean += text.slice(last, m.index);
+      last = m.index + m[0].length;
+      if (m[1] !== undefined) {
+        const span = tokens[Number(m[1])]!;
+        open.push({ span, generated: offset + clean.length });
+        const { line, col } = file.position(span.start);
+        segments.push({ col: clean.length, origin: { line: line - 1, col: col - 1 } });
+      } else {
+        const t = open.pop()!;
+        mappings.push({ source: t.span.start, sourceLength: t.span.end - t.span.start, generated: t.generated, generatedLength: offset + clean.length - t.generated });
+      }
+    }
+    clean += text.slice(last);
+    offset += clean.length + 1;
+    return { text: clean, origin, segments };
+  });
+  mappings.sort((a, b) => a.generated - b.generated);
+  return { lines, mappings };
+}
+
+/** TypeScript names of the standard library's native classes, where they differ. */
+const TS_NATIVE: Record<string, string> = { Iterator: "IteratorObject" };
+
+/**
+ * Built-in enumerables (`Array<T> implements IEnumerable<T>` in the standard library) get
+ * `getEnumerator()` in the TypeScript output's types, so they fit `IEnumerable<T>` there too. At
+ * runtime calls go through `Enumerable.enumerate`.
+ */
+const TS_ENUMERABLE_GLOBALS = `declare global {
+  interface Array<T> { getEnumerator(): IEnumerator<T>; }
+  interface String { getEnumerator(): IEnumerator<string>; }
+  interface Set<T> { getEnumerator(): IEnumerator<T>; }
+  interface Map<K, V> { getEnumerator(): IEnumerator<any[]>; }
+  interface IteratorObject<T, TReturn, TNext> { getEnumerator(): IEnumerator<T>; }
+}`;
 
 class ModuleGen {
   /** Origins of lines spliced in as text (see `Writer`), shared by this module's writers. */
@@ -202,12 +310,115 @@ class ModuleGen {
   private dynDepth = 0;
   /** The current method needs `const $self = this;` (members used inside `function` expressions). */
   private selfNeeded = false;
+  /** Source spans of the token markers in the generated code (see `tok`). */
+  readonly tokens: Span[] = [];
+  /** Typedefs imported for TypeScript annotations: module → names. */
+  private typeImports = new Map<string, Set<string>>();
 
   constructor(
     private module: string,
     private file: A.XenonFile,
     private check: CheckResult,
+    /** TypeScript output: annotations, interfaces and typedefs as types. */
+    private ts = false,
+    /** Mark tokens with their source positions (`resolveTokens` turns the markers into mappings). */
+    private mapTokens = false,
   ) {}
+
+  /** `text`, generated from the source at `span`. */
+  private tok(span: Span, text: string): string {
+    if (!this.mapTokens) return text;
+    this.tokens.push(span);
+    return `\u0003${this.tokens.length - 1}\u0004${text}\u0005`;
+  }
+
+  /** A name copied from the source. */
+  private name(id: A.Ident): string {
+    return this.tok(id.span, id.name);
+  }
+
+  // ---- TypeScript types ----
+
+  /** `: T` for a type annotation (TypeScript output only). */
+  private ann(node: A.TypeNode | undefined): string {
+    if (!this.ts || !node) return "";
+    const t = this.check.typeNodeTypes.get(node);
+    return `: ${this.tok(node.span, t ? this.tsType(t) : "any")}`;
+  }
+
+  /** `: T` for a type that has no annotation in the source (TypeScript output only). */
+  private annType(t: Type | undefined): string {
+    return this.ts && t ? `: ${this.tsType(t)}` : "";
+  }
+
+  /** `<T, U>` for declared type parameters (TypeScript output only). */
+  private typeParams(params: A.Ident[] | undefined): string {
+    return this.ts && params?.length ? `<${params.map((p) => this.name(p)).join(", ")}>` : "";
+  }
+
+  /** A Xenon type in TypeScript. `top`: a typedef's own body (not its name). */
+  private tsType(t: Type, top = false): string {
+    switch (t.kind) {
+      case "prim":
+        return t.name === "String" ? "string" : t.name === "Boolean" ? "boolean" : "number";
+      case "void": return "void";
+      case "null": return "null";
+      case "any": case "error": return "any";
+      case "builtin":
+        switch (t.name) {
+          case "Array": return `Array<${this.tsType(t.args[0] ?? { kind: "any" })}>`;
+          case "Function": return "Function";
+          case "Object": return "Record<string, any>"; // a dynamic object: any property may be read
+          case "Class": return "any";
+        }
+        return "any";
+      case "class": {
+        const info = t.info;
+        const args = t.args?.length ? `<${t.args.map((a) => this.tsType(a)).join(", ")}>` : "";
+        if (isNative(info)) {
+          const name = jsNameOf(info);
+          return (TS_NATIVE[name] ?? name) + args;
+        }
+        return this.classRef(info) + args;
+      }
+      case "typeParam": return t.param.name;
+      case "classRef": return `typeof ${this.classRef(t.info)}`;
+      case "nullable": {
+        const inner = this.tsType(t.inner);
+        return `${inner.includes("=>") ? `(${inner})` : inner} | null`;
+      }
+      case "method": {
+        if (!top && t.typedef) return this.typedefRef(t.typedef, t.aliasArgs);
+        const params = t.params.map((p, i) => `${p.rest ? "..." : ""}${p.name || `p${i}`}${p.optional ? "?" : ""}: ${this.tsType(p.type)}`);
+        const tps = t.typeParams?.length ? `<${t.typeParams.map((p) => p.name).join(", ")}>` : "";
+        return `${tps}(${params.join(", ")}) => ${this.tsType(t.ret)}`;
+      }
+      case "shape": {
+        if (!top && t.typedef) return this.typedefRef(t.typedef, t.aliasArgs);
+        const members = [...t.members.values()].map((m) => `${m.readonly ? "readonly " : ""}${m.name}${m.optional ? "?" : ""}: ${this.tsType(m.type())}`);
+        return members.length === 0 ? "{}" : `{ ${members.join("; ")} }`;
+      }
+    }
+  }
+
+  /**
+   * A typedef by name, imported when it lives in another file. The standard library's typedefs
+   * describe JavaScript types and are named after them (`IteratorResult<T>`, `RequestInit`): TypeScript knows them.
+   */
+  private typedefRef(td: TypedefInfo, args: Type[] | undefined): string {
+    if (td.file !== this.file && !td.file.file.prelude) {
+      const module = moduleOf(td.file);
+      this.typeImports.set(module, (this.typeImports.get(module) ?? new Set()).add(td.decl.name.name));
+    }
+    return td.decl.name.name + (args?.length ? `<${args.map((a) => this.tsType(a)).join(", ")}>` : "");
+  }
+
+  /** `private `/`protected ` (TypeScript output only; `internal` has no TypeScript equivalent). */
+  private visibility(d: { modifiers: A.Modifiers }): string {
+    if (!this.ts) return "";
+    const v = visibilityOf(d);
+    return v === "private" || v === "protected" ? `${v} ` : "";
+  }
 
   /** The module's lines, each with the source position it came from. */
   run(): { text: string; origin?: LineOrigin }[] {
@@ -219,12 +430,22 @@ class ModuleGen {
     // Enums and interface symbols depend on nothing: emit them first, so static initializers of
     // the classes below can use them (a later `const` would still be in its temporal dead zone).
     const all = [...this.file.decls.map((d) => [d, true] as const), ...this.file.privateDecls.map((d) => [d, false] as const)];
-    const plain = (d: A.TypeDecl) => d.kind === "Class" && (d.isEnum || d.isInterface);
-    for (const [decl, exported] of [...all.filter(([d]) => plain(d)), ...all.filter(([d]) => !plain(d))]) {
+    const standalone = (d: A.TypeDecl) => d.kind === "Class" && (d.isEnum || d.isInterface);
+    for (const [decl, exported] of [...all.filter(([d]) => standalone(d)), ...all.filter(([d]) => !standalone(d))]) {
+      if (decl.kind === "Typedef" && this.ts && !this.file.file.prelude) {
+        if (!first) this.w.line();
+        first = false;
+        const t = this.check.typeNodeTypes.get(decl.type);
+        this.from(decl, () => this.w.line(`${exported ? "export " : ""}type ${this.name(decl.name)}${this.typeParams(decl.typeParams)} = ${this.tok(decl.type.span, t ? this.tsType(t, true) : "any")};`));
+      }
       if (decl.kind !== "Class" || decl.modifiers.native) continue;
       if (!first) this.w.line();
       first = false;
       this.from(decl, () => this.classDecl(decl, exported));
+    }
+    if (this.ts && this.file.file.prelude) {
+      this.w.line();
+      this.w.line(TS_ENUMERABLE_GLOBALS);
     }
     this.w = swap;
 
@@ -237,6 +458,11 @@ class ModuleGen {
       let rel = posix.relative(posix.dirname(this.module), module);
       if (!rel.startsWith(".")) rel = "./" + rel;
       this.w.line(`import { ${names.sort().join(", ")} } from ${jsString(rel)};`);
+    }
+    for (const [module, names] of this.typeImports) {
+      let rel = posix.relative(posix.dirname(this.module), module);
+      if (!rel.startsWith(".")) rel = "./" + rel;
+      this.w.line(`import type { ${[...names].sort().join(", ")} } from ${jsString(rel)};`);
     }
     const head = this.w.entries();
     return [...(head.length === 0 ? [] : [...head, { text: "" }]), ...body.entries()];
@@ -270,16 +496,21 @@ class ModuleGen {
     if (decl.isEnum) {
       // Enums are frozen plain objects: `Direction.Up` reads like JS and `Object.values` lists them.
       const entries = [...(info.enumValues ?? [])].map(([k, v]) => `${k}: ${constToJs(v, jsString).code}`);
-      this.w.line(`${exported ? "export " : ""}const ${decl.name.name} = Object.freeze({ ${entries.join(", ")} });`);
+      const name = this.name(decl.name);
+      this.w.line(`${exported ? "export " : ""}const ${name} = Object.freeze({ ${entries.join(", ")} });`);
+      // TypeScript: the enum type is the union of its values.
+      if (this.ts) this.w.line(`${exported ? "export " : ""}type ${decl.name.name} = (typeof ${decl.name.name})[keyof typeof ${decl.name.name}];`);
       return;
     }
     if (decl.isInterface) {
+      if (this.ts) this.interfaceType(decl, exported);
       // Interfaces exist at runtime only as a marker symbol for `x is IShape`.
-      this.w.line(`${exported ? "export " : ""}const ${decl.name.name} = Symbol(${jsString(info.qname)});`);
+      this.w.line(`${exported ? "export " : ""}const ${this.ts ? decl.name.name : this.name(decl.name)} = Symbol(${jsString(info.qname)});`);
       return;
     }
-    const ext = decl.extends ? ` extends ${this.typeName(decl.extends)}` : "";
-    this.w.line(`${exported ? "export " : ""}class ${decl.name.name}${ext} {`);
+    const ext = decl.extends ? ` extends ${this.superType(decl.extends)}` : "";
+    const impl = this.ts && decl.implements.length > 0 ? ` implements ${decl.implements.map((n) => this.superType(n)).join(", ")}` : "";
+    this.w.line(`${exported ? "export " : ""}class ${this.name(decl.name)}${this.typeParams(decl.typeParams)}${ext}${impl} {`);
     this.w.indent();
     let prev: A.Member | undefined;
     if (info.dtor) {
@@ -289,7 +520,7 @@ class ModuleGen {
     const guard = decl.modifiers.abstract ? this.abstractGuard(decl) : undefined;
     if (guard && !decl.members.some((m) => m.kind === "Method" && m.isConstructor)) {
       // An abstract class without a constructor still needs the guard; arguments go to the parent.
-      this.w.line(decl.extends ? "constructor(...args) {" : "constructor() {");
+      this.w.line(decl.extends ? `constructor(...args${this.ts ? `: ${this.parentCtorParams(info)}` : ""}) {` : "constructor() {");
       this.w.indent();
       this.w.line(guard);
       if (decl.extends) this.w.line("super(...args);");
@@ -312,12 +543,54 @@ class ModuleGen {
     // Mark the prototype for every interface this class implements (super-interfaces included);
     // subclasses inherit the marks through the prototype chain.
     const marks = [...supertypes(info)].filter((t) => t.decl.isInterface && !this.inheritedMark(info, t));
-    for (const iface of marks) this.w.line(`${decl.name.name}.prototype[${this.classRef(iface)}] = true;`);
+    for (const iface of marks) {
+      const proto = this.ts ? `(${decl.name.name}.prototype as any)` : `${decl.name.name}.prototype`;
+      this.w.line(`${proto}[${this.classRef(iface)}] = true;`);
+    }
+  }
+
+  /** TypeScript: the parameters of the parent's constructor as a tuple type, `[name: string, age?: number]`. */
+  private parentCtorParams(info: ClassInfo): string {
+    let owner = info.parent;
+    let map = bind(info.parent?.typeParams ?? [], info.parentArgs);
+    while (owner && !owner.ctor) {
+      map = new Map([...map, ...bind(owner.parent?.typeParams ?? [], owner.parentArgs.map((a) => subst(a, map)))]);
+      owner = owner.parent;
+    }
+    if (!owner?.ctor) return info.jsParent ? "any[]" : "[]";
+    const params = owner.ctor.type.params.map((p) => `${p.rest ? "..." : ""}${p.name}${p.optional ? "?" : ""}: ${this.tsType(subst(p.type, map))}`);
+    return `[${params.join(", ")}]`;
+  }
+
+  /** A parent class or interface: with type arguments in TypeScript (`extends Box<number>`). */
+  private superType(node: A.TypeNode): string {
+    const t = this.ts ? this.check.typeNodeTypes.get(node) : undefined;
+    return t?.kind === "class" ? this.tok(node.span, this.tsType(t)) : this.tok(node.span, this.typeName(node));
+  }
+
+  /** TypeScript: an interface's members as an `interface` (next to the runtime marker of the same name). */
+  private interfaceType(decl: A.ClassDecl, exported: boolean) {
+    const ext = decl.implements.length > 0 ? ` extends ${decl.implements.map((n) => this.superType(n)).join(", ")}` : "";
+    this.w.line(`${exported ? "export " : ""}interface ${this.name(decl.name)}${this.typeParams(decl.typeParams)}${ext} {`);
+    this.w.indent();
+    // `for … of` works on every enumerable: classes get a `[Symbol.iterator]` (see `enumerableIterator`).
+    if (decl.name.name === "IEnumerable" && this.file.file.prelude) this.w.line("[Symbol.iterator](): Iterator<T>;");
+    for (const m of decl.members) {
+      if (m.kind !== "Method") continue;
+      this.from(m, () => {
+        const name = this.tok(m.name.span, methodName(m.name.name));
+        if (m.accessor === "set") this.w.line(`set ${name}(${this.params(m.params)});`);
+        else if (m.accessor === "get") this.w.line(`get ${name}()${this.ann(m.returnType)};`);
+        else this.w.line(`${name}${this.typeParams(m.typeParams)}(${this.params(m.params, true)})${this.ann(m.returnType) || ": void"};`);
+      });
+    }
+    this.w.dedent();
+    this.w.line("}");
   }
 
   /** One member of a class body. */
   private member(info: ClassInfo, decl: A.ClassDecl, m: A.Member, guard: string | undefined) {
-    if (m.kind === "Field") this.field(m);
+    if (m.kind === "Field") this.field(m, info);
     else if (m.kind === "Method" && m.isDestructor) {
       this.destructor(info, m);
     } else if (m.kind === "Method" && !m.body) {
@@ -353,15 +626,21 @@ class ModuleGen {
     return !!info.parent && [...supertypes(info.parent)].includes(iface);
   }
 
-  private field(f: A.Field) {
+  private field(f: A.Field, info: ClassInfo) {
     const folded = this.check.inlineFields.get(f);
     const init = folded !== undefined ? constToJs(folded, jsString).code : f.init ? this.expr(f.init).code : defaultValue(f.type);
-    this.w.line(`${f.modifiers.static ? "static " : ""}${f.name.name} = ${init};`);
+    const type = f.type ? this.ann(f.type) : this.annType(info.members.get(f.name.name)?.type);
+    this.w.line(`${this.visibility(f)}${f.modifiers.static ? "static " : ""}${this.name(f.name)}${type} = ${init};`);
   }
 
-  private params(params: A.Param[]): string {
+  /** Parameter list; `signature`: without default values (interfaces), optional ones marked `?`. */
+  private params(params: A.Param[], signature = false): string {
     return params
-      .map((p) => (p.rest ? "..." : "") + p.name.name + (p.init ? ` = ${this.expr(p.init).code}` : ""))
+      .map((p) => {
+        const name = (p.rest ? "..." : "") + this.name(p.name);
+        if (signature) return name + (p.init ? "?" : "") + this.ann(p.type);
+        return name + this.ann(p.type) + (p.init ? ` = ${this.expr(p.init).code}` : "");
+      })
       .join(", ");
   }
 
@@ -376,8 +655,8 @@ class ModuleGen {
     if (!sig?.delegate || sig.decl !== m) return;
     const name = m.name.name;
     this.w.line();
-    if (sig.delegate === "set") this.w.line(`set ${name}(value) { super.${name} = value; }`);
-    else this.w.line(`get ${name}() { return super.${name}; }`);
+    if (sig.delegate === "set") this.w.line(`set ${name}(value${this.annType(sig.type)}) { super.${name} = value; }`);
+    else this.w.line(`get ${name}()${this.annType(sig.type)} { return super.${name}; }`);
   }
 
   /**
@@ -423,7 +702,12 @@ class ModuleGen {
   private abstractStub(decl: A.ClassDecl, m: A.Method) {
     const exc = this.classRef(this.check.classes.get("xenon.NotImplementedException")!);
     const throwLine = `throw new ${exc}(${jsString(`${decl.name.name}.${m.name.name}`)});`;
-    const head = m.accessor === "set" ? `set ${m.name.name}(value)` : m.accessor === "get" ? `get ${m.name.name}()` : `${m.modifiers.async ? "async " : ""}${methodName(m.name.name)}(${this.params(m.params)})`;
+    const name = this.tok(m.name.span, methodName(m.name.name));
+    const head = m.accessor === "set"
+      ? `${this.visibility(m)}set ${name}(${this.params(m.params)})`
+      : m.accessor === "get"
+      ? `${this.visibility(m)}get ${name}()${this.ann(m.returnType)}`
+      : `${this.visibility(m)}${m.modifiers.async ? "async " : ""}${name}${this.typeParams(m.typeParams)}(${this.params(m.params)})${this.ann(m.returnType)}`;
     this.w.line(`${head} {`);
     this.w.line(`  ${throwLine}`);
     this.w.line("}");
@@ -431,12 +715,14 @@ class ModuleGen {
 
   private method(m: A.Method, hasParent = false, guard?: string) {
     const prefix = [
+      this.visibility(m),
       m.modifiers.static ? "static " : "",
       m.modifiers.async ? "async " : "",
       m.accessor ? `${m.accessor} ` : "",
     ].join("");
-    const name = m.isConstructor ? "constructor" : methodName(m.name.name);
-    this.w.line(`${prefix}${name}(${this.params(m.params)}) {`);
+    const name = this.tok(m.name.span, m.isConstructor ? "constructor" : methodName(m.name.name));
+    const ret = m.isConstructor || m.accessor === "set" ? "" : this.ann(m.returnType);
+    this.w.line(`${prefix}${name}${this.typeParams(m.typeParams)}(${this.params(m.params)})${ret} {`);
     // Derived constructors must call super() before using `this`; Xenon inserts it when omitted.
     const first = m.body!.body[0];
     const explicitSuper = first?.kind === "ExprStmt" && first.expr.kind === "Call" && first.expr.callee.kind === "Super";
@@ -463,10 +749,15 @@ class ModuleGen {
     for (const s of rest) this.stmt(s);
     this.w.dedent();
     const decls: string[] = [];
-    if (this.fnTemps.length > 0) decls.push(`let ${this.fnTemps.join(", ")};`);
+    if (this.fnTemps.length > 0) decls.push(this.tempDecl());
     if (this.selfNeeded) decls.push("const $self = this;");
     for (const d of decls.reverse()) this.w.insertAt(at, d);
     this.fnTemps = null;
+  }
+
+  /** `let $t, $t2;` (typed `any` in TypeScript: temporaries hold values of any type). */
+  private tempDecl(): string {
+    return `let ${this.fnTemps!.map((t) => (this.ts ? `${t}: any` : t)).join(", ")};`;
   }
 
   /** How instance members are reached here: `this`, or `$self` inside `function` expressions. */
@@ -484,20 +775,20 @@ class ModuleGen {
     this.fnTemps = [];
     if (!f.arrow) this.dynDepth++;
     try {
-      const params = this.params(f.params);
-      const head = (f.async ? "async " : "") + (f.arrow ? `(${params}) =>` : `function${f.name ? " " + f.name.name : ""}(${params})`);
+      const params = `${this.typeParams(f.typeParams)}(${this.params(f.params)})${this.ann(f.returnType)}`;
+      const head = (f.async ? "async " : "") + (f.arrow ? `${params} =>` : `function${f.name ? " " + this.name(f.name) : ""}${params}`);
       if (f.body.kind !== "Block") {
         const body = this.expr(f.body);
         if (this.fnTemps.length === 0) {
-          const code = body.code.startsWith("{") ? `(${body.code})` : this.wrap(body, P.assign);
+          const code = plain(body.code).startsWith("{") ? `(${body.code})` : this.wrap(body, P.assign);
           return { code: `${head} ${code}`, prec: P.assign };
         }
         // Temporaries need statements: turn the expression body into a block.
-        return { code: `${head} {\n  let ${this.fnTemps.join(", ")};\n  return ${body.code};\n}`, prec: P.assign };
+        return { code: `${head} {\n  ${this.tempDecl()}\n  return ${body.code};\n}`, prec: P.assign };
       }
       const at = this.w.mark();
       this.blockBody(f.body);
-      if (this.fnTemps.length > 0) this.w.insertAt(at, `let ${this.fnTemps.join(", ")};`);
+      if (this.fnTemps.length > 0) this.w.insertAt(at, this.tempDecl());
       const inner = this.w.marked().replace(/\n$/, "");
       const code = inner === "" ? `${head} {}` : `${head} {\n${inner}\n}`;
       return { code, prec: f.arrow ? P.assign : P.primary };
@@ -554,13 +845,13 @@ class ModuleGen {
         if (s.inline) return; // inline constants are pasted at every use
         const kw = s.decl === "var" ? "let" : s.decl === "const" ? "const" : s.init ? "const" : "let";
         const init = s.init ? this.expr(s.init).code : s.decl === "var" ? defaultValue(s.type) : undefined;
-        this.w.line(`${kw} ${s.name.name}${init === undefined ? "" : ` = ${init}`};`);
+        this.w.line(`${kw} ${this.name(s.name)}${this.ann(s.type)}${init === undefined ? "" : ` = ${init}`};`);
         return;
       }
       case "ExprStmt": {
         const code = this.expr(s.expr).code;
         // An expression statement must not start with `{` or `function` in JS.
-        this.w.line(/^(\{|function\b)/.test(code) ? `(${code});` : `${code};`);
+        this.w.line(/^(\{|function\b)/.test(plain(code)) ? `(${code});` : `${code};`);
         return;
       }
       case "Return":
@@ -587,7 +878,7 @@ class ModuleGen {
       case "IfVar":
         this.w.line("{");
         this.w.indent();
-        this.w.line(`let ${bindingNames(s.header)};`);
+        this.w.line(`let ${this.bindings(s.header)};`);
         this.w.line(`if (${this.headerCond(s.header)}) {`);
         this.body(s.then);
         if (s.else) {
@@ -599,14 +890,14 @@ class ModuleGen {
         this.w.line("}");
         return;
       case "WhileVar":
-        this.nested(`for (let ${bindingNames(s.header)}; ${this.headerCond(s.header)}; )`, s.body);
+        this.nested(`for (let ${this.bindings(s.header)}; ${this.headerCond(s.header)}; )`, s.body);
         return;
       case "For": {
         let init = "";
         if (s.init?.kind === "VarDecl") {
           const d = s.init;
           const value = d.init ? this.expr(d.init).code : defaultValue(d.type);
-          init = `${d.decl === "var" ? "let" : "const"} ${d.name.name} = ${value}`;
+          init = `${d.decl === "var" ? "let" : "const"} ${this.name(d.name)}${this.ann(d.type)} = ${value}`;
         } else if (s.init) init = this.expr(s.init.expr).code;
         const cond = s.cond ? ` ${this.expr(s.cond).code}` : "";
         const update = s.update ? ` ${this.expr(s.update).code}` : "";
@@ -617,14 +908,14 @@ class ModuleGen {
       case "ForOf": {
         const kw = s.variable.decl === "var" ? "let" : "const";
         const source = s.kind === "ForIn" ? `in ${this.expr(s.object).code}` : `of ${this.expr(s.iterable).code}`;
-        const target = s.variable.pattern ? this.pattern(s.variable.pattern) : s.variable.name.name;
+        const target = s.variable.pattern ? this.pattern(s.variable.pattern) : this.name(s.variable.name);
         this.nested(`for (${kw} ${target} ${source})`, s.body);
         return;
       }
       case "ForRange": {
         const v = s.variable.name.name;
         const start = this.wrap(this.expr(s.start), P.assign);
-        const step = s.step ? Number(this.expr(s.step).code) : 1;
+        const step = s.step ? Number(plain(this.expr(s.step).code)) : 1;
         const update = step === 1 ? `${v}++` : `${v} += ${step}`;
         if (!s.end) {
           this.nested(`for (let ${v} = ${start}; ; ${update})`, s.body);
@@ -683,15 +974,15 @@ class ModuleGen {
         this.w.line(this.fn(s.fn).code);
         return;
       case "DestructDecl":
-        this.w.line(`${s.decl === "var" ? "let" : "const"} ${this.pattern(s.pattern)} = ${this.wrap(this.expr(s.init), P.assign)};`);
+        this.w.line(`${s.decl === "var" ? "let" : "const"} ${this.pattern(s.pattern)}${this.ann(s.type)} = ${this.wrap(this.expr(s.init), P.assign)};`);
         return;
       case "UsingDecl":
-        this.w.line(`${s.isAwait ? "await " : ""}using ${s.name.name} = ${this.wrap(this.expr(s.init), P.assign)};`);
+        this.w.line(`${s.isAwait ? "await " : ""}using ${this.name(s.name)}${this.ann(s.type)} = ${this.wrap(this.expr(s.init), P.assign)};`);
         return;
       case "UsingBlock": {
         // A plain block whose `using` declarations end with it.
         const decls = s.resources.map((r) => {
-          const name = r.kind === "Decl" ? r.name.name : this.temp("$r");
+          const name = r.kind === "Decl" ? this.name(r.name) + this.ann(r.type) : this.temp("$r");
           return `${name} = ${this.wrap(this.expr(r.kind === "Decl" ? r.init : r.expr), P.assign)}`;
         });
         this.w.line("{");
@@ -732,7 +1023,7 @@ class ModuleGen {
       };
       const only = s.catches[0]!;
       if (s.catches.length === 1 && isCatchAll(only)) {
-        this.w.line(`let ${only.name.name} = ${exc}.from(${raw});`);
+        this.w.line(`let ${this.name(only.name)} = ${exc}.from(${raw});`);
         for (const x of only.body.body) this.stmt(x);
       } else {
         const value = this.temp("$exc");
@@ -747,7 +1038,7 @@ class ModuleGen {
             this.w.line(`${head === "if" ? "if" : "} else if"} (${value} instanceof ${this.classRef(typeOf(c)!)}) {`);
           }
           this.w.indent();
-          this.w.line(`let ${c.name.name} = ${value};`);
+          this.w.line(`let ${this.name(c.name)} = ${value};`);
           for (const x of c.body.body) this.stmt(x);
           this.w.dedent();
           head = "else";
@@ -773,7 +1064,7 @@ class ModuleGen {
     const init = p.init ? ` = ${this.wrap(this.expr(p.init), P.assign)}` : "";
     switch (p.kind) {
       case "BindingName":
-        return p.name.name + init;
+        return this.name(p.name) + init;
       case "Target":
         return this.expr(p.expr).code + init;
       case "ObjectPattern": {
@@ -781,7 +1072,7 @@ class ModuleGen {
           const v = prop.value;
           // `{name}` / `{name = 1}` stay shorthand; everything else is `key: pattern`.
           if (v.kind === "BindingName" && v.name.name === prop.key.name) return this.pattern(v);
-          return `${prop.key.name}: ${this.pattern(v)}`;
+          return `${this.name(prop.key)}: ${this.pattern(v)}`;
         });
         if (p.rest) props.push(`...${this.pattern(p.rest)}`);
         return `{ ${props.join(", ")} }${init}`;
@@ -796,12 +1087,22 @@ class ModuleGen {
     }
   }
 
+  /** The variables of an `if`/`while` binding header: `a, b` (typed in TypeScript). */
+  private bindings(items: A.HeaderItem[]): string {
+    if (!this.ts) return bindingNames(items);
+    return items.flatMap((i) => {
+      if (i.kind !== "Binding") return [];
+      const t = this.check.exprTypes.get(i.init);
+      return [i.name.name + (i.type ? this.ann(i.type) : this.annType(t && nonNull(t)))];
+    }).join(", ");
+  }
+
   /** `(a = x) != null && (b = y) != null && cond` for an `if`/`while` binding header. */
   private headerCond(items: A.HeaderItem[]): string {
     return items
       .map((item) =>
         item.kind === "Binding"
-          ? `(${item.name.name} = ${this.wrap(this.expr(item.init), P.assign)}) != null`
+          ? `(${this.name(item.name)} = ${this.wrap(this.expr(item.init), P.assign)}) != null`
           : this.wrap(this.expr(item.expr), P.and + 1),
       )
       .join(" && ");
@@ -831,7 +1132,7 @@ class ModuleGen {
     }
     // Outside a function (field initializers): an arrow function call provides the temporary.
     const inner = build("$t", "$t");
-    return { code: `(($t) => ${inner.code})(${this.wrap(v, P.assign)})`, prec: P.call };
+    return { code: `(($t${this.ts ? ": any" : ""}) => ${inner.code})(${this.wrap(v, P.assign)})`, prec: P.call };
   }
 
   /**
@@ -842,44 +1143,59 @@ class ModuleGen {
    */
   private methodClosure(e: A.Expr): Code {
     const key = (k: string) => `Symbol.for(${jsString(k)})`;
+    // TypeScript doesn't know the cache property.
+    const cache = (o: string) => (this.ts ? `(${o} as any)` : o);
     if (e.kind === "Ident") {
       const self = this.receiver();
-      return { code: `${self}[${key(`xenon.bound.${e.name}`)}] ??= ${self}.${e.name}.bind(${self})`, prec: P.assign };
+      return { code: `${cache(self)}[${key(`xenon.bound.${e.name}`)}] ??= ${self}.${this.tok(e.span, e.name)}.bind(${self})`, prec: P.assign };
     }
     if (e.kind !== "Member") throw new Error("codegen: unexpected method closure");
     const name = e.name.name;
     if (e.object.kind === "Super") {
       // The parent's version, cached separately from an override with the same name.
       const parent = (this.check.exprTypes.get(e.object) as { info?: ClassInfo }).info?.decl.name.name ?? "super";
-      return { code: `this[${key(`xenon.bound.${parent}.${name}`)}] ??= super.${name}.bind(this)`, prec: P.assign };
+      return { code: `${cache("this")}[${key(`xenon.bound.${parent}.${name}`)}] ??= super.${this.name(e.name)}.bind(this)`, prec: P.assign };
     }
     // A primitive can't hold the cache property (strict mode throws), and has no identity anyway.
     if (this.check.exprTypes.get(e.object)?.kind === "prim") {
-      return this.reuse(e.object, (first, again) => ({ code: `${first}.${name}.bind(${again})`, prec: P.call }));
+      return this.reuse(e.object, (first, again) => ({ code: `${first}.${this.name(e.name)}.bind(${again})`, prec: P.call }));
     }
     return this.reuse(e.object, (first, again) => ({
-      code: `${first}[${key(`xenon.bound.${name}`)}] ??= ${again}.${name}.bind(${again})`,
+      code: `${cache(first)}[${key(`xenon.bound.${name}`)}] ??= ${again}.${this.name(e.name)}.bind(${again})`,
       prec: P.assign,
     }));
   }
 
   /** Plain-JS runtime test for `is`/`as`. */
   private runtimeTest(check: RuntimeCheck, first: string, again: string): Code {
+    // TypeScript: the marker and `Symbol.iterator` aren't part of the static type.
+    const dyn = (v: string) => (this.ts ? `(${v} as any)` : v);
     switch (check.kind) {
       case "class": return { code: `${first} instanceof ${this.classRef(check.info)}`, prec: P.rel };
-      case "interface": return { code: `${first}?.[${this.classRef(check.info)}] === true`, prec: P.eq };
-      case "iterable": return { code: `typeof ${first}?.[Symbol.iterator] === 'function'`, prec: P.eq };
-      case "enum": return { code: `Object.values(${this.classRef(check.info)}).includes(${first})`, prec: P.call };
+      case "interface": return { code: `${dyn(first)}?.[${this.classRef(check.info)}] === true`, prec: P.eq };
+      case "iterable": return { code: `typeof ${dyn(first)}?.[Symbol.iterator] === 'function'`, prec: P.eq };
+      case "enum": return { code: `Object.values(${this.classRef(check.info)}).includes(${dyn(first)})`, prec: P.call };
       case "js": return { code: `${first} instanceof ${check.name}`, prec: P.rel };
       case "typeof": return { code: `typeof ${first} === ${jsString(check.tag)}`, prec: P.eq };
       case "int": return { code: `Number.isInteger(${first})`, prec: P.call };
-      case "uint": return { code: `Number.isInteger(${first}) && ${again} >= 0`, prec: P.and };
+      case "uint": return { code: `Number.isInteger(${first}) && ${dyn(again)} >= 0`, prec: P.and };
       case "array": return { code: `Array.isArray(${first})`, prec: P.call };
       case "object": return { code: `${first} != null`, prec: P.eq };
     }
   }
 
   private typeOp(e: A.Expr & { kind: "TypeOp" }): Code {
+    const code = this.typeTest(e);
+    if (e.op === "is" || !this.ts) return code;
+    // TypeScript: the result has the target type. A cast TypeScript can't see as a downcast
+    // (between interfaces, from a class to an interface it doesn't declare) goes through `unknown`.
+    const from = this.check.exprTypes.get(e.expr);
+    const to = this.check.exprTypes.get(e) ?? { kind: "any" };
+    const down = from?.kind === "any" || (from?.kind === "class" && to.kind === "class" && isSubclass(to.info, from.info));
+    return { code: `(${this.wrap(code, P.rel)} as ${down ? "" : "unknown as "}${this.tok(e.type.span, this.tsType(to))})`, prec: P.primary };
+  }
+
+  private typeTest(e: A.Expr & { kind: "TypeOp" }): Code {
     const check = this.check.typeChecks.get(e);
     if (!check) return this.expr(e.expr); // `x as Shape`: an unchecked cast to a structural type
     if (e.op === "is") {
@@ -913,23 +1229,24 @@ class ModuleGen {
     switch (e.kind) {
       case "Ident": {
         const r = this.check.resolutions.get(e);
+        const name = this.tok(e.span, e.name);
         if (r?.kind === "member") {
-          return { code: r.isStatic ? `${this.classRef(r.owner)}.${e.name}` : `${this.receiver()}.${e.name}`, prec: P.call };
+          return { code: r.isStatic ? `${this.classRef(r.owner)}.${name}` : `${this.receiver()}.${name}`, prec: P.call };
         }
-        if (r?.kind === "class") return { code: this.classRef(r.info), prec: P.primary };
-        if (r?.kind === "function") return { code: r.decl.modifiers.nativeName ?? e.name, prec: P.primary };
-        if (r?.kind === "builtin" && r.name === "trace") return { code: "console.log", prec: P.call };
+        if (r?.kind === "class") return { code: this.tok(e.span, this.classRef(r.info)), prec: P.primary };
+        if (r?.kind === "function") return { code: this.tok(e.span, r.decl.modifiers.nativeName ?? e.name), prec: P.primary };
+        if (r?.kind === "builtin" && r.name === "trace") return { code: this.tok(e.span, "console.log"), prec: P.call };
         // A cast through an alias (`Bool(x)`) calls the real JS function.
-        if (r?.kind === "builtin") return { code: r.name === "Float" ? "Number" : r.name, prec: P.primary };
-        return { code: e.name, prec: P.primary };
+        if (r?.kind === "builtin") return { code: this.tok(e.span, r.name === "Float" ? "Number" : r.name), prec: P.primary };
+        return { code: name, prec: P.primary };
       }
       case "This": return { code: "this", prec: P.primary };
       case "Super": return { code: "super", prec: P.primary };
       // `255.toString()` is a JS syntax error (the `.` is read as a decimal point): integer
       // literals get parentheses where a member access follows, and nowhere else.
-      case "Number": return { code: e.raw, prec: /^[0-9_]+$/.test(e.raw) ? P.postfix : P.primary };
-      case "String": return { code: jsString(e.value), prec: P.primary };
-      case "Bool": return { code: String(e.value), prec: P.primary };
+      case "Number": return { code: this.tok(e.span, e.raw), prec: /^[0-9_]+$/.test(e.raw) ? P.postfix : P.primary };
+      case "String": return { code: this.tok(e.span, jsString(e.value)), prec: P.primary };
+      case "Bool": return { code: this.tok(e.span, String(e.value)), prec: P.primary };
       case "Null": return { code: "null", prec: P.primary };
       case "Undefined": return { code: "undefined", prec: P.primary };
       case "Regex": return { code: `/${e.pattern}/${e.flags}`, prec: P.primary };
@@ -964,21 +1281,25 @@ class ModuleGen {
         const objType = this.check.exprTypes.get(e.object);
         if (objType?.kind === "classRef") {
           const m = findMember(objType.info, e.name.name);
-          if (m?.isStatic && m.owner !== objType.info) return { code: `${this.classRef(m.owner)}.${e.name.name}`, prec: P.call };
+          if (m?.isStatic && m.owner !== objType.info) return { code: `${this.classRef(m.owner)}.${this.name(e.name)}`, prec: P.call };
         }
-        return { code: `${this.wrap(this.expr(e.object), P.call)}${e.optional ? "?." : "."}${e.name.name}`, prec: P.call };
+        return { code: `${this.wrap(this.expr(e.object), P.call)}${e.optional ? "?." : "."}${this.name(e.name)}`, prec: P.call };
       }
       case "Index":
         return { code: `${this.wrap(this.expr(e.object), P.call)}${e.optional ? "?." : ""}[${this.expr(e.index).code}]`, prec: P.call };
       case "Call":
         return this.call(e);
-      case "New":
-        return { code: `new ${this.typeName(e.callee)}(${this.args(e.args)})`, prec: P.call };
+      case "New": {
+        // TypeScript keeps explicit type arguments: `new Box<number>()`.
+        const t = this.ts && e.callee.kind === "TypeName" && e.callee.args.length > 0 ? this.check.typeNodeTypes.get(e.callee) : undefined;
+        const callee = t?.kind === "class" ? this.tsType(t) : this.typeName(e.callee);
+        return { code: `new ${this.tok(e.callee.span, callee)}(${this.args(e.args)})`, prec: P.call };
+      }
       case "Unary": {
         const op = e.op === "typeof" || e.op === "delete" ? `${e.op} ` : e.op;
         let arg = this.wrap(this.expr(e.arg), P.unary);
         // Avoid `- -x` turning into `--x`.
-        if ((e.op === "-" || e.op === "+") && arg.startsWith(e.op)) arg = `(${arg})`;
+        if ((e.op === "-" || e.op === "+") && plain(arg).startsWith(e.op)) arg = `(${arg})`;
         return { code: op + arg, prec: P.unary };
       }
       case "Await":
@@ -1022,7 +1343,12 @@ class ModuleGen {
     }
     const r = e.callee.kind === "Ident" ? this.check.resolutions.get(e.callee) : undefined;
     if (r?.kind === "builtin" && e.args.length === 1) {
-      const arg = this.expr(e.args[0]!);
+      let arg = this.expr(e.args[0]!);
+      // TypeScript only takes numbers in arithmetic: `int('12')` converts a string.
+      const t = this.check.exprTypes.get(e.args[0]!);
+      if (this.ts && (r.name === "int" || r.name === "uint") && !(t?.kind === "any" || (t?.kind === "prim" && t.name !== "String" && t.name !== "Boolean"))) {
+        arg = { code: `(${arg.code} as any)`, prec: P.primary };
+      }
       switch (r.name) {
         case "int": return { code: `${this.wrap(arg, P.bitor + 1)} | 0`, prec: P.bitor };
         case "uint": return { code: `${this.wrap(arg, P.shift + 1)} >>> 0`, prec: P.shift };

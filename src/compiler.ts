@@ -62,6 +62,8 @@ export interface CompileOptions {
   maxErrors?: number;
   /** Emit `.js.map` files; `sourceRoot` is the source root as seen from the output directory. */
   sourceMaps?: { sourceRoot: string };
+  /** `ts`: typed TypeScript modules with token mappings instead of JavaScript (see `generate`). */
+  target?: "js" | "ts";
 }
 
 export interface CompileResult {
@@ -87,7 +89,7 @@ export function compileProject(sources: SourceInput[], options: CompileOptions):
   diags.applySuppressions();
   const userFiles = files.filter((f) => !f.prelude);
   if (diags.hasErrors || !mainInfo) return { outputs: [], diagnostics: diags, files: userFiles };
-  return { outputs: generate(asts, result, mainInfo, options.sourceMaps), diagnostics: diags, files: userFiles };
+  return { outputs: generate(asts, result, mainInfo, { sourceMaps: options.sourceMaps, target: options.target }), diagnostics: diags, files: userFiles };
 }
 
 function collectClasses(asts: A.XenonFile[], diags: DiagnosticBag, typedefs: Map<string, TypedefInfo>): Map<string, ClassInfo> {

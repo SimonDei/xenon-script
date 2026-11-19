@@ -1,4 +1,4 @@
-import type { ClassInfo } from "./checker.ts";
+import type { ClassInfo, TypedefInfo } from "./checker.ts";
 
 export type PrimName = "int" | "uint" | "Float" | "String" | "Boolean";
 
@@ -20,6 +20,8 @@ export interface MethodType {
   alias?: string;
   /** Type arguments of a generic typedef (`Callback<int>`); substituted along with the type. */
   aliasArgs?: Type[];
+  /** The typedef behind `alias`. */
+  typedef?: TypedefInfo;
 }
 
 /** A member of a structural shape `{ x:Float, ?label:String, final id:int }`. */
@@ -36,6 +38,7 @@ export interface ShapeType {
   members: Map<string, ShapeMember>;
   alias?: string;
   aliasArgs?: Type[];
+  typedef?: TypedefInfo;
 }
 
 export type Type =

@@ -1,7 +1,6 @@
 import { type FSWatcher, watch } from "node:fs";
 import { join, resolve } from "node:path";
 import { compileOptions, type Config, isMap, readSources, report, runCommand, syncOutputs } from "./build.ts";
-import { ENTRY_FILE } from "./codegen.ts";
 import { compileProject, type SourceInput } from "./compiler.ts";
 
 export interface WatchOptions {
@@ -43,7 +42,7 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
   };
 
   const startChild = () => {
-    child = Bun.spawn(runCommand(config, join(outDir, ENTRY_FILE), opts.args), { stdio: ["inherit", "inherit", "inherit"] });
+    child = Bun.spawn(runCommand(config, outDir, opts.args), { stdio: ["inherit", "inherit", "inherit"] });
   };
 
   const rebuild = async () => {

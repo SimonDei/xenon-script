@@ -133,6 +133,8 @@ export interface CheckResult {
   resolutions: Map<A.Expr | A.ObjectProp, Resolution>;
   /** Class referenced by a type node (`new X`, `extends X`, annotations). */
   typeResolutions: Map<A.TypeNode, ClassInfo>;
+  /** The resolved type of every type annotation (for the TypeScript output). */
+  typeNodeTypes: Map<A.TypeNode, Type>;
   /** Static type of every checked expression. */
   exprTypes: Map<A.Expr, Type>;
   /** References to `inline` constants and their folded values (pasted by codegen). */
@@ -246,7 +248,7 @@ class Scope {
 
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag): CheckResult {
   const result: CheckResult = {
-    resolutions: new Map(), typeResolutions: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), classes,
+    resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), classes,
   };
   const env = new Env(classes, typedefs, diags, result);
 
@@ -647,7 +649,7 @@ class Env {
     // Only the prelude may alias `void` (`typedef Void = void`); uses are checked in `resolveType`.
     let t = this.resolveType(td.decl.type, this.scopes.get(td.file)!, td.file.file.prelude, paramScope(td.params));
     if (td.state !== "busy") return td.state; // a cycle was reported while resolving
-    if (t.kind === "shape" || t.kind === "method") t = { ...t, alias: td.decl.name.name };
+    if (t.kind === "shape" || t.kind === "method") t = { ...t, alias: td.decl.name.name, typedef: td };
     td.state = t;
     return t;
   }
@@ -679,6 +681,12 @@ class Env {
    * parameters in scope; `allowRaw` permits a generic class without arguments (`x is Box`, `new Box(…)`).
    */
   resolveType(node: A.TypeNode, scope: FileScope, allowVoid = false, tparams?: TypeParamScope, allowRaw = false): Type {
+    const t = this.resolveTypeNode(node, scope, allowVoid, tparams, allowRaw);
+    this.result.typeNodeTypes.set(node, t);
+    return t;
+  }
+
+  private resolveTypeNode(node: A.TypeNode, scope: FileScope, allowVoid: boolean, tparams: TypeParamScope | undefined, allowRaw: boolean): Type {
     if (node.kind === "AnyType") return T.any;
     // `int?` and `Null<int>`: the type plus `null` (types that already include `null` stay as they are).
     if (node.kind === "NullableType") return nullableOf(this.resolveType(node.inner, scope, false, tparams));
@@ -762,7 +770,7 @@ class Env {
       if (td.params.length === 0) return target;
       const args = node.args.map((a) => this.resolveType(a, scope, false, tparams));
       const t = subst(target, bind(td.params, args));
-      return t.kind === "shape" || t.kind === "method" ? { ...t, alias: td.decl.name.name, aliasArgs: args } : t;
+      return t.kind === "shape" || t.kind === "method" ? { ...t, alias: td.decl.name.name, aliasArgs: args, typedef: td } : t;
     }
     if (this.isJsImport(scope, name)) return T.any; // JS classes are dynamic until .d.ts support
     const d = this.diags.error("X0420", `cannot find type \`${name}\``, whole, "not found");
