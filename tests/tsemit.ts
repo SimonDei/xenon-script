@@ -8,7 +8,7 @@ import { TS_OPTIONS } from "../src/service.ts";
 
 
 export async function compileExampleToTs(dir: string): Promise<OutputFile[]> {
-  const result = compileProject(await readSources(join(dir, "src")), { main: "Main", target: "ts" });
+  const result = compileProject(await readSources(join(dir, "src")), { main: "Main", target: "ts", typeRoot: join(dir, "src") });
   const errors = result.diagnostics.items.filter((d) => d.severity === "error");
   if (errors.length > 0) throw new Error(`${dir}: ${errors.map((d) => d.message).join("; ")}`);
   return result.outputs;

@@ -64,11 +64,16 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
     const errors = await diagnosticsFor(uri, (d) => d.length > 0);
     expect(errors.map((d) => d.message.split("\n")[0])).toEqual(["this call takes 0 arguments but 1 was given"]);
 
-    // TypeScript's error on a JavaScript import, mapped to the Xenon source.
-    const typed = MAIN.replace("var greeting:String = 'hi'", "var greeting:String = 'hi'\n    var n:int = path.basename('x')");
+    // JavaScript imports are typed from their `.d.ts` (TypeScript's `lib` files needed, also bundled):
+    // Xenon's own error for `path.basename`'s `String`, TypeScript's where Xenon only knows `*`
+    // (`readFileSync`'s `path` parameter).
+    const typed = `import { readFileSync } from 'node:fs'\n${MAIN}`.replace("var greeting:String = 'hi'", "var greeting:String = 'hi'\n    var n:int = path.basename('x')\n    var s:String = readFileSync(true, 'utf8')");
     rpc.sendNotification("textDocument/didChange", { textDocument: { uri, version: 2 }, contentChanges: [{ text: typed }] });
-    const tsErrors = (await diagnosticsFor(uri, (d) => d.some((x) => x.message.includes("not assignable")))) as { message: string; range: unknown; source?: string }[];
-    expect(tsErrors.filter((d) => d.source === "typescript").map((d) => [d.source, d.range])).toEqual([["typescript", { start: { line: 4, character: 8 }, end: { line: 4, character: 9 } }]]);
+    const found = (await diagnosticsFor(uri, (d) => d.some((x) => (x as { code?: string }).code === "TS2769"))) as { message: string; range: { start: unknown }; source?: string; code?: string }[];
+    expect(found.filter((d) => d.code === "X0308" || d.code === "TS2769").map((d) => [d.source, d.code, d.range.start])).toEqual([
+      ["xenon", "X0308", { line: 5, character: 16 }],
+      ["typescript", "TS2769", { line: 6, character: 32 }],
+    ]);
 
     rpc.sendNotification("textDocument/didChange", { textDocument: { uri, version: 3 }, contentChanges: [{ text: MAIN }] });
     expect(await diagnosticsFor(uri, (d) => d.length === 0)).toEqual([]);
@@ -97,7 +102,7 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
     await expect(rpc.sendRequest("textDocument/prepareRename", { textDocument: { uri }, position: { line: 4, character: 22 } })).rejects.toThrow("`toUpperCase` is part of the standard library.");
 
     const sig = await rpc.sendRequest("textDocument/signatureHelp", { textDocument: { uri }, position: { line: 4, character: 48 } });
-    expect(sig).toMatchObject({ signatures: [{ label: "basename(path: string, suffix?: string): string" }], activeParameter: 0 });
+    expect(sig).toMatchObject({ signatures: [{ label: "basename(path:String, suffix?:String):String" }], activeParameter: 0 });
 
     const symbols = (await rpc.sendRequest("textDocument/documentSymbol", { textDocument: { uri } })) as { name: string; kind: number; children: { name: string }[] }[];
     expect(symbols.map((x) => [x.name, x.kind, x.children.map((c) => c.name)])).toEqual([["Main", 5, ["constructor"]]]);

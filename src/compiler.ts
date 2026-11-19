@@ -2,7 +2,9 @@ import { posix } from "node:path";
 import type * as A from "./ast.ts";
 import { check, type CheckResult, type ClassInfo, type TypedefInfo } from "./checker.ts";
 import { generate, type OutputFile } from "./codegen.ts";
-import { DiagnosticBag } from "./diagnostics.ts";
+import { type Diagnostic, DiagnosticBag } from "./diagnostics.ts";
+import { type JsDeclarations, jsDeclarations } from "./dts.ts";
+import { BUILTIN_TYPES } from "./types.ts";
 import { parseFile } from "./parser.ts";
 import preludeSource from "./prelude/Prelude.xn" with { type: "text" };
 import stdArray from "./prelude/std/Array.xn" with { type: "text" };
@@ -65,6 +67,11 @@ export interface CompileOptions {
   /** `ts`: typed TypeScript modules with token mappings instead of JavaScript (see `generate`). */
   target?: "js" | "ts";
   /**
+   * Type JavaScript imports from their `.d.ts` files, resolved from this directory (its
+   * `node_modules`, and those above it). Without it, JavaScript imports are `*`.
+   */
+  typeRoot?: string;
+  /**
    * Editor mode (with `target: "ts"`): generate even when there are errors, file by file (a file
    * the generator can't handle is left out), so the language server always has virtual files.
    */
@@ -78,6 +85,8 @@ export interface CompileResult {
   /** Every parsed file (the prelude's first) and what the checker found, for queries by position. */
   asts: A.XenonFile[];
   check: CheckResult;
+  /** Diagnostics inside generated declarations (dropped: the user can't fix them; for tests). */
+  declarationErrors: Diagnostic[];
 }
 
 /** Compiles a whole project held in memory. Never throws for user errors; check `diagnostics`. */
@@ -88,15 +97,37 @@ export function compileProject(sources: SourceInput[], options: CompileOptions):
     ...sources.map((s) => new SourceFile(s.path, s.text)),
   ];
   const asts = files.map((f) => parseFile(f, diags));
+  const userFiles = files.filter((f) => !f.prelude);
+
+  // JavaScript imports: declarations generated from their `.d.ts` files.
+  let jsBindings: JsDeclarations["bindings"] | undefined;
+  if (options.typeRoot) {
+    const reserved = new Set([...Object.keys(BUILTIN_TYPES), "Vector", ...asts.filter((a) => a.file.prelude).flatMap((a) => [...a.decls, ...a.privateDecls].map((d) => d.name.name))]);
+    const generated = jsDeclarations(asts.filter((a) => !a.file.prelude), options.typeRoot, reserved);
+    for (const g of generated.sources) {
+      const file = new SourceFile(g.path, g.text, false, true);
+      files.push(file);
+      asts.push(parseFile(file, diags));
+    }
+    jsBindings = generated.bindings;
+  }
 
   const typedefs = new Map<string, TypedefInfo>();
   const classes = collectClasses(asts, diags, typedefs);
-  const mainInfo = checkMain(classes, options.main, files.filter((f) => !f.prelude), diags);
-  const result = check(asts, classes, typedefs, diags);
+  const mainInfo = checkMain(classes, options.main, userFiles, diags);
+  const result = check(asts, classes, typedefs, diags, jsBindings);
 
   diags.applySuppressions();
-  const userFiles = files.filter((f) => !f.prelude);
-  const done = { diagnostics: diags, files: userFiles, asts, check: result };
+  // Problems inside generated declarations are the generator's, not the user's: drop them.
+  const declarationErrors: Diagnostic[] = [];
+  for (let i = diags.items.length - 1; i >= 0; i--) {
+    const d = diags.items[i]!;
+    const primary = d.labels.find((l) => l.primary) ?? d.labels[0];
+    if (primary?.span.file.generated) declarationErrors.unshift(...diags.items.splice(i, 1));
+    // A user's error pointing into a declaration ("expected because of this parameter"): the user's part stays.
+    else d.labels = d.labels.filter((l) => !l.span.file.generated);
+  }
+  const done = { diagnostics: diags, files: userFiles, asts, check: result, declarationErrors };
   if (options.tolerant) return { ...done, outputs: generate(asts, result, mainInfo, { target: options.target, tolerant: true }) };
   if (diags.hasErrors || !mainInfo) return { ...done, outputs: [] };
   return { ...done, outputs: generate(asts, result, mainInfo, { sourceMaps: options.sourceMaps, target: options.target }) };
@@ -214,7 +245,7 @@ function checkMain(classes: Map<string, ClassInfo>, main: string, files: SourceF
       // reported already
     } else if (files.length > 0) {
       const d = diags.error("X0001", `main class \`${main}\` not found`);
-      const candidates = [...classes.values()].filter((c) => !c.filePrivate && !c.file.file.prelude).map((c) => c.qname);
+      const candidates = [...classes.values()].filter((c) => !c.filePrivate && !c.file.file.prelude && !c.file.file.generated).map((c) => c.qname);
       if (candidates.length > 0) d.note(`classes in this project: ${candidates.map((c) => `\`${c}\``).join(", ")}`);
       d.help("set the main class with `--main <qualified.Name>` or `\"main\"` in xenon.json");
     } else {

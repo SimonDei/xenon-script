@@ -216,6 +216,7 @@ export function generate(files: A.XenonFile[], check: CheckResult, mainClass: Cl
   const out: OutputFile[] = [];
   // One ES module per source file: its package-level classes are exported, file-private ones are not.
   for (const file of files) {
+    if (file.file.generated) continue; // declarations of JavaScript modules: nothing to emit
     const all = [...file.decls, ...file.privateDecls];
     const first = all.find((d) => d.kind === "Class" && !d.modifiers.native);
     // Only typedefs and native declarations: nothing to emit (TypeScript keeps the typedefs, as types).
@@ -387,12 +388,16 @@ class ModuleGen {
         const args = t.args?.length ? `<${t.args.map((a) => this.tsType(a)).join(", ")}>` : "";
         if (isNative(info)) {
           const name = jsNameOf(info);
+          // Declared from a `.d.ts`: TypeScript knows the type under the local import name only.
+          if (info.file.file.generated) return this.importedNames().has(name) ? name : "any";
           return (TS_NATIVE[name] ?? name) + args;
         }
         return this.classRef(info) + args;
       }
       case "typeParam": return t.param.name;
-      case "classRef": return `typeof ${this.classRef(t.info)}`;
+      case "classRef":
+        if (t.info.file.file.generated && !this.importedNames().has(jsNameOf(t.info))) return "any";
+        return `typeof ${this.classRef(t.info)}`;
       case "nullable": {
         const inner = this.tsType(t.inner);
         return `${inner.includes("=>") ? `(${inner})` : inner} | null`;
@@ -416,11 +421,17 @@ class ModuleGen {
    * describe JavaScript types and are named after them (`IteratorResult<T>`, `RequestInit`): TypeScript knows them.
    */
   private typedefRef(td: TypedefInfo, args: Type[] | undefined): string {
+    if (td.file.file.generated) return "any"; // a `.d.ts` type: TypeScript reads the original
     if (td.file !== this.file && !td.file.file.prelude) {
       const module = moduleOf(td.file);
       this.typeImports.set(module, (this.typeImports.get(module) ?? new Set()).add(td.decl.name.name));
     }
     return td.decl.name.name + (args?.length ? `<${args.map((a) => this.tsType(a)).join(", ")}>` : "");
+  }
+
+  /** The local names of this file's JavaScript imports. */
+  private importedNames(): Set<string> {
+    return new Set(this.file.imports.flatMap((i) => (i.kind === "JsImport" ? [i.defaultName, i.namespace, ...i.named.map((n) => n.alias ?? n.name)].flatMap((n) => (n ? [n.name] : [])) : [])));
   }
 
   /** `private `/`protected ` (TypeScript output only; `internal` has no TypeScript equivalent). */

@@ -1,0 +1,49 @@
+// JavaScript imports typed from their `.d.ts` files (here `@types/node` and Bun's types):
+// wrong argument types and unknown members are compile errors, results have real types.
+package {
+  import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+  import * as path from 'node:path'
+  import { tmpdir } from 'node:os'
+  import { createHash } from 'node:crypto'
+  import { EventEmitter } from 'node:events'
+  import { URL } from 'node:url'
+  import { Database } from 'bun:sqlite'
+
+  public class Main {
+    public function Main() {
+      // Overloaded functions: `'utf8'` picks the overload that returns a `String`.
+      var dir:String = mkdtempSync(path.join(tmpdir(), 'xenon-'))
+      var file:String = path.join(dir, 'note.txt')
+      writeFileSync(file, 'hello')
+      var text:String = readFileSync(file, 'utf8')
+      trace(text.toUpperCase(), existsSync(file), path.basename(file, '.txt'), path.extname(file))
+
+      // A class: constructor, properties, methods returning other typed classes.
+      var site:URL = new URL('https://example.com/a/b?x=1#top')
+      trace(site.hostname, site.pathname, site.searchParams.get('x'), site.hash)
+      trace(createHash('sha256').update('xenon').digest('hex').substring(0, 12))
+
+      // Extending a typed class: inherited members are typed, the subclass is an `EventEmitter`.
+      var bell:Bell = new Bell()
+      bell.on('ring', (times:*):void => trace('ring', times))
+      bell.ring(2)
+      var emitter:EventEmitter = bell
+      trace(emitter.listenerCount('ring'))
+
+      // Bun's own modules too.
+      var db:Database = new Database(':memory:')
+      db.run('create table t (n integer)')
+      db.run('insert into t values (1), (2), (3)')
+      var row:* = db.query('select sum(n) as total from t').get()
+      trace(row.total)
+      db.close()
+      rmSync(dir, { recursive: true })
+    }
+  }
+}
+
+class Bell extends EventEmitter {
+  public function ring(times:int):void {
+    emit('ring', times)
+  }
+}

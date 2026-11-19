@@ -16,9 +16,11 @@ for (const name of examples) {
     const config = Bun.file(join(root, name, "xenon.json"));
     const main = (await config.exists()) ? ((await config.json()).main ?? "Main") : "Main";
 
-    const result = compileProject(sources, { main });
+    // As `xenon build` compiles: JavaScript imports typed from their `.d.ts` files.
+    const result = compileProject(sources, { main, typeRoot: srcRoot });
     const errors = result.diagnostics.items.filter((d) => d.severity === "error");
     expect(renderAll(errors, { color: false })).toBe("");
+    expect(renderAll(result.declarationErrors, { color: false })).toBe("");
 
     // Inside the example directory, so bare imports (`lodash`) resolve from the project's node_modules.
     const out = join(root, name, ".test-out");

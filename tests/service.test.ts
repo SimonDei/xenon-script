@@ -27,7 +27,7 @@ public class Main {
   public function Main() {
     var a:Animal = new Animal('rex')
     var scores:Map<String, int> = new Map()
-    var n:int = readFileSync('Main.xn', 'utf8')
+    var n:String = readFileSync(true, 'utf8')
     trace(a.speak(2), scores.get('a'), n, path.basename('x/y'))
   }
 }
@@ -46,24 +46,27 @@ const offset = (text: string, needle: string, delta = 0) => {
   return i + delta;
 };
 
-test("diagnostics: Xenon's, plus TypeScript's where Xenon only knows `*`", () => {
+test("diagnostics: Xenon's (JavaScript imports typed from their `.d.ts`), plus TypeScript's where Xenon only knows `*`", () => {
   const p = project({ "zoo/Animal.xn": ANIMAL, "Main.xn": MAIN });
   const diags = p.diagnostics();
   expect(diags.get("zoo/Animal.xn")).toEqual([]);
   const main = diags.get("Main.xn")!;
-  expect(main.map((d) => [d.source, d.code])).toEqual([["typescript", "TS2322"]]);
-  // `var n:int = readFileSync(…)`: the error sits on `n`.
-  expect(main[0]!.range).toEqual({ start: { line: 8, character: 8 }, end: { line: 8, character: 9 } });
-  expect(main[0]!.message).toContain("not assignable to type 'number'");
+  // `readFileSync`'s `path` is `*` to Xenon (a union in TypeScript): TypeScript's errors on `true`
+  // (and on `n`, as TypeScript then falls back to the last overload, returning `string | Buffer`).
+  expect(main.map((d) => [d.source, d.code, d.range.start.character])).toEqual([["typescript", "TS2322", 8], ["typescript", "TS2769", 32]]);
+
+  // Typed from the `.d.ts`, Xenon itself sees that the result is a `String`; TypeScript stays quiet on that line.
+  p.set("Main.xn", MAIN.replace("var n:String = readFileSync(true, 'utf8')", "var n:int = readFileSync('Main.xn', 'utf8')"));
+  expect(p.diagnostics().get("Main.xn")!.map((d) => [d.source, d.code, d.range.start.character])).toEqual([["xenon", "X0308", 16]]);
 
   // A Xenon error: reported once, with its notes and help, and TypeScript stays quiet about the same spot.
   p.set("Main.xn", MAIN.replace("a.speak(2)", "a.speak('2')"));
   const broken = p.diagnostics().get("Main.xn")!;
-  expect(broken.map((d) => [d.source, d.code])).toEqual([["xenon", "X0308"], ["typescript", "TS2322"]]);
+  expect(broken.map((d) => [d.source, d.code])).toEqual([["xenon", "X0308"], ["typescript", "TS2322"], ["typescript", "TS2769"]]);
   expect(broken[0]!.range.start).toEqual({ line: 9, character: 18 }); // the argument `'2'`
 });
 
-test("hover shows Xenon types and documentation; TypeScript's for JavaScript imports", () => {
+test("hover shows Xenon types and documentation, also for JavaScript imports (from their `.d.ts`)", () => {
   const p = project({ "zoo/Animal.xn": ANIMAL, "Main.xn": MAIN });
   const hover = (needle: string, delta = 0) => p.hover("Main.xn", offset(MAIN, needle, delta))?.contents;
   expect(hover("a.speak", 3)).toBe("```xenon\nfunction Animal.speak(times?:int):String\n```\n\nMakes a sound, `times` times.");
@@ -71,7 +74,9 @@ test("hover shows Xenon types and documentation; TypeScript's for JavaScript imp
   expect(hover("scores.get", 7)).toBe("```xenon\nfunction Map.get(key:String):int?\n```\n\nThe value for `key`, or `null` if there is none.");
   expect(hover("new Animal", 5)).toBe("```xenon\nclass zoo.Animal\n```\n\nSomething that lives in the zoo.");
   expect(hover("var a:Animal", 7)).toBe("```xenon\nclass zoo.Animal\n```\n\nSomething that lives in the zoo.");
-  expect(hover("path.basename", 6)).toStartWith("```typescript\nfunction path.basename(path: string, suffix?: string): string\n```");
+  expect(hover("path.basename", 6)).toStartWith("```xenon\nfunction path.basename(path:String, suffix?:String):String\n```\n\nReturn the last portion of a path.");
+  // Imported by name: TypeScript's view (with its overloads).
+  expect(hover("readFileSync(true", 3)).toStartWith("```typescript\n(alias) readFileSync");
   expect(p.hover("zoo/Animal.xn", offset(ANIMAL, "var name", 5))?.contents).toBe("```xenon\nvar Animal.name:String\n```\n\nHow the animal is called.");
 });
 

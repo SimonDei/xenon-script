@@ -7,6 +7,8 @@ export class SourceFile {
     readonly text: string,
     /** Part of the built-in prelude (shipped with the compiler, not user code). */
     readonly prelude = false,
+    /** Declarations generated from `.d.ts` files for JavaScript imports (src/dts.ts): checked, never emitted. */
+    readonly generated = false,
   ) {
     const starts = [0];
     for (let i = 0; i < text.length; i++) {

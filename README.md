@@ -36,7 +36,15 @@ checked against the JavaScript runtime by `tests/std.test.ts`:
 `RegExp`, `Date`, `JSON`, `Math`, `Object`, `Function` and `console`,
 plus the global functions `setTimeout`/`setInterval`/`clearTimeout`/`clearInterval`, `queueMicrotask`,
 `structuredClone`, `fetch`, `encodeURIComponent` & co. and `atob`/`btoa`. `examples/std` shows each of them in use.
-JavaScript globals without a declaration yet (`process`, `URL`, `WeakMap`, …) are untyped `*`.
+JavaScript globals without a declaration yet (`process`, `WeakMap`, …) are untyped `*`.
+
+JavaScript imports are typed from their `.d.ts` files (`@types/node`, Bun's types, a package's own
+types), found in `node_modules` from the source root: `import { readFileSync } from 'node:fs'`
+then `var n:int = readFileSync(f, 'utf8')` is an error (the `'utf8'` overload returns a `String`),
+and `path.nope` is unknown. Namespaces become classes of statics, exported classes native classes
+(`new`, `is`, subclassing), interfaces with methods native classes, other object types typedef
+shapes; whatever has no Xenon equivalent (most unions, intersections, tuples, type parameters) is
+`*` member by member, and a package without types stays `*` altogether. See `examples/declarations`.
 Iteration is C#-style: `IEnumerable<T>` (`getEnumerator()`) and `IEnumerator<T>` (`moveNext()`,
 `current`). Arrays, strings, `Set`, `Map` and `Iterator` are enumerable, and a class implementing
 `IEnumerable<T>` works with `for … of` (also from JavaScript); see `examples/enumerable`.
@@ -68,9 +76,9 @@ between each `.xn` file and its `.ts` module.
 `xenon lsp` is a language server (LSP over stdio) for editors: diagnostics as you type with quick
 fixes, hover with Xenon types and doc comments, go to definition (also into the standard library
 and `.d.ts` files), completion, signature help, find references, rename (a class's file too) and
-the outline. Xenon's checker answers for Xenon code; TypeScript runs over the virtual `.ts`
-files and adds the types of JavaScript and npm imports (and errors in their use) where Xenon only
-knows `*`. The VS Code extension in `packages/vscode-xenon` bundles it (with syntax highlighting):
+the outline. Xenon's checker answers, JavaScript imports included; TypeScript runs over the
+virtual `.ts` files and adds what Xenon types as `*` (a parameter typed `string | Buffer`, packages
+without types: TypeScript's hover, signatures and errors). The VS Code extension in `packages/vscode-xenon` bundles it (with syntax highlighting):
 `cd packages/vscode-xenon && bun install && bun run package && code --install-extension xenon.vsix`.
 
 Project layout: `src/` (compiler), `examples/<name>/src` + `expected.txt` (golden end-to-end tests),

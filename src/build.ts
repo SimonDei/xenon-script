@@ -31,7 +31,7 @@ export function runCommand(config: Config, outDir: string, args: string[]): stri
 export function compileOptions(config: Config, root: string): CompileOptions {
   const sourceRoot = relative(resolve(root, config.out), resolve(root, config.src)).split(sep).join("/");
   const sourceMaps = config.sourceMaps && config.target === "js" ? { sourceRoot } : undefined;
-  return { main: config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target };
+  return { main: config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target, typeRoot: resolve(root, config.src) };
 }
 
 /** Reads every `.xn` file below the source root (paths use `/`). */

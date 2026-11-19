@@ -173,7 +173,8 @@ function signature(t: MethodType, name: string): string {
 /** How a member reads in hovers and completion details. */
 function memberText(m: MemberSig): string {
   const owner = m.owner.decl.name.name;
-  const st = m.isStatic ? "static " : "";
+  // A JavaScript module's export (`path.join`) isn't a static to the reader.
+  const st = m.isStatic && !m.owner.file.file.generated ? "static " : "";
   if (m.kind === "method" && m.type.kind === "method") return `${st}function ${owner}.${signature(m.type, m.name)}`;
   if (m.kind === "accessor") return `${st}function get ${owner}.${m.name}():${typeToString(m.type)}`;
   const kw = m.readonly === "const" ? "const" : m.readonly === "final" ? "final" : "var";
@@ -299,7 +300,7 @@ export class XenonProject {
   }
 
   private compile(inputs: SourceInput[]): Analysis {
-    const result = compileProject(inputs, { main: this.main, target: "ts", tolerant: true });
+    const result = compileProject(inputs, { main: this.main, target: "ts", tolerant: true, typeRoot: this.srcRoot });
     const outputs = new Map<string, OutputFile>();
     for (const o of result.outputs) if (o.source) outputs.set(o.source.path, o);
     return { result, outputs };
@@ -364,8 +365,14 @@ export class XenonProject {
         if (d.start === undefined || d.category !== ts.DiagnosticCategory.Error) continue;
         const range = this.mapBack(o, d.start, d.length ?? 0);
         if (!range) continue; // generated glue, not the user's code
-        // Xenon already reported an error here: its message is the better one.
-        if (xenonSpans.get(path)?.some((s) => s.start < range.end && range.start < s.end)) continue;
+        // Xenon already reported an error in this statement (or here): its message is the better one.
+        const file = o.source!;
+        const lines = (s: { start: number; end: number }) => [file.lineOf(s.start), file.lineOf(Math.max(s.start, s.end - 1))] as const;
+        const [from, to] = lines(range);
+        if (xenonSpans.get(path)?.some((s) => {
+          const [a, b] = lines(s);
+          return a <= to && from <= b;
+        })) continue;
         out.get(path)!.push({
           range: rangeOf(o.source!, range.start, range.end),
           severity: "error",
@@ -553,7 +560,8 @@ export class XenonProject {
     const ast = this.astOf(a, path);
     if (!ast) return [];
     const info = this.describe(a, nodesAt(ast, offset));
-    if (info?.decl) return [this.location(info.decl)];
+    // Declarations generated from a `.d.ts` aren't files to open: TypeScript finds the original.
+    if (info?.decl && !info.decl.file.generated) return [this.location(info.decl)];
     // TypeScript: into `.d.ts` files, or back into Xenon code through the mappings.
     const o = a.outputs.get(path);
     const gen = o?.mappings && generatedOffsetAt(o.mappings, offset);
@@ -611,7 +619,7 @@ export class XenonProject {
       for (const child of childNodes(node)) visit(child, node);
     };
     for (const ast of a.result.asts) {
-      if (ast.file.prelude) continue;
+      if (ast.file.prelude || ast.file.generated) continue;
       for (const n of childNodes([ast.imports, ast.decls, ast.privateDecls])) visit(n, undefined);
     }
     return found;
@@ -633,6 +641,8 @@ export class XenonProject {
     if (!target) return { error: "This isn't something that can be renamed." };
     const builtIn = target.decl!.file.prelude || (target.member && this.roots(target.member).some((r) => r.span.file.prelude));
     if (builtIn) return { error: `\`${spanText(target.span)}\` is part of the standard library.` };
+    const external = target.decl!.file.generated || (target.member && this.roots(target.member).some((r) => r.span.file.generated));
+    if (external) return { error: `\`${spanText(target.span)}\` is declared by a JavaScript module.` };
     return { range: rangeOf(target.span.file, target.span.start, target.span.end), placeholder: spanText(target.span) };
   }
 

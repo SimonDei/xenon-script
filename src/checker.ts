@@ -1,5 +1,6 @@
 import type * as A from "./ast.ts";
 import type { DiagnosticBag, DiagnosticBuilder, Edit } from "./diagnostics.ts";
+import type { JsBinding } from "./dts.ts";
 import { type ConstValue, fits, type Fold, fold } from "./consteval.ts";
 import { assignedNames, breaksOut, completes, mentions } from "./flow.ts";
 import { GLOBAL_HINTS, JS_GLOBALS } from "./globals.ts";
@@ -161,6 +162,8 @@ interface FileScope {
   /** Names offered by several wildcard imports (and those imports); an error only when used. */
   ambiguous: Map<string, { infos: ClassInfo[]; imports: A.Import[] }>;
   jsImports: Set<string>;
+  /** JavaScript imports typed as a static of a generated declaration (functions and values). */
+  jsMembers: Map<string, { info: ClassInfo; member: string }>;
   /** Typedefs by simple name: own package, file-private and imported. */
   typedefs: Map<string, TypedefInfo>;
   /** The import that provides a name (for unused-import warnings). */
@@ -247,11 +250,16 @@ class Scope {
 
 /* ===================================================================== */
 
-export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag): CheckResult {
+/**
+ * `jsBindings`: JavaScript imports typed by generated declarations (src/dts.ts), by importing file
+ * path and local name; other JavaScript imports are `*`.
+ */
+export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
     resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), classes,
   };
   const env = new Env(classes, typedefs, diags, result);
+  env.jsBindings = jsBindings;
 
   const scopes = env.scopes;
   for (const file of files) scopes.set(file, env.fileScope(file));
@@ -278,6 +286,8 @@ export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typ
 /** Project-wide state shared by the phases. */
 class Env {
   readonly scopes = new Map<A.XenonFile, FileScope>();
+  /** Typed JavaScript imports (see `check`). */
+  jsBindings?: Map<string, Map<string, JsBinding>>;
   /** Shape members whose types are resolved after all signatures (reports errors inside shapes). */
   readonly pendingShapeMembers: ShapeMember[] = [];
   /** Members referenced anywhere (for the unused-private-member warning). */
@@ -333,7 +343,7 @@ class Env {
 
   fileScope(file: A.XenonFile): FileScope {
     const pkg = file.packageName.map((n) => n.name).join(".");
-    const scope: FileScope = { file, classes: new Map(), ambiguous: new Map(), jsImports: new Set(), typedefs: new Map(), importOf: new Map(), used: new Set() };
+    const scope: FileScope = { file, classes: new Map(), ambiguous: new Map(), jsImports: new Set(), jsMembers: new Map(), typedefs: new Map(), importOf: new Map(), used: new Set() };
     for (const td of this.typedefs.values()) {
       if (td.pkg === pkg && (!td.filePrivate || td.file === file)) scope.typedefs.set(td.decl.name.name, td);
     }
@@ -377,10 +387,18 @@ class Env {
             scope.used.add(imp); // already reported
             continue;
           }
-          scope.jsImports.add(n.name);
           scope.classes.delete(n.name);
           scope.importOf.set(n.name, imp);
           origin.set(n.name, { kind: "import", span: n.span });
+          // Typed from a `.d.ts`: a class (or module namespace) is a native class under this name.
+          const typed = this.jsBindings?.get(file.file.path)?.get(n.name);
+          const info = typed && this.classes.get(typed.qname);
+          if (typed?.kind === "class" && info) {
+            scope.classes.set(n.name, info);
+            continue;
+          }
+          scope.jsImports.add(n.name);
+          if (typed?.kind === "member" && info) scope.jsMembers.set(n.name, { info, member: typed.member });
         }
         continue;
       }
@@ -844,6 +862,7 @@ class Env {
     }
     const ext = info.decl.extends;
     if (!ext) return;
+    // An untyped JavaScript parent: its members are unknown. (One typed from a `.d.ts` is a native class.)
     if (ext.kind === "TypeName" && ext.name.length === 1 && !scope.classes.has(ext.name[0]!.name) &&
       (this.isJsImport(scope, ext.name[0]!.name) || this.isGlobal(scope, ext.name[0]!.name))) {
       info.jsParent = true;
@@ -1209,6 +1228,9 @@ class Env {
       // Only superclasses are overridden; implementing an interface member doesn't use `override`.
       const inherited = info.parent ? findClassMember(info.parent, name) : undefined;
       const parentName = inherited?.owner.decl.name.name;
+      // Declared by a `.d.ts` (a typed JavaScript parent): `override` stays optional and signatures
+      // aren't compared, as for untyped JavaScript parents; TypeScript's types are often looser.
+      if (inherited?.owner.file.file.generated) continue;
 
       if (m.kind === "Field") {
         if (ov) this.diags.error("X0726", "fields can't be overridden", ov).help("remove `override`");
@@ -1677,6 +1699,17 @@ function stubFor(m: MemberSig, indent: string, override = false): string {
 }
 
 /** True if the class (or a superclass) extends a JS class, so unknown members may exist. */
+/** Does the type name something declared only for a `.d.ts` (which a user file can't write)? */
+function fromDeclarations(t: Type): boolean {
+  switch (t.kind) {
+    case "class": return t.info.file.file.generated || (t.args ?? []).some(fromDeclarations);
+    case "builtin": return t.args.some(fromDeclarations);
+    case "nullable": return fromDeclarations(t.inner);
+    case "shape": case "method": return !!t.typedef?.file.file.generated;
+    default: return false;
+  }
+}
+
 function hasJsAncestor(info: ClassInfo): boolean {
   if (info.jsParent) return true;
   for (const sup of superclasses(info)) if (sup.jsParent) return true;
@@ -2277,7 +2310,7 @@ class BodyChecker {
       const d = this.diags.warning("X0850", `variable \`${s.name.name}\` has no type annotation; it is untyped (\`*\`)`, s.name.span);
       const initType = s.init ? this.expr(s.init, scope) : undefined;
       const at = span(s.name.span.file, s.name.span.end, s.name.span.end);
-      const describable = initType && !isDynamic(initType) && !["null", "void", "method", "classRef"].includes(initType.kind);
+      const describable = initType && !isDynamic(initType) && !["null", "void", "method", "classRef"].includes(initType.kind) && !fromDeclarations(initType);
       if (describable) d.help("add the type of the initializer", [{ span: at, text: `:${typeToString(initType)}` }]);
       else d.help("add a type, or `:*` to make it explicitly dynamic", [{ span: at, text: ":*" }]);
       const untypedLocal: Local = { type: T.any, kind: s.decl, nameSpan: s.name.span };
@@ -2883,6 +2916,13 @@ class BodyChecker {
     }
     if (this.env.isJsImport(this.scope, name)) {
       res.set(e, { kind: "jsImport" });
+      // Typed from a `.d.ts`: a function (with its overloads) or a value.
+      const typed = this.scope.jsMembers.get(name);
+      const m = typed && findMember(typed.info, typed.member);
+      if (m) {
+        if (m.overloads && m.overloads.length > 1) this.calleeOverloads.set(e, m.overloads);
+        return m.type;
+      }
       return T.any;
     }
     const fns = this.env.functions.get(name);
