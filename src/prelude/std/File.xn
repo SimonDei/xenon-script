@@ -1,0 +1,26 @@
+// Standard library: the web platform's `File`: a `Blob` with a name and a modification time.
+// Files come back from a `FormData` (`form.get('attachment')`, an upload's file part) and are
+// made like blobs: `new File([csvText], 'counts.csv', { type: 'text/csv' })`. Being a `Blob`, a
+// file is read the same way (`await file.text()`) and can go wherever a `Blob` is expected.
+package xenon {
+  /** The options of `new File(parts, name, options)`. */
+  public typedef FileOptions = {
+    /** The media type, e.g. `'text/csv'` (empty if not given). */
+    ?type:String,
+    /** Line breaks in string parts: `'transparent'` (the default) or `'native'`. */
+    ?endings:String,
+    /** The modification time in milliseconds since 1970 (default: now). */
+    ?lastModified:Float
+  }
+
+  public native class File extends Blob {
+    /** A file of the parts joined (strings as UTF-8, buffers and blobs as they are) named `name`. */
+    function File(parts:Array<*>, name:String)
+    function File(parts:Array<*>, name:String, options:FileOptions)
+
+    /** The file name, without a path: `'counts.csv'`. */
+    function get name():String
+    /** The modification time in milliseconds since 1970 (`new Date(file.lastModified)`). */
+    function get lastModified():Float
+  }
+}

@@ -141,3 +141,4 @@ false 4 301 https://example.com/new error
 true 0 12 false 4 false
 17 text/csv name text/plain;charset=utf-8 17 17 0
 ann@example.com bob@example.com Counts counts.csv 17 false to,to,attachment,subject
+notes.txt 14 1970-01-01T00:00:00.000Z true 3

@@ -98,6 +98,10 @@ package {
         var names:Array<String> = []
         for (var [name, value]:* of received) names.push(name)
         trace(received.getAll('to').join(' '), received.get('subject'), file.name, file.size, received.has('cc'), names.join(','))
+
+        var notes:File = new File(['line 1\n', 'line 2\n'], 'notes.txt', { type: 'text/plain', lastModified: 0 })
+        var asBlob:Blob = notes                                  // a File is a Blob
+        trace(notes.name, notes.size, new Date(notes.lastModified).toISOString(), file is File, (await asBlob.text()).split('\n').length)
       }, 40)
     }
 

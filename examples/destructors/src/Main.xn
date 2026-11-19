@@ -8,7 +8,7 @@ package {
       Main.log = []
 
       try {
-        using f:File = new File('data.txt')
+        using f:FileHandle = new FileHandle('data.txt')
         throw new StateException('disk on fire')
       } catch (e:StateException) {
         Main.log.push('caught ' + e.message)
@@ -16,10 +16,10 @@ package {
       trace(Main.log.join(' | '))
       Main.log = []
 
-      var early:File = new File('early.txt')
+      var early:FileHandle = new FileHandle('early.txt')
       early.dispose()
       early.dispose()                      // second call: no-op
-      using (a:File = new File('a'), b:Lock = new Lock('b')) {
+      using (a:FileHandle = new FileHandle('a'), b:Lock = new Lock('b')) {
         Main.log.push('in block')
       }
       using (early) Main.log.push('expression form')
@@ -32,7 +32,7 @@ package {
     }
 
     private function scoped():void {
-      using first:File = new File('first')
+      using first:FileHandle = new FileHandle('first')
       using second:Lock = new Lock('second')
       Main.log.push('working')
     }                                       // second, then first
@@ -44,13 +44,13 @@ package {
   }
 }
 
-class File {
+class FileHandle {
   private final name:String
-  public function File(name:String) { this.name = name }
-  public ~File() { Main.log.push('close ' + name) }
+  public function FileHandle(name:String) { this.name = name }
+  public ~FileHandle() { Main.log.push('close ' + name) }
 }
 
-class Lock extends File {
+class Lock extends FileHandle {
   public function Lock(name:String) { super(name + '.lock') }
   public ~Lock() {
     Main.log.push('unlock')

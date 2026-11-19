@@ -9,7 +9,7 @@
 // a file: a `Blob` passed in is stored as a `File` (named by `fileName`, else `'blob'`).
 // Iterate with `for (var [name, value]:* of form)`.
 //
-// Typing: values read back are `*` (a `String` or a `File`, which is a `Blob` with a `name`).
+// Typing: values read back are `*`: a `String` or a `File` (`if (value is File) …`).
 // Not declared: Bun's `toJSON()` and `length`.
 package xenon {
   public native class FormData implements IEnumerable<Array<*>> {
