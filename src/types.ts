@@ -49,6 +49,8 @@ export type Type =
   | { kind: "classRef"; info: ClassInfo } // the class itself (`Dog` in `Dog.create()`)
   | MethodType
   | ShapeType
+  /** `int?` / `Null<int>`: a value type or type parameter that may also be `null`. Build with `nullableOf`. */
+  | { kind: "nullable"; inner: Type }
   | { kind: "error" }; // result of an expression that already produced an error
 
 export const T = {
@@ -109,6 +111,20 @@ export function isNullable(t: Type): boolean {
   return t.kind !== "void";
 }
 
+/**
+ * `T?`: wraps the types that can't hold `null` themselves (`int`, `uint`, `Float`, `Boolean`) and
+ * type parameters (which may stand for one); other types already include `null` and stay as they are.
+ */
+export function nullableOf(t: Type): Type {
+  if ((t.kind === "prim" && t.name !== "String") || t.kind === "typeParam") return { kind: "nullable", inner: t };
+  return t;
+}
+
+/** The non-null part of a type: `int` for `int?`, the type itself otherwise. */
+export function nonNull(t: Type): Type {
+  return t.kind === "nullable" ? t.inner : t;
+}
+
 export function typeToString(t: Type): string {
   switch (t.kind) {
     case "prim": return t.name;
@@ -119,6 +135,7 @@ export function typeToString(t: Type): string {
     case "builtin": return t.args.length && !t.args.every(isDynamic) ? `${t.name}<${t.args.map(typeToString).join(", ")}>` : t.name;
     case "class": return t.args?.length ? `${t.info.decl.name.name}<${t.args.map(typeToString).join(", ")}>` : t.info.decl.name.name;
     case "typeParam": return t.param.name;
+    case "nullable": return `${typeToString(t.inner)}?`;
     case "classRef": return `Class<${t.info.decl.name.name}>`;
     case "method": {
       if (t.alias) return aliasText(t);
@@ -151,6 +168,7 @@ export function sameType(a: Type, b: Type): boolean {
     }
     case "classRef": return a.info === (b as typeof a).info;
     case "typeParam": return a.param === (b as typeof a).param;
+    case "nullable": return sameType(a.inner, (b as typeof a).inner);
     case "builtin": {
       const bb = b as typeof a;
       return a.name === bb.name && a.args.length === bb.args.length && a.args.every((x, i) => sameType(x, bb.args[i]!));
@@ -200,6 +218,9 @@ const comparing = new Map<Type, Set<Type>>();
 export function assignable(from: Type, to: Type): boolean {
   if (from === to) return true;
   if (isDynamic(from) || isDynamic(to)) return true;
+  // `int?` takes `null`, `int` and `int?`; an `int?` fits only where `null` fits too.
+  if (to.kind === "nullable") return from.kind === "null" || assignable(nonNull(from), to.inner);
+  if (from.kind === "nullable") return isNullable(to) && to.kind !== "typeParam" && assignable(from.inner, to);
   // Type parameters are opaque: a `T` fits only `T` (and `Object`); only `T` and `null` fit a `T`.
   if (from.kind === "typeParam") return (to.kind === "typeParam" && to.param === from.param) || (to.kind === "builtin" && to.name === "Object");
   if (to.kind === "typeParam") return from.kind === "null";
@@ -265,6 +286,7 @@ export function subst(t: Type, map: Map<TypeParamInfo, Type>): Type {
   if (map.size === 0) return t;
   switch (t.kind) {
     case "typeParam": return map.get(t.param) ?? t;
+    case "nullable": return nullableOf(subst(t.inner, map)); // `V?` with `V = Dog` is just `Dog`
     case "class": return t.args?.length ? { ...t, args: t.args.map((a) => subst(a, map)) } : t;
     case "builtin": return t.args.length ? { ...t, args: t.args.map((a) => subst(a, map)) } : t;
     case "method":
@@ -327,6 +349,9 @@ export function unify(pattern: Type, actual: Type, vars: Set<TypeParamInfo>, out
         out.set(pattern.param, actual);
       }
       return;
+    case "nullable":
+      unify(pattern.inner, nonNull(actual), vars, out);
+      return;
     case "class": {
       if (actual.kind !== "class" || !pattern.args?.length) return;
       const seen = supertypeArgs(actual.info, actual.args ?? [], pattern.info);
@@ -355,6 +380,7 @@ export function unify(pattern: Type, actual: Type, vars: Set<TypeParamInfo>, out
 export function mentions(t: Type, params: Set<TypeParamInfo>): boolean {
   switch (t.kind) {
     case "typeParam": return params.has(t.param);
+    case "nullable": return mentions(t.inner, params);
     case "class": return !!t.args?.some((a) => mentions(a, params));
     case "builtin": return t.args.some((a) => mentions(a, params));
     case "method": return t.params.some((p) => mentions(p.type, params)) || mentions(t.ret, params);

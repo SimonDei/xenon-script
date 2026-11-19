@@ -32,7 +32,7 @@ error[X0308]: mismatched types
  --> std-array.xn:7:28
   |
 7 |     var firstText:String = nums.at(0)
-  |                   ------   ^^^^^^^^^^ expected `String`, found `int`
+  |                   ------   ^^^^^^^^^^ expected `String`, found `int?`
   |                   |
   |                   expected because of this type
   |

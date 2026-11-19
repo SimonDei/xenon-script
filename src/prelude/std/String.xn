@@ -5,8 +5,8 @@
 // Conversions are written `String(x)`, never `new String(x)` (the constructor would make a wrapper
 // object), so the constructor is hidden.
 //
-// Typing: positions and counts are `int`; `charCodeAt`/`codePointAt` give NaN/`undefined` out of range
-// (check the index first); `match` returns `null` without a match, `at` an `undefined` character out
+// Typing: positions and counts are `int`; `charCodeAt` gives NaN out of range (check the index
+// first), `codePointAt` is `int?`; `match` returns `null` without a match, `at` an `undefined` character out
 // of range. A `Function` replacer receives `(match, ...groups, offset, whole)`; the extras of a regex
 // match (`index`, `groups`) are untyped, see `RegExp`.
 // Not declared: the deprecated HTML methods (`anchor`, `big`, …), `substr`, `trimLeft`/`trimRight`
@@ -29,8 +29,8 @@ package xenon {
     function at(index:int):String
     /** The UTF-16 code unit at `index` (0–65535); NaN if out of range. */
     function charCodeAt(index:int):int
-    /** The full code point at `index` (surrogate pairs combined); `undefined` if out of range. */
-    function codePointAt(index:int):int
+    /** The full code point at `index` (surrogate pairs combined); `null` if out of range. */
+    function codePointAt(index:int):int?
 
     // ---- searching ----
     function indexOf(search:String, from:int = 0):int

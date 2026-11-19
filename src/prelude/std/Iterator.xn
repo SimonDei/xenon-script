@@ -41,6 +41,6 @@ package xenon {
     function some(test:(value:T, index:int) -> Boolean):Boolean
     function every(test:(value:T, index:int) -> Boolean):Boolean
     /** The first value passing `test`, or `null`. */
-    function find(test:(value:T, index:int) -> Boolean):T
+    function find(test:(value:T, index:int) -> Boolean):T?
   }
 }

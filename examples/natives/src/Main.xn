@@ -19,7 +19,7 @@ package {
       // a generic native class from the standard library, and a Xenon class extending it
       var ages:Map<String, int> = new Map<String, int>()
       ages.set('ann', 31).set('bob', 27)
-      var annNextYear:int = ages.get('ann') + 1
+      var annNextYear:int = (ages.get('ann') ?? 0) + 1      // get() is `int?`: null for a missing key
       trace(ages.size, annNextYear, ages.has('cid'))
 
       var reg:Registry = new Registry()

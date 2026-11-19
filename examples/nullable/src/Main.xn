@@ -1,0 +1,54 @@
+// Nullable types: `int?` (or `Null<int>`) is an `int` that may also be `null`.
+// `String`, arrays and class types can always be null; `?` matters for numbers and `Boolean`.
+public class Main {
+  private var best:int?                               // defaults to null (a plain `int` would be 0)
+  private var seen:Null<Boolean>
+
+  public function Main() {
+    trace(best, seen, best == null)
+
+    // results that may be missing are `T?`: give a default, or bind the value when it's there
+    var scores:Map<String, int> = new Map([['ann', 0], ['bob', 7]])
+    trace(scores.get('ann') ?? -1, scores.get('zed') ?? -1)  // 0 is a value, not "missing"
+    if (var bob:int = scores.get('bob')) trace('bob has', bob + 1)
+    var nums:Array<int> = [3, 8, 5]
+    var big:int? = nums.find((n:int):Boolean => n > 4)
+    var huge:int? = nums.find((n:int):Boolean => n > 100)
+    trace(big, huge == null, nums.pop(), nums.pop(), nums.pop(), nums.pop() ?? -1)  // (JS gives `undefined`; `== null` covers it)
+
+    // `?.` reaches into a nullable value; the result may be null too
+    trace(big?.toFixed(1), huge?.toFixed(1) == null)
+    best = big
+    record(huge)
+    record(9)
+
+    // `as int?` is a checked cast: null for anything that isn't an int
+    var raw:* = JSON.parse('[4, "four", 4.5]')
+    for (var item:* of raw as Array) trace(item as int?, item as String)
+
+    // an optional shape member reads as `T?`
+    var opts:Options = { name: 'demo' }
+    trace(opts.retries ?? 3, opts.retries == null)
+    opts = { name: 'again', retries: 1 }
+    trace(opts.retries ?? 3)
+
+    // generics: `T?` is `int?` in a Box<int>, and just `String` in a Box<String>
+    var counter:Box<int> = new Box<int>()
+    counter.value = 41
+    var text:Box<String> = new Box<String>()
+    trace((counter.value ?? 0) + 1, text.value, text.or('fallback'), counter.or(0))
+  }
+
+  private function record(score:int?):void {
+    var shown:String = score == null ? 'none' : String(score)
+    if (var s:int = score) best = s > (best ?? 0) ? s : best
+    trace('record', shown, 'best', best)
+  }
+}
+
+typedef Options = { name:String, ?retries:int }
+
+class Box<T> {
+  public var value:T?
+  public function or(fallback:T):T { return value ?? fallback }
+}

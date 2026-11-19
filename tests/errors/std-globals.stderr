@@ -84,7 +84,7 @@ error[X0308]: mismatched types
   --> std-globals.xn:10:47
    |
 10 |     fetch('/api', { methd: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
-   |                                               ^ expected `Boolean`, found `int`
+   |                                               ^ expected `Boolean?`, found `int`
 
 error[X0308]: mismatched types
   --> std-globals.xn:11:47

@@ -1,8 +1,8 @@
-error[X0320]: `int` can never be null; use a normal condition
- --> bindings.xn:6:17
+error[X0320]: this value can never be null; use a normal condition
+ --> bindings.xn:6:23
   |
 6 |       if (var n:int = count()) trace(n)
-  |                 ^^^
+  |                       ^^^^^^^ `int`
   |
   = note: `if (var x:T = …)` runs its block only when the value is not null
 

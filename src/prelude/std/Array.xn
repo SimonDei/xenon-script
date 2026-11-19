@@ -2,9 +2,9 @@
 // compiler (literals `[1, 2]`, indexing `a[i]`, `for … of`, `[a, b] = …`); this class gives it its
 // members, with `T` as the element type. A bare `Array` is `Array<*>`.
 //
-// Typing: positions and counts are `int`; a missing result (`pop()` on an empty array, `find`
-// without a hit, `at` out of range) is `undefined` at runtime, which for object elements is a null
-// check but for primitive elements (`int`, …) isn't expressible: check `length` / `includes` first.
+// Typing: positions and counts are `int`; a result that may be missing (`pop()` on an empty array,
+// `find` without a hit, `at` out of range) is `T?`: `nums.pop() ?? 0`, `if (var n:int = nums.pop())`.
+// (Indexing `a[i]` is typed `T` and not checked.)
 // `sort` comparators return a `Float` (an `int` fits). `new Array<T>()` is unchecked.
 // Not declared: `copyWithin`, `flat` with a depth (`flat()` returns `Array<*>`), `toLocaleString`
 // with arguments, `Array.fromAsync`; use `(array as *)`.
@@ -34,10 +34,10 @@ package xenon {
     // ---- adding and removing (these change the array) ----
     /** Appends items; returns the new length. */
     function push(...items:Array<T>):int
-    /** Removes and returns the last element. */
-    function pop():T
-    /** Removes and returns the first element. */
-    function shift():T
+    /** Removes and returns the last element; `null` if the array is empty. */
+    function pop():T?
+    /** Removes and returns the first element; `null` if the array is empty. */
+    function shift():T?
     /** Inserts items at the start; returns the new length. */
     function unshift(...items:Array<T>):int
     /** Removes everything from `start` on; returns the removed elements. */
@@ -71,7 +71,7 @@ package xenon {
 
     // ---- reading ----
     /** Like `a[index]`, but negative indexes count from the end: `a.at(-1)` is the last element. */
-    function at(index:int):T
+    function at(index:int):T?
     function indexOf(item:T, from:int = 0):int
     function lastIndexOf(item:T):int
     function lastIndexOf(item:T, from:int):int
@@ -87,11 +87,11 @@ package xenon {
     function filter(test:(item:T, index:int, array:Array<T>) -> Boolean):Array<T>
     function some(test:(item:T, index:int, array:Array<T>) -> Boolean):Boolean
     function every(test:(item:T, index:int, array:Array<T>) -> Boolean):Boolean
-    /** The first element passing `test`, or `undefined`. */
-    function find(test:(item:T, index:int, array:Array<T>) -> Boolean):T
+    /** The first element passing `test`, or `null`. */
+    function find(test:(item:T, index:int, array:Array<T>) -> Boolean):T?
     /** Its position, or -1. */
     function findIndex(test:(item:T, index:int, array:Array<T>) -> Boolean):int
-    function findLast(test:(item:T, index:int, array:Array<T>) -> Boolean):T
+    function findLast(test:(item:T, index:int, array:Array<T>) -> Boolean):T?
     function findLastIndex(test:(item:T, index:int, array:Array<T>) -> Boolean):int
     /** Folds from the left without a start value (throws a `TypeError` on an empty array). */
     function reduce(callback:(accumulator:T, item:T, index:int, array:Array<T>) -> T):T

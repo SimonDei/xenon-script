@@ -1,0 +1,129 @@
+error[X0398]: this value may be null
+ --> nullable.xn:5:19
+  |
+5 |     var sum:int = n + 1                                // may be null: arithmetic needs a value
+  |                   ^ `int?`
+  |
+help: give a default with `??`
+  |
+5 |     var sum:int = (n ?? 0) + 1                                // may be null: arithmetic needs a value
+  |                   + ++++++
+help: or check it first: `if (var x:int = …) { … }` runs only when it isn't null
+
+error[X0308]: mismatched types
+ --> nullable.xn:6:21
+  |
+6 |     var plain:int = n                                  // int? doesn't fit int
+  |               ---   ^ expected `int`, found `int?`
+  |               |
+  |               expected because of this type
+  |
+help: the value may be null: give a default with `??`
+  |
+6 |     var plain:int = n ?? 0                                  // int? doesn't fit int
+  |                      +++++
+
+error[X0398]: this value may be null
+ --> nullable.xn:8:11
+  |
+8 |     trace(n.toFixed(2), n?.toFixed(2), -n, sum, plain, fine, m)
+  |           ^ `int?`
+  |
+help: give a default with `??`
+  |
+8 |     trace((n ?? 0).toFixed(2), n?.toFixed(2), -n, sum, plain, fine, m)
+  |           + ++++++
+help: or check it first: `if (var x:int = …) { … }` runs only when it isn't null
+
+error[X0398]: this value may be null
+ --> nullable.xn:8:41
+  |
+8 |     trace(n.toFixed(2), n?.toFixed(2), -n, sum, plain, fine, m)
+  |                                         ^ `int?`
+  |
+help: give a default with `??`
+  |
+8 |     trace(n.toFixed(2), n?.toFixed(2), -(n ?? 0), sum, plain, fine, m)
+  |                                         + ++++++
+help: or check it first: `if (var x:int = …) { … }` runs only when it isn't null
+
+error[X0398]: this value may be null
+ --> nullable.xn:9:5
+  |
+9 |     n++
+  |     ^ `int?`
+  |
+help: or check it first: `if (var x:int = …) { … }` runs only when it isn't null
+
+error[X0398]: this value may be null
+  --> nullable.xn:11:11
+   |
+11 |     trace(opts.count + 1, opts.count == null)          // an optional member reads as int?
+   |           ^^^^^^^^^^ `int?`
+   |
+help: give a default with `??`
+   |
+11 |     trace((opts.count ?? 0) + 1, opts.count == null)          // an optional member reads as int?
+   |           +          ++++++
+help: or check it first: `if (var x:int = …) { … }` runs only when it isn't null
+
+error[X0320]: this value can never be null; use a normal condition
+  --> nullable.xn:12:24
+   |
+12 |     if (var five:int = 5) trace(five)                  // never null: no binding needed
+   |                        ^ `int`
+   |
+   = note: `if (var x:T = …)` runs its block only when the value is not null
+
+error[X0395]: `is int?` is the same as `is int`
+  --> nullable.xn:14:16
+   |
+14 |     trace(d is int?, d as int, d as int?)
+   |                ^^^^ `null` never passes `is`
+   |
+help: remove the `?`
+   |
+14 -     trace(d is int?, d as int, d as int?)
+14 +     trace(d is int, d as int, d as int?)
+
+error[X0393]: `as int` is not possible: `int` can never be null
+  --> nullable.xn:14:24
+   |
+14 |     trace(d is int?, d as int, d as int?)
+   |                        ^^^^^^
+   |
+help: cast to `int?`, which gives `null` for other values
+   |
+14 |     trace(d is int?, d as int?, d as int?)
+   |                              +
+help: or convert with `int(x)`, or test with `x is int`
+
+error[X0310]: condition must be a `Boolean`
+  --> nullable.xn:16:9
+   |
+16 |     if (flag) trace('yes')                             // a condition needs a Boolean
+   |         ^^^^ expected `Boolean`, found `Boolean?`
+   |
+help: compare with `true` (`null` and `false` both skip)
+   |
+16 |     if (flag == true) trace('yes')                             // a condition needs a Boolean
+   |             ++++++++
+
+error[X0308]: mismatched types
+  --> nullable.xn:18:22
+   |
+18 |     var inside:int = box.value                         // Box<int>.value is int?
+   |                ---   ^^^^^^^^^ expected `int`, found `int?`
+   |                |
+   |                expected because of this type
+   |
+help: the value may be null: give a default with `??`
+   |
+18 |     var inside:int = box.value ?? 0                         // Box<int>.value is int?
+   |                               +++++
+
+error[X0422]: `Null` takes 1 type argument: `Null<int>` (or write `int?`)
+  --> nullable.xn:21:15
+   |
+21 |     var wrong:Null<int, String> = null
+   |               ^^^^^^^^^^^^^^^^^ 2 given

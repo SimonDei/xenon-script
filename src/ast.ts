@@ -19,6 +19,7 @@ export type TypeNode =
   | { kind: "TypeName"; name: Ident[]; args: TypeNode[]; span: Span } // Dog, com.zoo.Dog, Array<int>
   | { kind: "AnyType"; span: Span } // *
   | { kind: "VoidType"; span: Span }
+  | { kind: "NullableType"; inner: TypeNode; span: Span } // int?
   | { kind: "ShapeType"; members: ShapeMemberNode[]; span: Span } // { x:Float, ?label:String }
   | { kind: "FunctionType"; params: { name?: Ident; type: TypeNode; rest: boolean; span: Span }[]; ret: TypeNode; span: Span }; // (a:int) -> int
 

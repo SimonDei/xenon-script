@@ -1,0 +1,28 @@
+public class Main {
+  public function Main() {
+    var n:int? = null
+    var m:Null<int> = 5                                // the same type, spelled out
+    var sum:int = n + 1                                // may be null: arithmetic needs a value
+    var plain:int = n                                  // int? doesn't fit int
+    var fine:int = n ?? 0                              // `??` gives an int
+    trace(n.toFixed(2), n?.toFixed(2), -n, sum, plain, fine, m)
+    n++
+    var opts:Opts = { label: 'x' }
+    trace(opts.count + 1, opts.count == null)          // an optional member reads as int?
+    if (var five:int = 5) trace(five)                  // never null: no binding needed
+    var d:* = 3
+    trace(d is int?, d as int, d as int?)
+    var flag:Boolean? = null
+    if (flag) trace('yes')                             // a condition needs a Boolean
+    var box:Box<int> = new Box<int>()
+    var inside:int = box.value                         // Box<int>.value is int?
+    var named:Box<String> = new Box<String>()
+    var text:String = named.value                      // String? is just String
+    var wrong:Null<int, String> = null
+    trace(inside, text, wrong)
+  }
+}
+class Box<T> {
+  public var value:T?
+}
+typedef Opts = { ?count:int, label:String }

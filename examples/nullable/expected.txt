@@ -1,0 +1,13 @@
+null null true
+0 -1
+bob has 8
+8 true 5 8 3 -1
+8.0 true
+record none best 8
+record 9 best 9
+4 null
+null four
+null null
+3 true
+1
+42 null fallback 41

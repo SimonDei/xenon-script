@@ -93,7 +93,8 @@ true true (\d{4})-(\d{2}) 0
 3 true false 0 /\w+/g
 bb 4
 i 1999 3
-3 32 false true false 2
+3 32 -1 false true false 2
+cid is 40
 ANN 31
 CID 40
 71

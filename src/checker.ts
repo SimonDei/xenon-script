@@ -6,7 +6,7 @@ import { GLOBAL_HINTS, JS_GLOBALS } from "./globals.ts";
 import { cover, type SourceFile, type Span, span, spanText } from "./source.ts";
 import { suggest } from "./suggest.ts";
 import {
-  arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, arrayOf, elementOf, isDynamic, isNullable, isNumeric, isPrim,
+  arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, arrayOf, elementOf, isDynamic, isNullable, isNumeric, isPrim, nonNull, nullableOf,
   bind, eraseParams, memberTypeIn, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
   supertypeArgs, T, type Type, type TypeParamInfo, typeToString, unify,
 } from "./types.ts";
@@ -609,6 +609,8 @@ class Env {
    */
   resolveType(node: A.TypeNode, scope: FileScope, allowVoid = false, tparams?: TypeParamScope, allowRaw = false): Type {
     if (node.kind === "AnyType") return T.any;
+    // `int?` and `Null<int>`: the type plus `null` (types that already include `null` stay as they are).
+    if (node.kind === "NullableType") return nullableOf(this.resolveType(node.inner, scope, false, tparams));
     if (node.kind === "ShapeType") {
       const members = new Map<string, ShapeMember>();
       for (const m of node.members) {
@@ -655,6 +657,13 @@ class Env {
     if (param) {
       if (node.args.length > 0) this.diags.error("X0423", `type parameter \`${name}\` doesn't take type arguments`, node.span);
       return { kind: "typeParam", param };
+    }
+    if (name === "Null" && node.name.length === 1) {
+      if (node.args.length !== 1) {
+        this.diags.error("X0422", "`Null` takes 1 type argument: `Null<int>` (or write `int?`)", node.span, `${node.args.length} given`);
+        return T.error;
+      }
+      return nullableOf(this.resolveType(node.args[0]!, scope, false, tparams));
     }
     if (name === "Array" || (name === "Vector" && !this.lookupClass(scope, name, whole))) {
       if (name === "Vector") {
@@ -1746,6 +1755,8 @@ class BodyChecker {
   private declared: { local: Local; name: A.Ident; fn?: boolean }[] = [];
   /** Name of the enclosing `const` method: `this` is read-only there (arrows inherit it). */
   private constMethod?: string;
+  /** The callee of the call being checked (`d?.bark` in `d?.bark()`): a method there isn't taken as a value. */
+  private calledCallee?: A.Expr;
   /** The identifier currently used as the object of a member access (`x` in `x.dispose()`). */
   private memberObject?: A.Expr;
   private memberName = "";
@@ -2308,12 +2319,14 @@ class BodyChecker {
       }
       let type: Type;
       if (item.type) {
-        type = this.resolveT(item.type, this.scope);
-        if (!isNullable(type) && !isDynamic(type)) {
-          this.diags.error("X0320", `\`${typeToString(type)}\` can never be null; use a normal condition`, item.type.span)
+        // `if (var n:int = maybe)`: the value may be `int?`; inside the block `n` is an `int`.
+        type = nonNull(this.resolveT(item.type, this.scope));
+        this.checkAssign(item.init, nullableOf(type), { span: item.type.span, label: "expected because of this type" }, inner);
+        const init = this.env.result.exprTypes.get(item.init);
+        if (init && !isNullable(init) && !isDynamic(init)) {
+          this.diags.error("X0320", `this value can never be null; use a normal condition`, item.init.span, `\`${typeToString(init)}\``)
             .note("`if (var x:T = …)` runs its block only when the value is not null");
         }
-        this.checkAssign(item.init, type, { span: item.type.span, label: "expected because of this type" }, inner);
       } else {
         this.valueExpr(item.init, inner);
         type = this.env.untyped(item.name.span, `binding \`${item.name.name}\``);
@@ -2506,6 +2519,7 @@ class BodyChecker {
     const d = this.diags.error("X0310", "condition must be a `Boolean`", e.span, `expected \`Boolean\`, found \`${typeToString(t)}\``);
     const end = span(e.span.file, e.span.end, e.span.end);
     if (isNumeric(t)) d.help("compare explicitly", [{ span: end, text: " != 0" }]);
+    else if (t.kind === "nullable" && isPrim(t.inner, "Boolean")) d.help("compare with `true` (`null` and `false` both skip)", [{ span: end, text: " == true" }]);
     else if (isNullable(t) && t.kind !== "null") d.help("check for null explicitly", [{ span: end, text: " != null" }]);
   }
 
@@ -2552,6 +2566,19 @@ class BodyChecker {
     this.mismatch(e, actual, expected, origin);
   }
 
+  /**
+   * X0398: a `T?` value used where it must not be null (arithmetic, `.member`). Reports and returns
+   * the non-null type, so checking continues as if it had been checked.
+   */
+  private mayBeNull(e: A.Expr, t: Type, written = false): Type {
+    if (t.kind !== "nullable") return t;
+    const d = this.diags.error("X0398", `this value may be null`, e.span, `\`${typeToString(t)}\``);
+    const fallback = written ? undefined : defaultFor(t.inner); // `n++` can't become `(n ?? 0)++`
+    if (fallback) d.help(`give a default with \`??\``, nullishFix(e, fallback, true));
+    d.help(`or check it first: \`if (var x:${typeToString(t.inner)} = …) { … }\` runs only when it isn't null`);
+    return t.inner;
+  }
+
   private mismatch(e: A.Expr, actual: Type, expected: Type, origin?: { span: Span; label: string }) {
     const d = this.diags.error("X0308", "mismatched types", e.span, `expected \`${typeToString(expected)}\`, found \`${typeToString(actual)}\``);
     if (origin) d.secondary(origin.span, origin.label);
@@ -2559,15 +2586,20 @@ class BodyChecker {
       { span: span(e.span.file, e.span.start, e.span.start), text: `${fn}(` },
       { span: span(e.span.file, e.span.end, e.span.end), text: ")" },
     ];
-    if ((isPrim(expected, "int") || isPrim(expected, "uint")) && (isNumeric(actual) || isPrim(actual, "String"))) {
+    const value = nonNull(actual); // conversions also take `null` (`String(n)` of an `int?`)
+    if ((isPrim(expected, "int") || isPrim(expected, "uint")) && (isNumeric(value) || isPrim(value, "String")) && !sameType(value, expected)) {
       const fn = isPrim(expected, "int") ? "int" : "uint";
       d.help(`convert the value with \`${fn}()\``, wrap(fn));
-    } else if (isPrim(expected, "Float") && isPrim(actual, "String")) {
+    } else if (isPrim(expected, "Float") && isPrim(value, "String")) {
       d.help("convert the value with `Float()`", wrap("Float"));
-    } else if (isPrim(expected, "String") && (isNumeric(actual) || isPrim(actual, "Boolean"))) {
+    } else if (isPrim(expected, "String") && (isNumeric(value) || isPrim(value, "Boolean"))) {
       d.help("convert the value with `String()`", wrap("String"));
+    } else if (actual.kind === "nullable" && assignable(actual.inner, expected)) {
+      const fallback = defaultFor(actual.inner);
+      if (fallback) d.help(`the value may be null: give a default with \`??\``, nullishFix(e, fallback));
+      else d.note("the value may be null");
     } else if (actual.kind === "null" && !isNullable(expected)) {
-      d.note(`\`${typeToString(expected)}\` can never be null`);
+      d.note(`\`${typeToString(expected)}\` can never be null; \`${typeToString(expected)}?\` can`);
     } else if (expected.kind === "shape" && (actual.kind === "shape" || actual.kind === "class")) {
       for (const note of shapeMismatch(actual, expected)) d.note(note);
     }
@@ -2796,8 +2828,19 @@ class BodyChecker {
     if (e.object.kind === "Super") return this.superMember(e);
     this.memberObject = e.object;
     this.memberName = e.name.name;
-    let obj = this.valueExpr(e.object, scope);
+    const objType = this.valueExpr(e.object, scope);
     this.memberObject = undefined;
+    // `n?.toFixed(2)` on an `int?`: the member of the `int`, and the result may be null too.
+    if (objType.kind === "nullable") {
+      if (!e.optional) return this.memberOn(e, this.mayBeNull(e.object, objType));
+      return nullableOf(this.memberOn(e, objType.inner));
+    }
+    return this.memberOn(e, objType);
+  }
+
+  /** `obj.name` once the object's type is known (not nullable). */
+  private memberOn(e: A.Expr & { kind: "Member" }, objType: Type): Type {
+    let obj = objType;
     // The built-in array type has its members from the std class `Array<T>`.
     const arrayClass = this.env.arrayClass;
     if (obj.kind === "builtin" && obj.name === "Array" && arrayClass) obj = { kind: "class", info: arrayClass, args: [obj.args[0] ?? T.any] };
@@ -2812,6 +2855,8 @@ class BodyChecker {
         if (obj.name === "Function") return this.functionMemberUse(e, obj);
         return T.any;
       }
+      case "nullable": // (unwrapped by `member`)
+        return this.memberOn(e, this.mayBeNull(e.object, obj));
       case "method":
         return this.functionMemberUse(e, obj);
       case "any":
@@ -2825,7 +2870,7 @@ class BodyChecker {
         return T.error;
       case "shape": {
         const m = obj.members.get(name);
-        if (m) return m.type();
+        if (m) return m.optional ? nullableOf(m.type()) : m.type(); // `?count:int` may be missing
         const root = this.env.rootMember(name);
         if (root) return this.rootMemberUse(e, root);
         const d = this.diags.error("X0426", `no member \`${name}\` on \`${typeToString(obj)}\``, e.name.span, "unknown member");
@@ -2918,7 +2963,10 @@ class BodyChecker {
   private call(e: A.Expr & { kind: "Call" }, scope: Scope): Type {
     const expected = this.takeExpected();
     if (e.callee.kind === "Super") return this.superCallExpr(e, scope);
+    const savedCallee = this.calledCallee;
+    this.calledCallee = e.callee;
     const callee = this.expr(e.callee, scope);
+    this.calledCallee = savedCallee;
     this.env.result.methodClosures.delete(e.callee); // called directly, not used as a value
     let res = e.callee.kind === "Ident" ? this.env.result.resolutions.get(e.callee) : undefined;
     // `Boolean(x)`, `String(x)`, `Float(x)`: the std library's native class of a primitive is
@@ -2959,7 +3007,9 @@ class BodyChecker {
         const target = chosen.type;
         const sig = target.typeParams?.length ? this.instantiate(target, target.typeParams, e.args, scope, e.callee.span, expected && [target.ret, expected]).sig : target;
         this.checkArgs(e, sig, chosen.decl, scope);
-        return sig.ret;
+        // `b?.valueOf()` / `f?.()`: `null` when the object (or function) is.
+        const optional = e.optional || (e.callee.kind === "Member" && e.callee.optional);
+        return optional ? nullableOf(sig.ret) : sig.ret;
       }
       case "any":
       case "error":
@@ -3012,12 +3062,13 @@ class BodyChecker {
         if (p.kind === "Prop") this.valueExpr(p.value, scope);
         continue;
       }
+      const memberType = member.optional ? nullableOf(member.type()) : member.type();
       if (p.kind === "Shorthand") {
         const ident = { kind: "Ident" as const, name: p.name.name, span: p.name.span };
-        this.checkAssign(ident, member.type(), undefined, scope);
+        this.checkAssign(ident, memberType, undefined, scope);
         const r = this.env.result.resolutions.get(ident);
         if (r) this.env.result.resolutions.set(p, r);
-      } else this.checkAssign(p.value, member.type(), undefined, scope);
+      } else this.checkAssign(p.value, memberType, undefined, scope);
     }
     const missing = spread ? [] : [...shape.members.values()].filter((m) => !m.optional && !given.has(m.name));
     const free = [...shape.members.keys()].filter((n) => !given.has(n));
@@ -3179,7 +3230,7 @@ class BodyChecker {
     }
     if (source.kind === "shape") {
       const m = source.members.get(key.name);
-      if (m) return m.type();
+      if (m) return m.optional ? nullableOf(m.type()) : m.type();
       this.diags.error("X0426", `no member \`${key.name}\` on \`${typeToString(source)}\``, key.span, "unknown member");
       return T.error;
     }
@@ -3327,6 +3378,7 @@ class BodyChecker {
       this.diags.error("X0506", `\`${m.name}\` has a setter but no getter`, at, "can't be read").secondary(m.decl.name.span, "setter declared here");
     }
     if (m.kind === "method" && !m.isStatic) {
+      if (e === this.calledCallee) return; // called right away (`d?.bark()`): no closure needed
       if (e.kind === "Member" && e.optional) {
         this.diags.error("X0607", "a method can't be taken as a value through `?.`", at).help("call it, or check for null first");
         return;
@@ -3703,7 +3755,8 @@ class BodyChecker {
   }
 
   private unary(e: A.Expr & { kind: "Unary" }, scope: Scope): Type {
-    const t = this.valueExpr(e.arg, scope);
+    let t = this.valueExpr(e.arg, scope);
+    if (e.op !== "typeof" && e.op !== "delete" && e.op !== "void") t = this.mayBeNull(e.arg, t);
     const opSpan = span(e.span.file, e.span.start, e.span.start + e.op.length);
     switch (e.op) {
       case "!":
@@ -3754,7 +3807,14 @@ class BodyChecker {
         return e.op === "is" ? T.Boolean : T.any;
       }
     }
-    const target = this.resolveT(t, this.scope, false, true);
+    const written = this.resolveT(t, this.scope, false, true);
+    if (written.kind === "nullable" && e.op === "is") {
+      const q = span(t.span.file, t.span.end - 1, t.span.end);
+      this.diags.error("X0395", `\`is ${typeToString(written)}\` is the same as \`is ${typeToString(written.inner)}\``, t.span, "`null` never passes `is`")
+        .help("remove the `?`", [{ span: q, text: "" }]);
+    }
+    // `x as int?`: checked like `int`; values of other types (and `null`) give `null`.
+    const target = nonNull(written);
     // `x as *`: give up static typing for this value (the escape hatch for undeclared JS APIs).
     if (target.kind === "any" && e.op === "as") return T.any;
     if (target.kind === "class" && target.args?.length && e.op === "is") {
@@ -3786,10 +3846,11 @@ class BodyChecker {
       return e.op === "is" ? T.Boolean : T.error;
     }
     this.env.result.typeChecks.set(e, check);
-    if (e.op === "as" && !isNullable(target)) {
+    if (e.op === "as" && !isNullable(target) && written.kind !== "nullable") {
       const fn = typeToString(target);
       this.diags.error("X0393", `\`as ${fn}\` is not possible: \`${fn}\` can never be null`, cover(opSpan, t.span))
-        .help(`convert with \`${fn}(x)\`, or test with \`x is ${fn}\``);
+        .help(`cast to \`${fn}?\`, which gives \`null\` for other values`, [{ span: span(t.span.file, t.span.end, t.span.end), text: "?" }])
+        .help(`or convert with \`${fn}(x)\`, or test with \`x is ${fn}\``);
       return T.error;
     }
     if (!isDynamic(from) && !(from.kind === "builtin" && from.name === "Object")) {
@@ -3801,7 +3862,7 @@ class BodyChecker {
           .secondary(e.expr.span, `\`${typeToString(from)}\``);
       }
     }
-    return e.op === "is" ? T.Boolean : target;
+    return e.op === "is" ? T.Boolean : written;
   }
 
   private opError(at: Span, message: string, operand: A.Expr, t: Type) {
@@ -3809,8 +3870,9 @@ class BodyChecker {
   }
 
   private update(e: A.Expr & { kind: "Update" }, scope: Scope): Type {
-    const { type: t, commit } = this.lvalue(e.arg, scope, false);
+    const { type: target, commit } = this.lvalue(e.arg, scope, false);
     commit();
+    const t = this.mayBeNull(e.arg, target, true);
     if (!isNumeric(t) && !isDynamic(t)) {
       this.opError(e.span, `\`${e.op}\` needs a number`, e.arg, t);
       return T.error;
@@ -3857,6 +3919,12 @@ class BodyChecker {
   /** Result type of a binary operator; reports and returns undefined when it doesn't apply. */
   private binaryResult(op: string, l: Type, r: Type, opSpan: Span, left: A.Expr, right: A.Expr): Type | undefined {
     if (l.kind === "error" || r.kind === "error") return T.error;
+    // `n + 1` with `n:int?` needs a value; `'n = ' + n` (concatenation) and `n ?? 0` don't.
+    const concat = op === "+" && (isPrim(nonNull(l), "String") || isPrim(nonNull(r), "String"));
+    if (op !== "??" && !concat) {
+      l = this.mayBeNull(left, l);
+      r = this.mayBeNull(right, r);
+    }
     const dyn = isDynamic(l) || isDynamic(r);
     const fail = (why?: string) => {
       this.diags.error("X0315", why ?? `cannot apply \`${op}\` to \`${typeToString(l)}\` and \`${typeToString(r)}\``, opSpan)
@@ -3904,7 +3972,8 @@ class BodyChecker {
             .secondary(left.span, `\`${typeToString(l)}\``);
         }
         if (dyn) return T.any;
-        if (assignable(r, l)) return l.kind === "null" ? r : l;
+        // `n ?? 0` with `n:int?` is an `int`; `n ?? other` with `other:int?` stays `int?`.
+        if (assignable(r, nonNull(l))) return l.kind === "null" ? r : r.kind === "nullable" ? l : nonNull(l);
         if (assignable(l, r)) return r;
         return fail(`the two sides of \`??\` have incompatible types \`${typeToString(l)}\` and \`${typeToString(r)}\``);
       case "in":
@@ -4163,6 +4232,25 @@ function isInline(m: MemberSig): boolean {
 }
 
 /** Can values of these two types ever be equal under strict `==`? */
+/** A neutral default for `x ?? …` hints: `0` for numbers, `false` for `Boolean`. */
+function defaultFor(t: Type): string | undefined {
+  if (isNumeric(t)) return "0";
+  if (isPrim(t, "Boolean")) return "false";
+  return undefined;
+}
+
+/**
+ * Fix-it appending ` ?? fallback`. `??` binds loosely, so an operand of another operator or of `.`
+ * (`operand`) needs parentheses: `(a.get(k) ?? 0) + 1`; a whole value only if it isn't simple.
+ */
+function nullishFix(e: A.Expr, fallback: string, operand = false): Edit[] {
+  const simple = !operand && (e.kind === "Ident" || e.kind === "Member" || e.kind === "Call" || e.kind === "Index");
+  const at = (n: number) => span(e.span.file, n, n);
+  return simple
+    ? [{ span: at(e.span.end), text: ` ?? ${fallback}` }]
+    : [{ span: at(e.span.start), text: "(" }, { span: at(e.span.end), text: ` ?? ${fallback})` }];
+}
+
 function comparable(a: Type, b: Type): boolean {
   if (isDynamic(a) || isDynamic(b)) return true;
   if (a.kind === "builtin" && a.name === "Object") return true;

@@ -8,6 +8,11 @@ class ParseError extends Error {}
 const MODIFIERS = new Set(["public", "private", "protected", "internal", "static", "final", "override", "inline", "abstract", "dynamic", "async", "native"]);
 const VISIBILITY = new Set(["public", "private", "protected", "internal"]);
 
+/**
+ * Tokens after which a `?` that follows a type is the nullable suffix (`int?`), not a conditional:
+ * they end a type, or can't start an expression (`x as int? ?? 0`, `x as int? == null`).
+ */
+const TYPE_FOLLOW = new Set(["=", ")", ",", ">", ">>", ">>>", "]", "{", "}", ";", "->", "const", "=>", "??", "==", "!=", "===", "!==", "&&", "||", ":"]);
 const ASSIGN_OPS = new Set(["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", "&&=", "||=", "??="]);
 
 /** Binary operator precedence (higher binds tighter). */
@@ -540,6 +545,20 @@ export class Parser {
   /* ------------------------------ types ------------------------------ */
 
   parseType(): A.TypeNode {
+    const start = this.tok.span.start;
+    const t = this.parseTypeAtom();
+    // `int?`: only when the `?` ends the type, so `x is int ? a : b` stays a conditional.
+    if (this.is("?") && !this.tok.nl) {
+      const next = this.peekTok();
+      if (next.kind === "eof" || next.nl || TYPE_FOLLOW.has(next.value)) {
+        this.advance();
+        return { kind: "NullableType", inner: t, span: this.sp(start) };
+      }
+    }
+    return t;
+  }
+
+  private parseTypeAtom(): A.TypeNode {
     const start = this.tok.span.start;
     if (this.eat("*")) return { kind: "AnyType", span: this.sp(start) };
     if (this.is("{")) return this.parseShapeType();

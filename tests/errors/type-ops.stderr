@@ -36,7 +36,11 @@ error[X0393]: `as int` is not possible: `int` can never be null
 10 |       trace(d as int, d as Boolean)
    |               ^^^^^^
    |
-help: convert with `int(x)`, or test with `x is int`
+help: cast to `int?`, which gives `null` for other values
+   |
+10 |       trace(d as int?, d as Boolean)
+   |                     +
+help: or convert with `int(x)`, or test with `x is int`
 
 error[X0393]: `as Boolean` is not possible: `Boolean` can never be null
   --> type-ops.xn:10:25
@@ -44,7 +48,11 @@ error[X0393]: `as Boolean` is not possible: `Boolean` can never be null
 10 |       trace(d as int, d as Boolean)
    |                         ^^^^^^^^^^
    |
-help: convert with `Boolean(x)`, or test with `x is Boolean`
+help: cast to `Boolean?`, which gives `null` for other values
+   |
+10 |       trace(d as int, d as Boolean?)
+   |                                   +
+help: or convert with `Boolean(x)`, or test with `x is Boolean`
 
 error[X0394]: `Array<int>` can't be checked at runtime
   --> type-ops.xn:11:18

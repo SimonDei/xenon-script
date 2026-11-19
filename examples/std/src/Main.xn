@@ -279,10 +279,11 @@ package {
     }
 
     private function maps():void {
-      // set() returns the map, so calls chain; get() is typed V (use has() first when V is a primitive)
+      // set() returns the map, so calls chain; get() returns `V?`: null for a missing key
       var ages:Map<String, int> = new Map<String, int>()
       ages.set('ann', 31).set('bob', 27).set('cid', 40)
-      trace(ages.size, ages.get('ann') + 1, ages.has('zed'), ages.delete('bob'), ages.delete('bob'), ages.size)
+      trace(ages.size, (ages.get('ann') ?? 0) + 1, ages.get('zed') ?? -1, ages.has('zed'), ages.delete('bob'), ages.delete('bob'), ages.size)
+      if (var cid:int = ages.get('cid')) trace('cid is', cid)
 
       // destructuring a map loop types the pair: name is a String, age an int
       var total:int = 0

@@ -19,6 +19,13 @@ public class Main {
 }
 ```
 
+## Nullable types
+
+`int?` (or `Null<int>`) is an `int` that may be `null`; `String`, arrays and class types can always
+be null. Results that may be missing are typed that way (`map.get(key)` is `V?`), and using one
+needs a value: `map.get(key) ?? 0`, `if (var n:int = map.get(key)) …`, or `n?.toFixed(2)`.
+`examples/nullable` shows the rules.
+
 ## Standard library
 
 The built-in types are declared in XenonScript itself, in `src/prelude/std/*.xn` (no import needed), and
