@@ -87,6 +87,17 @@ package {
         var fromBody:Blob = await new Response(csv).blob()
         var raw:ArrayBuffer = await csv.arrayBuffer()
         trace(csv.size, csv.type, await head.text(), head.type, fromBody.size, raw.byteLength, new Blob().size)
+
+        var form:FormData = new FormData()
+        form.append('to', 'ann@example.com')
+        form.append('to', 'bob@example.com')
+        form.append('attachment', csv, 'counts.csv')
+        form.set('subject', 'Counts')
+        var received:FormData = await new Response(form).formData()   // encoded as multipart and parsed back
+        var file:* = received.get('attachment')
+        var names:Array<String> = []
+        for (var [name, value]:* of received) names.push(name)
+        trace(received.getAll('to').join(' '), received.get('subject'), file.name, file.size, received.has('cc'), names.join(','))
       }, 40)
     }
 

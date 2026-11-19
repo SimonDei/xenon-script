@@ -160,16 +160,19 @@ export interface CheckResult {
   classes: Map<string, ClassInfo>;
 }
 
+const TS_UNDICI_CLASSES = new Set(["Response", "FormData"]);
+
 /**
  * A standard-library result TypeScript types differently: a nullable type inside a type argument
- * (`Promise<T?>`, where TypeScript's `T | undefined` doesn't stand in for it), or a `Response`
- * (with Node's types next to Bun's, `res.clone()` is undici's `Response`, not the global one).
+ * (`Promise<T?>`, where TypeScript's `T | undefined` doesn't stand in for it), or a `Response` or
+ * `FormData` (with Node's types next to Bun's, `res.clone()` and `res.formData()` give undici's
+ * classes, not the global ones).
  */
 function tsDivergent(node: A.TypeNode | undefined, inArgs = false): boolean {
   if (!node) return false;
   if (node.kind === "NullableType") return inArgs || tsDivergent(node.inner, inArgs);
   if (node.kind !== "TypeName") return false;
-  return (node.name.length === 1 && node.name[0]!.name === "Response") || node.args.some((a) => tsDivergent(a, true));
+  return (node.name.length === 1 && TS_UNDICI_CLASSES.has(node.name[0]!.name)) || node.args.some((a) => tsDivergent(a, true));
 }
 
 /** Names visible inside one file. */

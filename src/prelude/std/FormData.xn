@@ -1,0 +1,46 @@
+// Standard library: the web platform's `FormData`: form fields as name/value pairs, for an upload
+// with `fetch` (as a `multipart/form-data` body, with the header set for you):
+//   var form:FormData = new FormData()
+//   form.append('to', mail.to)
+//   form.append('attachment', mail.attachment, mail.fileName)
+//   await fetch('api/mail', { method: 'POST', body: form })
+//
+// A name can hold several values (`append` adds one, `set` replaces them all). A value is text or
+// a file: a `Blob` passed in is stored as a `File` (named by `fileName`, else `'blob'`).
+// Iterate with `for (var [name, value]:* of form)`.
+//
+// Typing: values read back are `*` (a `String` or a `File`, which is a `Blob` with a `name`).
+// Not declared: Bun's `toJSON()` and `length`.
+package xenon {
+  public native class FormData implements IEnumerable<Array<*>> {
+    /** An empty form. */
+    function FormData()
+
+    /** Adds a text value under `name` (after any others of that name). */
+    function append(name:String, value:String):void
+    /** Adds a file under `name`; `fileName` is the name the server sees (default `'blob'`, or the `File`'s own). */
+    function append(name:String, value:Blob):void
+    function append(name:String, value:Blob, fileName:String):void
+    /** Replaces all values of `name` with this text. */
+    function set(name:String, value:String):void
+    /** Replaces all values of `name` with this file. */
+    function set(name:String, value:Blob):void
+    function set(name:String, value:Blob, fileName:String):void
+    /** Removes all values of `name`. */
+    function delete(name:String):void
+
+    function has(name:String):Boolean
+    /** The first value of `name` (a `String` or a `File`), or `null`. */
+    function get(name:String):*
+    /** All values of `name`, in the order they were added. */
+    function getAll(name:String):Array<*>
+    /** Calls `callback(value, name, form)` for each pair in order. */
+    function forEach(callback:(value:*, name:String, form:FormData) -> Void):void
+
+    /** The names, once per value (a name added twice comes twice). */
+    function keys():Iterator<String>
+    function values():Iterator<*>
+    /** `[name, value]` pairs. */
+    function entries():Iterator<Array<*>>
+  }
+}

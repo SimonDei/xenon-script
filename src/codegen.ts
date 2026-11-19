@@ -6,6 +6,9 @@ import { constToJs } from "./consteval.ts";
 import { buildSourceMap, type LineOrigin, originOf } from "./sourcemap.ts";
 import type { SourceFile, Span } from "./source.ts";
 
+/** Standard-library classes that are iterable at runtime but not in TypeScript's typings: the TypeScript output casts them in `for … of`. */
+const TS_NOT_ITERABLE = new Set(["xenon.FormData"]);
+
 /* JS operator precedence (higher binds tighter). */
 const P = {
   assign: 2,
@@ -930,7 +933,10 @@ class ModuleGen {
       case "ForIn":
       case "ForOf": {
         const kw = s.variable.decl === "var" ? "let" : "const";
-        const source = s.kind === "ForIn" ? `in ${this.expr(s.object).code}` : `of ${this.expr(s.iterable).code}`;
+        let source = s.kind === "ForIn" ? `in ${this.expr(s.object).code}` : `of ${this.expr(s.iterable).code}`;
+        // TypeScript's typings declare no iterator on some iterable web classes (the global `FormData`).
+        const iterated = s.kind === "ForOf" && this.ts ? this.check.exprTypes.get(s.iterable) : undefined;
+        if (s.kind === "ForOf" && iterated?.kind === "class" && TS_NOT_ITERABLE.has(iterated.info.qname)) source = `of (${this.expr(s.iterable).code} as unknown as Iterable<any>)`;
         const target = s.variable.pattern ? this.pattern(s.variable.pattern) : this.name(s.variable.name);
         this.nested(`for (${kw} ${target} ${source})`, s.body);
         return;
