@@ -834,7 +834,13 @@ class Env {
         if (!classAccessible(info, scope.file.packageName.map((n) => n.name).join("."))) this.classAccessError(info, whole);
         return this.genericClass(node, info, scope, tparams, allowRaw);
       }
-      this.diags.error("X0420", `cannot find type \`${names.join(".")}\``, whole, "not found");
+      const d = this.diags.error("X0420", `cannot find type \`${names.join(".")}\``, whole, "not found");
+      // `xlsx.Workbook`: the import is used (just misspelled), and its exports are the candidates.
+      const prefix = names.slice(0, -1).join(".") + ".";
+      if (scope.importOf.has(names[0]!)) this.markUsed(scope, names[0]!);
+      const exports = [...scope.classes.keys(), ...scope.typedefs.keys()].filter((k) => k.startsWith(prefix));
+      const s = suggest(names.join("."), exports);
+      if (s) d.help(`a type with a similar name exists: \`${s}\``, [{ span: whole, text: s }]);
       return T.error;
     }
     const name = exported ? names.join(".") : names[0]!;

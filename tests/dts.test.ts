@@ -116,6 +116,25 @@ test("relative imports are typed from the importing file's folder; namespaces' t
   }
 });
 
+test("a misspelled namespace type suggests the export and still counts as using the import", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const src = join(import.meta.dir, ".dts-typo", "src");
+  await rm(join(src, ".."), { recursive: true, force: true });
+  await mkdir(join(src, "lib"), { recursive: true });
+  await Bun.write(join(src, "lib", "sheet.d.ts"), LIB_DTS);
+  await Bun.write(join(src, "lib", "sheet.js"), "export const book = () => ({ names: [] });\n");
+  try {
+    const text = "import * as Sheet from './lib/sheet.js'\n\npublic class Main {\n  public function Main() {\n    var b:Sheet.book = null\n    trace(b)\n  }\n}\n";
+    const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: src, assets: [{ path: "lib/sheet.js", text: "// js" }] });
+    const shown = result.diagnostics.sorted().filter((d) => !["X0861", "X0862"].includes(d.code ?? ""));
+    expect(shown.map((d) => [d.code, d.message, d.help.map((h) => h.message)])).toEqual([
+      ["X0420", "cannot find type `Sheet.book`", ["a type with a similar name exists: `Sheet.Book`"]],
+    ]);
+  } finally {
+    await rm(join(src, ".."), { recursive: true, force: true });
+  }
+});
+
 test("JavaScript files of the source folder are copied, unless a module has their path (X0030)", () => {
   const code = main("import { book } from './lib/sheet.js'", "    trace(book())");
   const copied = compileProject([{ path: "Main.xn", text: code }], { main: "Main", assets: [{ path: "lib/sheet.js", text: "export const book = () => 1;\n" }] });
