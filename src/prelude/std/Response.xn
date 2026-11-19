@@ -1,0 +1,69 @@
+// Standard library: the web platform's `Response`: what `fetch` resolves to, and what a server
+// (`Bun.serve`) returns. The body can be read once, in one of several forms: `await res.json()`,
+// `await res.text()`, `await res.arrayBuffer()` (`clone()` first to read it twice).
+//
+// `fetch` only rejects when there is no response at all (network error, abort); an HTTP error
+// status is a normal response, so check `ok` (status 200–299):
+//   var res:Response = await fetch(url)
+//   if (!res.ok) throw new Exception($'{res.status} {res.statusText}')
+//
+// Typing: `json()` is `Promise<*>` (any JSON value; give it a type where you store it). Not typed
+// yet (`*`): `headers` (a `Headers`: `res.headers.get('content-type')`), `body` (a stream),
+// `blob()`, `formData()`, `bytes()` (a `Uint8Array`), and the body passed to the constructor
+// (text, an `ArrayBuffer`, a `Blob`, `FormData`, `URLSearchParams`, a stream or `null`).
+// Not declared: the static `Response.json(data)` (a class can't have a static and an instance
+// member of the same name): `new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } })`.
+package xenon {
+  /** The options of `new Response(body, init)`. `headers`: an object of names to values, or `Headers`. */
+  public typedef ResponseInit = { ?status:int, ?statusText:String, ?headers:* }
+
+  public native class Response {
+    /** An empty `200 OK` response. */
+    function Response()
+    /** A `200 OK` response with `body`: `new Response('hello')`. */
+    function Response(body:*)
+    function Response(body:*, init:ResponseInit)
+
+    /** A network error (`type` `'error'`, status 0): `fetch` rejects when a service worker returns it. */
+    static function error():Response
+    /** A redirect to `url`; `status` is 301, 302 (the default), 303, 307 or 308. */
+    static function redirect(url:String):Response
+    static function redirect(url:String, status:int):Response
+
+    // ---- status ----
+    /** Is `status` in 200–299? */
+    function get ok():Boolean
+    /** The HTTP status code: `200`, `404`, … */
+    function get status():int
+    /** The status message (`'OK'`, `'Not Found'`); often empty over HTTP/2. */
+    function get statusText():String
+    /** The final URL, after redirects; empty for a constructed response. */
+    function get url():String
+    /** Did `fetch` follow a redirect to get here? */
+    function get redirected():Boolean
+    /** `'basic'`, `'cors'`, `'default'`, `'error'`, `'opaque'` or `'opaqueredirect'`. */
+    function get type():String
+    /** The headers (a `Headers`): `res.headers.get('content-type')`. */
+    function get headers():*
+
+    // ---- body (each of these reads it; a body can be read once) ----
+    /** The body as a stream (`ReadableStream`), or `null` if there is none. */
+    function get body():*
+    /** Has the body been read already? */
+    function get bodyUsed():Boolean
+    /** The body parsed as JSON; rejects if it isn't valid JSON. */
+    function json():Promise<*>
+    /** The body as text (decoded as UTF-8). */
+    function text():Promise<String>
+    /** The body's raw bytes. */
+    function arrayBuffer():Promise<ArrayBuffer>
+    /** The body's raw bytes as a `Uint8Array`. */
+    function bytes():Promise<*>
+    /** The body as a `Blob`. */
+    function blob():Promise<*>
+    /** The body parsed as form data (a `FormData`). */
+    function formData():Promise<*>
+    /** A copy whose body can be read separately (call it before reading). */
+    function clone():Response
+  }
+}

@@ -4,8 +4,7 @@
 //
 // Typing: timer handles are `*` (a `Timeout` object in Bun and Node, a number in browsers);
 // keep one to pass it to `clearTimeout`/`clearInterval`. Delays are milliseconds as `Float`.
-// `fetch` takes a typed `RequestInit` shape and resolves to an untyped `Response` (`*`) until
-// platform types arrive (`.d.ts`, Part D).
+// `fetch` takes a typed `RequestInit` shape and resolves to a `Response` (std/Response.xn).
 // Hidden on purpose: `parseInt`, `parseFloat`, `isNaN`, `isFinite` (use the `Float.…` statics) and
 // `eval`. Not declared: the extra arguments of `setTimeout(callback, ms, ...args)` (use an arrow).
 package xenon {
@@ -27,9 +26,12 @@ package xenon {
   native function structuredClone<T>(value:T, options:{ transfer:Array<*> }):T
 
   // ---- network ----
-  /** An HTTP request; the `Response` is untyped: `var res:* = await fetch(url)`. */
-  native function fetch(url:String):Promise<*>
-  native function fetch(url:String, options:RequestInit):Promise<*>
+  /**
+   * An HTTP request: `var res:Response = await fetch(url)`. Rejects only without a response
+   * (network error, abort); check `res.ok` for the HTTP status.
+   */
+  native function fetch(url:String):Promise<Response>
+  native function fetch(url:String, options:RequestInit):Promise<Response>
 
   /**
    * The options of `fetch`: `fetch(url, { method: 'POST', body: JSON.stringify(data) })`.

@@ -153,18 +153,23 @@ export interface CheckResult {
   /** `x.getEnumerator` resolving to `IEnumerable`'s declaration (x may be built-in): compiled to `Enumerable.enumerate(x)`. */
   enumerateCalls: Set<A.Expr>;
   /**
-   * Calls of standard-library overloads typed differently from TypeScript's `lib` (`p.catch(log)`
-   * is a `Promise<T?>` here, a `Promise<T | void>` there): the TypeScript output casts their result.
+   * Calls of standard-library members typed differently from TypeScript's (`p.catch(log)` is a
+   * `Promise<T?>` here, a `Promise<T | void>` there): the TypeScript output casts their result.
    */
   tsResultCasts: Set<A.Expr>;
   classes: Map<string, ClassInfo>;
 }
 
-/** A nullable type inside a type argument (`Promise<T?>`), where TypeScript's `T | undefined` doesn't stand in for it. */
-function nestedNullable(node: A.TypeNode | undefined, inArgs = false): boolean {
+/**
+ * A standard-library result TypeScript types differently: a nullable type inside a type argument
+ * (`Promise<T?>`, where TypeScript's `T | undefined` doesn't stand in for it), or a `Response`
+ * (with Node's types next to Bun's, `res.clone()` is undici's `Response`, not the global one).
+ */
+function tsDivergent(node: A.TypeNode | undefined, inArgs = false): boolean {
   if (!node) return false;
-  if (node.kind === "NullableType") return inArgs || nestedNullable(node.inner, inArgs);
-  return node.kind === "TypeName" && node.args.some((a) => nestedNullable(a, true));
+  if (node.kind === "NullableType") return inArgs || tsDivergent(node.inner, inArgs);
+  if (node.kind !== "TypeName") return false;
+  return (node.name.length === 1 && node.name[0]!.name === "Response") || node.args.some((a) => tsDivergent(a, true));
 }
 
 /** Names visible inside one file. */
@@ -3198,11 +3203,11 @@ class BodyChecker {
           const pick = this.pickOverload(overloads, e.args, scope, e.callee.span, name);
           if (!pick) return overloads[0]!.type.ret;
           chosen = pick;
-          if (pick.decl.name.span.file.prelude && nestedNullable(pick.decl.returnType)) this.env.result.tsResultCasts.add(e);
         }
         const target = chosen.type;
         const sig = target.typeParams?.length ? this.instantiate(target, target.typeParams, e.args, scope, e.callee.span, expected && [target.ret, expected]).sig : target;
         this.checkArgs(e, sig, chosen.decl, scope);
+        if (chosen.decl?.name.span.file.prelude && tsDivergent(chosen.decl.returnType)) this.env.result.tsResultCasts.add(e);
         // `b?.valueOf()` / `f?.()`: `null` when the object (or function) is.
         const optional = e.optional || (e.callee.kind === "Member" && e.callee.optional);
         return optional ? nullableOf(sig.ret) : sig.ret;

@@ -28,6 +28,9 @@ const SAMPLES: Record<string, unknown[]> = {
   Iterator: [[1, 2, 3].values(), new Set([4, 5]).values(), new Map([[1, 2]]).keys()],
 };
 
+/** Bun's `length` differs from the standard here (`Response.prototype.clone.length` is 1; the standard's takes no arguments). */
+const ARITY_QUIRKS = new Set(["Response.prototype.clone"]);
+
 /** Does a runtime value match a declared (primitive) type name? Unknown types aren't checked. */
 function matches(type: A.TypeNode | undefined, value: unknown): boolean {
   if (!type || type.kind !== "TypeName") return true;
@@ -93,7 +96,7 @@ for (const file of stdFiles) {
           if (typeof fn !== "function") problems.push(`${where}: declared as a method, but is a ${typeof fn}`);
           else {
             const declared = arity.get(`${isStatic}:${name}`)!;
-            if (fn.length > declared) {
+            if (fn.length > declared && !ARITY_QUIRKS.has(where)) {
               problems.push(`${where}: runtime takes ${fn.length} parameters, declared ${declared}`);
             }
           }

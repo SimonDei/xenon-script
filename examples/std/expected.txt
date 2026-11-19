@@ -136,3 +136,6 @@ caught: offline
 7,8 7,eight fulfilled,rejected 7 fast
 finally
 resolved from outside parse failed 7
+true 201 Created true 3 {"items":[1,2,3]}
+false 4 301 https://example.com/new error
+true 0 12 false 4 false

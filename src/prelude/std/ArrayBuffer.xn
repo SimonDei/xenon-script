@@ -1,0 +1,39 @@
+// Standard library: JavaScript's `ArrayBuffer`: a block of raw bytes, e.g. from
+// `await res.arrayBuffer()` or `Bun.file(path).arrayBuffer()`. It has no way to read or write
+// the bytes itself: that goes through a view on it (`new Uint8Array(buffer)`, `new DataView(buffer)`,
+// not typed yet: use them as `*`).
+//
+// A buffer is fixed-size, or resizable up to a maximum: `new ArrayBuffer(8, { maxByteLength: 64 })`.
+// `transfer` moves the bytes into a new buffer and leaves this one detached (`byteLength` 0).
+package xenon {
+  public native class ArrayBuffer {
+    /** `length` zero bytes. */
+    function ArrayBuffer(length:int)
+    /** A resizable buffer: `length` bytes now, up to `maxByteLength` with `resize`. */
+    function ArrayBuffer(length:int, options:{ maxByteLength:int })
+
+    /** Is `value` a view on a buffer (a typed array such as `Uint8Array`, or a `DataView`)? */
+    static function isView(value:*):Boolean
+
+    /** The size in bytes (0 once detached). */
+    function get byteLength():int
+    /** The largest size `resize` allows (`byteLength` for a fixed-size buffer). */
+    function get maxByteLength():int
+    function get resizable():Boolean
+    /** Has `transfer` moved the bytes out? A detached buffer can't be used. */
+    function get detached():Boolean
+
+    /** A copy of the bytes from `start` up to (not including) `end`; negative positions count from the end. */
+    function slice():ArrayBuffer
+    function slice(start:int):ArrayBuffer
+    function slice(start:int, end:int):ArrayBuffer
+    /** Changes the size of a resizable buffer (new bytes are zero); throws a `RangeException` beyond `maxByteLength`. */
+    function resize(newLength:int):void
+    /** Moves the bytes into a new buffer (of `newLength` bytes, cut or zero-filled), detaching this one; keeps resizability. */
+    function transfer():ArrayBuffer
+    function transfer(newLength:int):ArrayBuffer
+    /** Like `transfer`, but the new buffer is fixed-size. */
+    function transferToFixedLength():ArrayBuffer
+    function transferToFixedLength(newLength:int):ArrayBuffer
+  }
+}

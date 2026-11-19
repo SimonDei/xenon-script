@@ -25,6 +25,8 @@ import stdFunction from "./prelude/std/Function.xn" with { type: "text" };
 import stdRegExp from "./prelude/std/RegExp.xn" with { type: "text" };
 import stdSet from "./prelude/std/Set.xn" with { type: "text" };
 import stdPromise from "./prelude/std/Promise.xn" with { type: "text" };
+import stdResponse from "./prelude/std/Response.xn" with { type: "text" };
+import stdArrayBuffer from "./prelude/std/ArrayBuffer.xn" with { type: "text" };
 import { SourceFile } from "./source.ts";
 
 /** Package of the built-in prelude; reserved for the compiler. */
@@ -48,6 +50,8 @@ export const PRELUDE: SourceInput[] = [
   { path: "xenon/globals.xn", text: stdGlobals },
   { path: "xenon/Function.xn", text: stdFunction },
   { path: "xenon/Promise.xn", text: stdPromise },
+  { path: "xenon/Response.xn", text: stdResponse },
+  { path: "xenon/ArrayBuffer.xn", text: stdArrayBuffer },
   { path: "xenon/RegExp.xn", text: stdRegExp },
   { path: "xenon/Set.xn", text: stdSet },
 ];

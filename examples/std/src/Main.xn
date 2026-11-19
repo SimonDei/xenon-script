@@ -19,6 +19,7 @@ package {
       arrays()
       globals()
       promises()
+      responses()
       functions()
     }
 
@@ -60,6 +61,27 @@ package {
         await new Promise<void>((resolve, reject) => setTimeout(() => resolve(), 1))
         trace(await later.promise, parsed, await id.finally(() => trace('finally')))
       }, 20)
+    }
+
+    // `Response` (what `fetch` resolves to; built here without a network) and `ArrayBuffer`.
+    private function responses():void {
+      setTimeout(async () => {
+        var res:Response = new Response('{"items":[1,2,3]}', { status: 201, statusText: 'Created' })
+        var copy:Response = res.clone()
+        var data:* = await res.json()
+        trace(res.ok, res.status, res.statusText, res.bodyUsed, data.items.length, await copy.text())
+
+        var missing:Response = new Response('gone', { status: 404 })
+        var bytes:ArrayBuffer = await missing.arrayBuffer()
+        var moved:Response = Response.redirect('https://example.com/new', 301)
+        trace(missing.ok, bytes.byteLength, moved.status, moved.headers.get('location'), Response.error().type)
+
+        var buffer:ArrayBuffer = new ArrayBuffer(4, { maxByteLength: 16 })
+        buffer.resize(12)
+        var part:ArrayBuffer = buffer.slice(2, 6)
+        var fixed:ArrayBuffer = buffer.transferToFixedLength()
+        trace(buffer.detached, buffer.byteLength, fixed.byteLength, fixed.resizable, part.byteLength, ArrayBuffer.isView(fixed))
+      }, 40)
     }
 
     private static function delay(ms:Float, value:String):Promise<String> {
