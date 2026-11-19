@@ -1,0 +1,79 @@
+error[X0308]: mismatched types
+ --> std-object-members.xn:4:17
+  |
+4 |     var n:int = o.toString()                       // toString gives a String
+  |           ---   ^^^^^^^^^^^^ expected `int`, found `String`
+  |           |
+  |           expected because of this type
+  |
+help: convert the value with `int()`
+  |
+4 |     var n:int = int(o.toString())                       // toString gives a String
+  |                 ++++            +
+
+error[X0604]: no overload of `hasOwnProperty` accepts (Boolean)
+ --> std-object-members.xn:5:11
+  |
+5 |     trace(o.hasOwnProperty(true), o.whatever)      // a wrong argument; unknown members stay dynamic
+  |           ^^^^^^^^^^^^^^^^ no matching overload
+  |
+  = note: `hasOwnProperty(key:String):Boolean`
+  = note: `hasOwnProperty(index:Float):Boolean`
+
+error[X0426]: no member `toStrin` on `Dog`
+ --> std-object-members.xn:7:13
+  |
+7 |     trace(d.toStrin(), Dog.toString())             // typo; not static
+  |             ^^^^^^^ unknown member
+  |
+help: a member with a similar name exists: `toString`
+  |
+7 |     trace(d.toString(), Dog.toString())             // typo; not static
+  |             ~~~~~~~~
+
+error[X0414]: `toString` is an instance member; it can't be accessed through the class
+  --> std-object-members.xn:7:28
+   |
+ 7 |     trace(d.toStrin(), Dog.toString())             // typo; not static
+   |                            ^^^^^^^^
+...
+14 |   override public function toString(prefix:String):String { return prefix }   // wrong signature
+   |                            -------- declared here
+
+error[X0601]: this call takes 1 argument but 0 were given
+  --> std-object-members.xn:9:24
+   |
+ 9 |     trace(p.valueOf(), p.propertyIsEnumerable())
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ missing `key:String`
+   |
+  ::: <xenon prelude>/xenon/Object.xn:27:14
+   |
+27 |     function propertyIsEnumerable(key:String):Boolean
+   |              -------------------- `propertyIsEnumerable` defined here
+
+error[X0720]: `valueOf` overrides `Object.valueOf` but is not marked `override`
+  --> std-object-members.xn:13:19
+   |
+13 |   public function valueOf():int { return 1 }       // needs `override`
+   |                   ^^^^^^^ overrides `Object.valueOf`
+   |
+help: add `override`
+   |
+13 |   override public function valueOf():int { return 1 }       // needs `override`
+   |   +++++++++
+
+error[X0722]: `toString` doesn't match `Object.toString`
+  --> std-object-members.xn:14:28
+   |
+14 |   override public function toString(prefix:String):String { return prefix }   // wrong signature
+   |                            ^^^^^^^^
+   |
+   = note: it must be `toString():String`
+
+error[X0722]: `toLocaleString` doesn't match `Object.toLocaleString`
+  --> std-object-members.xn:16:28
+   |
+16 |   override public function toLocaleString():int { return 0 }                   // must return a String
+   |                            ^^^^^^^^^^^^^^
+   |
+   = note: it must be `toLocaleString():String`

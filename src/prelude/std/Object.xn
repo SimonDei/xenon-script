@@ -1,15 +1,31 @@
-// Standard library: the static functions of JavaScript's `Object`. The `Object` type itself stays
-// built into the compiler (every value but `Void` fits it, `{ … }` literals, `o['key']` indexing);
-// this class only supplies `Object.keys(…)` & co. (`new Object()` still makes an empty object).
+// Standard library: JavaScript's `Object`. The `Object` type itself stays built into the compiler
+// (every value but `Void` fits it, `{ … }` literals, `o['key']` indexing); this class supplies the
+// statics (`Object.keys(…)` & co.) and the instance members every object inherits from
+// `Object.prototype`: they are available on all class instances, shapes and `Object` values, and a
+// class redefining one needs `override`. (`new Object()` still makes an empty object.)
 //
 // Typing: keys are `String`s, values and entries are `*` (an object has no single value type).
 // `freeze` & co. return their argument with its own type; `assign` returns `*`, since the result
 // has the members of all its arguments. Every value fits `Object`, `null` included, but
 // `Object.keys(null)` throws a `TypeException`: check for `null` first.
-// Not declared: the instance members (`hasOwnProperty`, …), `defineProperties`,
+// Members of an `Object` value that aren't declared here stay untyped (`o.anything` is `*`).
+// Not declared: `defineProperties`,
 // `getOwnPropertyDescriptors`, `getOwnPropertySymbols` (no `Symbol` yet); use `(object as *)`.
 package xenon {
   public native class Object {
+    // ---- instance members (Object.prototype) ----
+    /** Text for the object; `'[object Object]'` unless a class overrides it. String concatenation calls it. */
+    function toString():String
+    function toLocaleString():String
+    /** The primitive value of the object (the object itself unless overridden); used by comparisons. */
+    function valueOf():*
+    /** Prefer `Object.hasOwn(o, key)`, which also works for objects without a prototype. */
+    function hasOwnProperty(key:String):Boolean
+    function hasOwnProperty(index:Float):Boolean
+    /** Is this object somewhere in `object`'s prototype chain? */
+    function isPrototypeOf(object:*):Boolean
+    function propertyIsEnumerable(key:String):Boolean
+
     // ---- reading ----
     /** The own enumerable property names. */
     static function keys(object:Object):Array<String>

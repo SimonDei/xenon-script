@@ -493,6 +493,15 @@ class Env {
     return this.classes.get("xenon.RegExp");
   }
 
+  /**
+   * An instance member every object inherits from `Object.prototype` (`toString`, `hasOwnProperty`, …),
+   * declared in src/prelude/std/Object.xn: the fallback for class instances, shapes and `Object` values.
+   */
+  rootMember(name: string): MemberSig | undefined {
+    const m = this.classes.get("xenon.Object")?.members.get(name);
+    return m && !m.isStatic ? m : undefined;
+  }
+
   /** The std library's `Array<T>` (src/prelude/std/Array.xn): the members of the built-in array type. */
   get arrayClass(): ClassInfo | undefined {
     return this.classes.get("xenon.Array");
@@ -1126,11 +1135,15 @@ class Env {
         continue;
       }
       if (!inherited) {
-        const root = ROOT_METHODS[name];
+        const root = info.qname === "xenon.Object" ? undefined : this.rootMember(name);
         if (root && !jsAncestor) {
           if (!ov) this.missingOverride(m, `\`Object.${name}\``);
-          if (m.params.length > 0 || m.accessor) {
-            this.diags.error("X0722", `\`${name}\` doesn't match \`Object.${name}\``, m.name.span).note(`it must be \`${name}():${typeToString(root)}\``);
+          const forms = root.overloads ?? [{ decl: root.decl as A.Method, type: root.type as MethodType }];
+          const own = info.members.get(name)?.type;
+          const ret = own?.kind === "method" ? own.ret : undefined;
+          if (m.accessor || !forms.some((f) => f.decl.params.length === m.params.length && (!ret || assignable(ret, f.type.ret)))) {
+            const d = this.diags.error("X0722", `\`${name}\` doesn't match \`Object.${name}\``, m.name.span);
+            for (const f of forms) d.note(`it must be \`${name}${signatureText(f.decl)}\``);
           }
         } else if (ov && !jsAncestor) {
           const d = this.diags.error("X0721", `\`${name}\` doesn't override anything`, ov, "nothing to override");
@@ -1617,8 +1630,6 @@ const VIS_DESCRIPTION: Record<Visibility, (owner: ClassInfo) => string> = {
   private: (o) => `private to \`${o.decl.name.name}\``,
 };
 
-/** Methods every class inherits from JS `Object`; redefining them needs `override`. */
-const ROOT_METHODS: Record<string, Type> = { toString: T.String, toLocaleString: T.String, valueOf: T.any };
 
 function accessorHalves(m: MemberSig): ("get" | "set")[] {
   return [m.decl, m.decl2].flatMap((d) => (d?.kind === "Method" && d.accessor ? [d.accessor] : []));
@@ -2695,7 +2706,7 @@ class BodyChecker {
       if (this.da.has(local)) this.daRead(local, e.span, local.nameSpan, `final \`${name}\``);
       return local.type;
     }
-    const member = findMember(this.info, name);
+    const member = findMember(this.info, name) ?? (hasJsAncestor(this.info) ? undefined : this.env.rootMember(name));
     if (member) {
       this.env.checkAccess(member.decl, member.owner, this.info, e.span);
       if (this.dynamicThis > 0 && this.fieldInit && !member.isStatic) {
@@ -2786,8 +2797,12 @@ class BodyChecker {
     if (obj.kind === "builtin" && obj.name === "Array" && arrayClass) obj = { kind: "class", info: arrayClass, args: [obj.args[0] ?? T.any] };
     const name = e.name.name;
     switch (obj.kind) {
+      case "builtin": {
+        // An `Object` value: the inherited members are typed, anything else stays dynamic.
+        const root = obj.name === "Object" ? this.env.rootMember(name) : undefined;
+        return root ? this.rootMemberUse(e, root) : T.any;
+      }
       case "any":
-      case "builtin":
       case "method":
         return T.any;
       case "error":
@@ -2800,6 +2815,8 @@ class BodyChecker {
       case "shape": {
         const m = obj.members.get(name);
         if (m) return m.type();
+        const root = this.env.rootMember(name);
+        if (root) return this.rootMemberUse(e, root);
         const d = this.diags.error("X0426", `no member \`${name}\` on \`${typeToString(obj)}\``, e.name.span, "unknown member");
         const sug = suggest(name, [...obj.members.keys()]);
         if (sug) d.help(`a member with a similar name exists: \`${sug}\``, [{ span: e.name.span, text: sug }]);
@@ -2829,7 +2846,7 @@ class BodyChecker {
       case "class":
       case "classRef": {
         const wantStatic = obj.kind === "classRef";
-        const m = findMember(obj.info, name);
+        const m = findMember(obj.info, name) ?? (wantStatic || hasJsAncestor(obj.info) ? undefined : this.env.rootMember(name));
         if (m) this.env.checkAccess(m.decl, m.owner, this.info, e.name.span);
         if (!m) {
           if (hasJsAncestor(obj.info)) return T.any;
@@ -2862,6 +2879,13 @@ class BodyChecker {
         return seen;
       }
     }
+  }
+
+  /** `x.toString` & co. on a shape or an `Object` value: an `Object.prototype` member. */
+  private rootMemberUse(e: A.Expr & { kind: "Member" }, m: MemberSig): Type {
+    if (m.overloads) this.calleeOverloads.set(e, m.overloads);
+    this.memberUse(e, m, e.name.span);
+    return m.type;
   }
 
   private call(e: A.Expr & { kind: "Call" }, scope: Scope): Type {
@@ -3491,10 +3515,11 @@ class BodyChecker {
     let m: MemberSig | undefined;
     const r = this.env.result.resolutions.get(callee);
     if (r?.kind === "function") return r.decl;
-    if (callee.kind === "Ident") m = findMember(this.info, callee.name);
+    if (callee.kind === "Ident") m = findMember(this.info, callee.name) ?? this.env.rootMember(callee.name);
     else if (callee.kind === "Member") {
       const objType = this.env.result.exprTypes.get(callee.object);
       if (objType?.kind === "class" || objType?.kind === "classRef") m = findMember(objType.info, callee.name.name);
+      if (!m && objType?.kind !== "classRef") m = this.env.rootMember(callee.name.name);
     }
     return m?.decl.kind === "Method" ? m.decl : undefined;
   }

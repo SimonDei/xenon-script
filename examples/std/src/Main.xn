@@ -76,6 +76,10 @@ package {
       var parity:Object = Object.groupBy([1, 2, 3, 4, 5], (n:int, _:int):String => n % 2 == 0 ? 'even' : 'odd')
       trace(JSON.stringify(parity), Object.getPrototypeOf(parity) == null)
       trace(JSON.stringify(Object.groupBy(new Set(['ant', 'bee', 'asp']), (word:String):String => word.charAt(0))))
+
+      // every object has the Object.prototype members; a class redefines them with `override`
+      var badge:Badge = new Badge()
+      trace(badge.toString(), 'label: ' + badge, badge.hasOwnProperty('text'), origin.hasOwnProperty('x'), config.toString())
     }
 
     private function json():void {
@@ -347,3 +351,8 @@ package {
 typedef Point = { x:Float, y:Float }
 
 class Seen extends Set<String> {}
+
+class Badge {
+  public var text:String = 'gold'
+  override public function toString():String { return $'<{text}>' }
+}

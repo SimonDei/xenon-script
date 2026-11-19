@@ -1,0 +1,18 @@
+public class Main {
+  public function Main() {
+    var o:Object = { a: 1 }
+    var n:int = o.toString()                       // toString gives a String
+    trace(o.hasOwnProperty(true), o.whatever)      // a wrong argument; unknown members stay dynamic
+    var d:Dog = new Dog()
+    trace(d.toStrin(), Dog.toString())             // typo; not static
+    var p:Point = { x: 1, y: 2 }
+    trace(p.valueOf(), p.propertyIsEnumerable())
+  }
+}
+class Dog {
+  public function valueOf():int { return 1 }       // needs `override`
+  override public function toString(prefix:String):String { return prefix }   // wrong signature
+  override public function hasOwnProperty(key:String):Boolean { return true }  // fine: matches one overload
+  override public function toLocaleString():int { return 0 }                   // must return a String
+}
+typedef Point = { x:Float, y:Float }
