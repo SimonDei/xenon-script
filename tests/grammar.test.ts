@@ -99,6 +99,13 @@ const cases: [string, string, string, number?][] = [
   ["trace(x ?? y, a?.b, ...rest)", "...", "keyword.operator.spread.xenon"],
   ["if (x == undefined) return", "undefined", "constant.language.undefined.xenon"],
   ["var let:int = 1", "let", "invalid.illegal.reserved.xenon"],
+  // member reads are properties (themes colour `variable`, as for JavaScript); calls and types aren't
+  ["if (!res.ok) trace(res?.statusText, res.headers.get('x'))", "ok", "variable.other.property.xenon"],
+  ["if (!res.ok) trace(res?.statusText, res.headers.get('x'))", "statusText", "variable.other.property.xenon"],
+  ["if (!res.ok) trace(res?.statusText, res.headers.get('x'))", "get", "entity.name.function.call.xenon"],
+  ["var b:Sheet.Book = this.count", "Book", "entity.name.type.xenon"],
+  ["var b:Sheet.Book = this.count", "count", "variable.other.property.xenon"],
+  ["var n:Float = 1.5", "1.5", "constant.numeric.decimal.xenon"],
   // keywords as member names: called, they are method calls like any other (`p.catch(f)`)
   ["trace(nums.with(0, 99), p.catch(f), x?.default)", "with", "entity.name.function.call.xenon"],
   ["trace(nums.with(0, 99), p.catch(f), x?.default)", "catch", "entity.name.function.call.xenon"],

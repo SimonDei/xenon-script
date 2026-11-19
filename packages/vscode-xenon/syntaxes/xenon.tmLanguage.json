@@ -59,6 +59,9 @@
           "include": "#keywords"
         },
         {
+          "include": "#property"
+        },
+        {
           "include": "#builtin-types"
         },
         {
@@ -700,6 +703,11 @@
           "match": "\\."
         }
       ]
+    },
+    "property": {
+      "comment": "A member read or written (`res.status`, `a?.length`), as JavaScript's grammar scopes it: themes colour `variable`. Calls are `#function-call`; capitalized names stay types (`Sheet.Book`).",
+      "name": "variable.other.property.xenon",
+      "match": "(?<=[\\w$)\\]]\\.|\\?\\.)\\s*[a-z_$][\\w$]*\\b(?!\\s*\\()"
     }
   }
 }
