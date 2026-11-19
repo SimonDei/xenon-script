@@ -395,3 +395,15 @@ test("type positions: annotations, parameters, return types; not object literal 
   expect([at("var o = { a: 1, b: "), at("f({ key: "), at("var x = ok ? a : "), at("f(a, b"), at("var o:P = { a: "), at("typedef A = { b:int }\nvar o = { c: ")])
     .toEqual([false, false, false, false, false, false]);
 });
+
+test("hover shows the standard library's constexpr members and inline constants as declared", () => {
+  const text = "public class Main {\n  public function Main() {\n    var s:String = String(1)\n    trace(s.trim(), Math.floor(1.5), s.length, Math.PI, s.split(','), s.replace('a', 'b'))\n  }\n}\n";
+  const p = project({ "Main.xn": text });
+  const first = (needle: string) => (p.hover("Main.xn", offset(text, needle, 1))!.contents as string).split("\n")[1];
+  expect(first("trim")).toBe("constexpr function String.trim():String");
+  expect(first("floor")).toBe("static constexpr function Math.floor(x:Float):Float");
+  expect(first("length")).toBe("constexpr function get String.length():int");
+  expect(first("PI")).toBe("static inline const Math.PI:Float");
+  expect(first("split")).toBe("function String.split(separator:String):Array<String>");
+  expect(first("replace")).toBe("constexpr function String.replace(pattern:String, replacement:String):String");
+});

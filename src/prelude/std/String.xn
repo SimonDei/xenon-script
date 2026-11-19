@@ -9,6 +9,9 @@
 // first), `codePointAt` is `int?`; `match` returns `null` without a match, `at` an `undefined` character out
 // of range. A `Function` replacer receives `(match, ...groups, offset, whole)`; the extras of a regex
 // match (`index`, `groups`) are untyped, see `RegExp`.
+// `constexpr`: the method runs at compile time when the string and arguments are constants
+// (`'a b'.replace(~/\s/g, '')` in an `inline` constant or a `constexpr` function). Not the ones
+// returning arrays, depending on the locale, `at` (`undefined` past the end) or taking a function.
 // Not declared: the deprecated HTML methods (`anchor`, `big`, …), `substr`, `trimLeft`/`trimRight`
 // (use `trimStart`/`trimEnd`) and `String.raw`.
 package xenon {
@@ -16,35 +19,35 @@ package xenon {
     private function String()
 
     /** `String.fromCharCode(72, 105)` is `'Hi'`; each code is a UTF-16 unit (0–65535). */
-    static function fromCharCode(...codes:Array<int>):String
+    static constexpr function fromCharCode(...codes:Array<int>):String
     /** `String.fromCodePoint(128512)` is `'😀'`; each point is 0–1114111. */
-    static function fromCodePoint(...points:Array<int>):String
+    static constexpr function fromCodePoint(...points:Array<int>):String
 
     /** Number of UTF-16 code units. */
-    function get length():int
+    constexpr function get length():int
 
     // ---- characters ----
-    function charAt(index:int = 0):String
+    constexpr function charAt(index:int = 0):String
     /** Like `s[index]`, but negative indexes count from the end: `'abc'.at(-1)` is `'c'`. */
     function at(index:int):String
     /** The UTF-16 code unit at `index` (0–65535); NaN if out of range. */
-    function charCodeAt(index:int):int
+    constexpr function charCodeAt(index:int):int
     /** The full code point at `index` (surrogate pairs combined); `null` if out of range. */
-    function codePointAt(index:int):int?
+    constexpr function codePointAt(index:int):int?
 
     // ---- searching ----
-    function indexOf(search:String, from:int = 0):int
+    constexpr function indexOf(search:String, from:int = 0):int
     /** Last position of `search`, or -1. */
-    function lastIndexOf(search:String):int
-    function lastIndexOf(search:String, from:int):int
-    function includes(search:String, from:int = 0):Boolean
-    function startsWith(search:String, from:int = 0):Boolean
-    function endsWith(search:String):Boolean
+    constexpr function lastIndexOf(search:String):int
+    constexpr function lastIndexOf(search:String, from:int):int
+    constexpr function includes(search:String, from:int = 0):Boolean
+    constexpr function startsWith(search:String, from:int = 0):Boolean
+    constexpr function endsWith(search:String):Boolean
     /** Only the first `length` characters are considered. */
-    function endsWith(search:String, length:int):Boolean
+    constexpr function endsWith(search:String, length:int):Boolean
     /** Position of the first regex match, or -1. */
-    function search(pattern:RegExp):int
-    function search(pattern:String):int
+    constexpr function search(pattern:RegExp):int
+    constexpr function search(pattern:String):int
 
     // ---- regular expressions ----
     /** The match (see `RegExp.exec`), or `null`. With the `g` flag: all matched texts, or `null`. */
@@ -55,12 +58,12 @@ package xenon {
     function matchAll(pattern:RegExp):Iterator<Array<String>>
 
     // ---- extracting ----
-    function slice(start:int):String
+    constexpr function slice(start:int):String
     /** From `start` up to (not including) `end`; negative values count from the end. */
-    function slice(start:int, end:int):String
-    function substring(start:int):String
+    constexpr function slice(start:int, end:int):String
+    constexpr function substring(start:int):String
     /** Like `slice`, but swaps the arguments if `start > end` and clamps negatives to 0. */
-    function substring(start:int, end:int):String
+    constexpr function substring(start:int, end:int):String
     function split(separator:String):Array<String>
     /** At most `limit` pieces. */
     function split(separator:String, limit:int):Array<String>
@@ -69,31 +72,31 @@ package xenon {
 
     // ---- changing ----
     /** Replaces the first occurrence; `$&`, `$1`, … in `replacement` insert the match and groups. */
-    function replace(pattern:String, replacement:String):String
-    function replace(pattern:RegExp, replacement:String):String
+    constexpr function replace(pattern:String, replacement:String):String
+    constexpr function replace(pattern:RegExp, replacement:String):String
     /** `replacer` is called as `(match, ...groups, offset, whole)` and returns the new text. */
     function replace(pattern:String, replacer:Function):String
     function replace(pattern:RegExp, replacer:Function):String
     /** Replaces every occurrence; a regex must have the `g` flag (else a `TypeError`). */
-    function replaceAll(pattern:String, replacement:String):String
-    function replaceAll(pattern:RegExp, replacement:String):String
+    constexpr function replaceAll(pattern:String, replacement:String):String
+    constexpr function replaceAll(pattern:RegExp, replacement:String):String
     function replaceAll(pattern:String, replacer:Function):String
     function replaceAll(pattern:RegExp, replacer:Function):String
-    function concat(...parts:Array<String>):String
-    function repeat(count:int):String
-    function padStart(length:int, fill:String = ' '):String
-    function padEnd(length:int, fill:String = ' '):String
-    function trim():String
-    function trimStart():String
-    function trimEnd():String
-    function toUpperCase():String
-    function toLowerCase():String
+    constexpr function concat(...parts:Array<String>):String
+    constexpr function repeat(count:int):String
+    constexpr function padStart(length:int, fill:String = ' '):String
+    constexpr function padEnd(length:int, fill:String = ' '):String
+    constexpr function trim():String
+    constexpr function trimStart():String
+    constexpr function trimEnd():String
+    constexpr function toUpperCase():String
+    constexpr function toLowerCase():String
     function toLocaleUpperCase():String
     function toLocaleUpperCase(locale:String):String
     function toLocaleLowerCase():String
     function toLocaleLowerCase(locale:String):String
     /** Unicode normalization form: `'NFC'`, `'NFD'`, `'NFKC'` or `'NFKD'`. */
-    function normalize(form:String = 'NFC'):String
+    constexpr function normalize(form:String = 'NFC'):String
 
     // ---- comparing and converting ----
     /** Negative, 0 or positive: `a.localeCompare(b)` orders by the default locale's rules. */
@@ -102,10 +105,10 @@ package xenon {
     /** `options` are `Intl.Collator` options, e.g. `{ numeric: true }`. */
     function localeCompare(other:String, locale:String, options:*):int
     /** Does the string have no lone surrogates? */
-    function isWellFormed():Boolean
+    constexpr function isWellFormed():Boolean
     /** Lone surrogates replaced by U+FFFD. */
-    function toWellFormed():String
-    function toString():String
-    function valueOf():String
+    constexpr function toWellFormed():String
+    constexpr function toString():String
+    constexpr function valueOf():String
   }
 }

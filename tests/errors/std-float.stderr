@@ -59,15 +59,20 @@ help: convert the value with `int()`
   |                        ++++                   +
 
 error[X0308]: mismatched types
- --> std-float.xn:9:24
-  |
-9 |       trace(n.toString('16'), price.toPrecision(2.5), big, parsed)
-  |                        ^^^^ expected `int`, found `String`
-  |
+  --> std-float.xn:9:24
+   |
+ 9 |       trace(n.toString('16'), price.toPrecision(2.5), big, parsed)
+   |                        ^^^^ expected `int`, found `String`
+   |
+  ::: <xenon prelude>/xenon/Float.xn:12:29
+   |
+12 |     function toString(radix:int = 10):String
+   |                             --- parameter declared here
+   |
 help: convert the value with `int()`
-  |
-9 |       trace(n.toString(int('16')), price.toPrecision(2.5), big, parsed)
-  |                        ++++    +
+   |
+ 9 |       trace(n.toString(int('16')), price.toPrecision(2.5), big, parsed)
+   |                        ++++    +
 
 error[X0604]: no overload of `toPrecision` accepts (Float)
  --> std-float.xn:9:31

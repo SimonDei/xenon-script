@@ -14,7 +14,7 @@ error[X0523]: inline initializer is not a compile-time constant
  --> inline.xn:5:41
   |
 5 |     private static inline final C:int = now()
-  |                                 -       ^^^^^ only `constexpr` functions, `Math` functions and conversions can be called at compile time
+  |                                 -       ^^^^^ only `constexpr` functions and conversions can be called at compile time
   |                                 |
   |                                 `C` is declared `inline`
   |

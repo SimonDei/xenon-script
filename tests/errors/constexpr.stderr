@@ -6,7 +6,7 @@ error[X0526]: assigning `counter` isn't allowed in a `constexpr` function
 12 |     counter = n                                                              // only locals can change
    |     ^^^^^^^ only locals can change
    |
-   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, `String` methods like `trim` and `replace`, `constexpr` functions, methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `constexpr` functions (also the standard library's: `Math.floor`, `trim`, `replace`, …), methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
 
 error[X0526]: `try` isn't allowed in a `constexpr` function
   --> constexpr.xn:16:5
@@ -16,7 +16,7 @@ error[X0526]: `try` isn't allowed in a `constexpr` function
 16 |     try { return n } catch (e) { return 0 }                                  // `try` isn't allowed
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, `String` methods like `trim` and `replace`, `constexpr` functions, methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `constexpr` functions (also the standard library's: `Math.floor`, `trim`, `replace`, …), methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
 
 warning[X0860]: unreachable code
   --> constexpr.xn:21:5
@@ -40,7 +40,7 @@ error[X0526]: `counter` isn't allowed in a `constexpr` function
    |                 |
    |                 `constexpr` here
    |
-   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, `String` methods like `trim` and `replace`, `constexpr` functions, methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `constexpr` functions (also the standard library's: `Math.floor`, `trim`, `replace`, …), methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
 
 error[X0526]: calling `Date.now` isn't allowed in a `constexpr` function
   --> constexpr.xn:25:51
@@ -50,7 +50,7 @@ error[X0526]: calling `Date.now` isn't allowed in a `constexpr` function
    |                 |
    |                 `constexpr` here
    |
-   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, `String` methods like `trim` and `replace`, `constexpr` functions, methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `constexpr` functions (also the standard library's: `Math.floor`, `trim`, `replace`, …), methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
 
 error[X0526]: a `constexpr` parameter must be a number, `String`, `Boolean` or an object
   --> constexpr.xn:26:47

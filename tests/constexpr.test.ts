@@ -56,10 +56,31 @@ test("String methods that aren't constants are still rejected in constexpr funct
 }
 ` }], { main: "Main" });
   const errors = result.diagnostics.items.filter((d) => d.code === "X0526").map((d) => spanOf(d));
-  expect(errors).toEqual(["s.split(',').length", "s.toLocaleUpperCase()", "(m:String):String => m"]);
+  expect(errors).toEqual(["s.split(',').length", "s.toLocaleUpperCase()", "s.replace('a', (m:String):String => m)"]);
 });
 
 const spanOf = (d: { labels: { primary: boolean; span: { file: { text: string }; start: number; end: number } }[] }) => {
   const l = d.labels.find((x) => x.primary)!;
   return l.span.file.text.slice(l.span.start, l.span.end).replace(/^calling `|`$/g, "");
 };
+
+test("the standard library's constexpr members run as JavaScript built-ins: Math, getters, rest parameters, ordinary code", () => {
+  const js = compile(`public class Main {
+  public static inline final TAU:Float = Math.PI * 2
+  public static inline final BIG:Float = Math.max(3, 9, 4)
+  public static inline final LEN:int = 'abc'.length
+
+  public function Main() {
+    var s:String? = String([1])
+    trace(TAU, BIG, LEN, Math.floor(2.5), 'ab'.toUpperCase(), 'a-b'.replace(~/-/g, '+'), s?.trim(), 'x'.split('').length, Math.random() < 1)
+  }
+}
+`);
+  // Constant calls fold in ordinary code too; `split` (an array) and `random` aren't constexpr.
+  expect(js).toContain("console.log(6.283185307179586, 9, 3, 2, 'AB', 'a+b', s?.trim(), 'x'.split('').length, Math.random() < 1);");
+});
+
+test("a standard-library call too big for compile time is reported, not run", () => {
+  const result = compileProject([{ path: "Main.xn", text: "public class Main {\n  public static inline final HUGE:String = 'ab'.repeat(10000000)\n  public function Main() { trace(HUGE) }\n}\n" }], { main: "Main" });
+  expect(result.diagnostics.items.map((d) => d.labels.find((l) => l.primary)?.message)).toEqual(["the result of `repeat` is too long to compute at compile time"]);
+});

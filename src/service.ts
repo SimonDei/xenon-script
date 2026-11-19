@@ -187,10 +187,14 @@ function memberText(m: MemberSig): string {
   const owner = m.owner.decl.name.name;
   // A JavaScript module's export (`path.join`) isn't a static to the reader.
   const st = m.isStatic && !m.owner.file.file.generated ? "static " : "";
-  if (m.kind === "method" && m.type.kind === "method") return `${st}function ${owner}.${signature(m.type, m.name)}`;
-  if (m.kind === "accessor") return `${st}function get ${owner}.${m.name}():${typeToString(m.type)}`;
+  // `constexpr` (the overload in `decl`, for a call that chose one) and `inline`, as declared.
+  const decl = m.kind === "accessor" ? readDecl(m) : m.decl;
+  const ce = decl.kind === "Method" && decl.modifiers.constexpr ? "constexpr " : "";
+  if (m.kind === "method" && m.type.kind === "method") return `${st}${ce}function ${owner}.${signature(m.type, m.name)}`;
+  if (m.kind === "accessor") return `${st}${ce}function get ${owner}.${m.name}():${typeToString(m.type)}`;
   const kw = m.readonly === "const" ? "const" : m.readonly === "final" ? "final" : "var";
-  return `${st}${kw} ${owner}.${m.name}:${typeToString(m.type)}`;
+  const inline = m.decl.modifiers.inline ? "inline " : "";
+  return `${st}${inline}${kw} ${owner}.${m.name}:${typeToString(m.type)}`;
 }
 
 function classItem(c: ClassInfo): CompletionItem {

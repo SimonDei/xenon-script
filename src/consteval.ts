@@ -15,10 +15,10 @@ export class ConstObject {
 }
 
 /** A value known at compile time. */
-export type ConstValue = number | string | boolean | null | ConstObject;
+export type ConstValue = number | string | boolean | null | ConstObject | RegExp;
 
 /** A value that can be pasted into the output. */
-export const isPrimitive = (v: ConstValue): v is number | string | boolean | null => !(v instanceof ConstObject);
+export const isPrimitive = (v: ConstValue): v is number | string | boolean | null => !(v instanceof ConstObject) && !(v instanceof RegExp);
 
 export type Fold =
   | { ok: true; value: ConstValue }
@@ -28,37 +28,13 @@ export type Fold =
    */
   | { ok: false; at: Span; reason: string; reported?: boolean; cycle?: boolean; limit?: boolean };
 
-/** `Math` functions without side effects, callable at compile time (from `constexpr` functions too). */
-export const PURE_MATH = new Set([
-  "abs", "acos", "acosh", "asin", "asinh", "atan", "atan2", "atanh", "cbrt", "ceil", "clz32", "cos", "cosh", "exp", "expm1",
-  "floor", "fround", "hypot", "imul", "log", "log10", "log1p", "log2", "max", "min", "pow", "round", "sign", "sin", "sinh",
-  "sqrt", "tan", "tanh", "trunc",
-]);
-
-/**
- * `String` methods without side effects and with a primitive result, callable at compile time
- * (from `constexpr` functions too). Not: methods returning arrays (`split`, `match`), locale-
- * dependent ones (`toLocaleUpperCase`, `localeCompare`), `at` (`undefined` past the end) and
- * `replace` with a function.
- */
-export const PURE_STRING = new Set([
-  "charAt", "charCodeAt", "codePointAt", "concat", "endsWith", "includes", "indexOf", "isWellFormed", "lastIndexOf",
-  "normalize", "padEnd", "padStart", "repeat", "replace", "replaceAll", "search", "slice", "startsWith", "substring",
-  "toLowerCase", "toString", "toUpperCase", "toWellFormed", "trim", "trimEnd", "trimStart", "valueOf",
-]);
-
-/** `String.fromCharCode(…)` and `String.fromCodePoint(…)`. */
-export const PURE_STRING_STATICS = new Set(["fromCharCode", "fromCodePoint"]);
-
-/** `Math` constants (`Math.PI`, …). */
-export const MATH_CONSTANTS = new Set(["E", "LN10", "LN2", "LOG10E", "LOG2E", "PI", "SQRT1_2", "SQRT2"]);
-
 /**
  * Resolves a name/member reference to a constant, or undefined if it isn't one. For a call, a
  * `new` or an operator on an object, `args` holds the arguments' values (the right operand for an
- * operator) and `self` the receiver object, if any: `constexpr` code is evaluated with them.
+ * operator) and `self` the receiver, if any: `constexpr` code is evaluated with them. A member
+ * with `self` is a getter on a constant (`'abc'.length`).
  */
-export type ConstLookup = (e: A.Expr, args?: ConstValue[], self?: ConstObject) => Fold | undefined;
+export type ConstLookup = (e: A.Expr, args?: ConstValue[], self?: ConstValue) => Fold | undefined;
 
 const CASTS: Record<string, (v: number | string | boolean | null) => ConstValue> = {
   int: (v) => (v as number) | 0,
@@ -80,6 +56,8 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
     case "String": return { ok: true, value: e.value };
     case "Bool": return { ok: true, value: e.value };
     case "Null": return { ok: true, value: null };
+    // A fresh object per evaluation (a regex keeps state between `exec` calls).
+    case "Regex": return { ok: true, value: new RegExp(e.pattern, e.flags) };
     case "This":
       return lookup(e) ?? notConst(e, "`this` is not a compile-time constant here");
     case "Ident":
@@ -87,10 +65,11 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
     case "Member": {
       const found = lookup(e);
       if (found) return found;
-      // A field of an object built at compile time: `v.x`; a string's `length`.
+      // A field of an object built at compile time (`v.x`), or a `constexpr` getter (`'abc'.length`).
       const o = fold(e.object, lookup);
-      if (o.ok && typeof o.value === "string" && e.name.name === "length") return { ok: true, value: o.value.length };
       if (o.ok && o.value instanceof ConstObject && o.value.fields.has(e.name.name)) return { ok: true, value: o.value.fields.get(e.name.name)! };
+      const got = o.ok && o.value !== null && !(o.value instanceof ConstObject) ? lookup(e, [], o.value) : undefined;
+      if (got) return got;
       return notConst(e, `\`${e.name.name}\` is not an inline constant`);
     }
     case "Template": {
@@ -150,23 +129,15 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
         if (!isPrimitive(f.value)) return notConst(e, "an object can't be converted at compile time");
         return { ok: true, value: CASTS[e.callee.name]!(f.value) };
       }
-      // A `constexpr` function or method, or a pure `Math` function: the receiver and arguments first, then the call.
-      let self: ConstObject | undefined;
+      // A `constexpr` function or method (the standard library's too): the receiver and arguments first, then the call.
+      let self: ConstValue | undefined;
       if (e.callee.kind === "Member") {
         const r = fold(e.callee.object, lookup);
-        if (r.ok && r.value instanceof ConstObject) self = r.value;
-        // A string method (`name.trim()`, `s.replace(~/\s+/g, '')`): regex literals are allowed as arguments.
-        if (r.ok && typeof r.value === "string" && PURE_STRING.has(e.callee.name.name)) return stringCall(e, r.value, e.callee.name.name, lookup);
-        if (e.callee.object.kind === "Ident" && e.callee.object.name === "String" && PURE_STRING_STATICS.has(e.callee.name.name)) {
-          const codes = foldArgs(e.args, lookup);
-          if (!Array.isArray(codes)) return codes;
-          if (!codes.every((c) => typeof c === "number")) return notConst(e);
-          return attempt(e, () => (String as unknown as Record<string, (...n: number[]) => string>)[e.callee.kind === "Member" ? e.callee.name.name : ""]!(...(codes as number[])));
-        }
+        if (r.ok && r.value !== null) self = r.value;
       }
       const values = foldArgs(e.args, lookup);
       if (!Array.isArray(values)) return values;
-      return lookup(e, values, self) ?? notConst(e, "only `constexpr` functions, `Math` functions and conversions can be called at compile time");
+      return lookup(e, values, self) ?? notConst(e, "only `constexpr` functions and conversions can be called at compile time");
     }
     case "New": {
       // An object of a class with a `constexpr` constructor.
@@ -182,29 +153,28 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
   }
 }
 
-/** A `PURE_STRING` method on a known string; its arguments are constants or regex literals. */
-function stringCall(e: A.Expr & { kind: "Call" }, receiver: string, name: string, lookup: ConstLookup): Fold {
-  const args: (ConstValue | RegExp)[] = [];
-  for (const a of e.args) {
-    if (a.kind === "Spread") return notConst(a);
-    if (a.kind === "Regex") {
-      args.push(new RegExp(a.pattern, a.flags));
-      continue;
-    }
-    const f = fold(a, lookup);
-    if (!f.ok) return f;
-    if (!isPrimitive(f.value)) return notConst(a, "an object can't be passed to a string method at compile time");
-    args.push(f.value);
-  }
-  return attempt(e, () => (receiver as unknown as Record<string, (...a: unknown[]) => ConstValue | undefined>)[name]!(...args));
-}
+/** Longest string a standard-library call may build at compile time (`'-'.repeat(n)`). */
+const MAX_STRING = 1_000_000;
 
-/** Runs a JavaScript built-in at compile time: `undefined` is `null`; an exception is no constant. */
-function attempt(e: A.Expr, call: () => ConstValue | undefined): Fold {
+/**
+ * Runs a `constexpr` member of the standard library (a JavaScript built-in) at compile time:
+ * `target[name](...args)`, or the getter `target[name]`. `undefined` is `null`; an exception, an
+ * object result or a huge string is no constant.
+ */
+export function callNative(target: unknown, name: string, args: ConstValue[], getter: boolean, at: Span): Fold {
+  const fail = (reason: string): Fold => ({ ok: false, at, reason });
+  const counts = args.filter((a): a is number => typeof a === "number");
+  if (typeof target === "string" && (name === "repeat" || name === "padStart" || name === "padEnd") && Math.max(0, ...counts) * Math.max(1, target.length) > MAX_STRING) {
+    return fail(`the result of \`${name}\` is too long to compute at compile time`);
+  }
   try {
-    return { ok: true, value: call() ?? null };
+    const member = (target as Record<string, unknown>)[name];
+    const value = getter ? member : (member as (...a: unknown[]) => unknown).apply(target, args);
+    if (value === undefined || value === null) return { ok: true, value: null };
+    if (!["number", "string", "boolean"].includes(typeof value)) return fail(`\`${name}\` returns an object`);
+    return { ok: true, value: value as number | string | boolean };
   } catch (err) {
-    return notConst(e, `this fails at compile time: ${(err as Error).message}`);
+    return fail(`\`${name}\` fails at compile time: ${(err as Error).message}`);
   }
 }
 
@@ -274,7 +244,7 @@ export function fits(v: ConstValue, t: Type): boolean {
 
 /** JS source for a folded value. */
 export function constToJs(v: ConstValue, quote: (s: string) => string): { code: string; negative: boolean } {
-  if (v instanceof ConstObject) throw new Error("constToJs: an object can't be written as a constant");
+  if (v instanceof ConstObject || v instanceof RegExp) throw new Error("constToJs: an object can't be written as a constant");
   if (v === null) return { code: "null", negative: false };
   if (typeof v === "string") return { code: quote(v), negative: false };
   if (typeof v === "boolean") return { code: String(v), negative: false };

@@ -17,10 +17,10 @@ error[X0504]: `length` has a getter but no setter
  5 |     s.length = 3
    |       ^^^^^^
    |
-  ::: <xenon prelude>/xenon/String.xn:24:18
+  ::: <xenon prelude>/xenon/String.xn:27:28
    |
-24 |     function get length():int
-   |                  ------ getter declared here
+27 |     constexpr function get length():int
+   |                            ------ getter declared here
 
 error[X0426]: no member `lenght` on `String`
  --> std-string.xn:6:13
@@ -69,37 +69,52 @@ error[X0426]: no member `substr` on `String`
 help: if this JavaScript API exists, use it dynamically: `(s as *).substr`
 
 error[X0308]: mismatched types
- --> std-string.xn:7:20
-  |
-7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
-  |                    ^^^ expected `int`, found `String`
-  |
+  --> std-string.xn:7:20
+   |
+ 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
+   |                    ^^^ expected `int`, found `String`
+   |
+  ::: <xenon prelude>/xenon/String.xn:30:37
+   |
+30 |     constexpr function charAt(index:int = 0):String
+   |                                     --- parameter declared here
+   |
 help: convert the value with `int()`
-  |
-7 |     trace(s.charAt(int('1')), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
-  |                    ++++   +
+   |
+ 7 |     trace(s.charAt(int('1')), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
+   |                    ++++   +
 
 error[X0308]: mismatched types
- --> std-string.xn:7:35
-  |
-7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
-  |                                   ^^^ expected `int`, found `String`
-  |
+  --> std-string.xn:7:35
+   |
+ 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
+   |                                   ^^^ expected `int`, found `String`
+   |
+  ::: <xenon prelude>/xenon/String.xn:86:37
+   |
+86 |     constexpr function repeat(count:int):String
+   |                                     --- parameter declared here
+   |
 help: convert the value with `int()`
-  |
-7 |     trace(s.charAt('1'), s.repeat(int('2')), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
-  |                                   ++++   +
+   |
+ 7 |     trace(s.charAt('1'), s.repeat(int('2')), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
+   |                                   ++++   +
 
 error[X0308]: mismatched types
- --> std-string.xn:7:51
-  |
-7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
-  |                                                   ^ expected `String`, found `int`
-  |
+  --> std-string.xn:7:51
+   |
+ 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
+   |                                                   ^ expected `String`, found `int`
+   |
+  ::: <xenon prelude>/xenon/String.xn:39:39
+   |
+39 |     constexpr function indexOf(search:String, from:int = 0):int
+   |                                       ------ parameter declared here
+   |
 help: convert the value with `String()`
-  |
-7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(String(1)), s.slice('a'), s.padStart(5, 0))
-  |                                                   +++++++ +
+   |
+ 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(String(1)), s.slice('a'), s.padStart(5, 0))
+   |                                                   +++++++ +
 
 error[X0604]: no overload of `slice` accepts (String)
  --> std-string.xn:7:55
@@ -111,15 +126,20 @@ error[X0604]: no overload of `slice` accepts (String)
   = note: `slice(start:int, end:int):String`
 
 error[X0308]: mismatched types
- --> std-string.xn:7:83
-  |
-7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
-  |                                                                                   ^ expected `String`, found `int`
-  |
+  --> std-string.xn:7:83
+   |
+ 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
+   |                                                                                   ^ expected `String`, found `int`
+   |
+  ::: <xenon prelude>/xenon/String.xn:87:50
+   |
+87 |     constexpr function padStart(length:int, fill:String = ' '):String
+   |                                                  ------ parameter declared here
+   |
 help: convert the value with `String()`
-  |
-7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, String(0)))
-  |                                                                                   +++++++ +
+   |
+ 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, String(0)))
+   |                                                                                   +++++++ +
 
 error[X0604]: no overload of `replace` accepts (int, String)
  --> std-string.xn:8:11
@@ -164,10 +184,15 @@ error[X0604]: no overload of `match` accepts (int)
   = note: `match(pattern:String):Array<String>`
 
 error[X0601]: this call takes 1 argument but 0 were given
- --> std-string.xn:8:73
-  |
-8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
-  |                                                                         ^^^^^^ missing `index:int`
+  --> std-string.xn:8:73
+   |
+ 8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
+   |                                                                         ^^^^^^ missing `index:int`
+   |
+  ::: <xenon prelude>/xenon/String.xn:32:14
+   |
+32 |     function at(index:int):String
+   |              -- `at` defined here
 
 error[X0415]: `String` can't be instantiated with `new`
  --> std-string.xn:9:15

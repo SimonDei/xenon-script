@@ -108,7 +108,7 @@ error[X0817]: enum values must be compile-time constants
   --> enums.xn:24:23
    |
 24 | enum Computed { Now = Main.stamp() }
-   |                       ^^^^^^^^^^^^ only `constexpr` functions, `Math` functions and conversions can be called at compile time
+   |                       ^^^^^^^^^^^^ only `constexpr` functions and conversions can be called at compile time
 
 error[X0700]: enum `Color` can't be extended
   --> enums.xn:25:19
