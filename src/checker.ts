@@ -1,7 +1,7 @@
 import type * as A from "./ast.ts";
 import type { DiagnosticBag, DiagnosticBuilder, Edit } from "./diagnostics.ts";
 import type { JsBinding } from "./dts.ts";
-import { type Budget, type ConstLookup, ConstObject, type ConstValue, fits, type Fold, fold, isPrimitive, MATH_CONSTANTS, PURE_MATH, run } from "./consteval.ts";
+import { type Budget, type ConstLookup, ConstObject, type ConstValue, fits, type Fold, fold, isPrimitive, MATH_CONSTANTS, PURE_MATH, PURE_STRING, PURE_STRING_STATICS, run } from "./consteval.ts";
 import { assignedNames, breaksOut, completes, mentions } from "./flow.ts";
 import { GLOBAL_HINTS, JS_GLOBALS } from "./globals.ts";
 import { cover, type SourceFile, type Span, span, spanText } from "./source.ts";
@@ -168,6 +168,12 @@ export interface CheckResult {
   classes: Map<string, ClassInfo>;
   /** Every typedef by qualified name (for completion). */
   typedefs: Map<string, TypedefInfo>;
+}
+
+/** `String` or `String?`. */
+function isString(t: Type | undefined): boolean {
+  const n = t && nonNull(t);
+  return n?.kind === "prim" && n.name === "String";
 }
 
 /** X0521's note and fix: `inline var` becomes `inline final` (the `var` right before the name). */
@@ -2386,7 +2392,7 @@ class BodyChecker {
     const bad = (e: A.Expr, what: string, label?: string) => {
       this.diags.error("X0526", `${what} isn't allowed in a \`constexpr\` function`, e.span, label)
         .secondary(m.modifiers.constexpr!, "`constexpr` here")
-        .note("allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, `constexpr` functions, methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`");
+        .note("allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, `String` methods like `trim` and `replace`, `constexpr` functions, methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`");
       return false;
     };
     const ok = (e: A.Expr): boolean => {
@@ -2411,6 +2417,7 @@ class BodyChecker {
         case "Member": {
           if (this.env.result.inlineValues.has(e)) return true;
           if (e.object.kind === "Ident" && e.object.name === "Math" && MATH_CONSTANTS.has(e.name.name)) return true;
+          if (e.name.name === "length" && isString(this.env.result.exprTypes.get(e.object))) return ok(e.object);
           // A field of an object: only `final`/`const` fields, which a `constexpr` constructor can fill in.
           const t = this.env.result.exprTypes.get(e.object);
           const n = t && nonNull(t);
@@ -2422,9 +2429,14 @@ class BodyChecker {
           const c = e.callee;
           const allowed = (c.kind === "Ident" && ["int", "uint", "Float", "String", "Boolean"].includes(c.name) && this.env.result.resolutions.get(c)?.kind === "builtin")
             || (c.kind === "Member" && c.object.kind === "Ident" && c.object.name === "Math" && PURE_MATH.has(c.name.name))
+            || (c.kind === "Member" && c.object.kind === "Ident" && c.object.name === "String" && PURE_STRING_STATICS.has(c.name.name))
             || !!this.env.constexprTarget(c, this.info, this.scope)
             || (c.kind === "Member" && constexprMethod(this.env.result.exprTypes.get(c.object), c.name.name) && ok(c.object))
             || (c.kind === "Ident" && instance && this.env.result.resolutions.get(c)?.kind === "member" && constexprMethod({ kind: "class", info: this.info }, c.name));
+          // A string method with a string or regex argument (`replace` with a function is no constant).
+          if (c.kind === "Member" && PURE_STRING.has(c.name.name) && isString(this.env.result.exprTypes.get(c.object))) {
+            return ok(c.object) && e.args.every((a) => a.kind === "Regex" || (a.kind !== "Spread" && ok(a)));
+          }
           return (allowed || bad(e, `calling \`${spanText(c.span)}\``, "not `constexpr`")) && e.args.every((a) => a.kind !== "Spread" && ok(a));
         }
         case "New": {

@@ -35,6 +35,21 @@ export const PURE_MATH = new Set([
   "sqrt", "tan", "tanh", "trunc",
 ]);
 
+/**
+ * `String` methods without side effects and with a primitive result, callable at compile time
+ * (from `constexpr` functions too). Not: methods returning arrays (`split`, `match`), locale-
+ * dependent ones (`toLocaleUpperCase`, `localeCompare`), `at` (`undefined` past the end) and
+ * `replace` with a function.
+ */
+export const PURE_STRING = new Set([
+  "charAt", "charCodeAt", "codePointAt", "concat", "endsWith", "includes", "indexOf", "isWellFormed", "lastIndexOf",
+  "normalize", "padEnd", "padStart", "repeat", "replace", "replaceAll", "search", "slice", "startsWith", "substring",
+  "toLowerCase", "toString", "toUpperCase", "toWellFormed", "trim", "trimEnd", "trimStart", "valueOf",
+]);
+
+/** `String.fromCharCode(…)` and `String.fromCodePoint(…)`. */
+export const PURE_STRING_STATICS = new Set(["fromCharCode", "fromCodePoint"]);
+
 /** `Math` constants (`Math.PI`, …). */
 export const MATH_CONSTANTS = new Set(["E", "LN10", "LN2", "LOG10E", "LOG2E", "PI", "SQRT1_2", "SQRT2"]);
 
@@ -72,8 +87,9 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
     case "Member": {
       const found = lookup(e);
       if (found) return found;
-      // A field of an object built at compile time: `v.x`.
+      // A field of an object built at compile time: `v.x`; a string's `length`.
       const o = fold(e.object, lookup);
+      if (o.ok && typeof o.value === "string" && e.name.name === "length") return { ok: true, value: o.value.length };
       if (o.ok && o.value instanceof ConstObject && o.value.fields.has(e.name.name)) return { ok: true, value: o.value.fields.get(e.name.name)! };
       return notConst(e, `\`${e.name.name}\` is not an inline constant`);
     }
@@ -139,6 +155,14 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
       if (e.callee.kind === "Member") {
         const r = fold(e.callee.object, lookup);
         if (r.ok && r.value instanceof ConstObject) self = r.value;
+        // A string method (`name.trim()`, `s.replace(~/\s+/g, '')`): regex literals are allowed as arguments.
+        if (r.ok && typeof r.value === "string" && PURE_STRING.has(e.callee.name.name)) return stringCall(e, r.value, e.callee.name.name, lookup);
+        if (e.callee.object.kind === "Ident" && e.callee.object.name === "String" && PURE_STRING_STATICS.has(e.callee.name.name)) {
+          const codes = foldArgs(e.args, lookup);
+          if (!Array.isArray(codes)) return codes;
+          if (!codes.every((c) => typeof c === "number")) return notConst(e);
+          return attempt(e, () => (String as unknown as Record<string, (...n: number[]) => string>)[e.callee.kind === "Member" ? e.callee.name.name : ""]!(...(codes as number[])));
+        }
       }
       const values = foldArgs(e.args, lookup);
       if (!Array.isArray(values)) return values;
@@ -155,6 +179,32 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
       return notConst(e, "array and object literals are not compile-time constants");
     default:
       return notConst(e);
+  }
+}
+
+/** A `PURE_STRING` method on a known string; its arguments are constants or regex literals. */
+function stringCall(e: A.Expr & { kind: "Call" }, receiver: string, name: string, lookup: ConstLookup): Fold {
+  const args: (ConstValue | RegExp)[] = [];
+  for (const a of e.args) {
+    if (a.kind === "Spread") return notConst(a);
+    if (a.kind === "Regex") {
+      args.push(new RegExp(a.pattern, a.flags));
+      continue;
+    }
+    const f = fold(a, lookup);
+    if (!f.ok) return f;
+    if (!isPrimitive(f.value)) return notConst(a, "an object can't be passed to a string method at compile time");
+    args.push(f.value);
+  }
+  return attempt(e, () => (receiver as unknown as Record<string, (...a: unknown[]) => ConstValue | undefined>)[name]!(...args));
+}
+
+/** Runs a JavaScript built-in at compile time: `undefined` is `null`; an exception is no constant. */
+function attempt(e: A.Expr, call: () => ConstValue | undefined): Fold {
+  try {
+    return { ok: true, value: call() ?? null };
+  } catch (err) {
+    return notConst(e, `this fails at compile time: ${(err as Error).message}`);
   }
 }
 
