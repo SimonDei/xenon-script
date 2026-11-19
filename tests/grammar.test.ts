@@ -106,6 +106,11 @@ const cases: [string, string, string, number?][] = [
   ["var b:Sheet.Book = this.count", "Book", "entity.name.type.xenon"],
   ["var b:Sheet.Book = this.count", "count", "variable.other.property.xenon"],
   ["var n:Float = 1.5", "1.5", "constant.numeric.decimal.xenon"],
+  // object literal keys (a space after the colon) vs type annotations (none)
+  ["fetch('x', { method: 'POST', body: form })", "method", "variable.other.property.xenon"],
+  ["fetch('x', { method: 'POST', body: form })", "body", "variable.other.property.xenon"],
+  ["var s:{ to:String } = { to: 'ann' }", "s", "variable.other.declaration.xenon"],
+  ["var n:int = ok ? a : b", "a", "source.xenon"],
   // keywords as member names: called, they are method calls like any other (`p.catch(f)`)
   ["trace(nums.with(0, 99), p.catch(f), x?.default)", "with", "entity.name.function.call.xenon"],
   ["trace(nums.with(0, 99), p.catch(f), x?.default)", "catch", "entity.name.function.call.xenon"],
