@@ -1,0 +1,4 @@
+apple    x3  1.35 EUR
+bread    x1  2.60 EUR
+cheese   x2  9.98 EUR
+total        13.93 EUR

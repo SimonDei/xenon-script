@@ -3,6 +3,7 @@ import { mkdir, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { ENTRY_FILE } from "../src/codegen.ts";
 import { readAssets } from "../src/build.ts";
+import { bundleOutputs } from "../src/bundle.ts";
 import { compileProject } from "../src/compiler.ts";
 import { renderAll } from "../src/diagnostics.ts";
 
@@ -15,7 +16,8 @@ for (const name of examples) {
     const paths = await Array.fromAsync(new Bun.Glob("**/*.xn").scan({ cwd: srcRoot }));
     const sources = await Promise.all(paths.map(async (p) => ({ path: p, text: await Bun.file(join(srcRoot, p)).text() })));
     const config = Bun.file(join(root, name, "xenon.json"));
-    const main = (await config.exists()) ? ((await config.json()).main ?? "Main") : "Main";
+    const project: { main?: string; bundle?: boolean } = (await config.exists()) ? await config.json() : {};
+    const main = project.main ?? "Main";
 
     // As `xenon build` compiles: JavaScript imports typed from their `.d.ts` files, JavaScript
     // files of the source folder copied along.
@@ -28,7 +30,14 @@ for (const name of examples) {
     const out = join(root, name, ".test-out");
     await rm(out, { recursive: true, force: true });
     try {
-      for (const o of result.outputs) {
+      let outputs = result.outputs;
+      if (project.bundle) {
+        // As `xenon build` with `"bundle": true`: one module, the copied JavaScript files beside it.
+        await mkdir(out, { recursive: true });
+        outputs = await bundleOutputs(outputs, out, false);
+        expect(outputs.filter((o) => !o.asset).map((o) => o.path)).toEqual([ENTRY_FILE]);
+      }
+      for (const o of outputs) {
         await mkdir(dirname(join(out, o.path)), { recursive: true });
         await Bun.write(join(out, o.path), o.text);
       }

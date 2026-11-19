@@ -1,0 +1,25 @@
+package shop.report {
+  import shop.model.Cart
+  import shop.model.Item
+  import { format } from '../../vendor/money.js'
+  import _ from 'lodash'
+
+  public class Receipt {
+    /** One line per item kind, then the total. */
+    public static function lines(cart:Cart, currency:String):Array<String> {
+      var counts:Map<String, int> = new Map()
+      var prices:Map<String, int> = new Map()
+      for (var item:Item of cart) {
+        counts.set(item.name, (counts.get(item.name) ?? 0) + 1)
+        prices.set(item.name, item.cents)
+      }
+      var out:Array<String> = []
+      for (var name:String of counts.keys()) {
+        var count:int = counts.get(name) ?? 0
+        out.push(_.padEnd(name, 8) + ' x' + count + '  ' + format(count * (prices.get(name) ?? 0), currency))
+      }
+      out.push(_.padEnd('total', 11) + '  ' + format(cart.total, currency))
+      return out
+    }
+  }
+}

@@ -1,0 +1,20 @@
+// `--bundle` (here set in xenon.json): `xenon build` writes out/xenon-main.js with every compiled
+// .xn file of this project, plus the prelude classes it uses. Vendor code stays outside: `lodash`
+// and `node:os` remain imports, and src/vendor/money.js is copied to out/vendor/money.js and
+// imported from the bundle. Stack traces still point at the .xn files (the source map is composed).
+package {
+  import shop.model.Cart
+  import shop.model.Item
+  import shop.report.Receipt
+  import { EOL } from 'node:os'
+
+  public class Main {
+    public function Main() {
+      var cart:Cart = new Cart()
+        .add(new Item('apple', 45), 3)
+        .add(new Item('bread', 260))
+        .add(new Item('cheese', 499), 2)
+      trace(Receipt.lines(cart, 'EUR').join(EOL))
+    }
+  }
+}

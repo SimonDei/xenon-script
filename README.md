@@ -78,7 +78,8 @@ maps of plain `.js`). `--no-source-maps` turns them off.
 with Bun's bundler: prelude classes the program doesn't use are left out, and vendor code stays
 outside: npm packages and `node:`/`bun:` modules remain imports, the source folder's JavaScript
 files are copied next to it and imported by their path. Its source map points at the `.xn` files,
-so `xenon run --bundle` reports errors at their Xenon position as usual.
+so `xenon run --bundle` reports errors at their Xenon position as usual. See `examples/bundle`
+(bundled through its `xenon.json`).
 
 `--target ts` (or `"target": "ts"` in `xenon.json`) writes typed TypeScript instead: annotations,
 generics, `private`/`protected`, interfaces as TypeScript interfaces, typedefs as `type`, enums as

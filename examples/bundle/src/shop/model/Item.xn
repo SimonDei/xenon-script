@@ -1,0 +1,11 @@
+package shop.model {
+  public class Item {
+    public final var name:String
+    public final var cents:int
+
+    public function Item(name:String, cents:int) {
+      this.name = name
+      this.cents = cents
+    }
+  }
+}
