@@ -116,7 +116,8 @@ export type RuntimeCheck =
 
 /** What an identifier expression refers to. */
 export type Resolution =
-  | { kind: "local" }
+  /** `decl`: the local's name where it is declared (for go-to-definition). */
+  | { kind: "local"; decl: Span }
   | { kind: "member"; isStatic: boolean; owner: ClassInfo }
   | { kind: "class"; info: ClassInfo }
   | { kind: "jsImport" }
@@ -2841,7 +2842,7 @@ class BodyChecker {
     const name = e.name;
     const local = scope.get(name);
     if (local) {
-      res.set(e, { kind: "local" });
+      res.set(e, { kind: "local", decl: local.nameSpan });
       if (!this.writing) local.used = true;
       const tracked = this.disposables.get(local);
       if (tracked) {

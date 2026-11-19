@@ -12,6 +12,7 @@ Usage:
   xenon run     [options] [-- args] build, then run with Bun
   xenon watch   [options] [-- args] rebuild on every change (--run: restart the program)
   xenon explain <code>             explain an error code, e.g. xenon explain X0308
+  xenon lsp     [--stdio]          language server for editors (LSP over stdio)
 
 Options:
   --project <file>   project file (default: xenon.json if present)
@@ -98,6 +99,12 @@ async function main(argv: string[]): Promise<number> {
   if (argv.length === 0 || argv[0] === "--help" || argv[0] === "-h" || argv[0] === "help") {
     process.stdout.write(USAGE);
     return argv.length === 0 ? 2 : 0;
+  }
+  if (argv[0] === "lsp") {
+    // The language server speaks LSP over stdio until the editor closes the connection.
+    const { startServer } = await import("./lsp.ts");
+    startServer();
+    return await new Promise<number>(() => {});
   }
   if (argv[0] === "explain") {
     const code = argv[1];

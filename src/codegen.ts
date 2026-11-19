@@ -200,6 +200,8 @@ export interface GenerateOptions {
    * token mappings: the virtual files a TypeScript language service works on.
    */
   target?: "js" | "ts";
+  /** Code with errors (editor mode): a file whose generation fails is skipped instead of throwing. */
+  tolerant?: boolean;
 }
 
 /** The module a source file compiles to: `com/zoo/Dog.xn` → `com/zoo/Dog.js` (a file's package matches its directory). */
@@ -208,7 +210,7 @@ function moduleOf(file: A.XenonFile): string {
 }
 
 /** Generates one ES module per source file with classes (file-private classes go into the same module). */
-export function generate(files: A.XenonFile[], check: CheckResult, mainClass: ClassInfo, options: GenerateOptions = {}): OutputFile[] {
+export function generate(files: A.XenonFile[], check: CheckResult, mainClass: ClassInfo | undefined, options: GenerateOptions = {}): OutputFile[] {
   const ts = options.target === "ts";
   const toTs = (module: string) => (ts ? module.replace(/\.js$/, ".ts") : module);
   const out: OutputFile[] = [];
@@ -218,9 +220,16 @@ export function generate(files: A.XenonFile[], check: CheckResult, mainClass: Cl
     const first = all.find((d) => d.kind === "Class" && !d.modifiers.native);
     // Only typedefs and native declarations: nothing to emit (TypeScript keeps the typedefs, as types).
     if (!first && !(ts && !file.file.prelude && all.some((d) => d.kind === "Typedef"))) continue;
-    const module = first ? [...check.classes.values()].find((c) => c.decl === first)!.module : moduleOf(file);
+    const module = (first && [...check.classes.values()].find((c) => c.decl === first)?.module) || moduleOf(file);
     const gen = new ModuleGen(module, file, check, ts, ts || !!options.sourceMaps);
-    const { lines, mappings } = resolveTokens(gen.run(), gen.tokens, file.file);
+    let entries: ReturnType<ModuleGen["run"]>;
+    try {
+      entries = gen.run();
+    } catch (e) {
+      if (options.tolerant) continue;
+      throw e;
+    }
+    const { lines, mappings } = resolveTokens(entries, gen.tokens, file.file);
     let text = lines.map((l) => l.text).join("\n") + "\n";
     if (options.sourceMaps && !ts) {
       const name = posix.basename(module);
@@ -233,6 +242,7 @@ export function generate(files: A.XenonFile[], check: CheckResult, mainClass: Cl
     }
     out.push({ path: toTs(module), text, source: file.file, ...(ts ? { mappings } : {}) });
   }
+  if (!mainClass) return out;
   const entry = new Writer();
   entry.line(`import { ${mainClass.decl.name.name} } from ${jsString("./" + mainClass.module)};`);
   entry.line();
@@ -1325,6 +1335,8 @@ class ModuleGen {
       case "DestructAssign":
         return { code: `${this.pattern(e.pattern)} = ${this.wrap(this.expr(e.value), P.assign)}`, prec: P.assign };
       case "Error":
+        // Only reached in editor mode (code with errors): a placeholder TypeScript accepts anywhere.
+        if (this.ts) return { code: "(undefined as any)", prec: P.primary };
         throw new Error(`codegen: unsupported expression ${e.kind}`);
     }
   }

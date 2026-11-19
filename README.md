@@ -50,6 +50,7 @@ bun src/cli.ts build                                            # uses xenon.jso
 bun src/cli.ts check                                            # type-check only
 bun src/cli.ts watch --run                                      # rebuild + restart on every change
 bun src/cli.ts explain X0308                                    # explain an error code
+bun src/cli.ts lsp                                              # language server (stdio), for editors
 bun test                                                        # unit, end-to-end and diagnostic snapshot tests
 UPDATE=1 bun test tests/errors.test.ts                          # rewrite diagnostic snapshots
 ```
@@ -62,8 +63,13 @@ maps of plain `.js`). `--no-source-maps` turns them off.
 generics, `private`/`protected`, interfaces as TypeScript interfaces, typedefs as `type`, enums as
 union types. TypeScript accepts the output of every example (`tests/tsemit.test.ts`), and Bun runs it
 directly (`xenon run --target ts`). `compileProject(…, { target: "ts" })` also returns token mappings
-between each `.xn` file and its `.ts` module: the groundwork for the language server, which
-will run TypeScript over these virtual files.
+between each `.xn` file and its `.ts` module.
+
+`xenon lsp` is a language server (LSP over stdio) for editors: diagnostics as you type, hover with
+Xenon types and doc comments, go to definition (also into the standard library and `.d.ts` files),
+and completion. Xenon's checker answers for Xenon code; TypeScript runs over the virtual `.ts`
+files and adds the types of JavaScript and npm imports (and errors in their use) where Xenon only
+knows `*`.
 
 Project layout: `src/` (compiler), `examples/<name>/src` + `expected.txt` (golden end-to-end tests),
 `tests/errors/*.xn` + `*.stderr` (rendered diagnostics snapshots).

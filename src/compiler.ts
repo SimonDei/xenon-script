@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import type * as A from "./ast.ts";
-import { check, type ClassInfo, type TypedefInfo } from "./checker.ts";
+import { check, type CheckResult, type ClassInfo, type TypedefInfo } from "./checker.ts";
 import { generate, type OutputFile } from "./codegen.ts";
 import { DiagnosticBag } from "./diagnostics.ts";
 import { parseFile } from "./parser.ts";
@@ -64,12 +64,20 @@ export interface CompileOptions {
   sourceMaps?: { sourceRoot: string };
   /** `ts`: typed TypeScript modules with token mappings instead of JavaScript (see `generate`). */
   target?: "js" | "ts";
+  /**
+   * Editor mode (with `target: "ts"`): generate even when there are errors, file by file (a file
+   * the generator can't handle is left out), so the language server always has virtual files.
+   */
+  tolerant?: boolean;
 }
 
 export interface CompileResult {
   outputs: OutputFile[];
   diagnostics: DiagnosticBag;
   files: SourceFile[];
+  /** Every parsed file (the prelude's first) and what the checker found, for queries by position. */
+  asts: A.XenonFile[];
+  check: CheckResult;
 }
 
 /** Compiles a whole project held in memory. Never throws for user errors; check `diagnostics`. */
@@ -88,8 +96,10 @@ export function compileProject(sources: SourceInput[], options: CompileOptions):
 
   diags.applySuppressions();
   const userFiles = files.filter((f) => !f.prelude);
-  if (diags.hasErrors || !mainInfo) return { outputs: [], diagnostics: diags, files: userFiles };
-  return { outputs: generate(asts, result, mainInfo, { sourceMaps: options.sourceMaps, target: options.target }), diagnostics: diags, files: userFiles };
+  const done = { diagnostics: diags, files: userFiles, asts, check: result };
+  if (options.tolerant) return { ...done, outputs: generate(asts, result, mainInfo, { target: options.target, tolerant: true }) };
+  if (diags.hasErrors || !mainInfo) return { ...done, outputs: [] };
+  return { ...done, outputs: generate(asts, result, mainInfo, { sourceMaps: options.sourceMaps, target: options.target }) };
 }
 
 function collectClasses(asts: A.XenonFile[], diags: DiagnosticBag, typedefs: Map<string, TypedefInfo>): Map<string, ClassInfo> {

@@ -4,19 +4,8 @@ import { join } from "node:path";
 import { readSources } from "../src/build.ts";
 import { compileProject } from "../src/compiler.ts";
 import type { OutputFile } from "../src/codegen.ts";
+import { TS_OPTIONS } from "../src/service.ts";
 
-/** Compiler options of the virtual TypeScript project (Xenon references may be `null`, so no strict null checks). */
-export const TS_OPTIONS: ts.CompilerOptions = {
-  target: ts.ScriptTarget.ESNext,
-  module: ts.ModuleKind.ESNext,
-  moduleResolution: ts.ModuleResolutionKind.Bundler,
-  lib: ["lib.esnext.d.ts"],
-  types: ["bun"],
-  strict: false,
-  noEmit: true,
-  skipLibCheck: true,
-  esModuleInterop: true,
-};
 
 export async function compileExampleToTs(dir: string): Promise<OutputFile[]> {
   const result = compileProject(await readSources(join(dir, "src")), { main: "Main", target: "ts" });

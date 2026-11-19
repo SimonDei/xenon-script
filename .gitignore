@@ -14,6 +14,7 @@ tests/.prelude-out/
 tests/.watch-project/
 tests/.sourcemap-project/
 tests/.tsemit-project/
+tests/.lsp-project/
 tests/.build-project/
 
 # code coverage
