@@ -99,8 +99,9 @@ const cases: [string, string, string, number?][] = [
   ["trace(x ?? y, a?.b, ...rest)", "...", "keyword.operator.spread.xenon"],
   ["if (x == undefined) return", "undefined", "constant.language.undefined.xenon"],
   ["var let:int = 1", "let", "invalid.illegal.reserved.xenon"],
-  ["trace(nums.with(0, 99), p.catch(f), x?.default)", "with", "variable.other.property.xenon"],
-  ["trace(nums.with(0, 99), p.catch(f), x?.default)", "catch", "variable.other.property.xenon"],
+  // keywords as member names: called, they are method calls like any other (`p.catch(f)`)
+  ["trace(nums.with(0, 99), p.catch(f), x?.default)", "with", "entity.name.function.call.xenon"],
+  ["trace(nums.with(0, 99), p.catch(f), x?.default)", "catch", "entity.name.function.call.xenon"],
   ["trace(nums.with(0, 99), p.catch(f), x?.default)", "default", "variable.other.property.xenon"],
   ["trace(this.name, super.x)", "trace", "support.function.trace.xenon"],
   ["var f:Function = async (u:String):Promise<*> => await load(u)", "await", "keyword.control.flow.xenon"],
@@ -115,6 +116,14 @@ for (const [source, text, scope, nth] of cases) {
     expect(scopeOf(source, text, nth)).toBe(scope);
   });
 }
+
+test("grammar: code in a template's `{…}` is outside the string scope (so every theme colours it as code)", () => {
+  const toks = tokenize("var s:String = $'{response.status} ok'").lines.flat();
+  const scopes = (text: string) => toks.find((t) => t.text.trim() === text)!.scopes;
+  expect(scopes("response").some((s) => s.startsWith("string"))).toBe(false);
+  expect(scopes("ok")).toContain("string.template.xenon");
+  expect(scopes("$'")).toContain("string.template.xenon");
+});
 
 test("grammar: every .xn file in the repository ends outside any region, with no illegal tokens", async () => {
   // Cases that are meant to contain illegal syntax.

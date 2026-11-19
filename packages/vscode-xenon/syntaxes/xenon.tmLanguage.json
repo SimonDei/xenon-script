@@ -157,17 +157,17 @@
     "strings": {
       "patterns": [
         {
-          "name": "string.template.xenon",
+          "name": "meta.template.xenon",
           "begin": "\\$'",
           "end": "'|(?=$)",
           "beginCaptures": {
             "0": {
-              "name": "punctuation.definition.string.template.begin.xenon"
+              "name": "string.template.xenon punctuation.definition.string.template.begin.xenon"
             }
           },
           "endCaptures": {
             "0": {
-              "name": "punctuation.definition.string.template.end.xenon"
+              "name": "string.template.xenon punctuation.definition.string.template.end.xenon"
             }
           },
           "patterns": [
@@ -176,6 +176,10 @@
             },
             {
               "include": "#interpolation"
+            },
+            {
+              "name": "string.template.xenon",
+              "match": "[^{'\\\\]+"
             }
           ]
         },
@@ -527,6 +531,10 @@
     },
     "keywords": {
       "patterns": [
+        {
+          "name": "entity.name.function.call.xenon",
+          "match": "(?<=[\\w$)\\]]\\.|\\?\\.)(?:package|import|class|interface|enum|typedef|extends|implements|function|var|const|final|using|public|private|protected|internal|static|inline|abstract|override|dynamic|async|native|if|else|switch|case|default|while|do|for|in|break|continue|return|throw|try|catch|finally|new|this|super|is|as|typeof|delete|await|true|false|null|undefined|void|namespace|use|with|yield|let|goto)\\b(?=\\s*\\()"
+        },
         {
           "name": "variable.other.property.xenon",
           "match": "(?<=[\\w$)\\]]\\.|\\?\\.)(?:package|import|class|interface|enum|typedef|extends|implements|function|var|const|final|using|public|private|protected|internal|static|inline|abstract|override|dynamic|async|native|if|else|switch|case|default|while|do|for|in|break|continue|return|throw|try|catch|finally|new|this|super|is|as|typeof|delete|await|true|false|null|undefined|void|namespace|use|with|yield|let|goto)\\b"
