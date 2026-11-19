@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import type * as A from "./ast.ts";
-import { type CheckResult, chainDestructor, type ClassInfo, findMember, isNative, jsNameOf, type MemberSig, type RuntimeCheck, type TypedefInfo, visibilityOf } from "./checker.ts";
+import { accessorHalf, type CheckResult, chainDestructor, type ClassInfo, findMember, isNative, jsNameOf, type MemberSig, type RuntimeCheck, type TypedefInfo, visibilityOf } from "./checker.ts";
 import { bind, isSubclass, nonNull, subst, supertypes, type Type } from "./types.ts";
 import { constToJs } from "./consteval.ts";
 import { buildSourceMap, type LineOrigin, originOf } from "./sourcemap.ts";
@@ -16,6 +16,17 @@ function fieldStorage(m: MemberSig | undefined): "private" | "readonly" | "plain
   if (!m || m.decl.kind !== "Field" || m.owner.decl.isEnum || isNative(m.owner) || m.owner.file.file.prelude) return "plain";
   if (visibilityOf(m.decl) === "private") return "private";
   return m.decl.decl === "var" ? "plain" : "readonly";
+}
+
+/**
+ * A property with a public (or protected/internal) getter and a private setter: the setter is a
+ * JavaScript private accessor `set #name`, so JavaScript code can't assign the property either.
+ */
+function privateSetter(m: MemberSig | undefined): boolean {
+  if (!m || m.kind !== "accessor" || isNative(m.owner) || m.owner.file.file.prelude) return false;
+  const get = accessorHalf(m, "get");
+  const set = accessorHalf(m, "set");
+  return !!get && !!set && visibilityOf(set) === "private" && visibilityOf(get) !== "private";
 }
 
 /** Standard-library classes that are iterable at runtime but not in TypeScript's typings: the TypeScript output casts them in `for … of`. */
@@ -634,7 +645,7 @@ class ModuleGen {
     } else if (m.kind === "Method" && !m.body) {
       this.abstractStub(decl, m);
     } else if (m.kind === "Method") {
-      this.method(m, !!decl.extends, m.isConstructor ? guard : undefined);
+      this.method(m, !!decl.extends, m.isConstructor ? guard : undefined, info);
       this.accessorDelegate(decl, m);
     } else if (m.kind === "StaticBlock") {
       this.w.line("static {");
@@ -763,7 +774,20 @@ class ModuleGen {
     this.w.line("}");
   }
 
-  private method(m: A.Method, hasParent = false, guard?: string) {
+  private method(m: A.Method, hasParent = false, guard?: string, info?: ClassInfo) {
+    // A private setter of a readable property: `set #name(v)`, plus `get #name()` reading through the
+    // public getter, so `this.#name += 1` works inside the class.
+    const sig = m.accessor === "set" && info ? info.members.get(m.name.name) : undefined;
+    if (sig && privateSetter(sig) && accessorHalf(sig, "set") === m) {
+      const st = m.modifiers.static ? "static " : "";
+      const self = m.modifiers.static ? this.classRef(info!) : "this";
+      const type = this.annType(sig.type);
+      this.w.line(`${st}get #${m.name.name}()${type} { return ${self}.${m.name.name}; }`);
+      this.w.line(`${st}set #${this.tok(m.name.span, m.name.name)}(${this.params(m.params)}) {`);
+      this.functionBody(m.body!);
+      this.w.line("}");
+      return;
+    }
     const prefix = [
       this.visibility(m),
       m.modifiers.static ? "static " : "",
@@ -821,7 +845,8 @@ class ModuleGen {
   private fieldName(m: MemberSig | undefined, access: A.Expr, id: A.Ident, plain = this.name(id)): string {
     const storage = fieldStorage(m);
     // The `#` stays outside the mapped token: `items` in the source maps to `items` in `#items`.
-    if (storage === "private" || (storage === "readonly" && this.writeTargets.has(access))) return `#${this.tok(id.span, id.name)}`;
+    const write = this.writeTargets.has(access);
+    if (storage === "private" || (write && (storage === "readonly" || privateSetter(m)))) return `#${this.tok(id.span, id.name)}`;
     return plain;
   }
 

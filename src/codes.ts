@@ -58,7 +58,7 @@ export const CODES: Record<string, CodeInfo> = {
   X0209: c("rest parameter type", "A rest parameter is an `Array`: `...names:Array<String>` (a bare `Array` takes any values)."),
   X0210: c("required parameter after optional", "Parameters with default values must come after the required ones."),
   X0211: c("setter return type", "A setter's return type is `void`."),
-  X0212: c("getter/setter visibility differ", "A getter and its setter must have the same visibility."),
+  X0212: c("setter more visible than getter", "A setter may be less visible than its getter (`public get` with `private set`), but never more: what can be written must be readable."),
 
   // ---- types and expressions ----
   X0308: c("mismatched types", "A value's type doesn't fit where it is used. Xenon converts nothing implicitly except `int`/`uint` → `Float`; use `int()`, `Float()`, `String()` and the like.",

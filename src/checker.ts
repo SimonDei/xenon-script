@@ -176,6 +176,21 @@ function inlineVar(d: DiagnosticBuilder, name: A.Ident) {
   }
 }
 
+/** May a setter with visibility `set` pair with a getter with `get`? Only if it is as visible or less. */
+function setterFits(get: string, set: string): boolean {
+  return set === get || set === "private" || get === "public";
+}
+
+/** The getter or setter of an accessor member. */
+export function accessorHalf(m: MemberSig, which: "get" | "set"): A.Method | undefined {
+  return [m.decl, m.decl2].find((d): d is A.Method => d?.kind === "Method" && d.accessor === which);
+}
+
+/** The declaration whose visibility governs reading `m`: an accessor's getter (else its setter), any other member itself. */
+export function readDecl(m: MemberSig): A.Field | A.Method {
+  return m.kind === "accessor" ? accessorHalf(m, "get") ?? m.decl : m.decl;
+}
+
 const TS_UNDICI_CLASSES = new Set(["Response", "FormData"]);
 
 /**
@@ -1461,9 +1476,13 @@ class Env {
         }
         if (prev && prev.kind === "accessor" && !prev.decl2 && (prev.decl as A.Method).accessor !== m.accessor && prev.isStatic === isStatic) {
           prev.decl2 = m;
-          if (visibilityOf(m) !== visibilityOf(prev.decl)) {
-            this.diags.error("X0212", "a getter and its setter must have the same visibility", m.name.span, `\`${visibilityOf(m)}\``)
-              .secondary(prev.decl.name.span, `\`${visibilityOf(prev.decl)}\``);
+          // The setter may be less visible than the getter (`public get` + `private set`), never more.
+          const getter = m.accessor === "get" ? m : (prev.decl as A.Method);
+          const setter = m.accessor === "set" ? m : (prev.decl as A.Method);
+          if (!setterFits(visibilityOf(getter), visibilityOf(setter))) {
+            this.diags.error("X0212", "a setter can't be more visible than its getter", setter.name.span, `\`${visibilityOf(setter)}\``)
+              .secondary(getter.name.span, `\`${visibilityOf(getter)}\``)
+              .note("a property can be read where it can be written: make the getter at least as visible");
           }
           const getterType = m.accessor === "get" ? valueType : prev.type;
           const setterType = m.accessor === "set" ? valueType : prev.type;
@@ -2943,7 +2962,7 @@ class BodyChecker {
     }
     const member = findMember(this.info, name) ?? (hasJsAncestor(this.info) ? undefined : this.env.rootMember(name));
     if (member) {
-      this.env.checkAccess(member.decl, member.owner, this.info, e.span);
+      this.env.checkAccess(readDecl(member), member.owner, this.info, e.span);
       if (this.dynamicThis > 0 && this.fieldInit && !member.isStatic) {
         this.diags.error("X0738", `\`${name}\` can't be reached from a \`function\` expression in a field initializer`, e.span)
           .help("use an arrow function, which keeps `this`");
@@ -3108,7 +3127,7 @@ class BodyChecker {
       case "classRef": {
         const wantStatic = obj.kind === "classRef";
         const m = findMember(obj.info, name) ?? (wantStatic || hasJsAncestor(obj.info) ? undefined : this.env.rootMember(name));
-        if (m) this.env.checkAccess(m.decl, m.owner, this.info, e.name.span);
+        if (m) this.env.checkAccess(readDecl(m), m.owner, this.info, e.name.span);
         if (!m) {
           if (hasJsAncestor(obj.info)) return T.any;
           const d = this.diags.error("X0426", `no ${wantStatic ? "static " : ""}member \`${name}\` on \`${obj.info.decl.name.name}\``, e.name.span, "unknown member");
@@ -3435,7 +3454,7 @@ class BodyChecker {
         if (sug) d.help(`a member with a similar name exists: \`${sug}\``);
         return T.error;
       }
-      this.env.checkAccess(m.decl, m.owner, this.info, key.span);
+      this.env.checkAccess(readDecl(m), m.owner, this.info, key.span);
       // A private field is a JavaScript `#private` field, which destructuring can't read.
       if (m.decl.kind === "Field" && visibilityOf(m.decl) === "private" && !m.owner.decl.isEnum && !isNative(m.owner) && !m.owner.file.file.prelude) {
         this.diags.error("X0772", `private field \`${key.name}\` can't be destructured`, key.span)
@@ -3824,7 +3843,7 @@ class BodyChecker {
       return this.info.jsParent ? T.any : T.error;
     }
     const m = findMember(parent, e.name.name);
-    if (m) this.env.checkAccess(m.decl, m.owner, this.info, e.name.span);
+    if (m) this.env.checkAccess(readDecl(m), m.owner, this.info, e.name.span);
     if (!m) {
       if (hasJsAncestor(parent)) return T.any;
       const d = this.diags.error("X0426", `no member \`${e.name.name}\` in the superclass \`${parent.decl.name.name}\``, e.name.span);
@@ -4346,6 +4365,9 @@ class BodyChecker {
     const m = findMember(info, name) ?? (hasJsAncestor(info) ? undefined : this.env.rootMember(name));
     if (!m) return none;
     this.env.usedMembers.add(m);
+    // `public get` + `private set`: the read was checked against the getter, the write needs the setter.
+    const setter = m.kind === "accessor" ? accessorHalf(m, "set") : undefined;
+    if (setter && setter !== readDecl(m)) this.env.checkAccess(setter, m.owner, this.info, at, `the setter of \`${name}\``);
     if (this.constMethod && own && !m.isStatic && m.kind !== "method") {
       this.diags.error("X0901", `cannot change \`${name}\` in const method \`${this.constMethod}\``, at, `assigns \`this.${name}\``)
         .note("a `const` method doesn't change the object; remove `const` if it has to");

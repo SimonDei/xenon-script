@@ -88,6 +88,7 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 |---|---|---|
 | Packages and classes | `package com.zoo { public class Animal { … } }`; a file's package matches its folder | [`zoo`](examples/zoo) |
 | Inheritance | `extends`, `override`, `super`, `abstract`, `final`, `protected` | [`inheritance`](examples/inheritance), [`abstract`](examples/abstract) |
+| Properties | `function get color()` / `function set color(v)`; the setter may be narrower (`private set`) | [`interfaces`](examples/interfaces) |
 | Interfaces | `interface IShape { function area():Float }`, checked `implements` | [`interfaces`](examples/interfaces) |
 | Types | `int`, `uint`, `Float`, `String`, `Boolean`, `Array<T>`, `*` (untyped) | [`types`](examples/types) |
 | Nullable types | `int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |

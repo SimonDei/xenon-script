@@ -40,11 +40,3 @@ error[X0312]: `writeOnly` can't return a value
    |
 13 |     public function set writeOnly(v:int):int { _v = v; return v }
    |                                                               ^
-
-error[X0212]: a getter and its setter must have the same visibility
-  --> accessors.xn:16:26
-   |
-15 |     public function get mixed():int { return _v }
-   |                         ----- `public`
-16 |     private function set mixed(v:int):void { _v = v }
-   |                          ^^^^^ `private`

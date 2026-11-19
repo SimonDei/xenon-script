@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import ts from "typescript";
 import type * as A from "./ast.ts";
-import { type CheckResult, type ClassInfo, findMember, type MemberSig, type Resolution, visibilityOf } from "./checker.ts";
+import { type CheckResult, type ClassInfo, findMember, type MemberSig, readDecl, type Resolution, visibilityOf } from "./checker.ts";
 import { generatedOffsetAt, type Mapping, type OutputFile, sourceOffsetAt } from "./codegen.ts";
 import { compileProject, type CompileResult, PRELUDE, type SourceInput } from "./compiler.ts";
 import { KEYWORDS } from "./lexer.ts";
@@ -995,7 +995,7 @@ export class XenonProject {
   }
 
   private visible(m: MemberSig, from: ClassInfo | undefined): boolean {
-    const v = visibilityOf(m.decl);
+    const v = visibilityOf(readDecl(m)); // a property is listed where it can be read
     if (v === "private") return from === m.owner;
     if (v === "protected") return !!from && isSubclass(from, m.owner);
     return true;

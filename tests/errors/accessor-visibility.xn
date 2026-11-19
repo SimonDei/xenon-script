@@ -1,0 +1,22 @@
+public class Main {
+  private var _color:String = 'red'
+  public function get color():String { return _color }
+  private function set color(value:String):void { _color = value }   // fine: less visible than the getter
+
+  private var _size:int
+  private function get size():int { return _size }
+  public function set size(value:int):void { _size = value }         // a setter more visible than its getter
+
+  public function Main() {
+    color = 'blue'                                                     // fine inside the class
+    var other:Main = this
+    trace(other.color)
+  }
+}
+
+class Painter {
+  public function paint(m:Main):void {
+    trace(m.color)                                                     // fine: the getter is public
+    m.color = 'green'                                                  // the setter is private
+  }
+}

@@ -1,0 +1,18 @@
+error[X0212]: a setter can't be more visible than its getter
+ --> accessor-visibility.xn:8:23
+  |
+7 |   private function get size():int { return _size }
+  |                        ---- `private`
+8 |   public function set size(value:int):void { _size = value }         // a setter more visible than its getter
+  |                       ^^^^ `public`
+  |
+  = note: a property can be read where it can be written: make the getter at least as visible
+
+error[X0603]: the setter of `color` is private to `Main`
+  --> accessor-visibility.xn:20:7
+   |
+ 4 |   private function set color(value:String):void { _color = value }   // fine: less visible than the getter
+   |                        ----- declared `private` here
+...
+20 |     m.color = 'green'                                                  // the setter is private
+   |       ^^^^^ private member
