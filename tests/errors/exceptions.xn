@@ -37,5 +37,18 @@ package {
     private function m(x:*):void {
       throw x
     }
+
+    private static async function failure():Promise<Exception> {
+      return new Exception('failed')
+    }
+
+    // An async function's exception: `await` is suggested (inside `async`), noted (outside).
+    private async function n():Promise<void> {
+      throw failure()
+    }
+
+    private function o():void {
+      throw failure()
+    }
   }
 }

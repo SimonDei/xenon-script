@@ -81,3 +81,22 @@ error[X0100]: expected `catch` or `finally`, found `}`
    |
 27 |     }
    |     ^ expected `catch` or `finally`
+
+error[X0750]: only `Exception`s can be thrown
+  --> exceptions.xn:47:13
+   |
+47 |       throw failure()
+   |             ^^^^^^^^^ this is `Promise<Exception>`
+   |
+help: add `await`
+   |
+47 |       throw await failure()
+   |             ++++++
+
+error[X0750]: only `Exception`s can be thrown
+  --> exceptions.xn:51:13
+   |
+51 |       throw failure()
+   |             ^^^^^^^^^ this is `Promise<Exception>`
+   |
+   = note: the exception is the promise's result: `throw await …` inside an `async` function

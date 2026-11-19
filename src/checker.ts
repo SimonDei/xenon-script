@@ -2267,6 +2267,12 @@ class BodyChecker {
               { span: span(s.value.span.file, s.value.span.end, s.value.span.end), text: ")" },
             ]);
           }
+          // `throw failure()` where `failure` is async: the exception is inside the promise.
+          const inner = this.env.promiseArg(t);
+          if (inner && !isDynamic(inner) && assignable(inner, { kind: "class", info: exc })) {
+            if (this.method?.async) d.help("add `await`", [{ span: span(s.value.span.file, s.value.span.start, s.value.span.start), text: "await " }]);
+            else d.note("the exception is the promise's result: `throw await …` inside an `async` function");
+          }
         }
         return;
       }
