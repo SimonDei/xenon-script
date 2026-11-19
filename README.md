@@ -95,7 +95,7 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Generics | `class Box<T>`, `function first<T>(items:Array<T>):T?` | [`generics`](examples/generics) |
 | Typedefs | `typedef Point = { x:Float, y:Float, ?label:String }`, aliases | [`typedefs`](examples/typedefs) |
 | Enums | `enum Color { Red, Green }`, string enums | [`enums`](examples/enums) |
-| Functions | arrows with lexical `this`, closures, `async`/`await`, function types `(a:int) -> int` | [`functions`](examples/functions), [`closures`](examples/closures) |
+| Functions | arrows with lexical `this`, closures, `async`/`await`, function types `(a:int) -> int`, expression bodies `function area():Float => w * h` | [`functions`](examples/functions), [`closures`](examples/closures) |
 | Control flow | ranges `for (var n:int of 0..10)`, `0..=10 step 5`, `for … of`, `switch` | [`control`](examples/control) |
 | Destructuring | `var [first, , third, ...tail] = list`, `var { name, address: { city } } = user` | [`destructuring`](examples/destructuring) |
 | Exceptions | `Exception` and its subclasses; anything JavaScript throws is normalized | [`exceptions`](examples/exceptions) |

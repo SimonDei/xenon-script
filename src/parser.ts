@@ -9,6 +9,18 @@ const MODIFIERS = new Set(["public", "private", "protected", "internal", "static
 const VISIBILITY = new Set(["public", "private", "protected", "internal"]);
 
 /**
+ * The statement an expression body stands for: `return expr` when the method returns a value,
+ * the expression alone for `void`, `Void`, `Promise<void>`, setters and constructors.
+ */
+function exprBodyStatement(expr: A.Expr, returnType: A.TypeNode | undefined, accessor: "get" | "set" | undefined, isConstructor: boolean): A.Stmt {
+  const isVoid = (t: A.TypeNode | undefined): boolean =>
+    t?.kind === "VoidType" || (t?.kind === "TypeName" && t.name.length === 1 && t.name[0]!.name === "Void");
+  const promiseOfVoid = returnType?.kind === "TypeName" && returnType.name.at(-1)?.name === "Promise" && isVoid(returnType.args[0]);
+  if (accessor === "set" || isConstructor || isVoid(returnType) || promiseOfVoid) return { kind: "ExprStmt", expr, span: expr.span };
+  return { kind: "Return", value: expr, span: expr.span };
+}
+
+/**
  * Tokens after which a `?` that follows a type is the nullable suffix (`int?`), not a conditional:
  * they end a type, or can't start an expression (`x as int? ?? 0`, `x as int? == null`).
  */
@@ -518,11 +530,20 @@ export class Parser {
     const params = this.parseParams();
     const returnType = this.eat(":") ? this.parseType() : undefined;
     const isConst = !!this.eat("const");
-    let body: A.Block | undefined;
-    if (this.is("{")) body = this.parseBlock();
-    else this.endStatement();
     const isConstructor = name.name === className && !accessor;
-    return { kind: "Method", modifiers, name, typeParams, accessor, isConstructor, params, returnType, isConst, body, span: this.sp(start) };
+    let body: A.Block | undefined;
+    let exprBody = false;
+    if (this.is("{")) body = this.parseBlock();
+    else if (this.is("=>")) {
+      // `function area():Float => w * h`: an expression body, as a block with one statement.
+      const arrow = this.advance();
+      if (isConstructor) this.diags.error("X0108", "a constructor can't have an expression body", arrow.span).help("use a block: `{ … }`");
+      const expr = this.parseExpr();
+      body = { kind: "Block", body: [exprBodyStatement(expr, returnType, accessor, isConstructor)], span: expr.span };
+      exprBody = true;
+      this.endStatement();
+    } else this.endStatement();
+    return { kind: "Method", modifiers, name, typeParams, accessor, isConstructor, params, returnType, isConst, body, ...(exprBody ? { exprBody } : {}), span: this.sp(start) };
   }
 
   private parseParams(): A.Param[] {

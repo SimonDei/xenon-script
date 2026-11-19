@@ -1,0 +1,8 @@
+public class Main {
+  private var size:int = 2
+
+  public function Main() => size = 3                      // a constructor needs a block
+  public function get half():int => size / 2             // checked like `return size / 2`
+  public function grow():void => size += 1               // fine: void, the value is discarded
+  public function name():String => size                  // checked like `return size`
+}

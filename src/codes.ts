@@ -44,6 +44,7 @@ export const CODES: Record<string, CodeInfo> = {
   X0105: c("invalid assignment target", "Only variables, members (`obj.x`) and indexed elements (`a[i]`) can be assigned to."),
   X0106: c("`for each` syntax", "Xenon iterates values with `for (var v:T of collection)`.",
     "for each (var d:Dog in dogs) {}", "for (var d:Dog of dogs) {}"),
+  X0108: c("constructor with an expression body", "A constructor's body is a block: `public function Box(n:int) { size = n }`; `=> expr` is for methods, getters and setters."),
   X0107: c("binding keyword in a condition", "A binding in `if (…)` / `while (…)` uses `var`."),
 
   // ---- declarations ----

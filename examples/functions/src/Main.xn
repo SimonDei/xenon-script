@@ -10,6 +10,10 @@ package {
       var double:(int) -> int = (x:int):int => x * 2
       var nums:Array = [1, 2, 3, 4]
       trace(nums.map(double).join(','), nums.filter((n:int):Boolean => n % 2 == 0).join(','))
+
+      // methods, getters and setters with an expression body: `=> expr`
+      width = -3
+      trace(width, Main.square(7), describe2(), counter()(), counter()())
       nums.forEach((n:int):void => {
         total += n
       })
@@ -57,6 +61,14 @@ package {
       }
       trace(await later(5))
     }
+
+    private var _width:int = 1
+    private var calls:int = 0
+    public function get width():int => _width
+    public function set width(value:int):void => _width = value < 0 ? 0 : value
+    public static function square(n:int):int => n * n
+    private function describe2():String => $'{label} {total} {width}'
+    private function counter():() -> int => () => ++calls
 
     private async function slowAdd(a:int, b:int):Promise<int> {
       await delay(1)

@@ -91,6 +91,8 @@ export interface Method {
   isConst: boolean;
   body?: Block;
   span: Span;
+  /** Written with an expression body (`function area():Float => w * h`); `body` holds its one statement. */
+  exprBody?: boolean;
 }
 
 /** `static { … }` — runs once when the class is defined. */
