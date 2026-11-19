@@ -658,13 +658,6 @@ class Env {
       if (node.args.length > 0) this.diags.error("X0423", `type parameter \`${name}\` doesn't take type arguments`, node.span);
       return { kind: "typeParam", param };
     }
-    if (name === "Null" && node.name.length === 1) {
-      if (node.args.length !== 1) {
-        this.diags.error("X0422", "`Null` takes 1 type argument: `Null<int>` (or write `int?`)", node.span, `${node.args.length} given`);
-        return T.error;
-      }
-      return nullableOf(this.resolveType(node.args[0]!, scope, false, tparams));
-    }
     if (name === "Array" || (name === "Vector" && !this.lookupClass(scope, name, whole))) {
       if (name === "Vector") {
         this.diags.error("X0424", "`Vector` is called `Array<T>` in Xenon", node.name[0]!.span, "unknown type")

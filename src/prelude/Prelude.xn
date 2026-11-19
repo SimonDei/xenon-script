@@ -9,6 +9,9 @@ package xenon {
   /** Capitalized alias of `void`; like `void`, only allowed as a return type. */
   public typedef Void = void
 
+  /** `Null<int>` is `int?`: an `int` that may also be `null`. (`Null<String>` is just `String`.) */
+  public typedef Null<T> = T?
+
   /** Implemented automatically by every class with a destructor `~Name()`. */
   public interface IDisposable {
     function dispose():void

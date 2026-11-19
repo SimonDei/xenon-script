@@ -122,8 +122,10 @@ help: the value may be null: give a default with `??`
 18 |     var inside:int = box.value ?? 0                         // Box<int>.value is int?
    |                               +++++
 
-error[X0422]: `Null` takes 1 type argument: `Null<int>` (or write `int?`)
+error[X0422]: `Null` needs 1 type argument
   --> nullable.xn:21:15
    |
 21 |     var wrong:Null<int, String> = null
    |               ^^^^^^^^^^^^^^^^^ 2 given
+   |
+help: for example `Null<int>`
