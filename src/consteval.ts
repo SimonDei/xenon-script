@@ -7,11 +7,27 @@ export type ConstValue = number | string | boolean | null;
 
 export type Fold =
   | { ok: true; value: ConstValue }
-  /** `reported`: the cause was already reported (e.g. a broken dependency), don't report again. */
-  | { ok: false; at: Span; reason: string; reported?: boolean; cycle?: boolean };
+  /**
+   * `reported`: the cause was already reported (e.g. a broken dependency), don't report again.
+   * `limit`: a `constexpr` evaluation went too deep or took too long (always worth reporting).
+   */
+  | { ok: false; at: Span; reason: string; reported?: boolean; cycle?: boolean; limit?: boolean };
 
-/** Resolves a name/member reference to a constant, or undefined if it isn't one. */
-export type ConstLookup = (e: A.Expr) => Fold | undefined;
+/** `Math` functions without side effects, callable at compile time (from `constexpr` functions too). */
+export const PURE_MATH = new Set([
+  "abs", "acos", "acosh", "asin", "asinh", "atan", "atan2", "atanh", "cbrt", "ceil", "clz32", "cos", "cosh", "exp", "expm1",
+  "floor", "fround", "hypot", "imul", "log", "log10", "log1p", "log2", "max", "min", "pow", "round", "sign", "sin", "sinh",
+  "sqrt", "tan", "tanh", "trunc",
+]);
+
+/** `Math` constants (`Math.PI`, …). */
+export const MATH_CONSTANTS = new Set(["E", "LN10", "LN2", "LOG10E", "LOG2E", "PI", "SQRT1_2", "SQRT2"]);
+
+/**
+ * Resolves a name/member reference to a constant, or undefined if it isn't one. For a call, `args`
+ * holds the arguments' values: a `constexpr` function is evaluated with them.
+ */
+export type ConstLookup = (e: A.Expr, args?: ConstValue[]) => Fold | undefined;
 
 const CASTS: Record<string, (v: ConstValue) => ConstValue> = {
   int: (v) => (v as number) | 0,
@@ -71,13 +87,10 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
       return value === undefined ? notConst(e) : { ok: true, value };
     }
     case "Conditional": {
+      // Only the chosen branch is evaluated (a recursive `constexpr` function ends this way).
       const c = fold(e.cond, lookup);
       if (!c.ok) return c;
-      const a = fold(e.then, lookup);
-      if (!a.ok) return a;
-      const b = fold(e.else, lookup);
-      if (!b.ok) return b;
-      return c.value ? a : b;
+      return fold(c.value ? e.then : e.else, lookup);
     }
     case "Call": {
       if (e.callee.kind === "Ident" && e.callee.name in CASTS && e.args.length === 1 && e.args[0]!.kind !== "Spread") {
@@ -85,7 +98,15 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
         if (!f.ok) return f;
         return { ok: true, value: CASTS[e.callee.name]!(f.value) };
       }
-      return notConst(e, "function calls are not compile-time constants");
+      // A `constexpr` function or a pure `Math` function: the arguments first, then the call.
+      const values: ConstValue[] = [];
+      for (const a of e.args) {
+        if (a.kind === "Spread") return notConst(a);
+        const f = fold(a, lookup);
+        if (!f.ok) return f;
+        values.push(f.value);
+      }
+      return lookup(e, values) ?? notConst(e, "only `constexpr` functions, `Math` functions and conversions can be called at compile time");
     }
     case "New":
       return notConst(e, "`new` is not a compile-time constant");

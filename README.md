@@ -101,7 +101,7 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Exceptions | `Exception` and its subclasses; anything JavaScript throws is normalized | [`exceptions`](examples/exceptions) |
 | Resources | destructors `~Connection() { … }`, `using` / `await using` | [`destructors`](examples/destructors) |
 | Iteration | `IEnumerable<T>` / `IEnumerator<T>`, usable with `for … of` (also from JavaScript) | [`enumerable`](examples/enumerable) |
-| Compile time | `inline` constants, `const` methods, operator overloading (`operator+`, `-`, `*`, `/`, `==`) | [`inline`](examples/inline), [`const-methods`](examples/const-methods), [`operators`](examples/operators) |
+| Compile time | `inline` constants, `constexpr` functions, `const` methods, operator overloading (`operator+`, `-`, `*`, `/`, `==`) | [`inline`](examples/inline), [`const-methods`](examples/const-methods), [`operators`](examples/operators) |
 | Strings | `'single quotes'`, templates `$'Hi {name}'`, regex literals `~/^a+/i` | [`basics`](examples/basics) |
 
 Every folder in [`examples/`](examples) is a complete program with its expected output, and the

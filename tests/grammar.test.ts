@@ -106,6 +106,7 @@ const cases: [string, string, string, number?][] = [
   ["var b:Sheet.Book = this.count", "Book", "entity.name.type.xenon"],
   ["var b:Sheet.Book = this.count", "count", "variable.other.property.xenon"],
   ["var n:Float = 1.5", "1.5", "constant.numeric.decimal.xenon"],
+  ["public static constexpr function kib(n:int):int => n * 1024", "constexpr", "storage.modifier.xenon"],
   // keywords as member names: called, they are method calls like any other (`p.catch(f)`)
   ["trace(nums.with(0, 99), p.catch(f), x?.default)", "with", "entity.name.function.call.xenon"],
   ["trace(nums.with(0, 99), p.catch(f), x?.default)", "catch", "entity.name.function.call.xenon"],

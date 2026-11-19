@@ -14,7 +14,17 @@ package {
       for (var hp:int of 0..=Config.MAX_HP step Config.STEP) trace(hp, describe(hp))
       var big:uint = 2 ** 31
       trace(big, 5 - NEG)
+
+      // `constexpr` functions: computed at compile time when the arguments are constants
+      // (`kib(64)` becomes 65536 in the output), an ordinary call otherwise
+      var n:int = 3
+      trace(BUFFER, kib(2), fact(10), percent(Config.MAX_HP, HALF_HP), kib(n), fact(n))
     }
+
+    private static inline final BUFFER:int = kib(64)
+    private static constexpr function kib(n:int):int => n * 1024
+    private static constexpr function fact(n:int):int => n <= 1 ? 1 : n * fact(n - 1)
+    private static constexpr function percent(total:int, part:int):String => $'{Math.round(part / total * 100)}%'
 
     private function describe(hp:int):String {
       switch (hp) {

@@ -26,7 +26,7 @@ export const KEYWORDS = new Set([
   // declarations
   "function", "var", "const", "final", "using",
   // modifiers
-  "public", "private", "protected", "internal", "static", "inline", "abstract", "override", "dynamic", "async", "native",
+  "public", "private", "protected", "internal", "static", "inline", "constexpr", "abstract", "override", "dynamic", "async", "native",
   // control flow
   "if", "else", "switch", "case", "default", "while", "do", "for", "in", "break", "continue", "return",
   // exceptions

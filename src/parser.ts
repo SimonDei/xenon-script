@@ -5,7 +5,7 @@ import { cover, type SourceFile, type Span, span } from "./source.ts";
 
 class ParseError extends Error {}
 
-const MODIFIERS = new Set(["public", "private", "protected", "internal", "static", "final", "override", "inline", "abstract", "dynamic", "async", "native"]);
+const MODIFIERS = new Set(["public", "private", "protected", "internal", "static", "final", "override", "inline", "constexpr", "abstract", "dynamic", "async", "native"]);
 const VISIBILITY = new Set(["public", "private", "protected", "internal"]);
 
 /**
@@ -509,6 +509,12 @@ export class Parser {
       const returnType = this.eat(":") ? this.parseType() : undefined;
       const body = this.parseBlock();
       return { kind: "Method", modifiers, name, isConstructor: false, isDestructor: true, params, returnType, isConst: false, body, span: this.sp(start) };
+    }
+    // `static constexpr LIMIT:int = 10`: a constant written like a C++ `constexpr` variable.
+    if (modifiers.constexpr && this.tok.kind === "ident" && this.is(":", this.peekTok())) {
+      this.diags.error("X0526", "`constexpr` is for functions", modifiers.constexpr, "not a function")
+        .help(`a compile-time constant is \`inline final\`: \`static inline final ${this.tok.value}:…\``);
+      throw new ParseError("constexpr field");
     }
     this.unexpected("a field or method declaration");
   }

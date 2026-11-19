@@ -1,0 +1,57 @@
+error[X0526]: a `constexpr` function must be `static`
+ --> constexpr.xn:5:10
+  |
+5 |   public constexpr function notStatic(n:int):int => n                        // must be static
+  |          ^^^^^^^^^
+  |
+help: it can only use its parameters: add `static`
+
+error[X0526]: a `constexpr` function has an expression body
+ --> constexpr.xn:6:17
+  |
+6 |   public static constexpr function block(n:int):int { return n }             // needs an expression body
+  |                 ^^^^^^^^^
+  |
+help: write it as `=> expression`
+
+error[X0526]: `constexpr` is for functions
+ --> constexpr.xn:7:17
+  |
+7 |   public static constexpr LIMIT:int = 10                                     // constants are `inline final`
+  |                 ^^^^^^^^^ not a function
+  |
+help: a compile-time constant is `inline final`: `static inline final LIMIT:…`
+
+error[X0526]: `counter` isn't allowed in a `constexpr` function
+ --> constexpr.xn:8:63
+  |
+8 |   public static constexpr function useField(n:int):int => n + counter        // not a constant
+  |                 ---------                                     ^^^^^^^ not a parameter or an inline constant
+  |                 |
+  |                 `constexpr` here
+  |
+  = note: allowed: parameters, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions and other `constexpr` functions
+
+error[X0526]: calling `Date.now` isn't allowed in a `constexpr` function
+ --> constexpr.xn:9:51
+  |
+9 |   public static constexpr function now():Float => Date.now()                 // not a compile-time function
+  |                 ---------                         ^^^^^^^^^^ not a `constexpr` function
+  |                 |
+  |                 `constexpr` here
+  |
+  = note: allowed: parameters, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions and other `constexpr` functions
+
+error[X0526]: a `constexpr` parameter must be a number, `String` or `Boolean`
+  --> constexpr.xn:10:47
+   |
+10 |   public static constexpr function list(items:Array<int>):int => 1           // not a constant type
+   |                                               ^^^^^^^^^^ `Array<int>`
+
+error[X0527]: `forever` recurses more than 1000 calls deep
+  --> constexpr.xn:15:11
+   |
+15 |     trace(forever(0))                                                         // …but endless at compile time
+   |           ^^^^^^^^^^
+   |
+   = note: the call is evaluated at compile time because its arguments are constants

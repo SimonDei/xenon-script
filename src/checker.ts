@@ -1,7 +1,7 @@
 import type * as A from "./ast.ts";
 import type { DiagnosticBag, DiagnosticBuilder, Edit } from "./diagnostics.ts";
 import type { JsBinding } from "./dts.ts";
-import { type ConstValue, fits, type Fold, fold } from "./consteval.ts";
+import { type ConstLookup, type ConstValue, fits, type Fold, fold, MATH_CONSTANTS, PURE_MATH } from "./consteval.ts";
 import { assignedNames, breaksOut, completes, mentions } from "./flow.ts";
 import { GLOBAL_HINTS, JS_GLOBALS } from "./globals.ts";
 import { cover, type SourceFile, type Span, span, spanText } from "./source.ts";
@@ -995,9 +995,9 @@ class Env {
       }
       let v: ConstValue;
       if (m.init) {
-        const f = fold(m.init, (e) => {
+        const f = fold(m.init, (e, args) => {
           if (e.kind === "Ident" && values.has(e.name)) return { ok: true, value: values.get(e.name)! };
-          return this.constRef(e, info, scope);
+          return this.constLookup(info, scope)(e, args);
         });
         if (!f.ok) {
           if (!f.reported) this.diags.error("X0817", "enum values must be compile-time constants", f.at, f.reason);
@@ -1530,8 +1530,9 @@ class Env {
       }
       if (m.modifiers.inline && m.kind === "Method") {
         this.diags.error("X0520", "`inline` is only allowed on constants", m.modifiers.inline)
-          .note("inline methods are not supported (yet)");
+          .note("a function evaluated at compile time is `static constexpr function`");
       }
+      if (m.modifiers.constexpr) this.constexprDecl(m);
       if (m.kind === "Field" && m.modifiers.inline) {
         if (!m.modifiers.static) {
           this.diags.error("X0520", "an `inline` field must be `static`", m.modifiers.inline)
@@ -1568,12 +1569,97 @@ class Env {
     if (!field.init) return { ok: false, at: field.name.span, reason: "no value", reported: true };
     this.inlineState.set(sig, "busy");
     const scope = this.scopes.get(sig.owner.file)!;
-    const result = fold(field.init, (e) => this.constRef(e, sig.owner, scope));
+    const result = fold(field.init, this.constLookup(sig.owner, scope));
     this.inlineState.set(sig, result);
     return result;
   }
 
   /** Resolves `NAME` / `Class.NAME` inside an inline initializer of `owner`. */
+  /** X0526: what a `constexpr` declaration must be (its body and types are checked with the body). */
+  private constexprDecl(m: A.Member) {
+    const at = m.modifiers.constexpr!;
+    const bad = (message: string, help?: string) => {
+      const d = this.diags.error("X0526", message, at);
+      if (help) d.help(help);
+    };
+    if (m.kind !== "Method") return bad("`constexpr` is for functions", "a compile-time constant is `static inline final NAME:T = …`");
+    if (m.isConstructor || m.isDestructor || m.accessor) return bad(`${m.isConstructor ? "a constructor" : m.isDestructor ? "a destructor" : "a getter or setter"} can't be \`constexpr\``);
+    if (!m.modifiers.static) bad("a `constexpr` function must be `static`", "it can only use its parameters: add `static`");
+    if (m.modifiers.async || m.modifiers.abstract) bad(`a \`constexpr\` function can't be \`${m.modifiers.async ? "async" : "abstract"}\``);
+    if (m.body && !m.exprBody) bad("a `constexpr` function has an expression body", "write it as `=> expression`");
+    if (m.params.some((p) => p.rest)) bad("a `constexpr` function can't have a rest parameter");
+  }
+
+  /** Compile-time lookup in `owner`'s context: inline constants, `Math` constants, and calls (see `constCall`). */
+  constLookup(owner: ClassInfo, scope: FileScope): ConstLookup {
+    return (e, args) => (e.kind === "Call" ? this.constCall(e, args ?? [], owner, scope) : this.constRefOrMath(e, owner, scope));
+  }
+
+  /** `constRef`, plus `Math.PI` & co. */
+  constRefOrMath(e: A.Expr, owner: ClassInfo, scope: FileScope): Fold | undefined {
+    if (e.kind === "Member" && e.object.kind === "Ident" && e.object.name === "Math" && MATH_CONSTANTS.has(e.name.name)) {
+      return { ok: true, value: (Math as unknown as Record<string, number>)[e.name.name]! };
+    }
+    return this.constRef(e, owner, scope);
+  }
+
+  /** The `constexpr` function a call names (`f(…)` in its class, `Cls.f(…)`), if any. */
+  constexprTarget(callee: A.Expr, owner: ClassInfo, scope: FileScope): MemberSig | undefined {
+    let m: MemberSig | undefined;
+    if (callee.kind === "Ident") m = findMember(owner, callee.name);
+    else if (callee.kind === "Member" && callee.object.kind === "Ident") {
+      const cls = callee.object.name === owner.decl.name.name ? owner : this.lookupClass(scope, callee.object.name);
+      if (cls) m = findMember(cls, callee.name.name);
+    }
+    return m?.kind === "method" && m.decl.kind === "Method" && m.decl.modifiers.constexpr && m.decl.exprBody ? m : undefined;
+  }
+
+  /** Calls made by the current top-level compile-time evaluation (a budget against runaway recursion). */
+  private constexprCalls = 0;
+
+  /**
+   * A call evaluated at compile time with these argument values: a pure `Math` function, or a
+   * `constexpr` function (its body folded with the parameters bound; at most 1000 calls deep and
+   * 100000 calls in all). Undefined if the callee is neither.
+   */
+  constCall(e: A.Expr & { kind: "Call" }, args: ConstValue[], owner: ClassInfo, scope: FileScope, depth = 0): Fold | undefined {
+    const callee = e.callee;
+    if (callee.kind === "Member" && callee.object.kind === "Ident" && callee.object.name === "Math") {
+      if (!PURE_MATH.has(callee.name.name) || !args.every((a) => typeof a === "number")) return undefined;
+      return { ok: true, value: (Math as unknown as Record<string, (...n: number[]) => number>)[callee.name.name]!(...(args as number[])) };
+    }
+    const m = this.constexprTarget(callee, owner, scope);
+    if (!m) return undefined;
+    this.usedMembers.add(m);
+    if (depth === 0) this.constexprCalls = 0;
+    if (depth > 1000) return { ok: false, at: e.span, reason: `\`${m.name}\` recurses more than 1000 calls deep`, limit: true };
+    if (++this.constexprCalls > 100_000) return { ok: false, at: e.span, reason: `evaluating \`${m.name}\` takes more than 100000 calls`, limit: true };
+    const decl = m.decl as A.Method;
+    const stmt = decl.body?.body[0];
+    const body = stmt?.kind === "Return" ? stmt.value : stmt?.kind === "ExprStmt" ? stmt.expr : undefined;
+    if (!body) return { ok: false, at: e.span, reason: `\`${m.name}\` has no value`, reported: true };
+    const ownerScope = this.scopes.get(m.owner.file) ?? scope;
+    const outer = this.constLookup(m.owner, ownerScope);
+    const params = new Map<string, ConstValue>();
+    const lookup: ConstLookup = (x, a) => {
+      if (x.kind === "Ident" && params.has(x.name)) return { ok: true, value: params.get(x.name)! };
+      if (x.kind === "Call") return this.constCall(x, a ?? [], m.owner, ownerScope, depth + 1);
+      return outer(x);
+    };
+    for (const [i, p] of decl.params.entries()) {
+      if (i < args.length) params.set(p.name.name, args[i]!);
+      else if (p.init) {
+        const d = fold(p.init, lookup);
+        if (!d.ok) return { ok: false, at: e.span, reason: `the default of \`${p.name.name}\` isn't a compile-time constant`, reported: true };
+        params.set(p.name.name, d.value);
+      }
+    }
+    const f = fold(body, lookup);
+    if (f.ok) return f;
+    // Too deep or too long is reported at the outermost call; anything else at the declaration.
+    return f.limit ? { ...f, at: e.span } : { ok: false, at: e.span, reason: `\`${m.name}\` can't be evaluated at compile time`, reported: true };
+  }
+
   constRef(e: A.Expr, owner: ClassInfo, scope: FileScope): Fold | undefined {
     let m: MemberSig | undefined;
     if (e.kind === "Ident") m = findMember(owner, e.name);
@@ -2058,6 +2144,7 @@ class BodyChecker {
       this.block(m.body, scope);
       this.reportUndisposed();
       this.reportUnusedLocals();
+      if (m.modifiers.constexpr && m.modifiers.static) this.constexprBody(m, type);
       const close = span(m.body.span.file, m.body.span.end - 1, m.body.span.end);
       const needsValue = !m.isConstructor && m.accessor !== "set" && bodyRet.kind !== "void" && !isDynamic(bodyRet);
       if (needsValue && completes(m.body)) {
@@ -2110,10 +2197,64 @@ class BodyChecker {
 
   /** The value of an already type-checked expression, if it is a compile-time constant. */
   private constValue(e: A.Expr): Fold {
-    return fold(e, (x) => {
+    return fold(e, (x, args) => {
       const v = this.env.result.inlineValues.get(x);
-      return v === undefined ? undefined : { ok: true, value: v };
+      if (v !== undefined) return { ok: true, value: v };
+      if (x.kind === "Call") return this.env.constCall(x, args ?? [], this.info, this.scope);
+      return x.kind === "Member" ? this.env.constRefOrMath(x, this.info, this.scope) : undefined;
     });
+  }
+
+  /**
+   * A `constexpr` function's types and body: constant types only (numbers, `String`, `Boolean`),
+   * and an expression that only uses its parameters, literals, operators, `?:`, conversions,
+   * inline constants, `Math`'s pure functions and constants, and `constexpr` functions (X0526).
+   */
+  private constexprBody(m: A.Method, type: MethodType | undefined) {
+    const constType = (t: Type) => { const n = nonNull(t); return n.kind === "prim" && ["int", "uint", "Float", "String", "Boolean"].includes(n.name); };
+    if (type) {
+      type.params.forEach((p, i) => {
+        if (!constType(p.type)) this.diags.error("X0526", `a \`constexpr\` parameter must be a number, \`String\` or \`Boolean\``, m.params[i]!.type?.span ?? m.params[i]!.name.span, `\`${typeToString(p.type)}\``);
+      });
+      if (!constType(type.ret)) this.diags.error("X0526", "a `constexpr` function must return a number, `String` or `Boolean`", m.returnType?.span ?? m.name.span, `\`${typeToString(type.ret)}\``);
+    }
+    const stmt = m.body?.body[0];
+    const body = stmt?.kind === "Return" ? stmt.value : stmt?.kind === "ExprStmt" ? stmt.expr : undefined;
+    if (!body || !m.exprBody) return;
+    const params = new Set(m.params.map((p) => p.name.name));
+    const bad = (e: A.Expr, what: string, label?: string) => {
+      this.diags.error("X0526", `${what} isn't allowed in a \`constexpr\` function`, e.span, label)
+        .secondary(m.modifiers.constexpr!, "`constexpr` here")
+        .note("allowed: parameters, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions and other `constexpr` functions");
+      return false;
+    };
+    const ok = (e: A.Expr): boolean => {
+      switch (e.kind) {
+        case "Number": case "String": case "Bool": case "Null": return true;
+        case "Template": return e.parts.every((p) => p.kind === "text" || ok(p.expr));
+        case "Unary": return e.op === "typeof" || e.op === "delete" ? bad(e, `\`${e.op}\``) : ok(e.arg);
+        case "Binary": return ok(e.left) && ok(e.right);
+        case "Conditional": return ok(e.cond) && ok(e.then) && ok(e.else);
+        case "Ident": {
+          if (params.has(e.name)) return true;
+          return this.env.result.inlineValues.has(e) || bad(e, `\`${e.name}\``, "not a parameter or an inline constant");
+        }
+        case "Member": {
+          if (this.env.result.inlineValues.has(e)) return true;
+          if (e.object.kind === "Ident" && e.object.name === "Math" && MATH_CONSTANTS.has(e.name.name)) return true;
+          return bad(e, `\`${spanText(e.span)}\``, "not an inline constant");
+        }
+        case "Call": {
+          const c = e.callee;
+          const allowed = (c.kind === "Ident" && ["int", "uint", "Float", "String", "Boolean"].includes(c.name) && this.env.result.resolutions.get(c)?.kind === "builtin")
+            || (c.kind === "Member" && c.object.kind === "Ident" && c.object.name === "Math" && PURE_MATH.has(c.name.name))
+            || !!this.env.constexprTarget(c, this.info, this.scope);
+          return (allowed || bad(e, `calling \`${spanText(c.span)}\``, "not a `constexpr` function")) && e.args.every((a) => a.kind !== "Spread" && ok(a));
+        }
+        default: return bad(e, "this expression");
+      }
+    };
+    ok(body);
   }
 
   private constNumber(e: A.Expr): number | undefined {
@@ -3253,6 +3394,12 @@ class BodyChecker {
         const target = chosen.type;
         const sig = target.typeParams?.length ? this.instantiate(target, target.typeParams, e.args, scope, e.callee.span, expected && [target.ret, expected]).sig : target;
         this.checkArgs(e, sig, chosen.decl, scope);
+        // A `constexpr` call with constant arguments: evaluated now, its value pasted into the output.
+        if (chosen.decl?.modifiers.constexpr) {
+          const f = this.constValue(e);
+          if (f.ok) this.env.result.inlineValues.set(e, f.value);
+          else if (f.limit) this.diags.error("X0527", f.reason, f.at).note("the call is evaluated at compile time because its arguments are constants");
+        }
         if (overloads && chosen.decl) this.env.result.overloadPicks.set(e.callee, { all: overloads, chosen: { decl: chosen.decl, type: sig } });
         if (chosen.decl?.name.span.file.prelude && tsDivergent(chosen.decl.returnType)) this.env.result.tsResultCasts.add(e);
         // `b?.valueOf()` / `f?.()`: `null` when the object (or function) is.

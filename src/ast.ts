@@ -49,6 +49,8 @@ export interface Modifiers {
   final?: Span;
   override?: Span;
   inline?: Span;
+  /** `static constexpr function`: evaluated at compile time when its arguments are constants. */
+  constexpr?: Span;
   abstract?: Span;
   dynamic?: Span;
   async?: Span;

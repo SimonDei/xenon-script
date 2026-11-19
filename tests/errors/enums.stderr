@@ -6,14 +6,6 @@ error[X0308]: mismatched types
   |             |
   |             expected because of this type
 
-error[X0308]: mismatched types
- --> enums.xn:5:19
-  |
-5 |       var n:int = Direction.Up
-  |             ---   ^^^^^^^^^^^^ expected `int`, found `Direction`
-  |             |
-  |             expected because of this type
-
 error[X0309]: this comparison is always false
  --> enums.xn:6:15
   |
@@ -116,7 +108,7 @@ error[X0817]: enum values must be compile-time constants
   --> enums.xn:24:23
    |
 24 | enum Computed { Now = Main.stamp() }
-   |                       ^^^^^^^^^^^^ function calls are not compile-time constants
+   |                       ^^^^^^^^^^^^ only `constexpr` functions, `Math` functions and conversions can be called at compile time
 
 error[X0700]: enum `Color` can't be extended
   --> enums.xn:25:19

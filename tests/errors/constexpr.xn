@@ -1,0 +1,17 @@
+public class Main {
+  private static var counter:int = 0
+
+  public static constexpr function twice(n:int):int => n * 2                  // fine
+  public constexpr function notStatic(n:int):int => n                        // must be static
+  public static constexpr function block(n:int):int { return n }             // needs an expression body
+  public static constexpr LIMIT:int = 10                                     // constants are `inline final`
+  public static constexpr function useField(n:int):int => n + counter        // not a constant
+  public static constexpr function now():Float => Date.now()                 // not a compile-time function
+  public static constexpr function list(items:Array<int>):int => 1           // not a constant type
+  public static constexpr function forever(n:int):int => forever(n + 1)      // fine to declare…
+
+  public function Main() {
+    trace(twice(21), twice(counter))                                          // a constant call, and a runtime call
+    trace(forever(0))                                                         // …but endless at compile time
+  }
+}

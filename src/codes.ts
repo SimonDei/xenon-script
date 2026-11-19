@@ -164,6 +164,8 @@ export const CODES: Record<string, CodeInfo> = {
   X0520: c("misplaced `inline`", "`inline` applies to `static inline final` fields and local `inline final` values."),
   X0521: c("`inline var`", "Inline constants never change: declare them `inline final`."),
   X0522: c("inline without value", "An inline constant needs a value to paste."),
+  X0526: c("invalid `constexpr` function", "A `constexpr` function is `static`, has an expression body (`=> …`), takes and returns numbers, `String` or `Boolean`, and only uses its parameters, literals, operators, `?:`, conversions, inline constants, `Math` functions and other `constexpr` functions."),
+  X0527: c("`constexpr` evaluation too deep", "A `constexpr` call with constant arguments is evaluated at compile time, at most 1000 calls deep and 100000 calls in all."),
   X0523: c("not a compile-time constant", "Inline values may only use literals, other inline constants, enum members, operators and the conversion functions."),
   X0524: c("inline cycle", "Inline constants refer to each other in a circle."),
   X0525: c("inline value doesn't fit", "The folded value doesn't fit the declared type (e.g. `7 / 2` is 3.5, not an `int`)."),
