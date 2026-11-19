@@ -328,3 +328,32 @@ test("completion after a namespace import's `.` in a type lists its exported typ
   expect(values).toContain("join");
   expect(values).not.toContain("ParsedPath");
 });
+
+test("completion of an object literal's keys offers the expected shape's members not given yet", () => {
+  const text = `typedef Pos = { x:int, y:int }
+typedef Row = { ?note:String, excelRow:int, pos:Pos }
+
+public class Main {
+  public function Main() {
+    var rows:Array<Row> = []
+    rows.push({  })
+    rows.push({ excelRow: 1,  })
+    rows.push({ ex })
+    var r:Row? = { excelRow: 2, pos: {  }, note: f(1,  ) }
+    trace(rows, r)
+  }
+  private function f(a:int, b:int):String => ''
+}
+`;
+  const p = project({ "Main.xn": text });
+  const at = (needle: string, delta: number) => p.completions("Main.xn", offset(text, needle, delta));
+  const sorted = (items: { label: string; sortText?: string }[]) => [...items].sort((x, y) => (x.sortText ?? x.label).localeCompare(y.sortText ?? y.label)).map((i) => i.label);
+  // Required members first, then optional ones.
+  expect(sorted(at("push({  })", 7))).toEqual(["excelRow", "pos", "note"]);
+  expect(sorted(at("excelRow: 1,  ", 13))).toEqual(["pos", "note"]);
+  expect(sorted(at("{ ex }", 4))).toEqual(["excelRow", "pos", "note"]);
+  // A nested literal has its member's shape; a value position (a call's argument) is ordinary code.
+  expect(sorted(at("pos: {  }", 7))).toEqual(["x", "y"]);
+  expect(at("f(1,  )", 5).map((i) => i.label)).toContain("rows");
+  expect(at("{ excelRow: 2", 2)[0]!.detail).toBe("excelRow:int");
+});

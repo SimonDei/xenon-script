@@ -237,6 +237,7 @@ export function startServer(connection: Connection = createConnection(ProposedFe
       kind: KINDS[c.kind],
       detail: c.detail,
       documentation: c.documentation ? { kind: MarkupKind.Markdown, value: c.documentation } : undefined,
+      sortText: c.sortText,
     }));
   });
 

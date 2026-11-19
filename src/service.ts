@@ -64,6 +64,8 @@ export interface CompletionItem {
   /** The type or signature. */
   detail?: string;
   documentation?: string;
+  /** The order in the list, where it isn't the label's (required shape members first). */
+  sortText?: string;
 }
 
 export interface TextEdit {
@@ -934,7 +936,40 @@ export class XenonProject {
     let start = offset;
     while (start > 0 && /[\w$]/.test(text[start - 1]!)) start--;
     if (text[start - 1] === ".") return this.typeCompletions(path, text, start) ?? this.memberCompletions(path, text, start, offset);
-    return this.scopeCompletions(path, offset);
+    return this.keyCompletions(path, text, start, offset) ?? this.scopeCompletions(path, offset);
+  }
+
+  /**
+   * A key of an object literal whose type is a shape (`rows.push({ ex| })` with `rows:Array<Row>`,
+   * `var p:Point = { | }`): the shape's members that aren't given yet, required ones first.
+   * Undefined outside a key position, where the cursor is in a value (`{ a: x| }`).
+   */
+  private keyCompletions(path: string, text: string, nameStart: number, offset: number): CompletionItem[] | undefined {
+    let before = nameStart - 1;
+    while (before >= 0 && /\s/.test(text[before]!)) before--;
+    if (text[before] !== "{" && text[before] !== ",") return undefined;
+    const a = this.analyze();
+    const ast = this.astOf(a, path);
+    if (!ast) return undefined;
+    const chain = nodesAt(ast, offset);
+    const at = chain.findLastIndex((n) => n.kind === "Object");
+    if (at < 0) return undefined;
+    const obj = chain[at] as A.Expr & { kind: "Object" };
+    // Directly in this literal (not in a call inside one of its values), on a key being typed.
+    const inner = chain.slice(at + 1).filter((n) => n.kind !== undefined); // not the key's own name
+    const onKey = inner.every((n) => (n.kind === "Shorthand" && n.span.start === nameStart) || (n.kind === "Prop" && (n as A.ObjectProp).span.start === nameStart));
+    if (!onKey || inner.length > 1 || before < obj.span.start) return undefined;
+    const t = a.result.check.exprTypes.get(obj);
+    const shape = t?.kind === "nullable" ? t.inner : t;
+    if (shape?.kind !== "shape") return undefined;
+    const given = new Set(obj.props.flatMap((p) => {
+      if (p.span.start === nameStart) return []; // the key being typed
+      if (p.kind === "Shorthand") return [p.name.name];
+      return p.kind === "Prop" && !("kind" in p.key) ? [p.key.name] : [];
+    }));
+    return this.shapeCompletions(shape)
+      .filter((i) => !given.has(i.label))
+      .map((i) => ({ ...i, sortText: `${shape.members.get(i.label)!.optional ? 1 : 0}${i.label}` }));
   }
 
   /**
