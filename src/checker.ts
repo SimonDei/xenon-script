@@ -181,6 +181,11 @@ function isConstexpr(m: MemberSig): boolean {
   return m.kind === "method" && m.decl.kind === "Method" && !!m.decl.modifiers.constexpr && !!m.decl.body;
 }
 
+/** Can no subclass replace this method? `private` or `final` methods, and methods of `final` classes. */
+function cannotOverride(m: MemberSig): boolean {
+  return visibilityOf(m.decl) === "private" || !!m.decl.modifiers.final || !!m.owner.decl.modifiers.final;
+}
+
 /** The value a field gets without an initializer: `0`, `NaN`, `false` or `null`. */
 function defaultValueOf(type: A.TypeNode | undefined): ConstValue {
   const name = type?.kind === "TypeName" && type.name.length === 1 ? type.name[0]!.name : undefined;
@@ -1692,6 +1697,14 @@ class Env {
       const name = callee.kind === "Member" ? callee.name.name : (callee as A.Expr & { kind: "Ident" }).name;
       const m = findMember(receiver.cls as ClassInfo, name);
       if (m && isConstexpr(m) && !m.isStatic) return this.invoke(m, args, receiver, e.span, depth);
+      if (callee.kind === "Member" && callee.object.kind !== "This") return undefined;
+    }
+    // `fact(10)` / `this.fact(10)` in the class's own code, where `this` is a runtime object: a
+    // `constexpr` method nothing can override runs without one (if it uses `this`, it isn't folded).
+    const own = callee.kind === "Ident" ? callee.name : callee.kind === "Member" && callee.object.kind === "This" ? callee.name.name : undefined;
+    if (own !== undefined && !receiver) {
+      const m = findMember(ctx.owner, own);
+      if (m && isConstexpr(m) && !m.isStatic && cannotOverride(m)) return this.invoke(m, args, undefined, e.span, depth);
       if (callee.kind === "Member") return undefined;
     }
     const m = this.constexprTarget(callee, ctx.owner, ctx.scope);
