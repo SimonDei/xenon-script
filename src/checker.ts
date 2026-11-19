@@ -176,6 +176,11 @@ function inlineVar(d: DiagnosticBuilder, name: A.Ident) {
   }
 }
 
+/** `void`, or its alias `Void`, as written (the alias can't be redeclared: X0028). */
+function isVoidNode(t: A.TypeNode | undefined): boolean {
+  return t?.kind === "VoidType" || (t?.kind === "TypeName" && t.name.length === 1 && t.name[0]!.name === "Void" && t.args.length === 0);
+}
+
 /** A method declared `constexpr` (with a body). */
 function isConstexpr(m: MemberSig): boolean {
   return m.kind === "method" && m.decl.kind === "Method" && !!m.decl.modifiers.constexpr && !!m.decl.body;
@@ -1468,7 +1473,7 @@ class Env {
           if (m.params.length !== 1 || m.params[0]!.rest || m.params[0]!.init) {
             this.diags.error("X0372", `${op} takes exactly one (required) parameter: the right operand`, m.name.span);
           }
-          if (m.returnType?.kind === "VoidType") this.diags.error("X0372", `${op} must return a value`, m.returnType.span);
+          if (isVoidNode(m.returnType)) this.diags.error("X0372", `${op} must return a value`, m.returnType!.span);
         }
       }
       if (m.kind === "Method" && m.isConst) {
@@ -1503,7 +1508,7 @@ class Env {
           : m.params[0]?.type ? this.resolveType(m.params[0].type, scope, false, this.memberParams(info, m)) : this.untyped(m.name.span, "setter parameter");
         if (m.accessor === "get" && m.params.length > 0) this.diags.error("X0205", "getters can't have parameters", m.params[0]!.span);
         if (m.accessor === "set" && m.params.length !== 1) this.diags.error("X0206", "setters take exactly one parameter", m.name.span);
-        if (m.accessor === "set" && m.returnType && m.returnType.kind !== "VoidType") {
+        if (m.accessor === "set" && m.returnType && !isVoidNode(m.returnType)) {
           this.diags.error("X0211", "a setter's return type must be `void`", m.returnType.span)
             .help("use `:void`", [{ span: m.returnType.span, text: "void" }]);
         }
