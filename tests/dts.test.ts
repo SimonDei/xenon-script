@@ -135,6 +135,31 @@ test("a misspelled namespace type suggests the export and still counts as using 
   }
 });
 
+test("a shape's index signature and keys that aren't identifiers are explained in its doc comment", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const project = join(import.meta.dir, ".dts-index");
+  const pkg = join(project, "node_modules", "sheets");
+  await rm(project, { recursive: true, force: true });
+  await mkdir(pkg, { recursive: true });
+  await Bun.write(join(pkg, "package.json"), JSON.stringify({ name: "sheets", types: "index.d.ts" }));
+  await Bun.write(join(pkg, "index.d.ts"), "/** One sheet */\nexport interface Sheet { [cell: string]: any; '!ref'?: string; name: string }\nexport declare function open(): Sheet;\n");
+  try {
+    const text = "import * as sheets from 'sheets'\n\npublic class Main {\n  public function Main() {\n    var s:sheets.Sheet = sheets.open()\n    trace(s.name, s['A1'], s['!ref'])\n  }\n}\n";
+    const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: join(project, "src") });
+    expect(result.diagnostics.sorted().filter((d) => d.severity === "error")).toEqual([]);
+    const decls = result.asts.filter((f) => f.file.generated).map((f) => f.file.text).join("\n");
+    expect(decls).toContain([
+      "/** One sheet",
+      " * ",
+      " * Indexed by any `String` key (`value[key]`, untyped `*`); in TypeScript `any`.",
+      " * Also has `'!ref'`, read by index: `value['!ref']` (untyped `*`). */",
+      "typedef Sheet = { name:String }",
+    ].join("\n"));
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
 test("a package installed while the language server runs is typed on the next compile", async () => {
   const { mkdir, rm } = await import("node:fs/promises");
   const project = join(import.meta.dir, ".dts-install");

@@ -492,7 +492,30 @@ class DeclWriter {
       const text = p.flags & this.ts.SymbolFlags.Method ? (calls.length === 1 ? this.functionType(calls[0]!) : "Function") : this.type(type, false);
       return [`${this.readonly(p) ? "final " : ""}${optional ? "?" : ""}${p.name}:${text}`];
     });
-    this.decls[at] = `typedef ${name} = { ${members.join(", ")} }`;
+    this.decls[at] = `${this.shapeDoc(t, sym, props)}typedef ${name} = { ${members.join(", ")} }`;
     return name;
+  }
+
+  /**
+   * A shape's doc comment: the TypeScript one, and what the shape can't hold as members (keys that
+   * aren't identifiers, like SheetJS's `'!ref'`, and index signatures), which are read by index.
+   */
+  private shapeDoc(t: tsModule.ObjectType, sym: tsModule.Symbol | undefined, props: tsModule.Symbol[]): string {
+    const lines: string[] = [];
+    const own = sym && sym.name !== "__type" && sym.name !== "__object" ? this.ts.displayPartsToString(sym.getDocumentationComment(this.checker)).trim() : "";
+    if (own) lines.push(own, "");
+    const indexes = this.checker.getIndexInfosOfType(t).filter((i) => i.keyType.flags & (this.ts.TypeFlags.String | this.ts.TypeFlags.Number));
+    for (const i of indexes) {
+      const key = i.keyType.flags & this.ts.TypeFlags.String ? "String" : "int";
+      lines.push(`Indexed by any \`${key}\` key (\`value[key]\`, untyped \`*\`); in TypeScript \`${this.checker.typeToString(i.type)}\`.`);
+    }
+    const other = props.filter((p) => !IDENT.test(p.name) || KEYWORDS.has(p.name));
+    if (other.length > 0) {
+      const shown = other.slice(0, 12).map((p) => `\`'${p.name}'\``).join(", ") + (other.length > 12 ? ", …" : "");
+      lines.push(`Also has ${shown}, read by index: \`value['${other[0]!.name}']\` (untyped \`*\`).`);
+    }
+    while (lines.at(-1) === "") lines.pop();
+    if (lines.length === 0) return "";
+    return `/** ${lines.join("\n").replace(/\*\//g, "* /").split("\n").join("\n * ")} */\n`;
   }
 }

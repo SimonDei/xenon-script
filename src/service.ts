@@ -933,8 +933,30 @@ export class XenonProject {
     if (text === undefined) return [];
     let start = offset;
     while (start > 0 && /[\w$]/.test(text[start - 1]!)) start--;
-    if (text[start - 1] === ".") return this.memberCompletions(path, text, start, offset);
+    if (text[start - 1] === ".") return this.typeCompletions(path, text, start) ?? this.memberCompletions(path, text, start, offset);
     return this.scopeCompletions(path, offset);
+  }
+
+  /**
+   * `xlsx.` in a type (after `:`, `<`, `as`, `is`, `extends`, `implements` or `->`): the types the
+   * namespace import exports. Undefined elsewhere, where `xlsx.` is a value (its functions).
+   */
+  private typeCompletions(path: string, text: string, nameStart: number): CompletionItem[] | undefined {
+    const before = text.slice(0, nameStart - 1);
+    const receiver = /[A-Za-z_$][\w$]*$/.exec(before);
+    if (!receiver || !/(?::|<|->|\bas|\bis|\bextends|\bimplements)\s*$/.test(before.slice(0, receiver.index))) return undefined;
+    const a = this.analyze();
+    const ast = this.astOf(a, path);
+    const types = ast && a.result.check.qualifiedTypes.get(ast);
+    const prefix = `${receiver[0]}.`;
+    if (!types || ![...types.keys()].some((k) => k.startsWith(prefix))) return undefined;
+    return [...types].filter(([k]) => k.startsWith(prefix)).map(([k, info]) => {
+      const label = k.slice(prefix.length);
+      if ("typeParams" in info) {
+        return { label, kind: (info.decl.isInterface ? "interface" : "class") as CompletionKind, detail: classText(info), documentation: docComment(info.decl.span.file, info.decl.span.start) };
+      }
+      return { label, kind: "interface" as CompletionKind, detail: `typedef ${k}`, documentation: docComment(info.decl.span.file, info.decl.span.start) };
+    });
   }
 
   /** After `obj.`: the members of `obj`'s type (TypeScript's members where Xenon only knows `*`). */

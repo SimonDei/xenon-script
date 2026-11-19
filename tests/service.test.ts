@@ -316,3 +316,15 @@ test("while typing: completion and signature help in a statement that doesn't pa
   p.set("Main.xn", text);
   expect((p.hover("Main.xn", offset(text, "fetch('y'", 2))?.contents as string).split("\n")[1]).toBe("function fetch(url:String, options:RequestInit):Promise<Response>");
 });
+
+test("completion after a namespace import's `.` in a type lists its exported types; in code, its values", () => {
+  const text = "import * as path from 'node:path'\n\npublic class Main {\n  public function Main() {\n    var p:path.Par\n    trace(path.)\n  }\n}\n";
+  const p = project({ "Main.xn": text });
+  const types = p.completions("Main.xn", offset(text, "path.Par", 8));
+  expect(types.map((i) => i.label).sort()).toEqual(["FormatInputPathObject", "ParsedPath"]);
+  expect(types.find((i) => i.label === "ParsedPath")!.detail).toBe("typedef path.ParsedPath");
+  // As a value, `path.` has the functions (`join`), not the types.
+  const values = p.completions("Main.xn", offset(text, "trace(path.", 11)).map((i) => i.label);
+  expect(values).toContain("join");
+  expect(values).not.toContain("ParsedPath");
+});

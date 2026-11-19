@@ -133,6 +133,8 @@ const BUILTIN_FNS = new Set<string>(["trace", "int", "uint", "Float", "String", 
 const CASTS: Record<string, Type> = { int: T.int, uint: T.uint, Float: T.Float, String: T.String, Boolean: T.Boolean };
 
 export interface CheckResult {
+  /** Per file, the types JavaScript namespace imports export (`xlsx.WorkBook`), for completion. */
+  qualifiedTypes: Map<A.XenonFile, Map<string, ClassInfo | TypedefInfo>>;
   resolutions: Map<A.Expr | A.ObjectProp, Resolution>;
   /** Class referenced by a type node (`new X`, `extends X`, annotations). */
   typeResolutions: Map<A.TypeNode, ClassInfo>;
@@ -330,13 +332,17 @@ class Scope {
  */
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
-    resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes,
+    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes,
   };
   const env = new Env(classes, typedefs, diags, result);
   env.jsBindings = jsBindings;
 
   const scopes = env.scopes;
   for (const file of files) scopes.set(file, env.fileScope(file));
+  for (const [file, scope] of scopes) {
+    const qualified: [string, ClassInfo | TypedefInfo][] = [...scope.classes, ...scope.typedefs].filter(([name]) => name.includes("."));
+    if (qualified.length > 0) result.qualifiedTypes.set(file, new Map(qualified));
+  }
 
   const infos = [...classes.values()];
   for (const info of infos) env.resolveParent(info, scopes.get(info.file)!);
