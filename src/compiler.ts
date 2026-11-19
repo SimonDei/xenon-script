@@ -6,55 +6,16 @@ import { type Diagnostic, DiagnosticBag } from "./diagnostics.ts";
 import { type JsDeclarations, jsDeclarations } from "./dts.ts";
 import { BUILTIN_TYPES } from "./types.ts";
 import { parseFile } from "./parser.ts";
-import preludeSource from "./prelude/Prelude.xn" with { type: "text" };
-import stdArray from "./prelude/std/Array.xn" with { type: "text" };
-import stdBoolean from "./prelude/std/Boolean.xn" with { type: "text" };
-import stdConsole from "./prelude/std/console.xn" with { type: "text" };
-import stdDate from "./prelude/std/Date.xn" with { type: "text" };
-import stdFloat from "./prelude/std/Float.xn" with { type: "text" };
-import stdInt from "./prelude/std/int.xn" with { type: "text" };
-import stdString from "./prelude/std/String.xn" with { type: "text" };
-import stdUint from "./prelude/std/uint.xn" with { type: "text" };
-import stdIterator from "./prelude/std/Iterator.xn" with { type: "text" };
-import stdJSON from "./prelude/std/JSON.xn" with { type: "text" };
-import stdMap from "./prelude/std/Map.xn" with { type: "text" };
-import stdMath from "./prelude/std/Math.xn" with { type: "text" };
-import stdObject from "./prelude/std/Object.xn" with { type: "text" };
-import stdGlobals from "./prelude/std/globals.xn" with { type: "text" };
-import stdFunction from "./prelude/std/Function.xn" with { type: "text" };
-import stdRegExp from "./prelude/std/RegExp.xn" with { type: "text" };
-import stdSet from "./prelude/std/Set.xn" with { type: "text" };
-import stdPromise from "./prelude/std/Promise.xn" with { type: "text" };
-import stdResponse from "./prelude/std/Response.xn" with { type: "text" };
-import stdArrayBuffer from "./prelude/std/ArrayBuffer.xn" with { type: "text" };
+import { preludeFiles } from "./prelude/files.ts" with { type: "macro" };
 import { SourceFile } from "./source.ts";
 
 /** Package of the built-in prelude; reserved for the compiler. */
 export const PRELUDE_PACKAGE = "xenon";
-/** The prelude: runtime classes (`Prelude.xn`) and the standard library's native declarations (`std/`). */
-export const PRELUDE: SourceInput[] = [
-  { path: "xenon/Prelude.xn", text: preludeSource },
-  { path: "xenon/Array.xn", text: stdArray },
-  { path: "xenon/Boolean.xn", text: stdBoolean },
-  { path: "xenon/console.xn", text: stdConsole },
-  { path: "xenon/Date.xn", text: stdDate },
-  { path: "xenon/Float.xn", text: stdFloat },
-  { path: "xenon/int.xn", text: stdInt },
-  { path: "xenon/String.xn", text: stdString },
-  { path: "xenon/uint.xn", text: stdUint },
-  { path: "xenon/Iterator.xn", text: stdIterator },
-  { path: "xenon/JSON.xn", text: stdJSON },
-  { path: "xenon/Map.xn", text: stdMap },
-  { path: "xenon/Math.xn", text: stdMath },
-  { path: "xenon/Object.xn", text: stdObject },
-  { path: "xenon/globals.xn", text: stdGlobals },
-  { path: "xenon/Function.xn", text: stdFunction },
-  { path: "xenon/Promise.xn", text: stdPromise },
-  { path: "xenon/Response.xn", text: stdResponse },
-  { path: "xenon/ArrayBuffer.xn", text: stdArrayBuffer },
-  { path: "xenon/RegExp.xn", text: stdRegExp },
-  { path: "xenon/Set.xn", text: stdSet },
-];
+/**
+ * The prelude: runtime classes (`Prelude.xn`) and the standard library's native declarations
+ * (`std/`), inlined at build time (`preludeFiles` runs as a Bun macro).
+ */
+export const PRELUDE: SourceInput[] = preludeFiles();
 
 export interface SourceInput {
   /** Path relative to the source root, using `/` (determines the expected package). */
