@@ -9,18 +9,6 @@ error[X0526]: field `y` must be `final`: a `constexpr` constructor builds an imm
   |
 help: declare it `final`
 
-error[X0526]: a `constexpr` method must be `const`
-  --> constexpr-objects.xn:11:29
-   |
-11 |   public constexpr function twice():Float => x * 2                       // must be `const`
-   |                             ^^^^^ not `const`
-   |
-   = note: it may only read its object, never change it (as in C++)
-help: add `const`
-   |
-11 |   public constexpr function twice():Float const => x * 2                       // must be `const`
-   |                                           ++++++
-
 error[X0526]: calling `plain` isn't allowed in a `constexpr` function
   --> constexpr-objects.xn:13:56
    |

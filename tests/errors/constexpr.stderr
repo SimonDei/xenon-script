@@ -1,15 +1,3 @@
-error[X0526]: a `constexpr` method must be `const`
- --> constexpr.xn:5:29
-  |
-5 |   public constexpr function notStatic(n:int):int => n                        // an instance method must be `const`
-  |                             ^^^^^^^^^ not `const`
-  |
-  = note: it may only read its object, never change it (as in C++)
-help: add `const`
-  |
-5 |   public constexpr function notStatic(n:int):int const => n                        // an instance method must be `const`
-  |                                                  ++++++
-
 error[X0526]: assigning `counter` isn't allowed in a `constexpr` function
   --> constexpr.xn:12:5
    |

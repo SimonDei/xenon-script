@@ -1601,14 +1601,6 @@ class Env {
     if (m.isDestructor || m.accessor) return bad(`${m.isDestructor ? "a destructor" : "a getter or setter"} can't be \`constexpr\``);
     if (m.modifiers.async || m.modifiers.abstract) bad(`a \`constexpr\` function can't be \`${m.modifiers.async ? "async" : "abstract"}\``);
     if (m.params.some((p) => p.rest)) bad("a `constexpr` function can't have a rest parameter");
-    // As in C++: a `constexpr` method only reads its object, so it must be `const`.
-    if (!m.isConstructor && !m.modifiers.static && !m.isConst) {
-      const text = m.span.file.text;
-      const bodyAt = m.body ? (m.exprBody ? text.lastIndexOf("=>", m.body.span.start) : m.body.span.start) : -1;
-      const d = this.diags.error("X0526", "a `constexpr` method must be `const`", m.name.span, "not `const`")
-        .note("it may only read its object, never change it (as in C++)");
-      if (bodyAt > 0) d.help("add `const`", [{ span: span(m.span.file, bodyAt, bodyAt), text: "const " }]);
-    }
   }
 
   /**

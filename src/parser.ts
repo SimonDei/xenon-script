@@ -535,8 +535,9 @@ export class Parser {
     const typeParams = this.typeParamList();
     const params = this.parseParams();
     const returnType = this.eat(":") ? this.parseType() : undefined;
-    const isConst = !!this.eat("const");
     const isConstructor = name.name === className && !accessor;
+    // A `constexpr` method only reads its object (as in C++): it is `const` whether written or not.
+    const isConst = !!this.eat("const") || (!!modifiers.constexpr && !isConstructor && !modifiers.static);
     let body: A.Block | undefined;
     let exprBody = false;
     if (this.is("{")) body = this.parseBlock();

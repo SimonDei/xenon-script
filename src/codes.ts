@@ -164,7 +164,7 @@ export const CODES: Record<string, CodeInfo> = {
   X0520: c("misplaced `inline`", "`inline` applies to `static inline final` fields and local `inline final` values."),
   X0521: c("`inline var`", "Inline constants never change: declare them `inline final`."),
   X0522: c("inline without value", "An inline constant needs a value to paste."),
-  X0526: c("invalid `constexpr` function", "A `constexpr` function is `static`, takes and returns numbers, `String` or `Boolean`, and only uses its parameters and locals, literals, operators, `?:`, conversions, inline constants, `Math` functions and other `constexpr` functions; its statements are local variables, assignments to them, `if`, `while`, `do`, `for`, range loops, `switch`, `return`, `break` and `continue`."),
+  X0526: c("invalid `constexpr` function", "A `constexpr` function or method (implicitly `const`: it never changes its object) takes and returns numbers, `String` or `Boolean`, and only uses its parameters and locals, literals, operators, `?:`, conversions, inline constants, `Math` functions and other `constexpr` functions; its statements are local variables, assignments to them, `if`, `while`, `do`, `for`, range loops, `switch`, `return`, `break` and `continue`."),
   X0527: c("`constexpr` evaluation failed", "A `constexpr` call with constant arguments is evaluated at compile time: at most 1000 calls deep, 100000 calls and 1000000 steps in all, and it must return a value."),
   X0523: c("not a compile-time constant", "Inline values may only use literals, other inline constants, enum members, operators and the conversion functions."),
   X0524: c("inline cycle", "Inline constants refer to each other in a circle."),

@@ -1,5 +1,6 @@
 // An immutable value with a `constexpr` constructor: objects can be built at compile time, and
-// its `constexpr` methods (always `const`, as in C++) evaluated on them.
+// its `constexpr` methods evaluated on them. A `constexpr` method is always `const` (it never
+// changes its object), so writing `const` is optional.
 public class Size {
   public final width:int
   public final height:int
@@ -10,7 +11,7 @@ public class Size {
   }
 
   public constexpr function area():int const => width * height
-  public constexpr function scaled(factor:int):Size const => new Size(width * factor, height * factor)
-  public constexpr function operator+(other:Size):Size const => new Size(width + other.width, height + other.height)
+  public constexpr function scaled(factor:int):Size => new Size(width * factor, height * factor)
+  public constexpr function operator+(other:Size):Size => new Size(width + other.width, height + other.height)
   public constexpr function operator==(other:Size):Boolean const => width == other.width && height == other.height
 }
