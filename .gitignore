@@ -17,6 +17,7 @@ tests/.tsemit-project/
 tests/.lsp-project/
 tests/.lsp-bundle/
 tests/.dts-local/
+tests/.bundle-out/
 tests/.build-project/
 
 # code coverage

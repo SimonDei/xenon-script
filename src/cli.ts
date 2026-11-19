@@ -26,6 +26,8 @@ Options:
   --quiet            only print diagnostics
   --no-source-maps   don't write .js.map files (stack traces then show the JavaScript)
   --target js|ts     output JavaScript (default) or typed TypeScript (.ts, no source maps)
+  --bundle           (build, run, watch) one xenon-main.js for all compiled .xn files;
+                     npm packages, node:/bun: modules and src/ JavaScript files stay outside
   --run              (watch) run the program after each successful build
   --no-clear         (watch) don't clear the terminal between builds
 `;
@@ -51,7 +53,7 @@ async function loadConfig(args: string[]): Promise<{
     }
     if (!a.startsWith("--")) throw new UsageError(`unexpected argument \`${a}\``);
     const name = a.slice(2);
-    if (["deny-warnings", "quiet", "run", "no-clear", "no-source-maps"].includes(name)) flags.set(name, true);
+    if (["deny-warnings", "quiet", "run", "no-clear", "no-source-maps", "bundle"].includes(name)) flags.set(name, true);
     else {
       const v = args[++i];
       if (v === undefined) throw new UsageError(`missing value for \`${a}\``);
@@ -77,6 +79,8 @@ async function loadConfig(args: string[]): Promise<{
   if (!["auto", "always", "never"].includes(colorFlag)) throw new UsageError("--color must be auto, always or never");
   const target = (flags.get("target") as string | undefined) ?? project.target ?? "js";
   if (target !== "js" && target !== "ts") throw new UsageError("--target must be js or ts");
+  const bundle = flags.has("bundle") || !!project.bundle;
+  if (bundle && target === "ts") throw new UsageError("--bundle writes JavaScript: it can't be combined with --target ts");
   const format = (flags.get("format") as string | undefined) ?? "pretty";
   if (format !== "pretty" && format !== "json") throw new UsageError("--format must be pretty or json");
 
@@ -91,6 +95,7 @@ async function loadConfig(args: string[]): Promise<{
     quiet: flags.has("quiet"),
     sourceMaps: !flags.has("no-source-maps") && project.sourceMaps !== false,
     target,
+    bundle,
   };
   return { command, config, rest, root, projectPath, flags };
 }

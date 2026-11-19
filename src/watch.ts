@@ -1,6 +1,6 @@
 import { type FSWatcher, watch } from "node:fs";
 import { join, resolve } from "node:path";
-import { compileOptions, type Config, isMap, readAssets, readSources, report, runCommand, syncOutputs } from "./build.ts";
+import { compileOptions, type Config, finalOutputs, isMap, readAssets, readSources, report, runCommand, syncOutputs } from "./build.ts";
 import { compileProject, type SourceInput } from "./compiler.ts";
 
 export interface WatchOptions {
@@ -79,8 +79,16 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
         process.stderr.write(`${paint("31", "✗")} ${n} error${n === 1 ? "" : "s"} — watching for changes\n`);
         return;
       }
-      const { written, removed } = await syncOutputs(result, outDir);
-      const outputs = new Set(result.outputs.map((o) => o.path).filter((p) => !isMap(p)));
+      let final: typeof result;
+      try {
+        final = await finalOutputs(result, config, outDir);
+      } catch (e) {
+        await stopChild();
+        process.stderr.write(`${paint("31", "✗")} ${(e as Error).message}: ${((e as AggregateError).errors ?? []).join("; ")} — watching for changes\n`);
+        return;
+      }
+      const { written, removed } = await syncOutputs(final, outDir);
+      const outputs = new Set(final.outputs.map((o) => o.path).filter((p) => !isMap(p)));
       const removedNote = removed > 0 ? `, removed ${removed} stale` : "";
       process.stderr.write(`${paint("32", "✓")} built ${written} of ${outputs.size} output${outputs.size === 1 ? "" : "s"} from ${sources.length} file${sources.length === 1 ? "" : "s"}${removedNote} in ${ms} ms — watching for changes\n`);
       if (opts.run && (written > 0 || removed > 0 || !child)) {

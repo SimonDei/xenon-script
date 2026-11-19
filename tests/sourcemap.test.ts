@@ -131,6 +131,15 @@ test("`xenon run` reports uncaught errors at their Xenon position", async () => 
   expect(mapped.stderr).toContain("at new Main (src/Main.xn:5:5)");
   expect(await Bun.file(join(dir, "out", "zoo", "Keeper.js.map")).exists()).toBe(true);
 
+  // Bundled: one file, its map composed with the modules' maps, so frames still name the `.xn` files.
+  const bundled = await run("--bundle");
+  expect(bundled.code).toBe(1);
+  expect(bundled.stderr).toContain("6 |           throw new StateException('out of food for ' + name)");
+  expect(bundled.stderr).toContain("at feed (src/zoo/Keeper.xn:4:7)");
+  expect(bundled.stderr).toContain("at new Main (src/Main.xn:5:5)");
+  expect(await Bun.file(join(dir, "out", "zoo", "Keeper.js")).exists()).toBe(false);
+  expect(await Bun.file(join(dir, "out", "xenon-main.js.map")).exists()).toBe(true);
+
   const plain = await run("--no-source-maps");
   expect(plain.code).toBe(1);
   expect(plain.stderr).not.toContain("Keeper.xn");

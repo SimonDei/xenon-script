@@ -69,6 +69,24 @@ export function buildSourceMap(
   return { version: 3, file, sources: [source], sourcesContent: [content], names: [], mappings: mappings.join(";") };
 }
 
+/** Encodes per generated line its segments `[genCol, source, line, col]` (0-based, absolute; the inverse of `decodeMappings`). */
+export function encodeMappings(lines: [number, number, number, number][][]): string {
+  let source = 0;
+  let line = 0;
+  let col = 0;
+  return lines.map((segs) => {
+    let genCol = 0;
+    return [...segs].sort((a, b) => a[0] - b[0]).map(([g, s, l, c]) => {
+      const seg = vlq(g - genCol) + vlq(s - source) + vlq(l - line) + vlq(c - col);
+      genCol = g;
+      source = s;
+      line = l;
+      col = c;
+      return seg;
+    }).join(",");
+  }).join(";");
+}
+
 /** Decodes `mappings` into, per generated line, its segments `[genCol, source, line, col]` (0-based, absolute). */
 export function decodeMappings(mappings: string): [number, number, number, number][][] {
   const out: [number, number, number, number][][] = [];

@@ -1,6 +1,7 @@
 import { mkdir, readdir, rm, rmdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { type CompileOptions, compileProject, type CompileResult, type SourceInput } from "./compiler.ts";
+import { bundleOutputs } from "./bundle.ts";
 import { entryFile } from "./codegen.ts";
 import { renderAll, renderSummary } from "./diagnostics.ts";
 import type { Span } from "./source.ts";
@@ -18,6 +19,21 @@ export interface Config {
   sourceMaps: boolean;
   /** `ts`: write typed TypeScript instead of JavaScript (`--target ts` / `"target": "ts"`); no source maps. */
   target: "js" | "ts";
+  /**
+   * Bundle the compiled modules into one `xenon-main.js` (`--bundle` / `"bundle": true`); npm
+   * packages, `node:`/`bun:` modules and the source folder's JavaScript files stay outside.
+   */
+  bundle: boolean;
+}
+
+/**
+ * What a build writes: the compiled modules, or with `bundle` one bundle of them, plus the copied
+ * JavaScript files. Throws if bundling fails.
+ */
+export async function finalOutputs(result: CompileResult, config: Config, outDir: string): Promise<CompileResult> {
+  if (!config.bundle) return result;
+  await mkdir(outDir, { recursive: true });
+  return { ...result, outputs: await bundleOutputs(result.outputs, outDir, config.sourceMaps) };
 }
 
 /** The command that runs a built program: with source maps, stack traces are mapped back to the `.xn` files. */
@@ -94,7 +110,15 @@ export async function build(config: Config, root: string, emit: boolean): Promis
   const result = compileProject(sources, { ...compileOptions(config, root), assets: emit ? await readAssets(srcRoot) : [] });
   const ok = report(result, config, srcRoot);
   if (!ok) return false;
-  if (emit) await syncOutputs(result, resolve(root, config.out));
+  if (emit) {
+    const outDir = resolve(root, config.out);
+    try {
+      await syncOutputs(await finalOutputs(result, config, outDir), outDir);
+    } catch (e) {
+      process.stderr.write(`error: ${(e as Error).message}\n${((e as AggregateError).errors ?? []).map((x) => `  ${x}`).join("\n")}\n`);
+      return false;
+    }
+  }
   if (!config.quiet && config.format === "pretty") {
     const ms = Math.round(performance.now() - started);
     const what = emit ? `built ${sources.length} file${sources.length === 1 ? "" : "s"}` : `checked ${sources.length} file${sources.length === 1 ? "" : "s"}`;

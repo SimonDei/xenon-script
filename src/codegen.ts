@@ -187,6 +187,8 @@ export interface OutputFile {
   source?: SourceFile;
   /** Token mappings between `source` and `text` (TypeScript output). */
   mappings?: Mapping[];
+  /** A JavaScript file of the source folder, copied as it is. */
+  asset?: boolean;
 }
 
 export interface GenerateOptions {

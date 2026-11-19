@@ -143,7 +143,7 @@ export function compileProject(sources: SourceInput[], options: CompileOptions):
   for (const asset of options.assets ?? []) {
     const module = taken.get(asset.path.toLowerCase());
     if (!module) {
-      outputs.push({ path: asset.path, text: asset.text });
+      outputs.push({ path: asset.path, text: asset.text, asset: true });
       continue;
     }
     const decl = module.source && asts.find((a) => a.file === module.source)?.decls[0];

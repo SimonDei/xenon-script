@@ -11,8 +11,9 @@ import { fileURLToPath } from "node:url";
 import { decodeMappings, type SourceMap } from "../sourcemap.ts";
 
 interface Loaded {
-  source: string;
-  text: string | null;
+  /** Absolute paths of the sources (one per module; a bundle's map has several). */
+  sources: string[];
+  texts: (string | null)[];
   lines: [number, number, number, number][][];
 }
 
@@ -41,7 +42,7 @@ function load(file: string): Loaded | null {
     const path = file.startsWith("file:") ? fileURLToPath(file) : file;
     if (existsSync(path + ".map")) {
       const map = JSON.parse(readFileSync(path + ".map", "utf8")) as SourceMap;
-      loaded = { source: resolve(dirname(path), map.sources[0]!), text: map.sourcesContent[0] ?? null, lines: decodeMappings(map.mappings) };
+      loaded = { sources: map.sources.map((s) => resolve(dirname(path), s)), texts: map.sourcesContent, lines: decodeMappings(map.mappings) };
     }
   } catch {
     loaded = null; // a broken map: show the JavaScript position
@@ -56,7 +57,7 @@ function locate(file: string | null | undefined, line: number | null): Location 
   const map = load(file);
   const seg = map?.lines[line - 1]?.[0];
   if (!map || !seg) return undefined;
-  return { file: map.source, line: seg[2] + 1, col: seg[3] + 1, text: map.text };
+  return { file: map.sources[seg[1]]!, line: seg[2] + 1, col: seg[3] + 1, text: map.texts[seg[1]] ?? null };
 }
 
 function display(path: string): string {
