@@ -37,7 +37,7 @@ const CASTS: Record<string, (v: ConstValue) => ConstValue> = {
   Boolean: (v) => Boolean(v),
 };
 
-const notConst = (e: A.Expr, reason = "not a compile-time constant"): Fold => ({ ok: false, at: e.span, reason });
+const notConst = (e: A.Expr, reason = "not a compile-time constant"): Extract<Fold, { ok: false }> => ({ ok: false, at: e.span, reason });
 
 /**
  * Evaluates a constant expression with exact JavaScript semantics (the type checker has already
@@ -118,7 +118,7 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
   }
 }
 
-function binary(op: string, a: ConstValue, b: ConstValue): ConstValue | undefined {
+export function binary(op: string, a: ConstValue, b: ConstValue): ConstValue | undefined {
   // The operands are already type-checked; the casts only satisfy TypeScript.
   const x = a as number;
   const y = b as number;
@@ -180,4 +180,175 @@ export function constToJs(v: ConstValue, quote: (s: string) => string): { code: 
   if (v === -Infinity) return { code: "-Infinity", negative: true };
   if (Object.is(v, -0)) return { code: "-0", negative: true };
   return { code: String(v), negative: v < 0 };
+}
+
+/* ------------------------- constexpr function bodies ------------------------- */
+
+/** Steps left for one compile-time evaluation (statements and loop rounds), shared by nested calls. */
+export interface Budget {
+  steps: number;
+}
+
+class Returned {
+  constructor(readonly value: ConstValue) {}
+}
+class Broke {}
+class Continued {}
+type Failure = Extract<Fold, { ok: false }>;
+class Failed {
+  constructor(readonly fold: Failure) {}
+}
+
+/** The value a local gets without an initializer, as at runtime: `0`, `NaN`, `false` or `null`. */
+function defaultOf(type: A.TypeNode | undefined): ConstValue {
+  const name = type?.kind === "TypeName" && type.name.length === 1 ? type.name[0]!.name : undefined;
+  if (name === "int" || name === "uint" || name === "Int" || name === "UInt") return 0;
+  if (name === "Float") return NaN;
+  if (name === "Boolean" || name === "Bool") return false;
+  return null;
+}
+
+/**
+ * Runs a `constexpr` function's block body at compile time with its parameters bound, in exact
+ * JavaScript semantics: locals, assignments (`=`, `+=`, `++`, …) to them, `if`, `while`,
+ * `do … while`, `for`, range loops, `switch`, `return`, `break` and `continue`. The checker has
+ * made sure nothing else occurs. Fails like `fold`, or with `limit` when the budget runs out.
+ */
+export function run(body: A.Block, params: Map<string, ConstValue>, lookup: ConstLookup, budget: Budget, at: Span): Fold {
+  const scopes: Map<string, ConstValue>[] = [params];
+  const find = (name: string) => scopes.findLast((s) => s.has(name));
+  const local: ConstLookup = (e, args) => {
+    if (e.kind === "Ident") {
+      const s = find(e.name);
+      if (s) return { ok: true, value: s.get(e.name)! };
+    }
+    return lookup(e, args);
+  };
+  const value = (e: A.Expr): ConstValue => {
+    const f = fold(e, local);
+    if (!f.ok) throw new Failed(f);
+    return f.value;
+  };
+  const tick = () => {
+    if (--budget.steps < 0) throw new Failed({ ok: false, at, reason: "the evaluation takes more than 1000000 steps (an endless loop?)", limit: true });
+  };
+  const assign = (name: string, v: ConstValue) => {
+    find(name)!.set(name, v);
+  };
+  /** An expression statement: an assignment or `++`/`--` on a local, or a value (discarded). */
+  const effect = (e: A.Expr) => {
+    if (e.kind === "Assign" && e.target.kind === "Ident") {
+      const name = e.target.name;
+      if (e.op === "=") return assign(name, value(e.value));
+      const old = find(name)!.get(name)!;
+      const op = e.op.slice(0, -1);
+      if (op === "&&") return assign(name, old ? value(e.value) : old);
+      if (op === "||") return assign(name, old ? old : value(e.value));
+      if (op === "??") return assign(name, old ?? value(e.value));
+      const v = binary(op, old, value(e.value));
+      if (v === undefined) throw new Failed(notConst(e));
+      return assign(name, v);
+    }
+    if (e.kind === "Update" && e.arg.kind === "Ident") {
+      const old = find(e.arg.name)!.get(e.arg.name) as number;
+      return assign(e.arg.name, e.op === "++" ? old + 1 : old - 1);
+    }
+    value(e);
+  };
+  const block = (stmts: A.Stmt[]) => {
+    scopes.push(new Map());
+    try {
+      for (const s of stmts) exec(s);
+    } finally {
+      scopes.pop();
+    }
+  };
+  /** A loop round: `false` once a `break` ends the loop. */
+  const round = (body: A.Stmt): boolean => {
+    tick();
+    try {
+      exec(body);
+    } catch (x) {
+      if (x instanceof Broke) return false;
+      if (!(x instanceof Continued)) throw x;
+    }
+    return true;
+  };
+  const exec = (s: A.Stmt): void => {
+    tick();
+    switch (s.kind) {
+      case "Block": return block(s.body);
+      case "Empty": return;
+      case "VarDecl":
+        scopes.at(-1)!.set(s.name.name, s.init ? value(s.init) : defaultOf(s.type));
+        return;
+      case "ExprStmt": return effect(s.expr);
+      case "Return": throw new Returned(s.value ? value(s.value) : null);
+      case "Break": throw new Broke();
+      case "Continue": throw new Continued();
+      case "If":
+        if (value(s.cond)) exec(s.then);
+        else if (s.else) exec(s.else);
+        return;
+      case "While":
+        while (value(s.cond)) if (!round(s.body)) break;
+        return;
+      case "DoWhile":
+        do if (!round(s.body)) break; while (value(s.cond));
+        return;
+      case "For":
+        scopes.push(new Map());
+        try {
+          if (s.init) s.init.kind === "VarDecl" ? exec(s.init) : effect(s.init.expr);
+          while (!s.cond || value(s.cond)) {
+            if (!round(s.body)) break;
+            if (s.update) effect(s.update);
+          }
+        } finally {
+          scopes.pop();
+        }
+        return;
+      case "ForRange": {
+        const step = s.step ? (value(s.step) as number) : 1;
+        const end = s.end ? (value(s.end) as number) : undefined;
+        scopes.push(new Map([[s.variable.name.name, value(s.start)]]));
+        try {
+          const name = s.variable.name.name;
+          for (;;) {
+            const v = scopes.at(-1)!.get(name) as number;
+            if (end !== undefined && (s.inclusive ? v > end : v >= end)) break;
+            if (!round(s.body)) break;
+            scopes.at(-1)!.set(name, (scopes.at(-1)!.get(name) as number) + step);
+          }
+        } finally {
+          scopes.pop();
+        }
+        return;
+      }
+      case "Switch": {
+        // As in JavaScript: the first matching case (else `default`), then falling through until `break`.
+        const d = value(s.discriminant);
+        let start = s.cases.findIndex((c) => c.test && value(c.test) === d);
+        if (start < 0) start = s.cases.findIndex((c) => !c.test);
+        if (start < 0) return;
+        try {
+          for (const c of s.cases.slice(start)) block(c.body);
+        } catch (x) {
+          if (!(x instanceof Broke)) throw x;
+        }
+        return;
+      }
+      default:
+        throw new Failed(notConst({ span: s.span } as A.Expr, "not allowed in a `constexpr` function"));
+    }
+  };
+  try {
+    block(body.body);
+  } catch (x) {
+    if (x instanceof Returned) return { ok: true, value: x.value };
+    if (x instanceof Failed) return x.fold;
+    if (x instanceof Broke || x instanceof Continued) return notConst({ span: body.span } as A.Expr);
+    throw x;
+  }
+  return { ok: false, at, reason: "the function ended without returning a value", limit: true };
 }

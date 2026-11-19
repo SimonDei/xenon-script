@@ -3,7 +3,23 @@ public class Main {
 
   public static constexpr function twice(n:int):int => n * 2                  // fine
   public constexpr function notStatic(n:int):int => n                        // must be static
-  public static constexpr function block(n:int):int { return n }             // needs an expression body
+  public static constexpr function sum(n:int):int {                         // fine: a block body
+    var total:int
+    for (var i:int of 1..=n) total += i
+    return total
+  }
+  public static constexpr function changes(n:int):int {
+    counter = n                                                              // only locals can change
+    return n
+  }
+  public static constexpr function guarded(n:int):int {
+    try { return n } catch (e) { return 0 }                                  // `try` isn't allowed
+  }
+  public static constexpr function spin(n:int):int {
+    var i:int = n
+    while (true) i++                                                         // fine to declare…
+    return i
+  }
   public static constexpr LIMIT:int = 10                                     // constants are `inline final`
   public static constexpr function useField(n:int):int => n + counter        // not a constant
   public static constexpr function now():Float => Date.now()                 // not a compile-time function
@@ -12,6 +28,6 @@ public class Main {
 
   public function Main() {
     trace(twice(21), twice(counter))                                          // a constant call, and a runtime call
-    trace(forever(0))                                                         // …but endless at compile time
+    trace(forever(0), spin(0), sum(100))                                      // …but endless at compile time
   }
 }

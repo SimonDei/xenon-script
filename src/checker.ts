@@ -1,7 +1,7 @@
 import type * as A from "./ast.ts";
 import type { DiagnosticBag, DiagnosticBuilder, Edit } from "./diagnostics.ts";
 import type { JsBinding } from "./dts.ts";
-import { type ConstLookup, type ConstValue, fits, type Fold, fold, MATH_CONSTANTS, PURE_MATH } from "./consteval.ts";
+import { type Budget, type ConstLookup, type ConstValue, fits, type Fold, fold, MATH_CONSTANTS, PURE_MATH, run } from "./consteval.ts";
 import { assignedNames, breaksOut, completes, mentions } from "./flow.ts";
 import { GLOBAL_HINTS, JS_GLOBALS } from "./globals.ts";
 import { cover, type SourceFile, type Span, span, spanText } from "./source.ts";
@@ -1586,7 +1586,6 @@ class Env {
     if (m.isConstructor || m.isDestructor || m.accessor) return bad(`${m.isConstructor ? "a constructor" : m.isDestructor ? "a destructor" : "a getter or setter"} can't be \`constexpr\``);
     if (!m.modifiers.static) bad("a `constexpr` function must be `static`", "it can only use its parameters: add `static`");
     if (m.modifiers.async || m.modifiers.abstract) bad(`a \`constexpr\` function can't be \`${m.modifiers.async ? "async" : "abstract"}\``);
-    if (m.body && !m.exprBody) bad("a `constexpr` function has an expression body", "write it as `=> expression`");
     if (m.params.some((p) => p.rest)) bad("a `constexpr` function can't have a rest parameter");
   }
 
@@ -1611,11 +1610,13 @@ class Env {
       const cls = callee.object.name === owner.decl.name.name ? owner : this.lookupClass(scope, callee.object.name);
       if (cls) m = findMember(cls, callee.name.name);
     }
-    return m?.kind === "method" && m.decl.kind === "Method" && m.decl.modifiers.constexpr && m.decl.exprBody ? m : undefined;
+    return m?.kind === "method" && m.decl.kind === "Method" && m.decl.modifiers.constexpr && m.decl.body ? m : undefined;
   }
 
   /** Calls made by the current top-level compile-time evaluation (a budget against runaway recursion). */
   private constexprCalls = 0;
+  /** Statements and loop rounds left for the current top-level evaluation (against endless loops). */
+  private constexprBudget: Budget = { steps: 0 };
 
   /**
    * A call evaluated at compile time with these argument values: a pure `Math` function, or a
@@ -1631,13 +1632,14 @@ class Env {
     const m = this.constexprTarget(callee, owner, scope);
     if (!m) return undefined;
     this.usedMembers.add(m);
-    if (depth === 0) this.constexprCalls = 0;
+    if (depth === 0) {
+      this.constexprCalls = 0;
+      this.constexprBudget = { steps: 1_000_000 };
+    }
     if (depth > 1000) return { ok: false, at: e.span, reason: `\`${m.name}\` recurses more than 1000 calls deep`, limit: true };
     if (++this.constexprCalls > 100_000) return { ok: false, at: e.span, reason: `evaluating \`${m.name}\` takes more than 100000 calls`, limit: true };
     const decl = m.decl as A.Method;
-    const stmt = decl.body?.body[0];
-    const body = stmt?.kind === "Return" ? stmt.value : stmt?.kind === "ExprStmt" ? stmt.expr : undefined;
-    if (!body) return { ok: false, at: e.span, reason: `\`${m.name}\` has no value`, reported: true };
+    if (!decl.body) return { ok: false, at: e.span, reason: `\`${m.name}\` has no body`, reported: true };
     const ownerScope = this.scopes.get(m.owner.file) ?? scope;
     const outer = this.constLookup(m.owner, ownerScope);
     const params = new Map<string, ConstValue>();
@@ -1654,7 +1656,9 @@ class Env {
         params.set(p.name.name, d.value);
       }
     }
-    const f = fold(body, lookup);
+    // An expression body is folded; a block body runs statement by statement.
+    const stmt = decl.body.body[0];
+    const f = decl.exprBody && stmt?.kind === "Return" && stmt.value ? fold(stmt.value, lookup) : run(decl.body, params, lookup, this.constexprBudget, e.span);
     if (f.ok) return f;
     // Too deep or too long is reported at the outermost call; anything else at the declaration.
     return f.limit ? { ...f, at: e.span } : { ok: false, at: e.span, reason: `\`${m.name}\` can't be evaluated at compile time`, reported: true };
@@ -2218,14 +2222,14 @@ class BodyChecker {
       });
       if (!constType(type.ret)) this.diags.error("X0526", "a `constexpr` function must return a number, `String` or `Boolean`", m.returnType?.span ?? m.name.span, `\`${typeToString(type.ret)}\``);
     }
-    const stmt = m.body?.body[0];
-    const body = stmt?.kind === "Return" ? stmt.value : stmt?.kind === "ExprStmt" ? stmt.expr : undefined;
-    if (!body || !m.exprBody) return;
+    if (!m.body) return;
     const params = new Set(m.params.map((p) => p.name.name));
+    /** A local of the function (statically checked: a `constexpr` function has no outer locals). */
+    const isLocal = (e: A.Expr) => e.kind === "Ident" && (params.has(e.name) || this.env.result.resolutions.get(e)?.kind === "local");
     const bad = (e: A.Expr, what: string, label?: string) => {
       this.diags.error("X0526", `${what} isn't allowed in a \`constexpr\` function`, e.span, label)
         .secondary(m.modifiers.constexpr!, "`constexpr` here")
-        .note("allowed: parameters, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions and other `constexpr` functions");
+        .note("allowed: parameters and locals, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, other `constexpr` functions, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`");
       return false;
     };
     const ok = (e: A.Expr): boolean => {
@@ -2236,7 +2240,7 @@ class BodyChecker {
         case "Binary": return ok(e.left) && ok(e.right);
         case "Conditional": return ok(e.cond) && ok(e.then) && ok(e.else);
         case "Ident": {
-          if (params.has(e.name)) return true;
+          if (isLocal(e)) return true;
           return this.env.result.inlineValues.has(e) || bad(e, `\`${e.name}\``, "not a parameter or an inline constant");
         }
         case "Member": {
@@ -2254,7 +2258,31 @@ class BodyChecker {
         default: return bad(e, "this expression");
       }
     };
-    ok(body);
+    /** An expression statement: an assignment or `++`/`--` to a local, or an allowed expression. */
+    const effect = (e: A.Expr): boolean => {
+      if (e.kind === "Assign" && !this.env.result.operatorCalls.has(e)) return (isLocal(e.target) || bad(e.target, `assigning \`${spanText(e.target.span)}\``, "only locals can change")) && ok(e.value);
+      if (e.kind === "Update") return isLocal(e.arg) || bad(e.arg, `changing \`${spanText(e.arg.span)}\``, "only locals can change");
+      return ok(e);
+    };
+    const stmt = (st: A.Stmt): boolean => {
+      switch (st.kind) {
+        case "Block": return st.body.every(stmt);
+        case "Empty": case "Break": case "Continue": return true;
+        case "VarDecl": return !st.init || ok(st.init);
+        case "ExprStmt": return effect(st.expr);
+        case "Return": return !st.value || ok(st.value);
+        case "If": return ok(st.cond) && stmt(st.then) && (!st.else || stmt(st.else));
+        case "While": case "DoWhile": return ok(st.cond) && stmt(st.body);
+        case "For": return (!st.init || (st.init.kind === "VarDecl" ? stmt(st.init) : effect(st.init.expr))) && (!st.cond || ok(st.cond)) && (!st.update || effect(st.update)) && stmt(st.body);
+        case "ForRange": return !st.variable.pattern && ok(st.start) && (!st.end || ok(st.end)) && (!st.step || ok(st.step)) && stmt(st.body);
+        case "Switch": return ok(st.discriminant) && st.cases.every((c) => (!c.test || ok(c.test)) && c.body.every(stmt));
+        default: {
+          const what = { Try: "`try`", Throw: "`throw`", ForOf: "`for … of`", ForIn: "`for … in`", FuncDecl: "a local function", UsingDecl: "`using`", UsingBlock: "`using`", DestructDecl: "destructuring", IfVar: "`if (var …)`", WhileVar: "`while (var …)`" }[st.kind] ?? "this statement";
+          return bad({ span: st.span } as A.Expr, what);
+        }
+      }
+    };
+    stmt(m.body);
   }
 
   private constNumber(e: A.Expr): number | undefined {

@@ -19,12 +19,25 @@ package {
       // (`kib(64)` becomes 65536 in the output), an ordinary call otherwise
       var n:int = 3
       trace(BUFFER, kib(2), fact(10), percent(Config.MAX_HP, HALF_HP), kib(n), fact(n))
+      trace(fib(30), fib(n))
     }
 
     private static inline final BUFFER:int = kib(64)
     private static constexpr function kib(n:int):int => n * 1024
     private static constexpr function fact(n:int):int => n <= 1 ? 1 : n * fact(n - 1)
     private static constexpr function percent(total:int, part:int):String => $'{Math.round(part / total * 100)}%'
+
+    // A block body: locals, loops and `if` run at compile time too.
+    private static constexpr function fib(n:int):int {
+      var a:int = 0
+      var b:int = 1
+      for (var i:int of 0..n) {
+        var next:int = a + b
+        a = b
+        b = next
+      }
+      return a
+    }
 
     private function describe(hp:int):String {
       switch (hp) {

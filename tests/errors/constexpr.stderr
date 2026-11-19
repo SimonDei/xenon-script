@@ -6,52 +6,78 @@ error[X0526]: a `constexpr` function must be `static`
   |
 help: it can only use its parameters: add `static`
 
-error[X0526]: a `constexpr` function has an expression body
- --> constexpr.xn:6:17
-  |
-6 |   public static constexpr function block(n:int):int { return n }             // needs an expression body
-  |                 ^^^^^^^^^
-  |
-help: write it as `=> expression`
+error[X0526]: assigning `counter` isn't allowed in a `constexpr` function
+  --> constexpr.xn:12:5
+   |
+11 |   public static constexpr function changes(n:int):int {
+   |                 --------- `constexpr` here
+12 |     counter = n                                                              // only locals can change
+   |     ^^^^^^^ only locals can change
+   |
+   = note: allowed: parameters and locals, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, other `constexpr` functions, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+
+error[X0526]: `try` isn't allowed in a `constexpr` function
+  --> constexpr.xn:16:5
+   |
+15 |   public static constexpr function guarded(n:int):int {
+   |                 --------- `constexpr` here
+16 |     try { return n } catch (e) { return 0 }                                  // `try` isn't allowed
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: allowed: parameters and locals, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, other `constexpr` functions, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+
+warning[X0860]: unreachable code
+  --> constexpr.xn:21:5
+   |
+21 |     return i
+   |     ^^^^^^^^ this is never executed
 
 error[X0526]: `constexpr` is for functions
- --> constexpr.xn:7:17
-  |
-7 |   public static constexpr LIMIT:int = 10                                     // constants are `inline final`
-  |                 ^^^^^^^^^ not a function
-  |
+  --> constexpr.xn:23:17
+   |
+23 |   public static constexpr LIMIT:int = 10                                     // constants are `inline final`
+   |                 ^^^^^^^^^ not a function
+   |
 help: a compile-time constant is `inline final`: `static inline final LIMIT:…`
 
 error[X0526]: `counter` isn't allowed in a `constexpr` function
- --> constexpr.xn:8:63
-  |
-8 |   public static constexpr function useField(n:int):int => n + counter        // not a constant
-  |                 ---------                                     ^^^^^^^ not a parameter or an inline constant
-  |                 |
-  |                 `constexpr` here
-  |
-  = note: allowed: parameters, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions and other `constexpr` functions
+  --> constexpr.xn:24:63
+   |
+24 |   public static constexpr function useField(n:int):int => n + counter        // not a constant
+   |                 ---------                                     ^^^^^^^ not a parameter or an inline constant
+   |                 |
+   |                 `constexpr` here
+   |
+   = note: allowed: parameters and locals, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, other `constexpr` functions, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
 
 error[X0526]: calling `Date.now` isn't allowed in a `constexpr` function
- --> constexpr.xn:9:51
-  |
-9 |   public static constexpr function now():Float => Date.now()                 // not a compile-time function
-  |                 ---------                         ^^^^^^^^^^ not a `constexpr` function
-  |                 |
-  |                 `constexpr` here
-  |
-  = note: allowed: parameters, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions and other `constexpr` functions
+  --> constexpr.xn:25:51
+   |
+25 |   public static constexpr function now():Float => Date.now()                 // not a compile-time function
+   |                 ---------                         ^^^^^^^^^^ not a `constexpr` function
+   |                 |
+   |                 `constexpr` here
+   |
+   = note: allowed: parameters and locals, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, other `constexpr` functions, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
 
 error[X0526]: a `constexpr` parameter must be a number, `String` or `Boolean`
-  --> constexpr.xn:10:47
+  --> constexpr.xn:26:47
    |
-10 |   public static constexpr function list(items:Array<int>):int => 1           // not a constant type
+26 |   public static constexpr function list(items:Array<int>):int => 1           // not a constant type
    |                                               ^^^^^^^^^^ `Array<int>`
 
 error[X0527]: `forever` recurses more than 1000 calls deep
-  --> constexpr.xn:15:11
+  --> constexpr.xn:31:11
    |
-15 |     trace(forever(0))                                                         // …but endless at compile time
+31 |     trace(forever(0), spin(0), sum(100))                                      // …but endless at compile time
    |           ^^^^^^^^^^
+   |
+   = note: the call is evaluated at compile time because its arguments are constants
+
+error[X0527]: the evaluation takes more than 1000000 steps (an endless loop?)
+  --> constexpr.xn:31:23
+   |
+31 |     trace(forever(0), spin(0), sum(100))                                      // …but endless at compile time
+   |                       ^^^^^^^
    |
    = note: the call is evaluated at compile time because its arguments are constants
