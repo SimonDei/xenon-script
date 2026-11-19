@@ -145,7 +145,7 @@ export class Parser {
   /* ------------------------------ files ------------------------------ */
 
   parseFile(): A.XenonFile {
-    const result: A.XenonFile = { file: this.file, packageName: [], imports: [], decls: [], privateDecls: [] };
+    const result: A.XenonFile = { file: this.file, packageName: [], imports: [], decls: [], privateDecls: [], functions: [] };
     if (!this.is("package")) {
       const dir = this.file.path.includes("/") ? this.file.path.slice(0, this.file.path.lastIndexOf("/")) : "";
       if (dir === "") return this.parseRootFile(result);
@@ -175,7 +175,7 @@ export class Parser {
         const start = this.i;
         try {
           if (this.is("import")) result.imports.push(this.parseImport());
-          else result.decls.push(this.parseTypeDecl());
+          else this.addDecl(result, this.parseTypeDecl(), result.decls);
         } catch (e) {
           if (!(e instanceof ParseError)) throw e;
           this.syncTopLevel(start);
@@ -192,7 +192,7 @@ export class Parser {
         if (this.is("import")) {
           this.fail("imports must be inside the `package` block", this.tok.span);
         }
-        result.privateDecls.push(this.parseTypeDecl());
+        this.addDecl(result, this.parseTypeDecl(), result.privateDecls);
       } catch (e) {
         if (!(e instanceof ParseError)) throw e;
         this.syncTopLevel(start);
@@ -215,7 +215,8 @@ export class Parser {
         else if (this.is("package")) this.fail("a file without a package block can't have one later", this.tok.span, "move the declarations above into it, or remove it");
         else {
           const decl = this.parseTypeDecl();
-          if (decl.name.name === fileName && result.decls.length === 0) result.decls.push(decl);
+          if (decl.kind === "Method") result.functions.push(decl);
+          else if (decl.name.name === fileName && result.decls.length === 0) result.decls.push(decl);
           else result.privateDecls.push(decl);
         }
       } catch (e) {
@@ -231,6 +232,12 @@ export class Parser {
       if (pub >= 0) result.decls.push(...result.privateDecls.splice(pub, 1));
     }
     return result;
+  }
+
+  /** A package-level function goes to `functions`, anything else to `into`. */
+  private addDecl(result: A.XenonFile, decl: A.TypeDecl | A.Method, into: A.TypeDecl[]) {
+    if (decl.kind === "Method") result.functions.push(decl);
+    else into.push(decl);
   }
 
   private syncTopLevel(start: number) {
@@ -329,9 +336,10 @@ export class Parser {
     return mods;
   }
 
-  private parseTypeDecl(): A.TypeDecl {
+  private parseTypeDecl(): A.TypeDecl | A.Method {
     const start = this.tok.span.start;
     const modifiers = this.parseModifiers(false);
+    if (this.is("function")) return this.parseMethod(modifiers, start, ""); // package-level: checked in collectClasses (X0029)
     if (this.is("class")) return this.parseClass(modifiers, start);
     if (this.is("interface")) return this.parseInterface(modifiers, start);
     if (this.eat("typedef")) {
@@ -475,28 +483,7 @@ export class Parser {
       return { kind: "Field", modifiers, decl, name, type, init, span: this.sp(start) };
     }
 
-    if (this.is("function")) {
-      this.advance();
-      let accessor: "get" | "set" | undefined;
-      if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword")) {
-        accessor = this.advance().value as "get" | "set";
-      }
-      let name = this.memberName(); // keywords allowed, as in JS (`function catch(…)`)
-      // `function operator+(…)`: an operator method; the symbol is part of the name.
-      if (name.name === "operator" && this.tok.kind === "punct" && !this.is("(") && !this.tok.nl) {
-        const sym = this.advance();
-        name = { name: "operator" + sym.value, span: cover(name.span, sym.span) };
-      }
-      const typeParams = this.typeParamList();
-      const params = this.parseParams();
-      const returnType = this.eat(":") ? this.parseType() : undefined;
-      const isConst = !!this.eat("const");
-      let body: A.Block | undefined;
-      if (this.is("{")) body = this.parseBlock();
-      else this.endStatement();
-      const isConstructor = name.name === className && !accessor;
-      return { kind: "Method", modifiers, name, typeParams, accessor, isConstructor, params, returnType, isConst, body, span: this.sp(start) };
-    }
+    if (this.is("function")) return this.parseMethod(modifiers, start, className);
 
     if (this.is("~")) {
       this.advance();
@@ -507,6 +494,30 @@ export class Parser {
       return { kind: "Method", modifiers, name, isConstructor: false, isDestructor: true, params, returnType, isConst: false, body, span: this.sp(start) };
     }
     this.unexpected("a field or method declaration");
+  }
+
+  /** `function name<T>(…):R { … }` (or without a body), after its modifiers. */
+  private parseMethod(modifiers: A.Modifiers, start: number, className: string): A.Method {
+    this.advance();
+    let accessor: "get" | "set" | undefined;
+    if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword")) {
+      accessor = this.advance().value as "get" | "set";
+    }
+    let name = this.memberName(); // keywords allowed, as in JS (`function catch(…)`)
+    // `function operator+(…)`: an operator method; the symbol is part of the name.
+    if (name.name === "operator" && this.tok.kind === "punct" && !this.is("(") && !this.tok.nl) {
+      const sym = this.advance();
+      name = { name: "operator" + sym.value, span: cover(name.span, sym.span) };
+    }
+    const typeParams = this.typeParamList();
+    const params = this.parseParams();
+    const returnType = this.eat(":") ? this.parseType() : undefined;
+    const isConst = !!this.eat("const");
+    let body: A.Block | undefined;
+    if (this.is("{")) body = this.parseBlock();
+    else this.endStatement();
+    const isConstructor = name.name === className && !accessor;
+    return { kind: "Method", modifiers, name, typeParams, accessor, isConstructor, params, returnType, isConst, body, span: this.sp(start) };
   }
 
   private parseParams(): A.Param[] {

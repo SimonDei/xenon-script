@@ -17,6 +17,25 @@ package {
       maps()
       strings()
       arrays()
+      globals()
+    }
+
+    private function globals():void {
+      // the global functions are typed: encoding, Base64 and deep copies
+      trace(encodeURIComponent('a b&c'), decodeURIComponent('%C3%A4'), encodeURI('/a b?q=1'), btoa('xenon'), atob('eGVub24='))
+      var original:Array<Array<int>> = [[1, 2], [3]]
+      var copy:Array<Array<int>> = structuredClone(original)
+      copy[0].push(9)
+      trace(original[0].join(','), copy[0].join(','))
+
+      // timers run after this constructor; their handles are untyped (`*`)
+      var cancelled:* = setTimeout(() => trace('never printed'), 1)
+      clearTimeout(cancelled)
+      queueMicrotask(() => trace('microtask: before any timer'))
+      setTimeout(async () => {
+        var later:int = await Promise.resolve(3)
+        trace('timeout, async callback:', later)
+      }, 5)
     }
 
     private function booleans():void {

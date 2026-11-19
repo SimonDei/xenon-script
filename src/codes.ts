@@ -30,6 +30,8 @@ export const CODES: Record<string, CodeInfo> = {
   X0026: c("names differ only in letter case", "Two classes would compile to modules whose paths differ only in case, which collide on case-insensitive file systems and in Bun's module cache."),
   X0027: c("reserved package name", "The package `xenon` belongs to the built-in prelude."),
   X0028: c("built-in class name", "Names like `Exception` or `IDisposable` are built-in classes available everywhere; pick another name."),
+  X0029: c("function outside a class", "Functions belong to classes: write a `static` method. (Only the standard library declares JavaScript's global functions, such as `setTimeout`, at package level.)",
+    "function twice(x:int):int { return x * 2 }", "class Numbers { public static function twice(x:int):int { return x * 2 } }"),
 
   // ---- syntax ----
   X0100: c("syntax error", "The parser expected something else at this point. The label says what was expected."),

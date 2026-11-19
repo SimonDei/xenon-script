@@ -115,6 +115,17 @@ for (const file of stdFiles) {
         }
       }
     }
+    // Package-level functions: globals of that name, taking no more parameters than the longest overload.
+    const fnArity = new Map<string, number>();
+    for (const fn of ast.functions) {
+      const jsName = fn.modifiers.nativeName ?? fn.name.name;
+      fnArity.set(jsName, Math.max(fnArity.get(jsName) ?? 0, fn.params.some((p) => p.rest) ? Infinity : fn.params.length));
+    }
+    for (const [jsName, declared] of fnArity) {
+      const fn = (globalThis as Record<string, unknown>)[jsName];
+      if (typeof fn !== "function") problems.push(`${jsName}: no such global function`);
+      else if (fn.length > declared) problems.push(`${jsName}: runtime takes ${fn.length} parameters, declared ${declared}`);
+    }
     expect(problems).toEqual([]);
   });
 }

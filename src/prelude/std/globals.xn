@@ -1,0 +1,58 @@
+// Standard library: JavaScript's global functions. They are declared at package level with
+// `native function` (only the standard library can do that; Xenon code puts functions in classes)
+// and called by their JS name: `setTimeout(tick, 100)` compiles to `setTimeout(tick, 100)`.
+//
+// Typing: timer handles are `*` (a `Timeout` object in Bun and Node, a number in browsers);
+// keep one to pass it to `clearTimeout`/`clearInterval`. Delays are milliseconds as `Float`.
+// `fetch` takes a typed `RequestInit` shape and resolves to an untyped `Response` (`*`) until
+// platform types arrive (`.d.ts`, Part D).
+// Hidden on purpose: `parseInt`, `parseFloat`, `isNaN`, `isFinite` (use the `Float.…` statics) and
+// `eval`. Not declared: the extra arguments of `setTimeout(callback, ms, ...args)` (use an arrow).
+package xenon {
+  // ---- timers ----
+  /** Calls `callback` once after `ms` milliseconds (at the earliest); returns a handle for `clearTimeout`. */
+  native function setTimeout(callback:() -> Void, ms:Float = 0):*
+  /** Cancels a pending `setTimeout`; a finished or `null` handle is ignored. */
+  native function clearTimeout(handle:*):void
+  /** Calls `callback` every `ms` milliseconds until `clearInterval`. */
+  native function setInterval(callback:() -> Void, ms:Float = 0):*
+  native function clearInterval(handle:*):void
+  /** Runs `callback` after the current task, before any timer. */
+  native function queueMicrotask(callback:() -> Void):void
+
+  // ---- values ----
+  /** A deep copy (objects, arrays, maps, sets, dates, …); throws for functions and class instances lose their class. */
+  native function structuredClone<T>(value:T):T
+  /** `transfer` lists buffers to move into the copy instead of copying them. */
+  native function structuredClone<T>(value:T, options:{ transfer:Array<*> }):T
+
+  // ---- network ----
+  /** An HTTP request; the `Response` is untyped: `var res:* = await fetch(url)`. */
+  native function fetch(url:String):Promise<*>
+  native function fetch(url:String, options:RequestInit):Promise<*>
+
+  /**
+   * The options of `fetch`: `fetch(url, { method: 'POST', body: JSON.stringify(data) })`.
+   * Values whose JS types aren't declared yet are `*`: `headers` (an object, `Headers` or pairs),
+   * `body` (text, `FormData`, `Blob`, `URLSearchParams`, bytes, a stream), `signal` (an `AbortSignal`).
+   * Runtime-specific options (Bun's `proxy`, `tls`, …) need an untyped object: `options as *`.
+   */
+  public typedef RequestInit = {
+    ?method:String, ?headers:*, ?body:*, ?signal:*,
+    ?redirect:String, ?credentials:String, ?mode:String, ?cache:String,
+    ?referrer:String, ?referrerPolicy:String, ?integrity:String, ?keepalive:Boolean, ?priority:String
+  }
+
+  // ---- text encoding ----
+  /** Percent-encodes everything but `A–Z a–z 0–9 - _ . ! ~ * ' ( )`: for one query value or path segment. */
+  native function encodeURIComponent(text:String):String
+  /** Throws (a `URIException`) for malformed escapes. */
+  native function decodeURIComponent(text:String):String
+  /** Percent-encodes a whole URL, keeping its separators (`: / ? # & =` …). */
+  native function encodeURI(text:String):String
+  native function decodeURI(text:String):String
+  /** Base64 of a string whose characters are all below U+0100 (throws otherwise). */
+  native function btoa(text:String):String
+  /** Decodes Base64 into a string of byte-valued characters. */
+  native function atob(base64:String):String
+}

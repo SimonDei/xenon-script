@@ -732,7 +732,7 @@ class ModuleGen {
   private reuse(e: A.Expr, build: (first: string, again: string) => Code): Code {
     const v = this.expr(e);
     const r = e.kind === "Ident" ? this.check.resolutions.get(e) : undefined;
-    const simple = e.kind === "This" || e.kind === "Bool" || e.kind === "String" || e.kind === "Number" || (e.kind === "Ident" && (r?.kind === "local" || r?.kind === "jsImport" || r?.kind === "global"));
+    const simple = e.kind === "This" || e.kind === "Bool" || e.kind === "String" || e.kind === "Number" || (e.kind === "Ident" && (r?.kind === "local" || r?.kind === "jsImport" || r?.kind === "global" || r?.kind === "function"));
     if (simple) return build(this.wrap(v, P.call), this.wrap(v, P.call));
     if (this.fnTemps) {
       const t = this.temp("$t", true);
@@ -825,6 +825,7 @@ class ModuleGen {
           return { code: r.isStatic ? `${this.classRef(r.owner)}.${e.name}` : `${this.receiver()}.${e.name}`, prec: P.call };
         }
         if (r?.kind === "class") return { code: this.classRef(r.info), prec: P.primary };
+        if (r?.kind === "function") return { code: r.decl.modifiers.nativeName ?? e.name, prec: P.primary };
         if (r?.kind === "builtin" && r.name === "trace") return { code: "console.log", prec: P.call };
         // A cast through an alias (`Bool(x)`) calls the real JS function.
         if (r?.kind === "builtin") return { code: r.name === "Float" ? "Number" : r.name, prec: P.primary };

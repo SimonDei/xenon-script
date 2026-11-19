@@ -18,6 +18,7 @@ import stdJSON from "./prelude/std/JSON.xn" with { type: "text" };
 import stdMap from "./prelude/std/Map.xn" with { type: "text" };
 import stdMath from "./prelude/std/Math.xn" with { type: "text" };
 import stdObject from "./prelude/std/Object.xn" with { type: "text" };
+import stdGlobals from "./prelude/std/globals.xn" with { type: "text" };
 import stdRegExp from "./prelude/std/RegExp.xn" with { type: "text" };
 import stdSet from "./prelude/std/Set.xn" with { type: "text" };
 import stdPromise from "./prelude/std/Promise.xn" with { type: "text" };
@@ -41,6 +42,7 @@ export const PRELUDE: SourceInput[] = [
   { path: "xenon/Map.xn", text: stdMap },
   { path: "xenon/Math.xn", text: stdMath },
   { path: "xenon/Object.xn", text: stdObject },
+  { path: "xenon/globals.xn", text: stdGlobals },
   { path: "xenon/Promise.xn", text: stdPromise },
   { path: "xenon/RegExp.xn", text: stdRegExp },
   { path: "xenon/Set.xn", text: stdSet },
@@ -157,6 +159,14 @@ function collectClasses(asts: A.XenonFile[], diags: DiagnosticBag, typedefs: Map
       classes.set(qname, { decl, file: ast, pkg, qname, filePrivate, module, members: new Map(), interfaces: [], typeParams: uniqueParams(decl.typeParams, diags), parentArgs: [], interfaceArgs: [] });
     };
     for (const decl of ast.decls) add(decl, false);
+    for (const fn of ast.functions) {
+      if (!prelude) {
+        diags.error("X0029", "functions can't be declared outside a class", fn.name.span, "package-level function")
+          .help("make it a `static` method of a class");
+      } else if (!fn.modifiers.native || fn.body || fn.accessor) {
+        diags.error("X0029", "a package-level function must be a bodiless `native` declaration", fn.name.span);
+      }
+    }
     const clash = [...classes.values()].find((c) => !c.filePrivate && c.file !== ast && c.module.toLowerCase() === module.toLowerCase());
     if (clash && ast.decls[0]) {
       diags.error("X0026", `\`${ast.decls[0].name.name}\` and \`${clash.qname}\` differ only in letter case`, ast.decls[0].name.span)

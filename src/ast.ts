@@ -140,6 +140,8 @@ export interface XenonFile {
   decls: TypeDecl[];
   /** File-private definitions after the package block. */
   privateDecls: TypeDecl[];
+  /** `native function name(…):T` at package level: an existing JS function (standard library only, X0029). */
+  functions: Method[];
 }
 
 /* -------------------------- statements -------------------------- */

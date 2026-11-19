@@ -1,0 +1,139 @@
+error[X0425]: cannot find `setTimout` in this scope
+ --> std-globals.xn:3:5
+  |
+3 |     setTimout(() => trace('x'), 10)                  // typo
+  |     ^^^^^^^^^ not found in this scope
+  |
+help: a name with a similar spelling exists: `setTimeout`
+  |
+3 |     setTimeout(() => trace('x'), 10)                  // typo
+  |     ~~~~~~~~~~
+
+error[X0308]: mismatched types
+  --> std-globals.xn:4:16
+   |
+ 4 |     setTimeout(10, () => trace('x'))                 // arguments swapped (JS habit from other APIs)
+   |                ^^ expected `() -> void`, found `int`
+   |
+  ::: <xenon prelude>/xenon/globals.xn:14:39
+   |
+14 |   native function setTimeout(callback:() -> Void, ms:Float = 0):*
+   |                                       ---------- parameter declared here
+
+error[X0308]: mismatched types
+  --> std-globals.xn:4:20
+   |
+ 4 |     setTimeout(10, () => trace('x'))                 // arguments swapped (JS habit from other APIs)
+   |                    ^^^^^^^^^^^^^^^^ expected `Float`, found `() -> void`
+   |
+  ::: <xenon prelude>/xenon/globals.xn:14:54
+   |
+14 |   native function setTimeout(callback:() -> Void, ms:Float = 0):*
+   |                                                      ----- parameter declared here
+
+error[X0308]: mismatched types
+ --> std-globals.xn:7:23
+  |
+7 |     var encoded:int = encodeURIComponent('a b')
+  |                 ---   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `int`, found `String`
+  |                 |
+  |                 expected because of this type
+  |
+help: convert the value with `int()`
+  |
+7 |     var encoded:int = int(encodeURIComponent('a b'))
+  |                       ++++                         +
+
+error[X0308]: mismatched types
+  --> std-globals.xn:8:28
+   |
+ 8 |     var text:String = btoa(42)
+   |                            ^^ expected `String`, found `int`
+   |
+  ::: <xenon prelude>/xenon/globals.xn:55:29
+   |
+55 |   native function btoa(text:String):String
+   |                             ------ parameter declared here
+   |
+help: convert the value with `String()`
+   |
+ 8 |     var text:String = btoa(String(42))
+   |                            +++++++  +
+
+error[X0604]: no overload of `fetch` accepts (String, String)
+ --> std-globals.xn:9:5
+  |
+9 |     fetch('/api', 'POST')                            // options are an object: { method: 'POST' }
+  |     ^^^^^ no matching overload
+  |
+  = note: `fetch(url:String):Promise<*>`
+  = note: `fetch(url:String, options:RequestInit):Promise<*>`
+
+error[X0791]: `methd` is not a member of `RequestInit`
+  --> std-globals.xn:10:21
+   |
+10 |     fetch('/api', { methd: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
+   |                     ^^^^^ unknown member
+   |
+help: did you mean `method`?
+   |
+10 |     fetch('/api', { method: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
+   |                     ~~~~~~
+
+error[X0308]: mismatched types
+  --> std-globals.xn:10:47
+   |
+10 |     fetch('/api', { methd: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
+   |                                               ^ expected `Boolean`, found `int`
+
+error[X0308]: mismatched types
+  --> std-globals.xn:11:47
+   |
+11 |     var copy:Array<String> = structuredClone([1, 2])
+   |                                               ^ expected `String`, found `int`
+   |
+  ::: <xenon prelude>/xenon/globals.xn:25:44
+   |
+25 |   native function structuredClone<T>(value:T):T
+   |                                            - parameter declared here
+   |
+help: convert the value with `String()`
+   |
+11 |     var copy:Array<String> = structuredClone([String(1), 2])
+   |                                               +++++++ +
+
+error[X0308]: mismatched types
+  --> std-globals.xn:11:50
+   |
+11 |     var copy:Array<String> = structuredClone([1, 2])
+   |                                                  ^ expected `String`, found `int`
+   |
+  ::: <xenon prelude>/xenon/globals.xn:25:44
+   |
+25 |   native function structuredClone<T>(value:T):T
+   |                                            - parameter declared here
+   |
+help: convert the value with `String()`
+   |
+11 |     var copy:Array<String> = structuredClone([1, String(2)])
+   |                                                  +++++++ +
+
+error[X0763]: an `async` function must return a `Promise<T>`
+  --> std-globals.xn:13:23
+   |
+13 |     var f:() -> int = async () => { return 1 }        // but an async arrow can't produce an `int`
+   |                       ^ found `int`
+
+error[X0425]: cannot find `twice` in this scope
+  --> std-globals.xn:14:35
+   |
+14 |     trace(encoded, text, copy, f, twice(2))
+   |                                   ^^^^^ not found in this scope
+
+error[X0029]: functions can't be declared outside a class
+  --> std-globals.xn:18:10
+   |
+18 | function twice(x:int):int { return x * 2 }          // functions belong to classes
+   |          ^^^^^ package-level function
+   |
+help: make it a `static` method of a class

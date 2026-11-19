@@ -120,6 +120,8 @@ export type Resolution =
   | { kind: "class"; info: ClassInfo }
   | { kind: "jsImport" }
   | { kind: "global" }
+  /** A standard library function declared at package level (`setTimeout`); emitted by its JS name. */
+  | { kind: "function"; decl: A.Method }
   | { kind: "builtin"; name: BuiltinFn };
 
 type BuiltinFn = "trace" | "int" | "uint" | "Float" | "String" | "Boolean";
@@ -208,6 +210,7 @@ export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typ
   for (const info of infos) env.wireDestructors(info);
   for (const info of infos) if (info.decl.isEnum) env.computeEnum(info);
   for (const td of typedefs.values()) env.resolveTypedef(td);
+  for (const file of files) env.collectFunctions(file, scopes.get(file)!);
   for (let i = 0; i < env.pendingShapeMembers.length; i++) env.pendingShapeMembers[i]!.type();
   for (const info of infos) env.checkOverrides(info);
   for (const info of infos) env.checkImplements(info);
@@ -228,6 +231,20 @@ class Env {
   readonly usedMembers = new Set<MemberSig>();
   /** Files with syntax errors (unused-code warnings are skipped there). */
   readonly syntaxErrors: Set<SourceFile>;
+  /** The standard library's package-level functions by name; several entries are overloads. */
+  readonly functions = new Map<string, { decl: A.Method; type: MethodType }[]>();
+
+  /** Signatures of a prelude file's `native function`s (user files can't declare any: X0029). */
+  collectFunctions(file: A.XenonFile, scope: FileScope) {
+    if (!file.file.prelude) return;
+    for (const m of file.functions) {
+      const tparams = paramScope(this.typeParamsOf(m));
+      const ret = m.returnType ? this.resolveType(m.returnType, scope, true, tparams) : T.void;
+      const list = this.functions.get(m.name.name) ?? [];
+      list.push({ decl: m, type: this.methodType(m, scope, ret, tparams) });
+      this.functions.set(m.name.name, list);
+    }
+  }
 
   /** X0862: private members that nothing refers to. */
   reportUnusedPrivates(info: ClassInfo) {
@@ -2707,6 +2724,12 @@ class BodyChecker {
       res.set(e, { kind: "jsImport" });
       return T.any;
     }
+    const fns = this.env.functions.get(name);
+    if (fns) {
+      res.set(e, { kind: "function", decl: fns[0]!.decl });
+      if (fns.length > 1) this.calleeOverloads.set(e, fns);
+      return fns[0]!.type;
+    }
     if (BUILTIN_FNS.has(name)) {
       res.set(e, { kind: "builtin", name: name as BuiltinFn });
       return T.Function;
@@ -2721,7 +2744,7 @@ class BodyChecker {
       return T.any;
     }
     const d = this.diags.error("X0425", `cannot find \`${name}\` in this scope`, e.span, "not found in this scope");
-    const s = suggest(name, [...scope.names(), ...allMemberNames(this.info), ...this.scope.classes.keys(), ...this.scope.jsImports, ...BUILTIN_FNS]);
+    const s = suggest(name, [...scope.names(), ...allMemberNames(this.info), ...this.scope.classes.keys(), ...this.scope.jsImports, ...BUILTIN_FNS, ...this.env.functions.keys()]);
     if (name === "Number") d.help("JavaScript's `Number` is called `Float` in Xenon", [{ span: e.span, text: "Float" }]);
     else if (GLOBAL_HINTS[name]) {
       const hint = GLOBAL_HINTS[name]!;
@@ -2877,7 +2900,7 @@ class BodyChecker {
         const overloads = this.calleeOverloads.get(e.callee);
         if (overloads) {
           this.calleeOverloads.delete(e.callee);
-          const name = e.callee.kind === "Member" ? e.callee.name.name : "function";
+          const name = e.callee.kind === "Member" ? e.callee.name.name : e.callee.kind === "Ident" ? e.callee.name : "function";
           const pick = this.pickOverload(overloads, e.args, scope, e.callee.span, name);
           if (!pick) return overloads[0]!.type.ret;
           chosen = pick;
@@ -3114,11 +3137,11 @@ class BodyChecker {
   /* ---------------------------- functions ---------------------------- */
 
   /** For an async function declared `:Promise<T>`, returns `T` (what `return` statements produce). */
-  private asyncResult(declared: Type, node?: A.TypeNode): Type {
+  private asyncResult(declared: Type, node?: A.TypeNode, at?: Span): Type {
     const arg = this.env.promiseArg(declared);
     if (arg) return arg;
     if (isDynamic(declared)) return T.any;
-    const d = this.diags.error("X0763", "an `async` function must return a `Promise<T>`", node?.span ?? this.method?.asyncAt, `found \`${typeToString(declared)}\``);
+    const d = this.diags.error("X0763", "an `async` function must return a `Promise<T>`", node?.span ?? at ?? this.method?.asyncAt, `found \`${typeToString(declared)}\``);
     if (node && declared.kind !== "void") d.help(`return \`Promise<${typeToString(declared)}>\``, [{ span: node.span, text: `Promise<${typeToString(declared)}>` }]);
     else if (node) d.help("use `Promise<void>`", [{ span: node.span, text: "Promise<void>" }]);
     return T.any;
@@ -3158,7 +3181,11 @@ class BodyChecker {
     const saved = { method: this.method, targets: this.targets, beforeSuper: this.beforeSuper, superCall: this.superCall, constMethod: this.constMethod };
     if (!f.arrow) this.constMethod = undefined; // a `function` expression has its own `this`
     const asyncAt = span(f.span.file, f.span.start, f.span.start);
-    let bodyRet = f.async ? (f.returnType || contextRet ? this.asyncResult(sig.ret, f.returnType) : T.any) : sig.ret;
+    // An async callback where the result is ignored (`setTimeout(async () => { … })`): its body returns nothing.
+    const voidContext = f.async && contextRet && sig.ret.kind === "void";
+    let bodyRet = voidContext ? T.void
+      : f.async ? (f.returnType || contextRet ? this.asyncResult(sig.ret, f.returnType, asyncAt) : T.any)
+      : sig.ret;
     this.method = { ret: bodyRet, retSpan: f.returnType?.span, isConstructor: false, name: f.name?.name ?? "function", async: f.async, asyncAt };
     this.targets = [];
     this.beforeSuper = false;
@@ -3197,7 +3224,8 @@ class BodyChecker {
     }
     // The function's type: a declared return type wins; an expression body gives its own type.
     let ret: Type;
-    if (f.returnType || contextRet) ret = sig.ret;
+    if (voidContext) ret = this.env.promiseOf(T.void);
+    else if (f.returnType || contextRet) ret = sig.ret;
     else if (f.body.kind === "Block") ret = f.async ? this.env.promiseOf(T.any) : T.any;
     else ret = f.async ? this.env.promiseOf(bodyRet) : bodyRet;
     return { kind: "method", params: sig.params, ret };
@@ -3454,6 +3482,8 @@ class BodyChecker {
   /** Declaration of a called method, for "defined here" labels. */
   private calleeDecl(callee: A.Expr): A.Method | undefined {
     let m: MemberSig | undefined;
+    const r = this.env.result.resolutions.get(callee);
+    if (r?.kind === "function") return r.decl;
     if (callee.kind === "Ident") m = findMember(this.info, callee.name);
     else if (callee.kind === "Member") {
       const objType = this.env.result.exprTypes.get(callee.object);
