@@ -268,3 +268,28 @@ public class Main {
   const [def] = p.definition("Main.xn", at);
   expect(def).toMatchObject({ range: { start: { line: 2, character: 2 } } });
 });
+
+test("hover and definition on a call of an overloaded method: the overload it chose", () => {
+  const text = `public class Main {
+  public function Main() {
+    var form:FormData = new FormData()
+    form.append('a', 'text')
+    form.append('b', new File([], 'x'), 'name.txt')
+    Promise.resolve(1).then(n => 'x' + n)
+  }
+}
+`;
+  const p = project({ "Main.xn": text });
+  // The cursor on the method name: 7 characters into `form.append…`, 2 into `.then`.
+  const hover = (needle: string) => (p.hover("Main.xn", offset(text, needle, needle.startsWith(".") ? 2 : 7))?.contents as string).split("\n");
+  expect(hover("form.append('a")[1]).toBe("function FormData.append(name:String, value:String):void");
+  // The 3-parameter overload, documented by the comment above the overload group it belongs to.
+  const file = hover("form.append('b");
+  expect(file[1]).toBe("function FormData.append(name:String, value:Blob, fileName:String):void");
+  expect(file.at(-1)).toStartWith("Adds a file under `name`");
+  // Generic overloads as called.
+  expect(hover(".then")[1]).toBe("function Promise.then(onFulfilled:(value:int) -> String):Promise<String>");
+  const [a] = p.definition("Main.xn", offset(text, "form.append('a", 7));
+  const [b] = p.definition("Main.xn", offset(text, "form.append('b", 7));
+  expect(a!.range.start.line).toBeLessThan(b!.range.start.line);
+});

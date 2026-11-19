@@ -456,6 +456,15 @@ export class XenonProject {
           return { text: `${owner}${shapeMemberText(s.member)}`, doc: s.node && docComment(s.node.span.file, s.node.span.start), span: node.span, decl: s.node?.name.span };
         }
         const m = this.memberOf(a, objType, (node as A.Ident).name);
+        // A call of an overloaded method: the overload it chose, as called (`append(name, value:Blob, fileName)`).
+        const pick = check.overloadPicks.get(parent as A.Expr);
+        if (m && pick) {
+          // An overload without a doc comment shares the one above it (`append(name, value:Blob)` documents the `fileName` one too).
+          const group = m.overloads?.map((o) => o.decl) ?? [];
+          const before = group.slice(0, group.indexOf(pick.decl) + 1).reverse();
+          const doc = before.map((d) => docComment(d.span.file, d.span.start)).find((d) => d);
+          return { ...ofMember({ ...m, decl: pick.decl, type: pick.type }, node.span), doc, decl: pick.decl.name.span };
+        }
         return m && ofMember(m, node.span);
       }
       if ((parent.kind === "Field" || parent.kind === "Method") && parent.name === node) {

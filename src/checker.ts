@@ -157,6 +157,8 @@ export interface CheckResult {
    * `Promise<T?>` here, a `Promise<T | void>` there): the TypeScript output casts their result.
    */
   tsResultCasts: Set<A.Expr>;
+  /** The overload a call of an overloaded method chose (keyed by the callee), with its type as called: for hovers. */
+  overloadPicks: Map<A.Expr, { decl: A.Method; type: MethodType }>;
   classes: Map<string, ClassInfo>;
 }
 
@@ -277,7 +279,7 @@ class Scope {
  */
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
-    resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), classes,
+    resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes,
   };
   const env = new Env(classes, typedefs, diags, result);
   env.jsBindings = jsBindings;
@@ -3210,6 +3212,7 @@ class BodyChecker {
         const target = chosen.type;
         const sig = target.typeParams?.length ? this.instantiate(target, target.typeParams, e.args, scope, e.callee.span, expected && [target.ret, expected]).sig : target;
         this.checkArgs(e, sig, chosen.decl, scope);
+        if (overloads && chosen.decl) this.env.result.overloadPicks.set(e.callee, { decl: chosen.decl, type: sig });
         if (chosen.decl?.name.span.file.prelude && tsDivergent(chosen.decl.returnType)) this.env.result.tsResultCasts.add(e);
         // `b?.valueOf()` / `f?.()`: `null` when the object (or function) is.
         const optional = e.optional || (e.callee.kind === "Member" && e.callee.optional);
