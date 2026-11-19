@@ -222,18 +222,18 @@
       ]
     },
     "interpolation": {
-      "name": "meta.interpolation.xenon",
+      "name": "meta.template.expression.xenon",
       "contentName": "meta.embedded.line.xenon",
       "begin": "\\{",
       "end": "\\}",
       "beginCaptures": {
         "0": {
-          "name": "punctuation.section.interpolation.begin.xenon"
+          "name": "punctuation.definition.template-expression.begin.xenon"
         }
       },
       "endCaptures": {
         "0": {
-          "name": "punctuation.section.interpolation.end.xenon"
+          "name": "punctuation.definition.template-expression.end.xenon"
         }
       },
       "patterns": [

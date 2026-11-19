@@ -74,6 +74,9 @@ const cases: [string, string, string, number?][] = [
   ["var s:String = $'Hi {user?.name ?? 'guest'}!'", "!", "string.template.xenon"],
   ["var s:String = $'set: \\{1\\} {n}'", "\\{", "constant.character.escape.xenon"],
   ["var s:String = $'{ {a: 1}.a }'", "a", "meta.embedded.line.xenon", 1],
+  // TypeScript's names for the `{…}` parts, which themes reset to the code's colours (else the code looks like string text).
+  ["var s:String = $'{response.status} ok'", "{", "punctuation.definition.template-expression.begin.xenon"],
+  ["var s:String = $'{response.status} ok'", "}", "punctuation.definition.template-expression.end.xenon"],
   ["var s:String = \"double\"", "\"double\"", "invalid.illegal.string.double.xenon"],
   ["var r:RegExp = ~/a\\/b[/]+/gi", "gi", "keyword.other.flag.regexp.xenon"],
   ["var r:RegExp = ~/a\\/b[/]+/gi", "[/]", "constant.other.character-class.regexp.xenon"],
