@@ -150,6 +150,9 @@ package {
       var config:Object = { host: 'localhost', port: 8080 }
       trace(Object.keys(config).join(','), Object.values(config).join(','), Object.entries(config)[1].join('='))
       trace(Object.hasOwn(config, 'port'), Object.hasOwn([7], 0), Object.is(Float.NaN, Float.NaN))
+      // entries are `Array<*>`: a value is untyped, so its members can be used (`unknown` in TypeScript)
+      var parsed:* = JSON.parse('{"a":{"n":1},"b":{"n":2}}')
+      for (var [key, value] of Object.entries(parsed)) trace(key, value.n)
 
       // assign merges into its first argument (the result is `*`); freeze returns its argument's type
       var defaults:Point = { x: 0, y: 0 }

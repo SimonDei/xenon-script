@@ -25,6 +25,8 @@ false true
 parse failed: Exception
 host,port localhost,8080 port=8080
 true true true
+a 1
+b 2
 5 true false
 {"ann":31,"bob":27} {"a":1,"b":2}
 {"en":"hello","de":"hallo"} {"ann":31,"bob":27}
