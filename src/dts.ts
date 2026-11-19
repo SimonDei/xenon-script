@@ -19,6 +19,7 @@
  * member by member, so code that compiled against untyped imports keeps compiling.
  */
 import type tsModule from "typescript";
+import { statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type * as A from "./ast.ts";
 import { KEYWORDS } from "./lexer.ts";
@@ -65,10 +66,32 @@ export interface JsDeclarations {
 /** The package (and directory) of generated declarations. */
 export const GENERATED_DIR = "__js";
 
-/** Declarations generated from one `.d.ts` per project: generation is slow, imports change rarely. */
-const results = new Map<string, JsDeclarations>();
-/** Parsed library and `node_modules` declarations, shared by all programs. */
-const parsed = new Map<string, tsModule.SourceFile | undefined>();
+/**
+ * Declarations generated per project and set of imports: generation is slow, imports change
+ * rarely. An entry is reused while the files it was made from are unchanged, and no package was
+ * installed or removed since (the language server lives longer than a `node_modules`).
+ */
+const results = new Map<string, { result: JsDeclarations; stamps: Map<string, number> }>();
+/** Parsed library and `node_modules` declarations, shared by all programs (until the file changes). */
+const parsed = new Map<string, { mtime: number; file: tsModule.SourceFile }>();
+
+/** A file's or folder's modification time, or -1 if there is none. */
+function mtime(path: string): number {
+  try {
+    return statSync(path).mtimeMs;
+  } catch {
+    return -1;
+  }
+}
+
+/** The `node_modules` folders packages are found in from `root`: installing one changes their time. */
+function packageFolders(root: string): string[] {
+  const folders: string[] = [];
+  for (let dir = root; ; dir = dirname(dir)) {
+    folders.push(join(dir, "node_modules"), join(dir, "node_modules", "@types"));
+    if (dirname(dir) === dir) return folders;
+  }
+}
 
 const IDENT = /^[A-Za-z_$][\w$]*$/;
 /** At most this many typedefs and classes per generated file; beyond, types are `*`. */
@@ -82,13 +105,17 @@ const MAX_DECLS = 400;
 export function jsDeclarations(files: A.XenonFile[], root: string, reserved: Set<string>): JsDeclarations {
   const probes: { file: A.XenonFile; local: string; kind: "default" | "namespace" | "named"; probe: string }[] = [];
   const lines: string[] = [];
+  /** Folders of relative imports: a `.d.ts` added there later must be noticed. */
+  const folders = new Set(packageFolders(root));
   for (const file of files) {
     for (const imp of file.imports) {
       if (imp.kind !== "JsImport") continue;
       // A relative import names a file next to the importing one (`../lib/xlsx.js`): TypeScript
       // gets its absolute path, finding `xlsx.d.ts` beside it.
       const relative = imp.module.startsWith("./") || imp.module.startsWith("../");
-      const spec = JSON.stringify(relative ? join(root, dirname(file.file.path), imp.module) : imp.module);
+      const target = relative ? join(root, dirname(file.file.path), imp.module) : imp.module;
+      if (relative) folders.add(dirname(target));
+      const spec = JSON.stringify(target);
       const add = (local: string, kind: "default" | "namespace" | "named", clause: (p: string) => string) => {
         const probe = `__xenon${probes.length}`;
         probes.push({ file, local, kind, probe });
@@ -104,20 +131,21 @@ export function jsDeclarations(files: A.XenonFile[], root: string, reserved: Set
   const text = lines.join("\n") + "\n";
   const key = `${root}\n${text}`;
   const cached = results.get(key);
-  if (cached) return cached;
+  if (cached && [...cached.stamps].every(([path, time]) => mtime(path) === time)) return cached.result;
 
   let result: JsDeclarations;
+  const read = new Set<string>(folders);
   try {
-    result = generate(probes, text, root, reserved);
+    result = generate(probes, text, root, reserved, read);
   } catch {
     result = empty; // TypeScript failed on these declarations: the imports stay untyped
   }
   if (results.size > 20) results.clear();
-  results.set(key, result);
+  results.set(key, { result, stamps: new Map([...read].map((path) => [path, mtime(path)])) });
   return result;
 }
 
-function generate(probes: { file: A.XenonFile; local: string; kind: string; probe: string }[], text: string, root: string, reserved: Set<string>): JsDeclarations {
+function generate(probes: { file: A.XenonFile; local: string; kind: string; probe: string }[], text: string, root: string, reserved: Set<string>, read: Set<string>): JsDeclarations {
   const ts = typescript();
   const options = tsOptions();
   const probePath = join(root, "__xenon_imports__.ts");
@@ -128,8 +156,15 @@ function generate(probes: { file: A.XenonFile; local: string; kind: string; prob
   host.readFile = (f) => (f === probePath ? text : readFile.call(host, f));
   host.getSourceFile = (f, lang, ...rest) => {
     if (f === probePath) return ts.createSourceFile(f, text, lang);
-    if (!parsed.has(f)) parsed.set(f, getSourceFile.call(host, f, lang, ...rest));
-    return parsed.get(f);
+    // Every declaration file read is a dependency of the result; a missing one is never cached.
+    read.add(f);
+    const time = mtime(f);
+    const hit = parsed.get(f);
+    if (hit?.mtime === time) return hit.file;
+    const file = getSourceFile.call(host, f, lang, ...rest);
+    if (file) parsed.set(f, { mtime: time, file });
+    else parsed.delete(f);
+    return file;
   };
   const program = ts.createProgram([probePath], options, host);
   const checker = program.getTypeChecker();

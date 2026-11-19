@@ -135,6 +135,31 @@ test("a misspelled namespace type suggests the export and still counts as using 
   }
 });
 
+test("a package installed while the language server runs is typed on the next compile", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const project = join(import.meta.dir, ".dts-install");
+  await rm(project, { recursive: true, force: true });
+  await mkdir(join(project, "src"), { recursive: true });
+  const text = "import * as sheets from 'sheets'\n\npublic class Main {\n  public function Main() {\n    var b:sheets.Book = sheets.open()\n    trace(b)\n  }\n}\n";
+  const errors = () => compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: join(project, "src") })
+    .diagnostics.sorted().filter((d) => d.severity === "error").map((d) => d.message);
+  try {
+    // Not installed yet: `sheets` is `*`, which has no types to name.
+    expect(errors()).toEqual(["cannot find type `sheets.Book`"]);
+    const pkg = join(project, "node_modules", "sheets");
+    await mkdir(pkg, { recursive: true });
+    await Bun.write(join(pkg, "package.json"), JSON.stringify({ name: "sheets", types: "index.d.ts" }));
+    await Bun.write(join(pkg, "index.d.ts"), "export interface Book { names: string[] }\nexport declare function open(): Book;\n");
+    expect(errors()).toEqual([]);
+    // The declarations change: the next compile sees that too.
+    await Bun.sleep(5);
+    await Bun.write(join(pkg, "index.d.ts"), "export interface Book { names: string[] }\nexport declare function open(): number;\n");
+    expect(errors()).toEqual(["mismatched types"]);
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
 test("JavaScript files of the source folder are copied, unless a module has their path (X0030)", () => {
   const code = main("import { book } from './lib/sheet.js'", "    trace(book())");
   const copied = compileProject([{ path: "Main.xn", text: code }], { main: "Main", assets: [{ path: "lib/sheet.js", text: "export const book = () => 1;\n" }] });
