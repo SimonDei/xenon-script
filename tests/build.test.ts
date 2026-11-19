@@ -30,3 +30,23 @@ test("build removes outputs the previous build produced but this one doesn't", a
   expect(await exists(join(out, "xenon", "Prelude.js"))).toBe(true);
   expect(await exists(join(out, "notes.txt"))).toBe(true);
 });
+
+test("--project takes a project folder; --src pointing at one says to use --project", async () => {
+  const project = join(dir, "app");
+  await rm(project, { recursive: true, force: true });
+  await mkdir(join(project, "code"), { recursive: true });
+  await Bun.write(join(project, "xenon.json"), JSON.stringify({ src: "code", out: "dist" }));
+  await Bun.write(join(project, "code", "Main.xn"), "package {\n  public class Main {\n    public function Main() { trace('hi') }\n  }\n}\n");
+
+  const run = async (...args: string[]) => {
+    const proc = Bun.spawn(["bun", cli, "run", "--quiet", ...args], { cwd: dir, stdout: "pipe", stderr: "pipe" });
+    return { code: await proc.exited, stdout: await new Response(proc.stdout).text(), stderr: await new Response(proc.stderr).text() };
+  };
+  // The folder's xenon.json is read, and its paths are relative to the folder.
+  expect(await run("--project", "app")).toMatchObject({ code: 0, stdout: "hi\n" });
+  expect(await exists(join(project, "dist", "Main.js"))).toBe(true);
+
+  const mixup = await run("--src", "app");
+  expect(mixup.code).toBe(2);
+  expect(mixup.stderr).toStartWith("error: `app` is a project folder (it has a xenon.json), not a source root: use `--project app`");
+});

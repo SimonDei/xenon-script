@@ -15,7 +15,7 @@ Usage:
   xenon lsp     [--stdio]          language server for editors (LSP over stdio)
 
 Options:
-  --project <file>   project file (default: xenon.json if present)
+  --project <path>   project file, or a folder with a xenon.json (default: ./xenon.json if present)
   --src <dir>        source root (default: src)
   --out <dir>        output directory (default: out)
   --main <name>      main class, e.g. Main or com.app.Main (default: Main)
@@ -33,6 +33,11 @@ Options:
 `;
 
 class UsageError extends Error {}
+
+async function isDirectory(path: string): Promise<boolean> {
+  const { stat } = await import("node:fs/promises");
+  return stat(path).then((s) => s.isDirectory(), () => false);
+}
 
 async function loadConfig(args: string[]): Promise<{
   command: string;
@@ -61,7 +66,8 @@ async function loadConfig(args: string[]): Promise<{
     }
   }
 
-  const projectPath = resolve((flags.get("project") as string | undefined) ?? "xenon.json");
+  let projectPath = resolve((flags.get("project") as string | undefined) ?? "xenon.json");
+  if (flags.has("project") && (await isDirectory(projectPath))) projectPath = join(projectPath, "xenon.json");
   const projectFile = Bun.file(projectPath);
   let project: Partial<Config> = {};
   if (await projectFile.exists()) {
@@ -97,6 +103,12 @@ async function loadConfig(args: string[]): Promise<{
     target,
     bundle,
   };
+  // `--src` names the folder of the .xn files; a project folder there is a mix-up with `--project`.
+  const srcDir = resolve(root, config.src);
+  if (flags.has("src") && (await Bun.file(join(srcDir, "xenon.json")).exists())) {
+    const dir = relative(process.cwd(), srcDir) || ".";
+    throw new UsageError(`\`${dir}\` is a project folder (it has a xenon.json), not a source root: use \`--project ${dir}\``);
+  }
   return { command, config, rest, root, projectPath, flags };
 }
 

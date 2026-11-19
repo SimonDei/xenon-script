@@ -60,6 +60,7 @@ Iteration is C#-style: `IEnumerable<T>` (`getEnumerator()`) and `IEnumerator<T>`
 ```bash
 bun install
 bun src/cli.ts run   --src examples/basics/src --out /tmp/out   # build + run
+bun src/cli.ts run   --project examples/bundle                  # a project folder (its xenon.json)
 bun src/cli.ts build                                            # uses xenon.json if present
 bun src/cli.ts check                                            # type-check only
 bun src/cli.ts watch --run                                      # rebuild + restart on every change
