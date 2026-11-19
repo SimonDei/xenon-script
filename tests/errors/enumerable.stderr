@@ -1,0 +1,106 @@
+error[X0391]: `Plain` is not iterable
+ --> enumerable.xn:3:21
+  |
+3 |     for (var x:* of new Plain()) trace(x)            // not enumerable
+  |                     ^^^^^^^^^^^
+  |
+help: implement `IEnumerable<T>` in `Plain`: `function getEnumerator():IEnumerator<T>`
+
+error[X0308]: mismatched types
+  --> enumerable.xn:4:12
+   |
+ 4 |     total(['a', 'b'])                                 // IEnumerable<int> needs int elements
+   |            ^^^ expected `int`, found `String`
+...
+10 |   private function total(xs:IEnumerable<int>):int { return 0 }
+   |                             ---------------- parameter declared here
+   |
+help: convert the value with `int()`
+   |
+ 4 |     total([int('a'), 'b'])                                 // IEnumerable<int> needs int elements
+   |            ++++   +
+
+error[X0308]: mismatched types
+  --> enumerable.xn:4:17
+   |
+ 4 |     total(['a', 'b'])                                 // IEnumerable<int> needs int elements
+   |                 ^^^ expected `int`, found `String`
+...
+10 |   private function total(xs:IEnumerable<int>):int { return 0 }
+   |                             ---------------- parameter declared here
+   |
+help: convert the value with `int()`
+   |
+ 4 |     total(['a', int('b')])                                 // IEnumerable<int> needs int elements
+   |                 ++++   +
+
+error[X0308]: mismatched types
+  --> enumerable.xn:5:11
+   |
+ 5 |     total(42)                                         // an int isn't enumerable
+   |           ^^ expected `IEnumerable<int>`, found `int`
+...
+10 |   private function total(xs:IEnumerable<int>):int { return 0 }
+   |                             ---------------- parameter declared here
+
+error[X0308]: mismatched types
+ --> enumerable.xn:6:16
+  |
+6 |     for (var w:int of new Words()) trace(w)          // Words yields Strings
+  |              - ^^^ the elements are `String`
+  |              |
+  |              `w` declared as `int`
+
+error[X0315]: cannot apply `+` to `int` and `Boolean`
+ --> enumerable.xn:8:21
+  |
+8 |     trace(e.current + e.moveNext())                   // current is an int, moveNext() a Boolean
+  |           --------- ^ ------------ `Boolean`
+  |           |
+  |           `int`
+
+error[X0787]: `Missing` doesn't implement `getEnumerator`
+  --> enumerable.xn:13:7
+   |
+13 | class Missing implements IEnumerable<int> {}         // getEnumerator() is missing
+   |       ^^^^^^^ missing 1 interface member
+   |
+  ::: <xenon prelude>/xenon/Prelude.xn:42:14
+   |
+42 |     function getEnumerator():IEnumerator<T>
+   |              ------------- required by `IEnumerable`
+   |
+help: add the missing members (the stubs throw `NotImplementedException`)
+   |
+ + | class Missing implements IEnumerable<int> {
+ + |   public function getEnumerator():IEnumerator<int> { throw new NotImplementedException() }
+13 | }         // getEnumerator() is missing
+
+error[X0788]: `WrongReturn.getEnumerator` doesn't match `IEnumerable.getEnumerator`
+  --> enumerable.xn:18:19
+   |
+18 |   public function getEnumerator():Array<int> { return [] }
+   |                   ^^^^^^^^^^^^^
+   |
+  ::: <xenon prelude>/xenon/Prelude.xn:42:14
+   |
+42 |     function getEnumerator():IEnumerator<T>
+   |              ------------- required by this interface member
+   |
+   = note: returns `Array<int>` instead of `IEnumerator<int>`
+
+error[X0787]: `HalfEnumerator` doesn't implement `current`
+  --> enumerable.xn:20:7
+   |
+20 | class HalfEnumerator implements IEnumerator<int> {
+   |       ^^^^^^^^^^^^^^ missing 1 interface member
+   |
+  ::: <xenon prelude>/xenon/Prelude.xn:33:18
+   |
+33 |     function get current():T
+   |                  ------- required by `IEnumerator`
+   |
+help: add the missing members (the stubs throw `NotImplementedException`)
+   |
+ + |   public function get current():int { throw new NotImplementedException() }
+22 | }

@@ -49,9 +49,9 @@ error[X0308]: mismatched types
 10 |     trace(ids.values().take('2'), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
    |                             ^^^ expected `int`, found `String`
    |
-  ::: <xenon prelude>/xenon/Iterator.xn:34:25
+  ::: <xenon prelude>/xenon/Iterator.xn:31:25
    |
-34 |     function take(limit:int):Iterator<T>
+31 |     function take(limit:int):Iterator<T>
    |                         --- parameter declared here
    |
 help: convert the value with `int()`
@@ -73,9 +73,9 @@ error[X0308]: mismatched types
 10 |     trace(ids.values().take('2'), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
    |                                                                            ^^^^^^^^^^^^^^^^ expected `(value:int, index:int) -> Boolean`, found `(n:int) -> int`
    |
-  ::: <xenon prelude>/xenon/Iterator.xn:32:26
+  ::: <xenon prelude>/xenon/Iterator.xn:29:26
    |
-32 |     function filter(test:(value:T, index:int) -> Boolean):Iterator<T>
+29 |     function filter(test:(value:T, index:int) -> Boolean):Iterator<T>
    |                          ------------------------------- parameter declared here
 
 error[X0604]: no overload of `from` accepts (int)

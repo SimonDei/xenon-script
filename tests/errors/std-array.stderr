@@ -102,9 +102,9 @@ error[X0308]: mismatched types
 10 |     nums.sort((a:String, b:String):int => 0)
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(a:int, b:int) -> Float`, found `(a:String, b:String) -> int`
    |
-  ::: <xenon prelude>/xenon/Array.xn:56:27
+  ::: <xenon prelude>/xenon/Array.xn:53:27
    |
-56 |     function sort(compare:(a:T, b:T) -> Float):Array<T>
+53 |     function sort(compare:(a:T, b:T) -> Float):Array<T>
    |                           ------------------- parameter declared here
 
 error[X0308]: mismatched types

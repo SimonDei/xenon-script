@@ -1,5 +1,0 @@
-error[X0100]: `Symbol.iteratr` is not a well-known symbol
- --> symbol-names.xn:2:27
-  |
-2 |   public function [Symbol.iteratr]():void {}
-  |                           ^^^^^^^ use one of `iterator`, `asyncIterator`, `toPrimitive`, `toStringTag`, `hasInstance`

@@ -1,7 +1,7 @@
 import { posix } from "node:path";
 import type * as A from "./ast.ts";
 import { type CheckResult, chainDestructor, type ClassInfo, findMember, isNative, jsNameOf, type RuntimeCheck } from "./checker.ts";
-import { supertypes } from "./types.ts";
+import { isSubclass, supertypes } from "./types.ts";
 import { constToJs } from "./consteval.ts";
 
 /* JS operator precedence (higher binds tighter). */
@@ -81,7 +81,6 @@ function defaultValue(type?: A.TypeNode): string {
 
 /** JS name of a method; operator methods use a computed name: `['operator+']`. */
 function methodName(name: string): string {
-  if (name.startsWith("[Symbol.")) return name; // `[Symbol.iterator]() { … }`
   return name.startsWith("operator") && name.length > "operator".length ? `[${jsString(name)}]` : name;
 }
 
@@ -266,13 +265,29 @@ class ModuleGen {
         this.w.line("}");
       }
     }
+    this.enumerableIterator(info);
     this.w.dedent();
     this.w.line("}");
     // Mark the prototype for every interface this class implements (super-interfaces included);
     // subclasses inherit the marks through the prototype chain.
-    // Native interfaces (`Iterable<T>`) have no marker: they are checked structurally.
-    const marks = [...supertypes(info)].filter((t) => t.decl.isInterface && !isNative(t) && !this.inheritedMark(info, t));
+    const marks = [...supertypes(info)].filter((t) => t.decl.isInterface && !this.inheritedMark(info, t));
     for (const iface of marks) this.w.line(`${decl.name.name}.prototype[${this.classRef(iface)}] = true;`);
+  }
+
+  /**
+   * The first class (from the top) implementing `IEnumerable<T>` becomes a JavaScript iterable: `for … of`
+   * (also in plain JavaScript) walks its `getEnumerator()`. Subclasses inherit it; built-ins have their own.
+   */
+  private enumerableIterator(info: ClassInfo) {
+    const e = this.check.classes.get("xenon.IEnumerable");
+    if (!e || info.decl.isInterface || !isSubclass(info, e) || (info.parent && isSubclass(info.parent, e))) return;
+    this.w.line();
+    this.w.line("*[Symbol.iterator]() {");
+    this.w.indent();
+    this.w.line("const items = this.getEnumerator();");
+    this.w.line("while (items.moveNext()) yield items.current;");
+    this.w.dedent();
+    this.w.line("}");
   }
 
   /** Is the interface already marked on a superclass's prototype? */
@@ -868,6 +883,8 @@ class ModuleGen {
       case "Spread":
         return { code: `...${this.wrap(this.expr(e.arg), P.assign)}`, prec: P.assign };
       case "Member": {
+        // `items.getEnumerator` as a value, on a possibly built-in enumerable.
+        if (this.check.enumerateCalls.has(e)) return { code: `() => ${this.enumerate(e.object)}`, prec: P.assign };
         // Inherited statics are addressed through their declaring class: in JS, `Dog.count++`
         // would create a new property on `Dog` instead of updating `Animal.count`.
         const objType = this.check.exprTypes.get(e.object);
@@ -917,7 +934,13 @@ class ModuleGen {
     }
   }
 
+  /** `items.getEnumerator()` on an enumerable that may be built-in (an array, a set, …): the prelude's helper. */
+  private enumerate(object: A.Expr): string {
+    return `${this.classRef(this.check.classes.get("xenon.Enumerable")!)}.enumerate(${this.wrap(this.expr(object), P.assign)})`;
+  }
+
   private call(e: A.Expr & { kind: "Call" }): Code {
+    if (e.callee.kind === "Member" && this.check.enumerateCalls.has(e.callee)) return { code: this.enumerate(e.callee.object), prec: P.call };
     // `Direction.values()` → `Object.values(Direction)`
     if (e.callee.kind === "Member" && e.callee.name.name === "values" && e.args.length === 0) {
       const obj = this.check.exprTypes.get(e.callee.object);

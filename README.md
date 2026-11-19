@@ -33,12 +33,13 @@ or `n ??= 0`, `n` is an `int`.
 The built-in types are declared in XenonScript itself, in `src/prelude/std/*.xn` (no import needed), and
 checked against the JavaScript runtime by `tests/std.test.ts`:
 `String`, `Float`/`int`/`uint`, `Boolean`, `Array<T>`, `Map<K, V>`, `Set<T>`, `Iterator<T>`, `Promise<T>`,
-`RegExp`, `Date`, `JSON`, `Math`, `Object`, `Function`, `Symbol`, `Iterable<T>` and `console`,
+`RegExp`, `Date`, `JSON`, `Math`, `Object`, `Function` and `console`,
 plus the global functions `setTimeout`/`setInterval`/`clearTimeout`/`clearInterval`, `queueMicrotask`,
 `structuredClone`, `fetch`, `encodeURIComponent` & co. and `atob`/`btoa`. `examples/std` shows each of them in use.
 JavaScript globals without a declaration yet (`process`, `URL`, `WeakMap`, …) are untyped `*`.
-A class becomes iterable (`for … of`, `Iterable<T>` parameters) with `function [Symbol.iterator]():Iterator<T>`;
-see `examples/iterable`.
+Iteration is C#-style: `IEnumerable<T>` (`getEnumerator()`) and `IEnumerator<T>` (`moveNext()`,
+`current`). Arrays, strings, `Set`, `Map` and `Iterator` are enumerable, and a class implementing
+`IEnumerable<T>` works with `for … of` (also from JavaScript); see `examples/enumerable`.
 
 ## Usage
 

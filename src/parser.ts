@@ -13,8 +13,6 @@ const VISIBILITY = new Set(["public", "private", "protected", "internal"]);
  * they end a type, or can't start an expression (`x as int? ?? 0`, `x as int? == null`).
  */
 const TYPE_FOLLOW = new Set(["=", ")", ",", ">", ">>", ">>>", "]", "{", "}", ";", "->", "const", "=>", "??", "==", "!=", "===", "!==", "&&", "||", ":"]);
-/** Symbols that can name a member: `function [Symbol.iterator]()`. (`dispose`/`asyncDispose` come from destructors.) */
-const WELL_KNOWN_SYMBOLS = new Set(["iterator", "asyncIterator", "toPrimitive", "toStringTag", "hasInstance"]);
 const ASSIGN_OPS = new Set(["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", "&&=", "||=", "??="]);
 
 /** Binary operator precedence (higher binds tighter). */
@@ -507,11 +505,10 @@ export class Parser {
   private parseMethod(modifiers: A.Modifiers, start: number, className: string): A.Method {
     this.advance();
     let accessor: "get" | "set" | undefined;
-    if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword" || this.peekTok().value === "[")) {
+    if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword")) {
       accessor = this.advance().value as "get" | "set";
     }
-    // keywords allowed, as in JS (`function catch(…)`); `function [Symbol.iterator]()` names a well-known symbol
-    let name = this.is("[") ? this.symbolName() : this.memberName();
+    let name = this.memberName(); // keywords allowed, as in JS (`function catch(…)`)
     // `function operator+(…)`: an operator method; the symbol is part of the name.
     if (name.name === "operator" && this.tok.kind === "punct" && !this.is("(") && !this.tok.nl) {
       const sym = this.advance();
@@ -1270,20 +1267,6 @@ export class Parser {
   }
 
   /** Member names may be keywords (`obj.default`, `promise.catch`), as in JS. */
-  /** `[Symbol.iterator]` as a method name: one of JavaScript's well-known symbols. The name keeps the brackets. */
-  private symbolName(): A.Ident {
-    const open = this.advance();
-    const sym = this.ident("`Symbol`");
-    if (sym.name !== "Symbol") this.fail("only well-known symbols can name a member: `[Symbol.iterator]`", sym.span);
-    this.expect(".");
-    const key = this.ident("a well-known symbol, e.g. `iterator`");
-    if (!WELL_KNOWN_SYMBOLS.has(key.name)) {
-      this.fail(`\`Symbol.${key.name}\` is not a well-known symbol`, key.span, `use one of ${[...WELL_KNOWN_SYMBOLS].map((k) => `\`${k}\``).join(", ")}`);
-    }
-    const close = this.expectClose("]", open);
-    return { name: `[Symbol.${key.name}]`, span: cover(open.span, close?.span ?? key.span) };
-  }
-
   private memberName(): A.Ident {
     const t = this.tok;
     if (t.kind === "ident" || t.kind === "keyword") {

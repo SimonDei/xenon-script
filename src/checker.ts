@@ -107,8 +107,8 @@ export type RuntimeCheck =
   | { kind: "interface"; info: ClassInfo } // x?.[IShape] === true
   | { kind: "enum"; info: ClassInfo } // Object.values(Direction).includes(x)
   | { kind: "js"; name: string } // x instanceof Response (JS import or global)
-  | { kind: "typeof"; tag: "string" | "number" | "boolean" | "function" | "symbol" }
-  | { kind: "iterable" } // typeof x?.[Symbol.iterator] === 'function' (the native interface `Iterable<T>`)
+  | { kind: "typeof"; tag: "string" | "number" | "boolean" | "function" }
+  | { kind: "iterable" } // typeof x?.[Symbol.iterator] === 'function': `is IEnumerable` (arrays, strings, … have no marker)
   | { kind: "int" } // Number.isInteger(x)
   | { kind: "uint" } // Number.isInteger(x) && x >= 0
   | { kind: "array" } // Array.isArray(x)
@@ -145,6 +145,8 @@ export interface CheckResult {
   methodClosures: Set<A.Expr>;
   /** `a + b` / `a += b` that call `a['operator+'](b)`. */
   operatorCalls: Set<A.Expr>;
+  /** `x.getEnumerator` resolving to `IEnumerable`'s declaration (x may be built-in): compiled to `Enumerable.enumerate(x)`. */
+  enumerateCalls: Set<A.Expr>;
   classes: Map<string, ClassInfo>;
 }
 
@@ -244,7 +246,7 @@ class Scope {
 
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag): CheckResult {
   const result: CheckResult = {
-    resolutions: new Map(), typeResolutions: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), classes,
+    resolutions: new Map(), typeResolutions: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), classes,
   };
   const env = new Env(classes, typedefs, diags, result);
 
@@ -532,18 +534,19 @@ class Env {
     return [args[0] ?? T.any, args[1] ?? T.any];
   }
 
+  /** The prelude's `IEnumerable<T>`: what `for … of` loops over. */
+  get enumerable(): ClassInfo | undefined {
+    return this.classes.get("xenon.IEnumerable");
+  }
+
   /**
-   * What `for … of` yields for a class type: the `T` of the `Iterator<T>` its `[Symbol.iterator]()`
-   * returns (`Set<T>`, `Iterator<T>`, `Iterable<T>`, or any class declaring one). Undefined if it has none.
+   * What `for … of` yields for a class type: the `T` of the `IEnumerable<T>` it implements (`Set<T>`,
+   * `Iterator<T>`, `IEnumerable<T>` itself, or any class implementing it). Undefined if it doesn't.
    */
   iterableElement(t: Type): Type | undefined {
-    if (t.kind !== "class") return undefined;
-    const m = findMember(t.info, "[Symbol.iterator]");
-    if (!m || m.isStatic || m.type.kind !== "method") return undefined;
-    const ret = (memberTypeIn(t.info, t.args ?? [], m.owner, m.type) as MethodType).ret;
-    const it = this.classes.get("xenon.Iterator");
-    if (ret.kind === "class" && it && isSubclass(ret.info, it)) return supertypeArgs(ret.info, ret.args ?? [], it)?.[0] ?? T.any;
-    return T.any;
+    const e = this.enumerable;
+    if (t.kind !== "class" || !e || !isSubclass(t.info, e)) return undefined;
+    return supertypeArgs(t.info, t.args ?? [], e)?.[0] ?? T.any;
   }
 
   /** The std library's `RegExp` (src/prelude/std/RegExp.xn): the type of `~/…/` literals. */
@@ -1105,6 +1108,9 @@ class Env {
     if (info.decl.isInterface || isNative(info) || hasJsAncestor(info)) return;
     const missing: MemberSig[] = [];
     const seen = new Set<string>();
+    // Built-in enumerables (`Set`, `Map`, …) are iterable in JavaScript without a `getEnumerator()`;
+    // `Enumerable.enumerate` provides one, so subclasses don't need to either.
+    const builtinEnumerable = [...superclasses(info)].some((c) => isNative(c) && !!this.enumerable && isSubclass(c, this.enumerable));
     for (const iface of supertypes(info)) {
       if (!iface.decl.isInterface) continue;
       for (const req of iface.members.values()) {
@@ -1112,6 +1118,7 @@ class Env {
         seen.add(req.name);
         const impl = findClassMember(info, req.name);
         if (!impl) {
+          if (builtinEnumerable && req.owner === this.enumerable) continue;
           missing.push(req);
           continue;
         }
@@ -2484,7 +2491,7 @@ class BodyChecker {
     } else if (t.kind === "prim" || t.kind === "null" || t.kind === "classRef" || t.kind === "method" ||
       (t.kind === "builtin" && t.name !== "Array") || (t.kind === "class" && !hasJsAncestor(t.info))) {
       const d = this.diags.error("X0391", `\`${typeToString(t)}\` is not iterable`, s.iterable.span);
-      if (t.kind === "class") d.help(`give \`${t.info.decl.name.name}\` a \`function [Symbol.iterator]():Iterator<T>\` (and \`implements Iterable<T>\`)`);
+      if (t.kind === "class") d.help(`implement \`IEnumerable<T>\` in \`${t.info.decl.name.name}\`: \`function getEnumerator():IEnumerator<T>\``);
       element = T.error;
     }
     // A map yields `[key, value]` pairs; destructuring them types `key` as `K` and `value` as `V`.
@@ -2993,7 +3000,8 @@ class BodyChecker {
         }
         if (m.overloads) this.calleeOverloads.set(e, m.overloads);
         this.memberUse(e, m, e.name.span);
-        return m.type;
+        this.enumerateCall(e, m);
+        return this.seenThrough({ kind: "class", info: cls }, m);
       }
       case "class":
       case "classRef": {
@@ -3018,6 +3026,7 @@ class BodyChecker {
         }
         if (wantStatic) this.inlineRef(e, m);
         this.memberUse(e, m, e.name.span);
+        this.enumerateCall(e, m);
         const seen = this.seenThrough(obj, m);
         if (m.overloads) {
           this.calleeOverloads.set(e, m.overloads.map((o) => ({ decl: o.decl, type: (m.isStatic ? o.type : this.seenThrough(obj, { ...m, type: o.type })) as MethodType })));
@@ -3031,6 +3040,16 @@ class BodyChecker {
         return seen;
       }
     }
+  }
+
+  /**
+   * `x.getEnumerator` that resolves to `IEnumerable`'s own declaration: `x` may be a built-in (an array,
+   * a set, …) without the method, so it compiles to `Enumerable.enumerate(x)`.
+   */
+  private enumerateCall(e: A.Expr & { kind: "Member" }, m: MemberSig) {
+    if (m.owner !== this.env.enumerable || m.name !== "getEnumerator") return;
+    this.env.result.enumerateCalls.add(e);
+    this.env.result.methodClosures.delete(e);
   }
 
   /** `f.call`, `f.length` & co. on a function value; other names are errors. */
@@ -3061,7 +3080,7 @@ class BodyChecker {
     if (e.callee.kind === "Super") return this.superCallExpr(e, scope);
     const savedCallee = this.calledCallee;
     this.calledCallee = e.callee;
-    let callee = this.expr(e.callee, scope);
+    const callee = this.expr(e.callee, scope);
     this.calledCallee = savedCallee;
     this.env.result.methodClosures.delete(e.callee); // called directly, not used as a value
     let res = e.callee.kind === "Ident" ? this.env.result.resolutions.get(e.callee) : undefined;
@@ -3073,14 +3092,6 @@ class BodyChecker {
     if (e.callee.kind === "Ident" && castName) {
       res = { kind: "builtin", name: castName as BuiltinFn };
       this.env.result.resolutions.set(e.callee, res);
-    }
-    // `Symbol('id')`: a std class whose name is also a std function; called, it is the function.
-    const sameNameFns = e.callee.kind === "Ident" && calleeClass ? this.env.functions.get(e.callee.name) : undefined;
-    if (sameNameFns) {
-      res = { kind: "function", decl: sameNameFns[0]!.decl };
-      this.env.result.resolutions.set(e.callee, res);
-      if (sameNameFns.length > 1) this.calleeOverloads.set(e.callee, sameNameFns);
-      callee = sameNameFns[0]!.type;
     }
 
     if (res?.kind === "builtin") {
@@ -4363,9 +4374,7 @@ function runtimeCheck(t: Type): RuntimeCheck | undefined {
   switch (t.kind) {
     case "class":
       if (t.info.decl.isEnum) return { kind: "enum", info: t.info };
-      if (t.info.qname === "xenon.Symbol") return { kind: "typeof", tag: "symbol" }; // symbols are primitives
-      if (t.info.qname === "xenon.Iterable") return { kind: "iterable" };
-      if (t.info.decl.isInterface && isNative(t.info)) return undefined; // no marker to test
+      if (t.info.qname === "xenon.IEnumerable") return { kind: "iterable" };
       return t.info.decl.isInterface ? { kind: "interface", info: t.info } : { kind: "class", info: t.info };
     case "prim":
       switch (t.name) {

@@ -20,11 +20,6 @@ package xenon {
   /** Runs `callback` after the current task, before any timer. */
   native function queueMicrotask(callback:() -> Void):void
 
-  // ---- symbols ----
-  /** A new, unique symbol (see `Symbol`); the description only shows in messages. */
-  native function Symbol():Symbol
-  native function Symbol(description:String):Symbol
-
   // ---- values ----
   /** A deep copy (objects, arrays, maps, sets, dates, …); throws for functions and class instances lose their class. */
   native function structuredClone<T>(value:T):T

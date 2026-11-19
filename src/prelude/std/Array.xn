@@ -9,10 +9,7 @@
 // Not declared: `copyWithin`, `flat` with a depth (`flat()` returns `Array<*>`), `toLocaleString`
 // with arguments, `Array.fromAsync`; use `(array as *)`.
 package xenon {
-  public native class Array<T> implements Iterable<T> {
-    /** The elements in order: what `for … of` uses. */
-    function [Symbol.iterator]():Iterator<T>
-
+  public native class Array<T> implements IEnumerable<T> {
     // ---- statics ----
     /** Is `value` an array? (A runtime test; `x is Array` is the same.) */
     static function isArray(value:*):Boolean
