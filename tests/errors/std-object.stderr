@@ -49,9 +49,9 @@ error[X0601]: this call takes 1 argument but 2 were given
  7 |     trace(Object.entries(o, 1), Object.freeze())
    |                             ^ unexpected argument
    |
-  ::: <xenon prelude>/xenon/Object.xn:37:21
+  ::: <xenon prelude>/xenon/Object.xn:35:21
    |
-37 |     static function entries(object:Object):Array<Array<*>>
+35 |     static function entries(object:Object):Array<Array<*>>
    |                     ------- `entries` defined here
 
 error[X0797]: can't infer the type of `T`
@@ -68,9 +68,9 @@ error[X0601]: this call takes 1 argument but 0 were given
  7 |     trace(Object.entries(o, 1), Object.freeze())
    |                                 ^^^^^^^^^^^^^^^ missing `object:*`
    |
-  ::: <xenon prelude>/xenon/Object.xn:78:21
+  ::: <xenon prelude>/xenon/Object.xn:76:21
    |
-78 |     static function freeze<T>(object:T):T
+76 |     static function freeze<T>(object:T):T
    |                     ------ `freeze` defined here
 
 error[X0791]: `z` is not a member of `Point`
@@ -90,7 +90,7 @@ error[X0308]: mismatched types
  9 |     Object.groupBy([1, 2], (n:int):int => n)         // the callback must return a String
    |                            ^^^^^^^^^^^^^^^^ expected `(item:int, index:int) -> String`, found `(n:int) -> int`
    |
-  ::: <xenon prelude>/xenon/Object.xn:66:57
+  ::: <xenon prelude>/xenon/Object.xn:64:57
    |
-66 |     static function groupBy<T>(items:Array<T>, callback:(item:T, index:int) -> String):Object
+64 |     static function groupBy<T>(items:Array<T>, callback:(item:T, index:int) -> String):Object
    |                                                         ----------------------------- parameter declared here

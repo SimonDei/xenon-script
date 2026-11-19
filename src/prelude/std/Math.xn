@@ -1,5 +1,3 @@
-// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
-// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: JavaScript's `Math` object. A namespace (hidden constructor, static members).
 //
 // Typing: every result is `Float` (it can be NaN or leave the `int` range), including `floor`,

@@ -4,9 +4,9 @@ error[X0308]: mismatched types
  4 |     ids.add('three')
    |             ^^^^^^^ expected `int`, found `String`
    |
-  ::: <xenon prelude>/xenon/Set.xn:18:24
+  ::: <xenon prelude>/xenon/Set.xn:16:24
    |
-18 |     function add(value:T):Set<T>
+16 |     function add(value:T):Set<T>
    |                        - parameter declared here
    |
 help: convert the value with `int()`
@@ -65,9 +65,9 @@ error[X0308]: mismatched types
  9 |     trace(ids.length, ids.union([1]), ids.valuez(), new Set(5), wrong, n)
    |                                 ^^^ expected `Set<int>`, found `Array`
    |
-  ::: <xenon prelude>/xenon/Set.xn:34:26
+  ::: <xenon prelude>/xenon/Set.xn:32:26
    |
-34 |     function union(other:Set<T>):Set<T>
+32 |     function union(other:Set<T>):Set<T>
    |                          ------ parameter declared here
 
 error[X0426]: no member `valuez` on `Set`
@@ -97,9 +97,9 @@ error[X0504]: `size` has a getter but no setter
 10 |     ids.size = 3
    |         ^^^^
    |
-  ::: <xenon prelude>/xenon/Set.xn:16:18
+  ::: <xenon prelude>/xenon/Set.xn:14:18
    |
-16 |     function get size():int
+14 |     function get size():int
    |                  ---- getter declared here
 
 error[X0422]: `Set` needs 1 type argument

@@ -1,5 +1,3 @@
-// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
-// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: JavaScript's `console` object. A namespace with static methods only (like
 // `JSON`), so the constructor is hidden and `trace(…)` stays the short form of `console.log(…)`.
 //

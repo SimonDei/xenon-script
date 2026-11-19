@@ -1,5 +1,3 @@
-// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
-// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: JavaScript's global functions. They are declared at package level with
 // `native function` (only the standard library can do that; Xenon code puts functions in classes)
 // and called by their JS name: `setTimeout(tick, 100)` compiles to `setTimeout(tick, 100)`.

@@ -101,6 +101,5 @@ Project layout: `src/` (compiler), `examples/<name>/src` + `expected.txt` (golde
 
 ## License
 
-GPL-3.0-or-later, with the **Xenon Runtime Exception**: programs you compile with Xenon, including
-the prelude code the compiler puts into them, are yours to distribute under any license. Changes to
-the compiler, language server and extension stay under the GPL. See [LICENSE](LICENSE).
+Public domain, under the [Unlicense](LICENSE): use, change and distribute Xenon, and the programs
+you compile with it, for any purpose and without conditions.

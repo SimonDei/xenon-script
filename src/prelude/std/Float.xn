@@ -1,5 +1,3 @@
-// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
-// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: members of numbers (JavaScript `Number`). `int` and `uint` values have the
 // same members as `Float`. Conversions are written `Float(x)`, `int(x)` and `uint(x)`, never
 // `new`: the constructor would create a wrapper object, so it is hidden.

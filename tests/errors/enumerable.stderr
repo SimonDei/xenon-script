@@ -65,9 +65,9 @@ error[X0787]: `Missing` doesn't implement `getEnumerator`
 13 | class Missing implements IEnumerable<int> {}         // getEnumerator() is missing
    |       ^^^^^^^ missing 1 interface member
    |
-  ::: <xenon prelude>/xenon/Prelude.xn:44:14
+  ::: <xenon prelude>/xenon/Prelude.xn:42:14
    |
-44 |     function getEnumerator():IEnumerator<T>
+42 |     function getEnumerator():IEnumerator<T>
    |              ------------- required by `IEnumerable`
    |
 help: add the missing members (the stubs throw `NotImplementedException`)
@@ -82,9 +82,9 @@ error[X0788]: `WrongReturn.getEnumerator` doesn't match `IEnumerable.getEnumerat
 18 |   public function getEnumerator():Array<int> { return [] }
    |                   ^^^^^^^^^^^^^
    |
-  ::: <xenon prelude>/xenon/Prelude.xn:44:14
+  ::: <xenon prelude>/xenon/Prelude.xn:42:14
    |
-44 |     function getEnumerator():IEnumerator<T>
+42 |     function getEnumerator():IEnumerator<T>
    |              ------------- required by this interface member
    |
    = note: returns `Array<int>` instead of `IEnumerator<int>`
@@ -95,9 +95,9 @@ error[X0787]: `HalfEnumerator` doesn't implement `current`
 20 | class HalfEnumerator implements IEnumerator<int> {
    |       ^^^^^^^^^^^^^^ missing 1 interface member
    |
-  ::: <xenon prelude>/xenon/Prelude.xn:35:18
+  ::: <xenon prelude>/xenon/Prelude.xn:33:18
    |
-35 |     function get current():T
+33 |     function get current():T
    |                  ------- required by `IEnumerator`
    |
 help: add the missing members (the stubs throw `NotImplementedException`)

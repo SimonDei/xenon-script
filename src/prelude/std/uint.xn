@@ -1,5 +1,3 @@
-// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
-// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: `uint` (alias `UInt`), 32-bit unsigned integers. At runtime they're
 // JavaScript numbers, so the members are `Float`'s (`toFixed`, `toString(radix)`, …) with
 // whole-number results where JavaScript guarantees one. The range constants are `inline`:

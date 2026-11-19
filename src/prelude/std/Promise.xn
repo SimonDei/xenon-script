@@ -1,5 +1,3 @@
-// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
-// prelude in programs built with Xenon may be distributed under any terms.
 package xenon {
   public typedef Executor<T> = (resolve:(value:T) -> Void, reject:(reason:*) -> Void) -> Void
   public typedef FulfilledExecutor<T, U> = (value:T) -> U

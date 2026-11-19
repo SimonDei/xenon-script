@@ -4,9 +4,9 @@ error[X0501]: cannot assign to constant `MAX_VALUE`
  5 |       int.MAX_VALUE = 0
    |           ^^^^^^^^^
    |
-  ::: <xenon prelude>/xenon/int.xn:18:32
+  ::: <xenon prelude>/xenon/int.xn:16:32
    |
-18 |     public static inline const MAX_VALUE:int = 2147483647
+16 |     public static inline const MAX_VALUE:int = 2147483647
    |                                --------- declared `const` here
 
 error[X0308]: mismatched types

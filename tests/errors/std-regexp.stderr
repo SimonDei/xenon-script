@@ -40,9 +40,9 @@ error[X0308]: mismatched types
  9 |     digits.lastIndex = 'zero'
    |                        ^^^^^^ expected `int`, found `String`
    |
-  ::: <xenon prelude>/xenon/RegExp.xn:45:19
+  ::: <xenon prelude>/xenon/RegExp.xn:43:19
    |
-45 |     var lastIndex:int
+43 |     var lastIndex:int
    |                   --- `lastIndex` declared as `int` here
    |
 help: convert the value with `int()`
@@ -56,9 +56,9 @@ error[X0504]: `global` has a getter but no setter
 10 |     digits.global = true                           // flags can't change after creation
    |            ^^^^^^
    |
-  ::: <xenon prelude>/xenon/RegExp.xn:33:18
+  ::: <xenon prelude>/xenon/RegExp.xn:31:18
    |
-33 |     function get global():Boolean
+31 |     function get global():Boolean
    |                  ------ getter declared here
 
 error[X0426]: no member `tset` on `RegExp`
@@ -78,9 +78,9 @@ error[X0308]: mismatched types
 11 |     trace(digits.tset('x'), digits.test(5), digits.matches, bad, also, text, found, n)
    |                                         ^ expected `String`, found `int`
    |
-  ::: <xenon prelude>/xenon/RegExp.xn:23:24
+  ::: <xenon prelude>/xenon/RegExp.xn:21:24
    |
-23 |     function test(text:String):Boolean
+21 |     function test(text:String):Boolean
    |                        ------ parameter declared here
    |
 help: convert the value with `String()`

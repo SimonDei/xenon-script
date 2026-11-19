@@ -1,5 +1,3 @@
-// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
-// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: JavaScript's `Iterator<T>`: what `values()`, `keys()` and `entries()` return.
 //
 // An iterator is single-use: once consumed (by `for … of`, `toArray()`, `next()`, …) it is empty.

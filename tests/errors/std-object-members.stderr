@@ -46,9 +46,9 @@ error[X0601]: this call takes 1 argument but 0 were given
  9 |     trace(p.valueOf(), p.propertyIsEnumerable())
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^ missing `key:String`
    |
-  ::: <xenon prelude>/xenon/Object.xn:29:14
+  ::: <xenon prelude>/xenon/Object.xn:27:14
    |
-29 |     function propertyIsEnumerable(key:String):Boolean
+27 |     function propertyIsEnumerable(key:String):Boolean
    |              -------------------- `propertyIsEnumerable` defined here
 
 error[X0720]: `valueOf` overrides `Object.valueOf` but is not marked `override`

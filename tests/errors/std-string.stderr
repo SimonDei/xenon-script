@@ -17,9 +17,9 @@ error[X0504]: `length` has a getter but no setter
  5 |     s.length = 3
    |       ^^^^^^
    |
-  ::: <xenon prelude>/xenon/String.xn:26:18
+  ::: <xenon prelude>/xenon/String.xn:24:18
    |
-26 |     function get length():int
+24 |     function get length():int
    |                  ------ getter declared here
 
 error[X0426]: no member `lenght` on `String`

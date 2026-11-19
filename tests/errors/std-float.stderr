@@ -84,9 +84,9 @@ error[X0501]: cannot assign to constant `NaN`
 10 |       Float.NaN = 0
    |             ^^^
    |
-  ::: <xenon prelude>/xenon/Float.xn:45:18
+  ::: <xenon prelude>/xenon/Float.xn:43:18
    |
-45 |     static const NaN:Float
+43 |     static const NaN:Float
    |                  --- declared `const` here
 
 error[X0420]: cannot find type `Number`

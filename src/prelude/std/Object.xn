@@ -1,5 +1,3 @@
-// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
-// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: JavaScript's `Object`. The `Object` type itself stays built into the compiler
 // (every value but `Void` fits it, `{ … }` literals, `o['key']` indexing); this class supplies the
 // statics (`Object.keys(…)` & co.) and the instance members every object inherits from

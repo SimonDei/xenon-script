@@ -1,5 +1,3 @@
-// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
-// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: JavaScript's `Set<T>`: a collection of unique values in insertion order.
 //
 // Values are compared like `==` in Xenon, except that NaN equals NaN (`new Set([NaN, NaN]).size` is 1).

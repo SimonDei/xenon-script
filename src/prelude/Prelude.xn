@@ -1,5 +1,3 @@
-// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
-// prelude in programs built with Xenon may be distributed under any terms.
 // The Xenon prelude: built-in classes and interfaces, auto-imported into every file.
 // This is the only Xenon code allowed to see JavaScript's `Error` classes.
 // Everything lives in one file (one JS module) because `Exception.from` creates the
