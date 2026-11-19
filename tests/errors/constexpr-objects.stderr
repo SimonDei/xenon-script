@@ -1,0 +1,42 @@
+error[X0526]: field `y` must be `final`: a `constexpr` constructor builds an immutable object
+ --> constexpr-objects.xn:3:14
+  |
+3 |   public var y:Float                                                      // must be final for a constexpr constructor
+  |              ^
+...
+5 |   public constexpr function Point(x:Float, y:Float) {
+  |          --------- `constexpr` constructor
+  |
+help: declare it `final`
+
+error[X0526]: a `constexpr` method must be `const`
+  --> constexpr-objects.xn:11:29
+   |
+11 |   public constexpr function twice():Float => x * 2                       // must be `const`
+   |                             ^^^^^ not `const`
+   |
+   = note: it may only read its object, never change it (as in C++)
+help: add `const`
+   |
+11 |   public constexpr function twice():Float const => x * 2                       // must be `const`
+   |                                           ++++++
+
+error[X0526]: calling `plain` isn't allowed in a `constexpr` function
+  --> constexpr-objects.xn:13:56
+   |
+13 |   public constexpr function usesPlain():Float const => plain()            // `plain` isn't constexpr
+   |          ---------                                     ^^^^^^^ not `constexpr`
+   |          |
+   |          `constexpr` here
+   |
+   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, `constexpr` functions, methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+
+error[X0523]: an inline constant can't hold an object
+  --> constexpr-objects.xn:18:45
+   |
+18 |   public static inline final ORIGIN:Point = new Point(0, 0)             // an inline constant can't hold an object
+   |                              ------         ^^^^^^^^^^^^^^^ an object built at compile time
+   |                              |
+   |                              `ORIGIN` is declared `inline`
+   |
+   = note: an inline constant is pasted into the code: it must be a number, `String` or `Boolean`; use `static final` for an object

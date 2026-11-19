@@ -20,9 +20,14 @@ package {
       var n:int = 3
       trace(BUFFER, kib(2), fact(10), percent(Config.MAX_HP, HALF_HP), kib(n), fact(n))
       trace(fib(30), fib(n))
+
+      // objects built at compile time: only the primitive results reach the output
+      var tile:Size = new Size(n, 2)
+      trace(SCREEN, new Size(4, 3).scaled(2).area(), (new Size(1, 1) + new Size(2, 3)).width, new Size(2, 2) == new Size(2, 2), tile.area())
     }
 
     private static inline final BUFFER:int = kib(64)
+    private static inline final SCREEN:int = new Size(320, 200).area()
     private static constexpr function kib(n:int):int => n * 1024
     private static constexpr function fact(n:int):int => n <= 1 ? 1 : n * fact(n - 1)
     private static constexpr function percent(total:int, part:int):String => $'{Math.round(part / total * 100)}%'

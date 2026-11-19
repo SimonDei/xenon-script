@@ -2,7 +2,7 @@ public class Main {
   private static var counter:int = 0
 
   public static constexpr function twice(n:int):int => n * 2                  // fine
-  public constexpr function notStatic(n:int):int => n                        // must be static
+  public constexpr function notStatic(n:int):int => n                        // an instance method must be `const`
   public static constexpr function sum(n:int):int {                         // fine: a block body
     var total:int
     for (var i:int of 1..=n) total += i

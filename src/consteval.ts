@@ -2,8 +2,23 @@ import type * as A from "./ast.ts";
 import type { Span } from "./source.ts";
 import { isNullable, type Type } from "./types.ts";
 
+/**
+ * An object built at compile time by a `constexpr` constructor: its class and its (`final`/`const`)
+ * fields. It only exists during evaluation; only primitive results reach the output.
+ */
+export class ConstObject {
+  constructor(
+    /** The class (a `ClassInfo`; typed loosely so this module doesn't depend on the checker). */
+    readonly cls: object,
+    readonly fields: Map<string, ConstValue>,
+  ) {}
+}
+
 /** A value known at compile time. */
-export type ConstValue = number | string | boolean | null;
+export type ConstValue = number | string | boolean | null | ConstObject;
+
+/** A value that can be pasted into the output. */
+export const isPrimitive = (v: ConstValue): v is number | string | boolean | null => !(v instanceof ConstObject);
 
 export type Fold =
   | { ok: true; value: ConstValue }
@@ -24,12 +39,13 @@ export const PURE_MATH = new Set([
 export const MATH_CONSTANTS = new Set(["E", "LN10", "LN2", "LOG10E", "LOG2E", "PI", "SQRT1_2", "SQRT2"]);
 
 /**
- * Resolves a name/member reference to a constant, or undefined if it isn't one. For a call, `args`
- * holds the arguments' values: a `constexpr` function is evaluated with them.
+ * Resolves a name/member reference to a constant, or undefined if it isn't one. For a call, a
+ * `new` or an operator on an object, `args` holds the arguments' values (the right operand for an
+ * operator) and `self` the receiver object, if any: `constexpr` code is evaluated with them.
  */
-export type ConstLookup = (e: A.Expr, args?: ConstValue[]) => Fold | undefined;
+export type ConstLookup = (e: A.Expr, args?: ConstValue[], self?: ConstObject) => Fold | undefined;
 
-const CASTS: Record<string, (v: ConstValue) => ConstValue> = {
+const CASTS: Record<string, (v: number | string | boolean | null) => ConstValue> = {
   int: (v) => (v as number) | 0,
   uint: (v) => (v as number) >>> 0,
   Float: (v) => Number(v),
@@ -49,9 +65,18 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
     case "String": return { ok: true, value: e.value };
     case "Bool": return { ok: true, value: e.value };
     case "Null": return { ok: true, value: null };
+    case "This":
+      return lookup(e) ?? notConst(e, "`this` is not a compile-time constant here");
     case "Ident":
-    case "Member":
-      return lookup(e) ?? notConst(e, e.kind === "Ident" ? `\`${e.name}\` is not an inline constant` : `\`${e.name.name}\` is not an inline constant`);
+      return lookup(e) ?? notConst(e, `\`${e.name}\` is not an inline constant`);
+    case "Member": {
+      const found = lookup(e);
+      if (found) return found;
+      // A field of an object built at compile time: `v.x`.
+      const o = fold(e.object, lookup);
+      if (o.ok && o.value instanceof ConstObject && o.value.fields.has(e.name.name)) return { ok: true, value: o.value.fields.get(e.name.name)! };
+      return notConst(e, `\`${e.name.name}\` is not an inline constant`);
+    }
     case "Template": {
       let out = "";
       for (const p of e.parts) {
@@ -59,6 +84,7 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
         else {
           const f = fold(p.expr, lookup);
           if (!f.ok) return f;
+          if (!isPrimitive(f.value)) return notConst(p.expr, "an object's text is not known at compile time");
           out += String(f.value);
         }
       }
@@ -68,6 +94,7 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
       if (e.op === "typeof" || e.op === "delete") return notConst(e);
       const f = fold(e.arg, lookup);
       if (!f.ok) return f;
+      if (!isPrimitive(f.value)) return notConst(e);
       const v = f.value as number;
       switch (e.op) {
         case "-": return { ok: true, value: -v };
@@ -83,6 +110,14 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
       // Short-circuit operators only evaluate the right side when needed (it must still be constant).
       const r = fold(e.right, lookup);
       if (!r.ok) return r;
+      // An operator on an object: its `constexpr` operator method (`==` without one compares identity).
+      if (l.value instanceof ConstObject) {
+        const viaMethod = lookup(e, [r.value], l.value);
+        if (viaMethod) return viaMethod;
+        if (["==", "===", "!=", "!=="].includes(e.op)) return { ok: true, value: (l.value === r.value) === !e.op.startsWith("!") };
+        return notConst(e, `\`${e.op}\` on this object is not a \`constexpr\` operator`);
+      }
+      if (r.value instanceof ConstObject) return ["==", "===", "!=", "!=="].includes(e.op) ? { ok: true, value: e.op.startsWith("!") } : notConst(e);
       const value = binary(e.op, l.value, r.value);
       return value === undefined ? notConst(e) : { ok: true, value };
     }
@@ -96,26 +131,42 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
       if (e.callee.kind === "Ident" && e.callee.name in CASTS && e.args.length === 1 && e.args[0]!.kind !== "Spread") {
         const f = fold(e.args[0]!, lookup);
         if (!f.ok) return f;
+        if (!isPrimitive(f.value)) return notConst(e, "an object can't be converted at compile time");
         return { ok: true, value: CASTS[e.callee.name]!(f.value) };
       }
-      // A `constexpr` function or a pure `Math` function: the arguments first, then the call.
-      const values: ConstValue[] = [];
-      for (const a of e.args) {
-        if (a.kind === "Spread") return notConst(a);
-        const f = fold(a, lookup);
-        if (!f.ok) return f;
-        values.push(f.value);
+      // A `constexpr` function or method, or a pure `Math` function: the receiver and arguments first, then the call.
+      let self: ConstObject | undefined;
+      if (e.callee.kind === "Member") {
+        const r = fold(e.callee.object, lookup);
+        if (r.ok && r.value instanceof ConstObject) self = r.value;
       }
-      return lookup(e, values) ?? notConst(e, "only `constexpr` functions, `Math` functions and conversions can be called at compile time");
+      const values = foldArgs(e.args, lookup);
+      if (!Array.isArray(values)) return values;
+      return lookup(e, values, self) ?? notConst(e, "only `constexpr` functions, `Math` functions and conversions can be called at compile time");
     }
-    case "New":
-      return notConst(e, "`new` is not a compile-time constant");
+    case "New": {
+      // An object of a class with a `constexpr` constructor.
+      const values = foldArgs(e.args, lookup);
+      if (!Array.isArray(values)) return values;
+      return lookup(e, values) ?? notConst(e, "only a `constexpr` constructor builds an object at compile time");
+    }
     case "Array":
     case "Object":
       return notConst(e, "array and object literals are not compile-time constants");
     default:
       return notConst(e);
   }
+}
+
+function foldArgs(args: A.Expr[], lookup: ConstLookup): ConstValue[] | Fold {
+  const values: ConstValue[] = [];
+  for (const a of args) {
+    if (a.kind === "Spread") return notConst(a);
+    const f = fold(a, lookup);
+    if (!f.ok) return f;
+    values.push(f.value);
+  }
+  return values;
 }
 
 export function binary(op: string, a: ConstValue, b: ConstValue): ConstValue | undefined {
@@ -150,6 +201,7 @@ export function binary(op: string, a: ConstValue, b: ConstValue): ConstValue | u
 
 /** Does a constant value fit a declared type (`int` range, `uint` sign, …)? */
 export function fits(v: ConstValue, t: Type): boolean {
+  if (v instanceof ConstObject) return false;
   switch (t.kind) {
     case "any":
     case "error":
@@ -172,6 +224,7 @@ export function fits(v: ConstValue, t: Type): boolean {
 
 /** JS source for a folded value. */
 export function constToJs(v: ConstValue, quote: (s: string) => string): { code: string; negative: boolean } {
+  if (v instanceof ConstObject) throw new Error("constToJs: an object can't be written as a constant");
   if (v === null) return { code: "null", negative: false };
   if (typeof v === "string") return { code: quote(v), negative: false };
   if (typeof v === "boolean") return { code: String(v), negative: false };
@@ -214,15 +267,15 @@ function defaultOf(type: A.TypeNode | undefined): ConstValue {
  * `do … while`, `for`, range loops, `switch`, `return`, `break` and `continue`. The checker has
  * made sure nothing else occurs. Fails like `fold`, or with `limit` when the budget runs out.
  */
-export function run(body: A.Block, params: Map<string, ConstValue>, lookup: ConstLookup, budget: Budget, at: Span): Fold {
+export function run(body: A.Block, params: Map<string, ConstValue>, lookup: ConstLookup, budget: Budget, at: Span, self?: ConstObject): Fold {
   const scopes: Map<string, ConstValue>[] = [params];
   const find = (name: string) => scopes.findLast((s) => s.has(name));
-  const local: ConstLookup = (e, args) => {
+  const local: ConstLookup = (e, args, receiver) => {
     if (e.kind === "Ident") {
       const s = find(e.name);
       if (s) return { ok: true, value: s.get(e.name)! };
     }
-    return lookup(e, args);
+    return lookup(e, args, receiver);
   };
   const value = (e: A.Expr): ConstValue => {
     const f = fold(e, local);
@@ -232,26 +285,32 @@ export function run(body: A.Block, params: Map<string, ConstValue>, lookup: Cons
   const tick = () => {
     if (--budget.steps < 0) throw new Failed({ ok: false, at, reason: "the evaluation takes more than 1000000 steps (an endless loop?)", limit: true });
   };
-  const assign = (name: string, v: ConstValue) => {
-    find(name)!.set(name, v);
+  /** Where a target lives: a local (`x`), or a field of the object being built (`this.x`, or `x` when no local has that name). */
+  const home = (t: A.Expr): [Map<string, ConstValue>, string] | undefined => {
+    if (t.kind === "Member" && t.object.kind === "This" && self) return [self.fields, t.name.name];
+    if (t.kind !== "Ident") return undefined;
+    const scope = find(t.name) ?? (self?.fields.has(t.name) ? self.fields : undefined);
+    return scope && [scope, t.name];
   };
   /** An expression statement: an assignment or `++`/`--` on a local, or a value (discarded). */
   const effect = (e: A.Expr) => {
-    if (e.kind === "Assign" && e.target.kind === "Ident") {
-      const name = e.target.name;
-      if (e.op === "=") return assign(name, value(e.value));
-      const old = find(name)!.get(name)!;
+    const target = e.kind === "Assign" ? home(e.target) : e.kind === "Update" ? home(e.arg) : undefined;
+    if (e.kind === "Assign" && target) {
+      const [scope, name] = target;
+      if (e.op === "=") return void scope.set(name, value(e.value));
+      const old = scope.get(name)!;
       const op = e.op.slice(0, -1);
-      if (op === "&&") return assign(name, old ? value(e.value) : old);
-      if (op === "||") return assign(name, old ? old : value(e.value));
-      if (op === "??") return assign(name, old ?? value(e.value));
+      if (op === "&&") return void scope.set(name, old ? value(e.value) : old);
+      if (op === "||") return void scope.set(name, old ? old : value(e.value));
+      if (op === "??") return void scope.set(name, old ?? value(e.value));
       const v = binary(op, old, value(e.value));
       if (v === undefined) throw new Failed(notConst(e));
-      return assign(name, v);
+      return void scope.set(name, v);
     }
-    if (e.kind === "Update" && e.arg.kind === "Ident") {
-      const old = find(e.arg.name)!.get(e.arg.name) as number;
-      return assign(e.arg.name, e.op === "++" ? old + 1 : old - 1);
+    if (e.kind === "Update" && target) {
+      const [scope, name] = target;
+      const old = scope.get(name) as number;
+      return void scope.set(name, e.op === "++" ? old + 1 : old - 1);
     }
     value(e);
   };

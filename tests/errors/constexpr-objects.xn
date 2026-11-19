@@ -1,0 +1,22 @@
+class Point {
+  public final x:Float
+  public var y:Float                                                      // must be final for a constexpr constructor
+
+  public constexpr function Point(x:Float, y:Float) {
+    this.x = x
+    this.y = y
+  }
+
+  public constexpr function norm():Float const => Math.sqrt(x * x + y * y)   // fine
+  public constexpr function twice():Float => x * 2                       // must be `const`
+  public function plain():Float const { return x }
+  public constexpr function usesPlain():Float const => plain()            // `plain` isn't constexpr
+}
+
+public class Main {
+  public static inline final NORM:Float = new Point(3, 4).norm()        // fine: 5
+  public static inline final ORIGIN:Point = new Point(0, 0)             // an inline constant can't hold an object
+  public function Main() {
+    trace(NORM, ORIGIN)
+  }
+}

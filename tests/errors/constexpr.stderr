@@ -1,10 +1,14 @@
-error[X0526]: a `constexpr` function must be `static`
- --> constexpr.xn:5:10
+error[X0526]: a `constexpr` method must be `const`
+ --> constexpr.xn:5:29
   |
-5 |   public constexpr function notStatic(n:int):int => n                        // must be static
-  |          ^^^^^^^^^
+5 |   public constexpr function notStatic(n:int):int => n                        // an instance method must be `const`
+  |                             ^^^^^^^^^ not `const`
   |
-help: it can only use its parameters: add `static`
+  = note: it may only read its object, never change it (as in C++)
+help: add `const`
+  |
+5 |   public constexpr function notStatic(n:int):int const => n                        // an instance method must be `const`
+  |                                                  ++++++
 
 error[X0526]: assigning `counter` isn't allowed in a `constexpr` function
   --> constexpr.xn:12:5
@@ -14,7 +18,7 @@ error[X0526]: assigning `counter` isn't allowed in a `constexpr` function
 12 |     counter = n                                                              // only locals can change
    |     ^^^^^^^ only locals can change
    |
-   = note: allowed: parameters and locals, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, other `constexpr` functions, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, `constexpr` functions, methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
 
 error[X0526]: `try` isn't allowed in a `constexpr` function
   --> constexpr.xn:16:5
@@ -24,7 +28,7 @@ error[X0526]: `try` isn't allowed in a `constexpr` function
 16 |     try { return n } catch (e) { return 0 }                                  // `try` isn't allowed
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: allowed: parameters and locals, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, other `constexpr` functions, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, `constexpr` functions, methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
 
 warning[X0860]: unreachable code
   --> constexpr.xn:21:5
@@ -44,23 +48,23 @@ error[X0526]: `counter` isn't allowed in a `constexpr` function
   --> constexpr.xn:24:63
    |
 24 |   public static constexpr function useField(n:int):int => n + counter        // not a constant
-   |                 ---------                                     ^^^^^^^ not a parameter or an inline constant
+   |                 ---------                                     ^^^^^^^ not a parameter, local, field or inline constant
    |                 |
    |                 `constexpr` here
    |
-   = note: allowed: parameters and locals, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, other `constexpr` functions, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, `constexpr` functions, methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
 
 error[X0526]: calling `Date.now` isn't allowed in a `constexpr` function
   --> constexpr.xn:25:51
    |
 25 |   public static constexpr function now():Float => Date.now()                 // not a compile-time function
-   |                 ---------                         ^^^^^^^^^^ not a `constexpr` function
+   |                 ---------                         ^^^^^^^^^^ not `constexpr`
    |                 |
    |                 `constexpr` here
    |
-   = note: allowed: parameters and locals, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, other `constexpr` functions, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `Math` functions, `constexpr` functions, methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
 
-error[X0526]: a `constexpr` parameter must be a number, `String` or `Boolean`
+error[X0526]: a `constexpr` parameter must be a number, `String`, `Boolean` or an object
   --> constexpr.xn:26:47
    |
 26 |   public static constexpr function list(items:Array<int>):int => 1           // not a constant type
