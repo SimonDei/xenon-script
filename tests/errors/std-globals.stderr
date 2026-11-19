@@ -15,9 +15,9 @@ error[X0308]: mismatched types
  4 |     setTimeout(10, () => trace('x'))                 // arguments swapped (JS habit from other APIs)
    |                ^^ expected `() -> void`, found `int`
    |
-  ::: <xenon prelude>/xenon/globals.xn:14:39
+  ::: <xenon prelude>/xenon/globals.xn:16:39
    |
-14 |   native function setTimeout(callback:() -> Void, ms:Float = 0):*
+16 |   native function setTimeout(callback:() -> Void, ms:Float = 0):*
    |                                       ---------- parameter declared here
 
 error[X0308]: mismatched types
@@ -26,9 +26,9 @@ error[X0308]: mismatched types
  4 |     setTimeout(10, () => trace('x'))                 // arguments swapped (JS habit from other APIs)
    |                    ^^^^^^^^^^^^^^^^ expected `Float`, found `() -> void`
    |
-  ::: <xenon prelude>/xenon/globals.xn:14:54
+  ::: <xenon prelude>/xenon/globals.xn:16:54
    |
-14 |   native function setTimeout(callback:() -> Void, ms:Float = 0):*
+16 |   native function setTimeout(callback:() -> Void, ms:Float = 0):*
    |                                                      ----- parameter declared here
 
 error[X0308]: mismatched types
@@ -50,9 +50,9 @@ error[X0308]: mismatched types
  8 |     var text:String = btoa(42)
    |                            ^^ expected `String`, found `int`
    |
-  ::: <xenon prelude>/xenon/globals.xn:55:29
+  ::: <xenon prelude>/xenon/globals.xn:57:29
    |
-55 |   native function btoa(text:String):String
+57 |   native function btoa(text:String):String
    |                             ------ parameter declared here
    |
 help: convert the value with `String()`
@@ -92,9 +92,9 @@ error[X0308]: mismatched types
 11 |     var copy:Array<String> = structuredClone([1, 2])
    |                                               ^ expected `String`, found `int`
    |
-  ::: <xenon prelude>/xenon/globals.xn:25:44
+  ::: <xenon prelude>/xenon/globals.xn:27:44
    |
-25 |   native function structuredClone<T>(value:T):T
+27 |   native function structuredClone<T>(value:T):T
    |                                            - parameter declared here
    |
 help: convert the value with `String()`
@@ -108,9 +108,9 @@ error[X0308]: mismatched types
 11 |     var copy:Array<String> = structuredClone([1, 2])
    |                                                  ^ expected `String`, found `int`
    |
-  ::: <xenon prelude>/xenon/globals.xn:25:44
+  ::: <xenon prelude>/xenon/globals.xn:27:44
    |
-25 |   native function structuredClone<T>(value:T):T
+27 |   native function structuredClone<T>(value:T):T
    |                                            - parameter declared here
    |
 help: convert the value with `String()`

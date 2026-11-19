@@ -1,3 +1,5 @@
+// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
+// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: members of the primitive `Boolean` (JavaScript `Boolean.prototype`).
 // Conversions are written `Boolean(x)` (a built-in cast), never `new Boolean(x)`: wrapper
 // objects are always truthy and never `==` a primitive, so the constructor is hidden.

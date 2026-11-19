@@ -30,9 +30,9 @@ error[X0308]: mismatched types
  6 |     var bad:int = Math.imul(1.5, 2)         // imul takes ints
    |                             ^^^ expected `int`, found `Float`
    |
-  ::: <xenon prelude>/xenon/Math.xn:75:28
+  ::: <xenon prelude>/xenon/Math.xn:77:28
    |
-75 |     static function imul(a:int, b:int):int
+77 |     static function imul(a:int, b:int):int
    |                            --- parameter declared here
    |
 help: convert the value with `int()`
@@ -57,9 +57,9 @@ error[X0308]: mismatched types
  7 |     trace(Math.sqroot(4), Math.max('3', 4), Math.pow(2), Math.PI = 3)
    |                                    ^^^ expected `Float`, found `String`
    |
-  ::: <xenon prelude>/xenon/Math.xn:36:35
+  ::: <xenon prelude>/xenon/Math.xn:38:35
    |
-36 |     static function max(...values:Array<Float>):Float
+38 |     static function max(...values:Array<Float>):Float
    |                                   ------------ parameter declared here
    |
 help: convert the value with `Float()`
@@ -73,9 +73,9 @@ error[X0601]: this call takes 2 arguments but 1 was given
  7 |     trace(Math.sqroot(4), Math.max('3', 4), Math.pow(2), Math.PI = 3)
    |                                             ^^^^^^^^^^^ missing `exponent:Float`
    |
-  ::: <xenon prelude>/xenon/Math.xn:41:21
+  ::: <xenon prelude>/xenon/Math.xn:43:21
    |
-41 |     static function pow(base:Float, exponent:Float):Float
+43 |     static function pow(base:Float, exponent:Float):Float
    |                     --- `pow` defined here
 
 error[X0501]: cannot assign to constant `PI`
@@ -84,9 +84,9 @@ error[X0501]: cannot assign to constant `PI`
  7 |     trace(Math.sqroot(4), Math.max('3', 4), Math.pow(2), Math.PI = 3)
    |                                                               ^^
    |
-  ::: <xenon prelude>/xenon/Math.xn:16:18
+  ::: <xenon prelude>/xenon/Math.xn:18:18
    |
-16 |     static const PI:Float
+18 |     static const PI:Float
    |                  -- declared `const` here
 
 error[X0308]: mismatched types
@@ -95,9 +95,9 @@ error[X0308]: mismatched types
  8 |     trace(Math.min([1, 2]), new Math(), whole, rounded, i, bad)
    |                    ^^^^^^ expected `Float`, found `Array`
    |
-  ::: <xenon prelude>/xenon/Math.xn:38:35
+  ::: <xenon prelude>/xenon/Math.xn:40:35
    |
-38 |     static function min(...values:Array<Float>):Float
+40 |     static function min(...values:Array<Float>):Float
    |                                   ------------ parameter declared here
 
 error[X0415]: `Math` can't be instantiated with `new`

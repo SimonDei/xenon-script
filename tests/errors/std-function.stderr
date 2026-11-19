@@ -36,9 +36,9 @@ error[X0504]: `name` has a getter but no setter
  6 |     add.name = 'sum'                                // read-only
    |         ^^^^
    |
-  ::: <xenon prelude>/xenon/Function.xn:23:18
+  ::: <xenon prelude>/xenon/Function.xn:25:18
    |
-23 |     function get name():String
+25 |     function get name():String
    |                  ---- getter declared here
 
 error[X0308]: mismatched types

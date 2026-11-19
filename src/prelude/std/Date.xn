@@ -1,3 +1,5 @@
+// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
+// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: JavaScript's `Date`.
 //
 // Time values are milliseconds since 1970-01-01 UTC as `Float` (they exceed the `int` range).

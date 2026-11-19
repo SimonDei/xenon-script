@@ -12,9 +12,9 @@ error[X0308]: mismatched types
  4 |     console.count(5)
    |                   ^ expected `String`, found `int`
    |
-  ::: <xenon prelude>/xenon/console.xn:25:33
+  ::: <xenon prelude>/xenon/console.xn:27:33
    |
-25 |     static function count(label:String = 'default'):void
+27 |     static function count(label:String = 'default'):void
    |                                 ------ parameter declared here
    |
 help: convert the value with `String()`
@@ -28,9 +28,9 @@ error[X0308]: mismatched types
  5 |     console.assert('yes', 'text')
    |                    ^^^^^ expected `Boolean`, found `String`
    |
-  ::: <xenon prelude>/xenon/console.xn:21:38
+  ::: <xenon prelude>/xenon/console.xn:23:38
    |
-21 |     static function assert(condition:Boolean = false, ...data:Array):void
+23 |     static function assert(condition:Boolean = false, ...data:Array):void
    |                                      ------- parameter declared here
 
 error[X0604]: no overload of `table` accepts (array literal, String)

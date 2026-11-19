@@ -33,5 +33,6 @@ if (import.meta.main) {
   await rm(dist, { recursive: true, force: true });
   await buildClient(dist);
   await buildServer(dist);
+  await cp(join(root, "..", "..", "LICENSE"), join(root, "LICENSE")); // packaged with the extension
   console.log(`built ${dist}`);
 }

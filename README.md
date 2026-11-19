@@ -98,3 +98,9 @@ without types: TypeScript's hover, signatures and errors). The VS Code extension
 
 Project layout: `src/` (compiler), `examples/<name>/src` + `expected.txt` (golden end-to-end tests),
 `tests/errors/*.xn` + `*.stderr` (rendered diagnostics snapshots).
+
+## License
+
+GPL-3.0-or-later, with the **Xenon Runtime Exception**: programs you compile with Xenon, including
+the prelude code the compiler puts into them, are yours to distribute under any license. Changes to
+the compiler, language server and extension stay under the GPL. See [LICENSE](LICENSE).

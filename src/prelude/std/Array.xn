@@ -1,3 +1,5 @@
+// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
+// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: members of `Array<T>` (JavaScript `Array`). The type itself is built into the
 // compiler (literals `[1, 2]`, indexing `a[i]`, `for … of`, `[a, b] = …`); this class gives it its
 // members, with `T` as the element type. A bare `Array` is `Array<*>`.

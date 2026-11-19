@@ -4,7 +4,7 @@
   "description": "XenonScript (.xn): syntax highlighting, diagnostics with quick fixes, hover, go to definition, completion, signature help, references, rename and outline",
   "version": "0.5.0",
   "publisher": "xenon",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "icon": "icons/logo.png",
   "private": true,
   "engines": {
@@ -68,7 +68,7 @@
   },
   "scripts": {
     "build": "bun scripts/build.ts",
-    "package": "bun scripts/build.ts && bunx @vscode/vsce@3.6.2 package --no-dependencies --skip-license --allow-missing-repository --out xenon.vsix"
+    "package": "bun scripts/build.ts && bunx @vscode/vsce@3.6.2 package --no-dependencies --allow-missing-repository --out xenon.vsix"
   },
   "devDependencies": {
     "@types/vscode": "1.82.0",

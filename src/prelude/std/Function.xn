@@ -1,3 +1,5 @@
+// Part of Xenon. GPL-3.0-or-later with the Xenon Runtime Exception (see LICENSE): the compiled
+// prelude in programs built with Xenon may be distributed under any terms.
 // Standard library: members of function values. The function types themselves are built into the
 // compiler (`(a:int) -> String`, and the untyped `Function`); this class gives every function value
 // its JS members, plus the `Object.prototype` ones (`toString`, …).
