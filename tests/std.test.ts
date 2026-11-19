@@ -55,7 +55,7 @@ for (const file of stdFiles) {
     const problems: string[] = [];
 
     for (const decl of [...ast.decls, ...ast.privateDecls]) {
-      if (decl.kind !== "Class" || !decl.modifiers.native) continue;
+      if (decl.kind !== "Class" || !decl.modifiers.native || decl.isInterface) continue; // native interfaces have no runtime object
       const jsName = decl.modifiers.nativeName ?? decl.name.name;
       const ctor = (globalThis as Record<string, unknown>)[jsName] as Record<string, unknown> | undefined;
       if (ctor == null) {
@@ -74,9 +74,12 @@ for (const file of stdFiles) {
       for (const m of decl.members) {
         if (m.kind !== "Method" && m.kind !== "Field") continue;
         if (m.modifiers.inline) continue; // compile-time constant: no runtime counterpart (the checker folds and range-checks it)
-        const name = m.name.name;
+        // `[Symbol.iterator]` names the well-known symbol `Symbol.iterator`.
+        const symbol = /^\[Symbol\.(\w+)\]$/.exec(m.name.name)?.[1];
+        // (Typed as a string for the lookups below; JavaScript indexes with the symbol all the same.)
+        const name = (symbol ? (Symbol as unknown as Record<string, symbol>)[symbol]! : m.name.name) as string;
         const isStatic = !!m.modifiers.static;
-        const where = `${decl.name.name}.${isStatic ? "" : "prototype."}${name}`;
+        const where = `${decl.name.name}.${isStatic ? "" : "prototype."}${m.name.name}`;
         if (m.kind === "Method" && m.isConstructor) {
           if (m.modifiers.visibility?.value === "private") continue; // hidden: nothing to check
           if (typeof ctor !== "function") problems.push(`${decl.name.name}: constructor declared, but \`${jsName}\` is not a class`);
@@ -92,7 +95,7 @@ for (const file of stdFiles) {
           const fn = target[name] ?? (SAMPLES[decl.name.name] ?? []).map((v) => (Object(v) as Record<string, unknown>)[name]).find((f) => f !== undefined);
           if (typeof fn !== "function") problems.push(`${where}: declared as a method, but is a ${typeof fn}`);
           else {
-            const declared = arity.get(`${isStatic}:${name}`)!;
+            const declared = arity.get(`${isStatic}:${m.name.name}`)!;
             if (fn.length > declared) {
               problems.push(`${where}: runtime takes ${fn.length} parameters, declared ${declared}`);
             }

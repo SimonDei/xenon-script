@@ -1,0 +1,58 @@
+// Iterables: anything `for … of` loops over. Arrays, strings, Set, Map and Iterator are
+// `Iterable<T>`; a class becomes one by declaring `function [Symbol.iterator]():Iterator<T>`.
+public class Main {
+  public function Main() {
+    // a class of our own works with `for … of`, and wherever an Iterable<int> is wanted
+    var countdown:Countdown = new Countdown(3)
+    for (var n:int of countdown) trace('countdown', n)
+    trace(total(countdown), total([1, 2, 3]), total(new Set([4, 5])), total(new Map([['a', 6]]).values()))
+
+    // generic code over any iterable: T comes from the argument
+    trace(firstOf(countdown) ?? -1, firstOf('xyz'), firstOf(new Set(['only'])), count('héllo'))
+
+    // `is Iterable` asks the value itself (true for JavaScript iterables too)
+    var values:Array<*> = [countdown, 'text', 42, [1], null]
+    trace(values.map((v:*, i:int):Boolean => v is Iterable).join(' '))
+
+    // symbols: unique keys; `Symbol.for` shares one by name
+    var id:Symbol = Symbol('id')
+    var key:Symbol = Symbol.for('app.key')
+    trace(id.description, id == Symbol('id'), key == Symbol.for('app.key'), Symbol.keyFor(key))
+    trace('as text: ' + countdown)                     // [Symbol.toStringTag] names the class
+  }
+
+  private function total(numbers:Iterable<int>):int {
+    var sum:int = 0
+    for (var x:int of numbers) sum += x
+    return sum
+  }
+
+  private function count(items:Iterable<*>):int {
+    var c:int = 0
+    for (var _item:* of items) c++
+    return c
+  }
+
+  private function firstOf<T>(items:Iterable<T>):T? {
+    for (var item:T of items) return item
+    return null
+  }
+}
+
+class Countdown implements Iterable<int> {
+  private var from:int
+
+  public function Countdown(from:int) {
+    this.from = from
+  }
+
+  public function [Symbol.iterator]():Iterator<int> {
+    var steps:Array<int> = []
+    for (var i:int = from; i > 0; i--) steps.push(i)
+    return steps.values()
+  }
+
+  public function get [Symbol.toStringTag]():String {
+    return 'Countdown'
+  }
+}

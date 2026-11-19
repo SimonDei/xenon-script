@@ -1,0 +1,20 @@
+public class Main {
+  public function Main() {
+    for (var x:* of new Plain()) trace(x)            // no [Symbol.iterator]
+    total(['a', 'b'])                                 // Iterable<int> needs int elements
+    total(42)                                         // an int isn't iterable
+    var s:Symbol = new Symbol()                      // symbols come from Symbol('…')
+    var t:Symbol = Symbol(42)
+    for (var w:int of new Words()) trace(w)          // Words yields Strings
+    trace(s, t)
+  }
+  private function total(xs:Iterable<int>):int { return 0 }
+}
+class Plain {}
+class Missing implements Iterable<int> {}            // the method is missing
+class Words implements Iterable<String> {
+  public function [Symbol.iterator]():Iterator<String> { return ['a'].values() }
+}
+class WrongReturn implements Iterable<int> {
+  public function [Symbol.iterator]():Array<int> { return [] }
+}

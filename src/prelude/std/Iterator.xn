@@ -8,7 +8,10 @@ package xenon {
   /** What `next()` returns: `done` is true once the iterator is finished (then `value` is `null`). */
   public typedef IteratorResult<T> = { done:Boolean, value:T }
 
-  public native class Iterator<T> {
+  public native class Iterator<T> implements Iterable<T> {
+    /** An iterator iterates itself, so it works with `for … of`. */
+    function [Symbol.iterator]():Iterator<T>
+
     // `Iterator` can't be constructed directly (it throws); get one from `values()`, `Iterator.from(…)`, …
     private function Iterator()
 

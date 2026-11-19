@@ -211,6 +211,12 @@ export function* supertypes(info: ClassInfo): Generator<ClassInfo> {
   }
 }
 
+/**
+ * Set by the checker: the std class that gives a built-in type its members (`Array<int>` → class
+ * `Array<int>`, `String` → class `String`), so such values fit the interfaces it implements (`Iterable<T>`).
+ */
+export const stdClassOf: { fn?: (t: Type) => Type | undefined } = {};
+
 /** Pairs of structural types currently being compared (recursive shapes are assumed compatible). */
 const comparing = new Map<Type, Set<Type>>();
 
@@ -243,6 +249,10 @@ export function assignable(from: Type, to: Type): boolean {
     if (from.name === to.name) return true;
     // Widening only: int/uint → Float. Everything else needs a cast.
     return to.name === "Float" && (from.name === "int" || from.name === "uint");
+  }
+  if (to.kind === "class" && to.info.decl.isInterface && (from.kind === "builtin" || from.kind === "prim")) {
+    const c = stdClassOf.fn?.(from);
+    return !!c && assignable(c, to);
   }
   if (to.kind === "class") {
     if (from.kind !== "class" || !isSubclass(from.info, to.info)) return false;
@@ -353,8 +363,9 @@ export function unify(pattern: Type, actual: Type, vars: Set<TypeParamInfo>, out
       unify(pattern.inner, nonNull(actual), vars, out);
       return;
     case "class": {
-      if (actual.kind !== "class" || !pattern.args?.length) return;
-      const seen = supertypeArgs(actual.info, actual.args ?? [], pattern.info);
+      const cls = actual.kind === "class" ? actual : stdClassOf.fn?.(actual); // `Iterable<T>` from an `Array<int>`
+      if (cls?.kind !== "class" || !pattern.args?.length) return;
+      const seen = supertypeArgs(cls.info, cls.args ?? [], pattern.info);
       if (seen) pattern.args.forEach((p, i) => seen[i] && unify(p, seen[i]!, vars, out));
       return;
     }

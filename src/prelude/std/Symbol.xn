@@ -1,0 +1,32 @@
+// Standard library: JavaScript's `Symbol`: unique values, mostly used as keys that can't clash with
+// names. Create one with `Symbol('description')` (a function call: there is no `new Symbol()`), or
+// share one by key with `Symbol.for('app.id')`.
+//
+// The well-known symbols name members JavaScript looks for; a class can declare one of them:
+// `function [Symbol.iterator]():Iterator<T>` (see `Iterable<T>`), `function get [Symbol.toStringTag]():String`.
+// (`Symbol.dispose`/`asyncDispose` come from destructors `~Name()`.)
+// Symbols are primitives: `x is Symbol` tests `typeof x == 'symbol'`.
+package xenon {
+  public native class Symbol {
+    private function Symbol()
+
+    /** The method `for … of` calls to get an iterator. */
+    static const iterator:Symbol
+    /** The method `for await … of` calls to get an async iterator. */
+    static const asyncIterator:Symbol
+    /** The method that converts an object to a primitive (`+obj`, `` `${obj}` ``). */
+    static const toPrimitive:Symbol
+    /** The getter whose text appears in `Object.prototype.toString`: `[object Tag]`. */
+    static const toStringTag:Symbol
+    /** The static method `instanceof` asks. */
+    static const hasInstance:Symbol
+
+    /** The symbol registered under `key`, created on first use: the same symbol everywhere, across modules. */
+    static function for(key:String):Symbol
+    /** The key of a registered symbol (`Symbol.for`), or `null` for any other symbol. */
+    static function keyFor(symbol:Symbol):String
+
+    /** The description given when creating it (`null` if none). */
+    function get description():String
+  }
+}

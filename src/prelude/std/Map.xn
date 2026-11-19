@@ -8,7 +8,10 @@
 // an array of `[key, value]` pairs: declare them, `var m:Map<String, int> = new Map(…)`.
 // Not declared (too new): `getOrInsert`, `getOrInsertComputed`.
 package xenon {
-  public native class Map<K, V> {
+  public native class Map<K, V> implements Iterable<Array<*>> {
+    /** The `[key, value]` pairs in insertion order: what `for … of` uses (`for (var [k, v]:* of map)` types them). */
+    function [Symbol.iterator]():Iterator<Array<*>>
+
     function Map()
     /** From `[key, value]` pairs: `new Map([['a', 1], ['b', 2]])`. */
     function Map(pairs:Array<Array<*>>)

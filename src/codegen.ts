@@ -81,6 +81,7 @@ function defaultValue(type?: A.TypeNode): string {
 
 /** JS name of a method; operator methods use a computed name: `['operator+']`. */
 function methodName(name: string): string {
+  if (name.startsWith("[Symbol.")) return name; // `[Symbol.iterator]() { … }`
   return name.startsWith("operator") && name.length > "operator".length ? `[${jsString(name)}]` : name;
 }
 
@@ -269,7 +270,8 @@ class ModuleGen {
     this.w.line("}");
     // Mark the prototype for every interface this class implements (super-interfaces included);
     // subclasses inherit the marks through the prototype chain.
-    const marks = [...supertypes(info)].filter((t) => t.decl.isInterface && !this.inheritedMark(info, t));
+    // Native interfaces (`Iterable<T>`) have no marker: they are checked structurally.
+    const marks = [...supertypes(info)].filter((t) => t.decl.isInterface && !isNative(t) && !this.inheritedMark(info, t));
     for (const iface of marks) this.w.line(`${decl.name.name}.prototype[${this.classRef(iface)}] = true;`);
   }
 
@@ -777,6 +779,7 @@ class ModuleGen {
     switch (check.kind) {
       case "class": return { code: `${first} instanceof ${this.classRef(check.info)}`, prec: P.rel };
       case "interface": return { code: `${first}?.[${this.classRef(check.info)}] === true`, prec: P.eq };
+      case "iterable": return { code: `typeof ${first}?.[Symbol.iterator] === 'function'`, prec: P.eq };
       case "enum": return { code: `Object.values(${this.classRef(check.info)}).includes(${first})`, prec: P.call };
       case "js": return { code: `${first} instanceof ${check.name}`, prec: P.rel };
       case "typeof": return { code: `typeof ${first} === ${jsString(check.tag)}`, prec: P.eq };

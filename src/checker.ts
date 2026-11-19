@@ -7,7 +7,7 @@ import { cover, type SourceFile, type Span, span, spanText } from "./source.ts";
 import { suggest } from "./suggest.ts";
 import {
   arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, arrayOf, elementOf, isDynamic, isNullable, isNumeric, isPrim, nonNull, nullableOf,
-  bind, eraseParams, memberTypeIn, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
+  bind, eraseParams, memberTypeIn, stdClassOf, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
   supertypeArgs, T, type Type, type TypeParamInfo, typeToString, unify,
 } from "./types.ts";
 
@@ -107,7 +107,8 @@ export type RuntimeCheck =
   | { kind: "interface"; info: ClassInfo } // x?.[IShape] === true
   | { kind: "enum"; info: ClassInfo } // Object.values(Direction).includes(x)
   | { kind: "js"; name: string } // x instanceof Response (JS import or global)
-  | { kind: "typeof"; tag: "string" | "number" | "boolean" | "function" }
+  | { kind: "typeof"; tag: "string" | "number" | "boolean" | "function" | "symbol" }
+  | { kind: "iterable" } // typeof x?.[Symbol.iterator] === 'function' (the native interface `Iterable<T>`)
   | { kind: "int" } // Number.isInteger(x)
   | { kind: "uint" } // Number.isInteger(x) && x >= 0
   | { kind: "array" } // Array.isArray(x)
@@ -312,6 +313,15 @@ class Env {
     readonly diags: DiagnosticBag,
     readonly result: CheckResult,
   ) {
+    // `Array<int>` and `String` fit interfaces their std classes implement (`Iterable<T>`).
+    stdClassOf.fn = (t) => {
+      if (t.kind === "builtin" && t.name === "Array" && this.arrayClass) return { kind: "class", info: this.arrayClass, args: [t.args[0] ?? T.any] };
+      if (t.kind === "prim") {
+        const info = this.primClass(t.name);
+        if (info) return { kind: "class", info };
+      }
+      return undefined;
+    };
     this.syntaxErrors = new Set(diags.items.filter((d) => d.severity === "error" && /^X0[01]\d\d$/.test(d.code ?? "") && d.code !== "X0001")
       .flatMap((d) => d.labels.map((l) => l.span.file)));
   }
@@ -513,10 +523,6 @@ class Env {
       (name === "int" || name === "uint" ? natives.find((c) => c.decl.name.name === "Float") : undefined);
   }
 
-  /** The std library's `Set<T>` and `Iterator<T>`: the types `for … of` knows the element type of. */
-  private iterableClasses(): ClassInfo[] {
-    return ["xenon.Set", "xenon.Iterator"].flatMap((q) => this.classes.get(q) ?? []);
-  }
 
   /** The `[K, V]` of a `Map<K, V>` (or a subclass of one), for `for (var [k, v]:* of map)`. */
   mapArgs(t: Type): [Type, Type] | undefined {
@@ -526,13 +532,18 @@ class Env {
     return [args[0] ?? T.any, args[1] ?? T.any];
   }
 
-  /** The `T` of a `Set<T>` or `Iterator<T>` (or a subclass of one), for `for … of`. */
+  /**
+   * What `for … of` yields for a class type: the `T` of the `Iterator<T>` its `[Symbol.iterator]()`
+   * returns (`Set<T>`, `Iterator<T>`, `Iterable<T>`, or any class declaring one). Undefined if it has none.
+   */
   iterableElement(t: Type): Type | undefined {
     if (t.kind !== "class") return undefined;
-    for (const base of this.iterableClasses()) {
-      if (isSubclass(t.info, base)) return supertypeArgs(t.info, t.args ?? [], base)?.[0] ?? T.any;
-    }
-    return undefined;
+    const m = findMember(t.info, "[Symbol.iterator]");
+    if (!m || m.isStatic || m.type.kind !== "method") return undefined;
+    const ret = (memberTypeIn(t.info, t.args ?? [], m.owner, m.type) as MethodType).ret;
+    const it = this.classes.get("xenon.Iterator");
+    if (ret.kind === "class" && it && isSubclass(ret.info, it)) return supertypeArgs(ret.info, ret.args ?? [], it)?.[0] ?? T.any;
+    return T.any;
   }
 
   /** The std library's `RegExp` (src/prelude/std/RegExp.xn): the type of `~/…/` literals. */
@@ -553,6 +564,16 @@ class Env {
   functionMember(name: string): MemberSig | undefined {
     const m = this.classes.get("xenon.Function")?.members.get(name);
     return m && !m.isStatic ? m : this.rootMember(name);
+  }
+
+  /** The element type an array must have to fit an interface the std `Array<T>` implements (`Iterable<int>` → `int`). */
+  arrayElementFor(t: Type): Type | undefined {
+    const array = this.arrayClass;
+    if (!array || t.kind !== "class" || !t.info.decl.isInterface || !t.args?.length) return undefined;
+    const param = array.typeParams[0]!;
+    const seen = supertypeArgs(array, [{ kind: "typeParam", param }], t.info);
+    const i = seen?.findIndex((a) => a.kind === "typeParam" && a.param === param) ?? -1;
+    return i >= 0 ? t.args[i] : undefined;
   }
 
   /** The std library's `Array<T>` (src/prelude/std/Array.xn): the members of the built-in array type. */
@@ -1074,7 +1095,8 @@ class Env {
     const classIndent = /^\s*/.exec(file.lineText(file.lineOf(info.decl.span.start)))![0];
     const onOwnLine = file.text.slice(lineStart, close).trim() === "";
     const at = onOwnLine ? lineStart : close;
-    const stubs = members.map((m) => stubFor(m, classIndent + "  ", override)).join("\n") + "\n";
+    // Types as the class sees them: `implements Iterable<int>` stubs return `Iterator<int>`, not `Iterator<T>`.
+    const stubs = members.map((m) => stubFor({ ...m, type: memberTypeIn(info, info.typeParams.map((param) => ({ kind: "typeParam", param })), m.owner, m.type) }, classIndent + "  ", override)).join("\n") + "\n";
     d.help("add the missing members (the stubs throw `NotImplementedException`)", [{ span: span(file, at, at), text: onOwnLine ? stubs : "\n" + stubs }]);
   }
 
@@ -2460,8 +2482,9 @@ class BodyChecker {
         ]);
       element = T.error;
     } else if (t.kind === "prim" || t.kind === "null" || t.kind === "classRef" || t.kind === "method" ||
-      (t.kind === "builtin" && t.name !== "Array")) {
-      this.diags.error("X0391", `\`${typeToString(t)}\` is not iterable`, s.iterable.span);
+      (t.kind === "builtin" && t.name !== "Array") || (t.kind === "class" && !hasJsAncestor(t.info))) {
+      const d = this.diags.error("X0391", `\`${typeToString(t)}\` is not iterable`, s.iterable.span);
+      if (t.kind === "class") d.help(`give \`${t.info.decl.name.name}\` a \`function [Symbol.iterator]():Iterator<T>\` (and \`implements Iterable<T>\`)`);
       element = T.error;
     }
     // A map yields `[key, value]` pairs; destructuring them types `key` as `K` and `value` as `V`.
@@ -2607,15 +2630,16 @@ class BodyChecker {
       if (!assignable(t, expected)) this.mismatch(e, t, expected, origin);
       return;
     }
-    // Array literals take their type from context: `var v:Array<int> = [1, 2]`.
-    const expectedElement = e.kind === "Array" ? elementOf(expected) : undefined;
+    // Array literals take their type from context: `var v:Array<int> = [1, 2]`, also through an
+    // interface arrays implement: `Iterable<int>`.
+    const expectedElement = e.kind === "Array" ? elementOf(expected) ?? this.env.arrayElementFor(expected) : undefined;
     if (e.kind === "Array" && expectedElement) {
       const element = expectedElement;
       for (const el of e.elements) {
         if (el.kind === "Spread") this.valueExpr(el.arg, scope);
         else this.checkAssign(el, element, origin, scope);
       }
-      this.record(e, expected);
+      this.record(e, elementOf(expected) ? expected : arrayOf(element));
       return;
     }
     const actual = this.valueExpr(e, scope);
@@ -3037,7 +3061,7 @@ class BodyChecker {
     if (e.callee.kind === "Super") return this.superCallExpr(e, scope);
     const savedCallee = this.calledCallee;
     this.calledCallee = e.callee;
-    const callee = this.expr(e.callee, scope);
+    let callee = this.expr(e.callee, scope);
     this.calledCallee = savedCallee;
     this.env.result.methodClosures.delete(e.callee); // called directly, not used as a value
     let res = e.callee.kind === "Ident" ? this.env.result.resolutions.get(e.callee) : undefined;
@@ -3049,6 +3073,14 @@ class BodyChecker {
     if (e.callee.kind === "Ident" && castName) {
       res = { kind: "builtin", name: castName as BuiltinFn };
       this.env.result.resolutions.set(e.callee, res);
+    }
+    // `Symbol('id')`: a std class whose name is also a std function; called, it is the function.
+    const sameNameFns = e.callee.kind === "Ident" && calleeClass ? this.env.functions.get(e.callee.name) : undefined;
+    if (sameNameFns) {
+      res = { kind: "function", decl: sameNameFns[0]!.decl };
+      this.env.result.resolutions.set(e.callee, res);
+      if (sameNameFns.length > 1) this.calleeOverloads.set(e.callee, sameNameFns);
+      callee = sameNameFns[0]!.type;
     }
 
     if (res?.kind === "builtin") {
@@ -4331,6 +4363,9 @@ function runtimeCheck(t: Type): RuntimeCheck | undefined {
   switch (t.kind) {
     case "class":
       if (t.info.decl.isEnum) return { kind: "enum", info: t.info };
+      if (t.info.qname === "xenon.Symbol") return { kind: "typeof", tag: "symbol" }; // symbols are primitives
+      if (t.info.qname === "xenon.Iterable") return { kind: "iterable" };
+      if (t.info.decl.isInterface && isNative(t.info)) return undefined; // no marker to test
       return t.info.decl.isInterface ? { kind: "interface", info: t.info } : { kind: "class", info: t.info };
     case "prim":
       switch (t.name) {
