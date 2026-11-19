@@ -18,6 +18,20 @@ package {
       strings()
       arrays()
       globals()
+      functions()
+    }
+
+    private function functions():void {
+      // function values have call/apply/bind, length and name (results unchecked: `*`)
+      var add:(a:int, b:int) -> int = (a:int, b:int):int => a + b
+      trace(add.name, add.length, add.call(null, 1, 2), add.apply(null, [3, 4]), this.functions.name)
+      var addTen:Function = add.bind(null, 10)
+      trace(addTen.call(null, 5), addTen.name)
+
+      // a string destructures like an object: its members are typed
+      var { length } = 'xenon'
+      var size:int = length
+      trace(size)
     }
 
     private function globals():void {

@@ -1,0 +1,12 @@
+public class Main {
+  public function Main() {
+    var text:String = 'hello'
+    var { length } = text                           // fine: an int
+    var { lenght } = text                           // typo
+    var { toUpperCase } = text                      // methods lose `this`
+    var count:int = 3
+    var { MAX_VALUE } = count                       // static
+    var n:String = length
+    trace(n, lenght, toUpperCase, MAX_VALUE)
+  }
+}

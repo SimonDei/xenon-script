@@ -19,6 +19,7 @@ import stdMap from "./prelude/std/Map.xn" with { type: "text" };
 import stdMath from "./prelude/std/Math.xn" with { type: "text" };
 import stdObject from "./prelude/std/Object.xn" with { type: "text" };
 import stdGlobals from "./prelude/std/globals.xn" with { type: "text" };
+import stdFunction from "./prelude/std/Function.xn" with { type: "text" };
 import stdRegExp from "./prelude/std/RegExp.xn" with { type: "text" };
 import stdSet from "./prelude/std/Set.xn" with { type: "text" };
 import stdPromise from "./prelude/std/Promise.xn" with { type: "text" };
@@ -43,6 +44,7 @@ export const PRELUDE: SourceInput[] = [
   { path: "xenon/Math.xn", text: stdMath },
   { path: "xenon/Object.xn", text: stdObject },
   { path: "xenon/globals.xn", text: stdGlobals },
+  { path: "xenon/Function.xn", text: stdFunction },
   { path: "xenon/Promise.xn", text: stdPromise },
   { path: "xenon/RegExp.xn", text: stdRegExp },
   { path: "xenon/Set.xn", text: stdSet },

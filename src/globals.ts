@@ -12,7 +12,7 @@ export const JS_GLOBALS = new Set([
   "globalThis", "process", "Bun", "document", "window", "navigator", "location", "localStorage", "performance",
   "crypto",
   "EventTarget", "Event", "CustomEvent", "MessageChannel", "MessagePort", "BroadcastChannel", "WebSocket", "Worker",
-  "ReadableStream", "WritableStream", "TransformStream", "File", "FileReader", "Intl", "WeakRef", "FinalizationRegistry",
+  "ReadableStream", "WritableStream", "TransformStream", "File", "FileReader", "FinalizationRegistry",
   "AsyncDisposableStack", "DisposableStack", "requestAnimationFrame", "cancelAnimationFrame", "alert", "HTMLElement",
 ]);
 

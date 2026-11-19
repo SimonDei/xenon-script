@@ -502,6 +502,12 @@ class Env {
     return m && !m.isStatic ? m : undefined;
   }
 
+  /** A member of every function value (`call`, `bind`, `length`, … from src/prelude/std/Function.xn, then `Object`'s). */
+  functionMember(name: string): MemberSig | undefined {
+    const m = this.classes.get("xenon.Function")?.members.get(name);
+    return m && !m.isStatic ? m : this.rootMember(name);
+  }
+
   /** The std library's `Array<T>` (src/prelude/std/Array.xn): the members of the built-in array type. */
   get arrayClass(): ClassInfo | undefined {
     return this.classes.get("xenon.Array");
@@ -2799,11 +2805,16 @@ class BodyChecker {
     switch (obj.kind) {
       case "builtin": {
         // An `Object` value: the inherited members are typed, anything else stays dynamic.
-        const root = obj.name === "Object" ? this.env.rootMember(name) : undefined;
-        return root ? this.rootMemberUse(e, root) : T.any;
+        if (obj.name === "Object") {
+          const root = this.env.rootMember(name);
+          return root ? this.rootMemberUse(e, root) : T.any;
+        }
+        if (obj.name === "Function") return this.functionMemberUse(e, obj);
+        return T.any;
       }
-      case "any":
       case "method":
+        return this.functionMemberUse(e, obj);
+      case "any":
         return T.any;
       case "error":
       case "void":
@@ -2881,7 +2892,23 @@ class BodyChecker {
     }
   }
 
-  /** `x.toString` & co. on a shape or an `Object` value: an `Object.prototype` member. */
+  /** `f.call`, `f.length` & co. on a function value; other names are errors. */
+  private functionMemberUse(e: A.Expr & { kind: "Member" }, fn: Type): Type {
+    const m = this.env.functionMember(e.name.name);
+    // Reading `name`/`length` of a method needn't bind it (a bound copy is named `bound …`);
+    // `call`/`apply`/`bind` keep the binding, so the method keeps its `this`.
+    if (m && m.kind !== "method") this.env.result.methodClosures.delete(e.object);
+    if (m) return this.rootMemberUse(e, m);
+    const instanceNames = (q: string) => [...(this.env.classes.get(q)?.members.values() ?? [])].filter((x) => !x.isStatic).map((x) => x.name);
+    const names = [...instanceNames("xenon.Function"), ...instanceNames("xenon.Object")];
+    const d = this.diags.error("X0426", `no member \`${e.name.name}\` on \`${typeToString(fn)}\``, e.name.span, "unknown member");
+    const sug = suggest(e.name.name, names);
+    if (sug) d.help(`a member with a similar name exists: \`${sug}\``, [{ span: e.name.span, text: sug }]);
+    else d.help(`if this JavaScript property exists, use it dynamically: \`(${dynamicReceiver(e.object)} as *).${e.name.name}\``);
+    return T.error;
+  }
+
+  /** `x.toString` & co. on a shape, an `Object` or a function value: a declared std member. */
   private rootMemberUse(e: A.Expr & { kind: "Member" }, m: MemberSig): Type {
     if (m.overloads) this.calleeOverloads.set(e, m.overloads);
     this.memberUse(e, m, e.name.span);
@@ -3126,13 +3153,15 @@ class BodyChecker {
 
   /** Type of `source.key` for `{key}` destructuring (same rules as member access). */
   private propertyType(source: Type, key: A.Ident): Type {
-    if (source.kind === "class") {
-      const m = findMember(source.info, key.name);
+    // Classes, and primitives through their std class (`var { length } = text`).
+    const info = source.kind === "class" ? source.info : source.kind === "prim" ? this.env.primClass(source.name) : undefined;
+    if (info) {
+      const m = findMember(info, key.name);
       if (m) this.env.usedMembers.add(m);
       if (!m) {
-        if (hasJsAncestor(source.info)) return T.any;
-        const d = this.diags.error("X0426", `no member \`${key.name}\` on \`${source.info.decl.name.name}\``, key.span, "unknown member");
-        const sug = suggest(key.name, allMemberNames(source.info));
+        if (hasJsAncestor(info)) return T.any;
+        const d = this.diags.error("X0426", `no member \`${key.name}\` on \`${source.kind === "class" ? info.decl.name.name : typeToString(source)}\``, key.span, "unknown member");
+        const sug = suggest(key.name, allMemberNames(info));
         if (sug) d.help(`a member with a similar name exists: \`${sug}\``);
         return T.error;
       }
@@ -3148,7 +3177,6 @@ class BodyChecker {
       }
       return this.seenThrough(source, m);
     }
-    if (isPrim(source, "String")) return key.name === "length" ? T.int : T.any;
     if (source.kind === "shape") {
       const m = source.members.get(key.name);
       if (m) return m.type();
@@ -3519,6 +3547,7 @@ class BodyChecker {
     else if (callee.kind === "Member") {
       const objType = this.env.result.exprTypes.get(callee.object);
       if (objType?.kind === "class" || objType?.kind === "classRef") m = findMember(objType.info, callee.name.name);
+      if (!m && (objType?.kind === "method" || (objType?.kind === "builtin" && objType.name === "Function"))) m = this.env.functionMember(callee.name.name);
       if (!m && objType?.kind !== "classRef") m = this.env.rootMember(callee.name.name);
     }
     return m?.decl.kind === "Method" ? m.decl : undefined;
@@ -3657,6 +3686,13 @@ class BodyChecker {
       return type;
     }
     dynamicArgs();
+    if (type.kind === "builtin" && type.name === "Function") {
+      this.diags.error("X0415", "`Function` can't be instantiated with `new`", t.span)
+        .note("`new Function('code')` compiles source text at runtime, like `eval`")
+        .help("write the function as an arrow: `(x:int):int => x * 2`");
+      dynamicArgs();
+      return type;
+    }
     if (type.kind === "builtin" || isDynamic(type)) return type;
     const d = this.diags.error("X0415", `\`${typeToString(type)}\` can't be instantiated with \`new\``, t.span);
     if (type.kind === "prim" && type.name in CASTS && type.name !== "int" && type.name !== "uint") {
@@ -3948,6 +3984,9 @@ class BodyChecker {
       // A primitive's members come from its std class (`s.length = 3` is a getter-only write).
       const primCls = objType?.kind === "prim" ? this.env.primClass(objType.name) : undefined;
       if (primCls) return { type, commit: this.memberWrite(target.name.name, primCls, target.name.span, false) };
+      // Function values: `f.name` is read-only, `f.call` a method.
+      const fnCls = objType?.kind === "method" || (objType?.kind === "builtin" && objType.name === "Function") ? this.env.classes.get("xenon.Function") : undefined;
+      if (fnCls) return { type, commit: this.memberWrite(target.name.name, fnCls, target.name.span, false) };
       if (objType?.kind === "class" || objType?.kind === "classRef") {
         const own = target.object.kind === "This" || (objType.kind === "classRef" && objType.info === this.info);
         return { type, commit: this.memberWrite(target.name.name, objType.info, target.name.span, own) };
@@ -3962,7 +4001,7 @@ class BodyChecker {
   /** Checks a write to a member; returns the definite-assignment commit for tracked `final` fields. */
   private memberWrite(name: string, info: ClassInfo, at: Span, own: boolean): () => void {
     const none = () => {};
-    const m = findMember(info, name);
+    const m = findMember(info, name) ?? (hasJsAncestor(info) ? undefined : this.env.rootMember(name));
     if (!m) return none;
     this.env.usedMembers.add(m);
     if (this.constMethod && own && !m.isStatic && m.kind !== "method") {

@@ -1,0 +1,25 @@
+// Standard library: members of function values. The function types themselves are built into the
+// compiler (`(a:int) -> String`, and the untyped `Function`); this class gives every function value
+// its JS members, plus the `Object.prototype` ones (`toString`, …).
+//
+// Typing: arguments and results of `call`/`apply` are unchecked (`*`), and `bind` returns an
+// untyped `Function`; an arrow keeps the types: `(x:int):int => f(x)` instead of `f.bind(null)`.
+// The constructor is hidden: `new Function('code')` compiles source text at runtime, like `eval`.
+package xenon {
+  public native class Function {
+    private function Function()
+
+    /** Calls the function with `this` set to `thisArg`: `f.call(obj, 1, 2)`. */
+    function call(thisArg:*, ...args:Array<*>):*
+    /** Like `call`, with the arguments as an array. */
+    function apply(thisArg:*):*
+    function apply(thisArg:*, args:Array<*>):*
+    /** A new function with `this` fixed to `thisArg` and the leading arguments filled in. */
+    function bind(thisArg:*, ...args:Array<*>):Function
+
+    /** The number of declared parameters before the first optional or rest one. */
+    function get length():int
+    /** The declared name (`''` for anonymous arrows). */
+    function get name():String
+  }
+}

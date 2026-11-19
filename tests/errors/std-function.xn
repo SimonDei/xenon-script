@@ -1,0 +1,13 @@
+public class Main {
+  public function Main() {
+    var add:(a:int, b:int) -> int = (a:int, b:int):int => a + b
+    trace(add.lenght, add.arity)                    // typo; not a JS member
+    var n:String = add.length                       // length is an int
+    add.name = 'sum'                                // read-only
+    var untyped:Function = add
+    var nums:Array<int> = [1, 2].map(untyped.bind(null))   // bind gives an untyped Function
+    var made:* = new Function('return 1')           // eval in disguise
+    add.call = null                                 // a method
+    trace(n, nums, made, untyped.foo)
+  }
+}

@@ -1,0 +1,71 @@
+error[X0426]: no member `lenght` on `(a:int, b:int) -> int`
+ --> std-function.xn:4:15
+  |
+4 |     trace(add.lenght, add.arity)                    // typo; not a JS member
+  |               ^^^^^^ unknown member
+  |
+help: a member with a similar name exists: `length`
+  |
+4 |     trace(add.length, add.arity)                    // typo; not a JS member
+  |               ~~~~~~
+
+error[X0426]: no member `arity` on `(a:int, b:int) -> int`
+ --> std-function.xn:4:27
+  |
+4 |     trace(add.lenght, add.arity)                    // typo; not a JS member
+  |                           ^^^^^ unknown member
+  |
+help: if this JavaScript property exists, use it dynamically: `(add as *).arity`
+
+error[X0308]: mismatched types
+ --> std-function.xn:5:20
+  |
+5 |     var n:String = add.length                       // length is an int
+  |           ------   ^^^^^^^^^^ expected `String`, found `int`
+  |           |
+  |           expected because of this type
+  |
+help: convert the value with `String()`
+  |
+5 |     var n:String = String(add.length)                       // length is an int
+  |                    +++++++          +
+
+error[X0504]: `name` has a getter but no setter
+  --> std-function.xn:6:9
+   |
+ 6 |     add.name = 'sum'                                // read-only
+   |         ^^^^
+   |
+  ::: <xenon prelude>/xenon/Function.xn:23:18
+   |
+23 |     function get name():String
+   |                  ---- getter declared here
+
+error[X0308]: mismatched types
+ --> std-function.xn:8:38
+  |
+8 |     var nums:Array<int> = [1, 2].map(untyped.bind(null))   // bind gives an untyped Function
+  |                                      ^^^^^^^^^^^^^^^^^^ expected `(item:*, index:int, array:Array) -> int`, found `Function`
+
+error[X0415]: `Function` can't be instantiated with `new`
+ --> std-function.xn:9:22
+  |
+9 |     var made:* = new Function('return 1')           // eval in disguise
+  |                      ^^^^^^^^
+  |
+  = note: `new Function('code')` compiles source text at runtime, like `eval`
+help: write the function as an arrow: `(x:int):int => x * 2`
+
+error[X0505]: cannot assign to method `call`
+  --> std-function.xn:10:9
+   |
+10 |     add.call = null                                 // a method
+   |         ^^^^
+
+error[X0426]: no member `foo` on `Function`
+  --> std-function.xn:11:34
+   |
+11 |     trace(n, nums, made, untyped.foo)
+   |                                  ^^^ unknown member
+   |
+help: if this JavaScript property exists, use it dynamically: `(untyped as *).foo`
