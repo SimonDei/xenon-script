@@ -64,6 +64,11 @@
           "description": "A compiler's `src/cli.ts` to run as the language server (`bun <path> lsp`) instead of the bundled one, e.g. a checkout of the compiler."
         }
       }
+    },
+    "configurationDefaults": {
+      "[xenon]": {
+        "editor.semanticHighlighting.enabled": true
+      }
     }
   },
   "scripts": {

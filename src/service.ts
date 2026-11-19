@@ -91,6 +91,16 @@ export interface SignatureHelp {
   activeParameter: number;
 }
 
+/** A name the grammar can't classify reliably, with its role from the parsed code (LSP semantic tokens). */
+export interface SemanticToken {
+  line: number;
+  character: number;
+  length: number;
+  /** `property`: an object literal key (`{ method: 'POST' }`) or a member declared in a shape type (`{ to:String }`). */
+  type: "property";
+  modifiers: "declaration"[];
+}
+
 export type SymbolKind = "class" | "interface" | "enum" | "typedef" | "field" | "method" | "property" | "constructor" | "constant";
 
 export interface DocumentSymbol {
@@ -552,6 +562,33 @@ export class XenonProject {
       }
     }
     return undefined;
+  }
+
+  /**
+   * Names whose role only the parser knows: object literal keys (whatever the spacing:
+   * `{a:1}` is an object, `x:int` an annotation) and the members of shape types. Editors paint
+   * these over the grammar's colours.
+   */
+  semanticTokens(path: string): SemanticToken[] {
+    const a = this.analyze();
+    const ast = this.astOf(a, path);
+    if (!ast) return [];
+    const tokens: SemanticToken[] = [];
+    const add = (name: A.Ident, modifiers: "declaration"[]) => {
+      const { start } = rangeOf(ast.file, name.span.start, name.span.end);
+      tokens.push({ line: start.line, character: start.character, length: name.span.end - name.span.start, type: "property", modifiers });
+    };
+    const visit = (n: Node) => {
+      if (n.kind === "Prop") {
+        const key = (n as A.ObjectProp & { kind: "Prop" }).key;
+        if (!("kind" in key)) add(key, []);
+      } else if (n.kind === "ShapeType") {
+        for (const m of (n as A.TypeNode & { kind: "ShapeType" }).members) add(m.name, ["declaration"]);
+      }
+      for (const c of childNodes(n)) visit(c);
+    };
+    for (const n of childNodes([ast.imports, ast.decls, ast.privateDecls, ast.functions])) visit(n);
+    return tokens.sort((x, y) => x.line - y.line || x.character - y.character);
   }
 
   /** An overload's doc comment; one without its own shares the nearest one above it in its group. */

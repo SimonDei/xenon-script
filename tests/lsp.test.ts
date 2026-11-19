@@ -114,6 +114,14 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
     const actions = (await rpc.sendRequest("textDocument/codeAction", { textDocument: { uri }, range: (withFix[0] as { range: object }).range, context: { diagnostics: withFix } })) as { title: string; isPreferred: boolean; edit: { changes: Record<string, { newText: string }[]> } }[];
     expect(actions.map((a) => [a.title, a.isPreferred, a.edit.changes[uri]!.map((e) => e.newText)])).toEqual([["use ==", true, ["=="]]]);
 
+    // Semantic tokens: object literal keys whatever the spacing, shape members; not annotations.
+    expect(init).toMatchObject({ capabilities: { semanticTokensProvider: { legend: { tokenTypes: ["property"], tokenModifiers: ["declaration"] }, full: true } } });
+    const objects = "typedef Pair = { left:int }\n" + MAIN.replace("trace(", "var o:* = { a:1, method: 'POST' }\n    trace(o, ");
+    rpc.sendNotification("textDocument/didChange", { textDocument: { uri, version: 5 }, contentChanges: [{ text: objects }] });
+    const tokens = (await rpc.sendRequest("textDocument/semanticTokens/full", { textDocument: { uri } })) as { data: number[] };
+    // Relative encoding: [line delta, column (a delta on the same line), length, type, modifiers].
+    expect(tokens.data).toEqual([0, 17, 4, 0, 1, 5, 16, 1, 0, 0, 0, 5, 6, 0, 0]);
+
     await rpc.sendRequest("shutdown");
     rpc.sendNotification("exit");
   } finally {

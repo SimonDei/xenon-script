@@ -19,6 +19,8 @@ import {
   ProposedFeatures,
   LSPErrorCodes,
   ResponseError,
+  SemanticTokensBuilder,
+  type SemanticTokensLegend,
   SymbolKind,
   TextDocuments,
   TextDocumentSyncKind,
@@ -26,6 +28,9 @@ import {
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { type CompletionKind, type DocumentSymbol, type Fix, type Location, type SymbolKind as XenonSymbolKind, XenonProject } from "./service.ts";
+
+/** The semantic token types and modifiers the server reports (see `XenonProject.semanticTokens`). */
+const SEMANTIC_LEGEND: SemanticTokensLegend = { tokenTypes: ["property"], tokenModifiers: ["declaration"] };
 
 const KINDS: Record<CompletionKind, CompletionItemKind> = {
   field: CompletionItemKind.Field,
@@ -169,6 +174,7 @@ export function startServer(connection: Connection = createConnection(ProposedFe
         signatureHelpProvider: { triggerCharacters: ["(", ","], retriggerCharacters: [","] },
         documentSymbolProvider: true,
         codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
+        semanticTokensProvider: { legend: SEMANTIC_LEGEND, full: true },
       },
       serverInfo: { name: "xenon-language-server" },
     };
@@ -273,6 +279,21 @@ export function startServer(connection: Connection = createConnection(ProposedFe
     if (doc) q.project.set(q.path, doc.getText());
     const convert = (s: DocumentSymbol): object => ({ ...s, kind: SYMBOLS[s.kind], children: s.children.map(convert) });
     return q.project.documentSymbols(q.path).map(convert) as never;
+  });
+
+  // Object literal keys and shape members: names only the parser can tell apart from annotations.
+  connection.languages.semanticTokens.on(async ({ textDocument }) => {
+    const q = await projectOf(textDocument.uri);
+    const doc = documents.get(textDocument.uri);
+    const builder = new SemanticTokensBuilder();
+    if (q && doc) {
+      q.project.set(q.path, doc.getText());
+      for (const t of q.project.semanticTokens(q.path)) {
+        const modifiers = t.modifiers.reduce((bits, m) => bits | (1 << SEMANTIC_LEGEND.tokenModifiers.indexOf(m)), 0);
+        builder.push(t.line, t.character, t.length, SEMANTIC_LEGEND.tokenTypes.indexOf(t.type), modifiers);
+      }
+    }
+    return builder.build();
   });
 
   connection.onCodeAction(({ context }) => {
