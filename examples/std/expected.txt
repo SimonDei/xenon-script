@@ -131,3 +131,8 @@ add 2 3 7 functions
 5
 microtask: before any timer
 timeout, async callback: 3
+caught: offline
+#7 14 -1 true
+7,8 7,eight fulfilled,rejected 7 fast
+finally
+resolved from outside parse failed 7

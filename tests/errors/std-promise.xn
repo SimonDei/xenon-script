@@ -1,0 +1,13 @@
+public class Main {
+  public function Main() {
+    var id:Promise<int> = Promise.resolve(7)
+    var label:Promise<int> = id.then(n => Promise.resolve('#' + n))   // a Promise<String>: flattened
+    var wrong:Promise<String> = id.catch(e => 'none')                   // the replacement must be an int
+    var all:Promise<Array<String>> = Promise.all([id, id])
+    var done:Promise<void> = new Promise((resolve, reject) => resolve(1))
+    var later:PromiseWithResolvers<int> = Promise.withResolvers()
+    later.resolve('x')
+    id.then()
+    trace(label, wrong, all, done)
+  }
+}

@@ -1,22 +1,81 @@
+// Standard library: JavaScript's `Promise<T>`: a `T` that arrives later, or a failure.
+// Mostly you don't touch promises yourself: an `async` function returns one, and `await` takes
+// the value out (`var text:String = await res.text()`) or throws the failure, which `catch (e)`
+// receives like any exception. Use the methods below to start several things at once
+// (`Promise.all`), to wrap a callback API (`new Promise((resolve, reject) => …)`), or in code
+// that isn't `async`.
+//
+// Typing: a rejection's reason is `*` (JavaScript can reject with anything; in a `catch` block it
+// is an `Exception`, see `Exception.from`). A callback may return a value or a promise; `then` and
+// `catch` wait for a returned promise, as in JavaScript, so `p.then(id => load(id))` is a
+// `Promise<User>`, not a `Promise<Promise<User>>`. A `Promise<void>` is resolved with `resolve()`.
+// `Promise.all` and its siblings infer the value type from the promises; for mixed types it is `*`:
+// `var [user, posts]:* = await Promise.all([loadUser(id), loadPosts(id)])`.
+// Not declared: `resolve` called with a promise inside `new Promise(…)` (resolve with its value),
+// `then(null, onRejected)` (use `catch`).
 package xenon {
-  public typedef Executor<T> = (resolve:(value:T) -> Void, reject:(reason:*) -> Void) -> Void
-  public typedef FulfilledExecutor<T, U> = (value:T) -> U
+  /** One result of `Promise.allSettled`: `status` is `'fulfilled'` (with `value`) or `'rejected'` (with `reason`). */
+  public typedef PromiseSettledResult<T> = { status:String, ?value:T, ?reason:* }
+
+  /** `Promise.withResolvers()`: a promise and the functions that settle it, to call from anywhere. */
+  public typedef PromiseWithResolvers<T> = {
+    promise:Promise<T>,
+    resolve:(value:T) -> Void,
+    reject:(reason:*) -> Void
+  }
 
   public native class Promise<T> {
-    function Promise(executor:Executor<T>)
+    /**
+     * A promise that `executor` settles, usually from a callback API:
+     * `new Promise((resolve, reject) => setTimeout(() => resolve(), 100))`.
+     * `executor` runs at once; an exception it throws rejects the promise.
+     */
+    function Promise(executor:(resolve:(value:T) -> Void, reject:(reason:*) -> Void) -> Void)
 
+    // ---- creating settled promises ----
+    /** An already fulfilled `Promise<void>`. */
+    static function resolve():Promise<void>
+    /** The promise itself (`Promise.resolve(p)` is `p`). */
+    static function resolve<T>(value:Promise<T>):Promise<T>
+    /** An already fulfilled promise of `value`. */
     static function resolve<T>(value:T):Promise<T>
-    static function resolve():Promise<Void>
-
+    /** An already rejected promise: `Promise.reject(new Exception('no access'))`. */
     static function reject<T>(reason:*):Promise<T>
+    /**
+     * Calls `callback` now and wraps its result, value or exception, in a promise:
+     * `Promise.try(() => JSON.parse(text))` fails as a rejected promise instead of throwing.
+     */
+    static function try<T>(callback:() -> Promise<T>):Promise<T>
+    static function try<T>(callback:() -> T):Promise<T>
+    /** A new promise and its `resolve`/`reject` functions, for settling it outside an executor. */
+    static function withResolvers<T>():PromiseWithResolvers<T>
 
-    static function all(iterable:Array<Promise<*>>):Promise<Array<*>>
+    // ---- combining (an array, a set or any `IEnumerable` of promises) ----
+    /** All values, in the order of `promises`; rejects as soon as one of them rejects. */
+    static function all<T>(promises:IEnumerable<Promise<T>>):Promise<Array<T>>
+    /** Waits for every promise; never rejects. Each result tells whether its promise was fulfilled. */
+    static function allSettled<T>(promises:IEnumerable<Promise<T>>):Promise<Array<PromiseSettledResult<T>>>
+    /** The first value to arrive; rejects only if all of them reject (with an `AggregateError`, its `errors` the reasons). */
+    static function any<T>(promises:IEnumerable<Promise<T>>):Promise<T>
+    /** Settles like the first promise to settle, fulfilled or rejected: `Promise.race([load(), timeout(5000)])`. */
+    static function race<T>(promises:IEnumerable<Promise<T>>):Promise<T>
 
-    function then<U>(onFulfilled:FulfilledExecutor<T, U>):Promise<U>
-    function then<U>(onFulfilled:FulfilledExecutor<T, U>, onRejected:(reason:*) -> U):Promise<U>
-
+    // ---- reacting ----
+    /** A promise of what `onFulfilled` returns for the value (waiting for it if it's a promise); rejections pass through. */
+    function then<U>(onFulfilled:(value:T) -> Promise<U>):Promise<U>
+    function then<U>(onFulfilled:(value:T) -> U):Promise<U>
+    /** Also handles a rejection: the result is what `onRejected` returns for its reason. */
+    function then<U>(onFulfilled:(value:T) -> Promise<U>, onRejected:(reason:*) -> Promise<U>):Promise<U>
+    function then<U>(onFulfilled:(value:T) -> U, onRejected:(reason:*) -> U):Promise<U>
+    /** Handles a rejection with a replacement value (or promise): `load().catch(_ => defaults)`. */
     function catch(onRejected:(reason:*) -> T):Promise<T>
-
+    function catch(onRejected:(reason:*) -> Promise<T>):Promise<T>
+    /** Handles a rejection without a replacement (`p.catch(e => trace(e))`): the value is `null` then. */
+    function catch(onRejected:(reason:*) -> Void):Promise<T?>
+    /**
+     * Runs `onFinally` once the promise settles either way; the result settles like this promise
+     * (or rejects, if `onFinally` throws or returns a rejected promise).
+     */
     function finally(onFinally:() -> Void):Promise<T>
   }
 }

@@ -80,6 +80,24 @@ export class DiagnosticBag {
     return this.add("error", code, message, span, label);
   }
 
+  /**
+   * Runs `fn` as a trial: whatever it reports is discarded afterwards. Returns its result and
+   * whether it reported an error (used to try a callback against each overload).
+   */
+  speculate<R>(fn: () => R): { result: R; failed: boolean } {
+    const length = this.items.length;
+    const seen = new Set(this.seen);
+    const omitted = this.omitted;
+    try {
+      const result = fn();
+      return { result, failed: this.omitted > omitted || this.items.slice(length).some((d) => d.severity === "error") };
+    } finally {
+      this.items.length = length;
+      this.seen = seen;
+      this.omitted = omitted;
+    }
+  }
+
   warning(code: string, message: string, span?: Span, label?: string) {
     return this.add("warning", code, message, span, label);
   }

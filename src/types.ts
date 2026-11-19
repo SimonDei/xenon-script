@@ -421,10 +421,21 @@ function fitsShape(from: Type, to: ShapeType): boolean {
   return true;
 }
 
+/**
+ * How many arguments a call must pass: the parameters up to the last one that isn't optional, rest
+ * or `void`. A trailing `void` parameter may be left out (as in TypeScript), so the `resolve` of a
+ * `Promise<void>` is called as `resolve()`.
+ */
+export function requiredParams(params: readonly { optional?: boolean; rest?: boolean; type: Type }[]): number {
+  let n = params.length;
+  while (n > 0 && (params[n - 1]!.optional || params[n - 1]!.rest || params[n - 1]!.type.kind === "void")) n--;
+  return n;
+}
+
 /** Function types: contravariant parameters, covariant return; fewer parameters are fine (as in JS). */
 function fitsFunction(from: Type, to: MethodType): boolean {
   if (from.kind !== "method") return false;
-  const required = from.params.filter((p) => !p.optional && !p.rest).length;
+  const required = requiredParams(from.params);
   if (required > to.params.length && !to.params.some((p) => p.rest)) return false;
   for (let i = 0; i < from.params.length; i++) {
     const mine = from.params[i]!;

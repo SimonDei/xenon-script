@@ -1310,8 +1310,11 @@ class ModuleGen {
       }
       case "Index":
         return { code: `${this.wrap(this.expr(e.object), P.call)}${e.optional ? "?." : ""}[${this.expr(e.index).code}]`, prec: P.call };
-      case "Call":
-        return this.call(e);
+      case "Call": {
+        const call = this.call(e);
+        const t = this.ts && this.check.tsResultCasts.has(e) ? this.check.exprTypes.get(e) : undefined;
+        return t ? { code: `(${call.code} as unknown as ${this.tsType(t)})`, prec: P.call } : call;
+      }
       case "New": {
         // TypeScript keeps explicit type arguments: `new Box<number>()`.
         const t = this.ts && e.callee.kind === "TypeName" && e.callee.args.length > 0 ? this.check.typeNodeTypes.get(e.callee) : undefined;

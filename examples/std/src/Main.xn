@@ -18,6 +18,7 @@ package {
       strings()
       arrays()
       globals()
+      promises()
       functions()
     }
 
@@ -32,6 +33,37 @@ package {
       var { length } = 'xenon'
       var size:int = length
       trace(size)
+    }
+
+    // Promises: `then`/`catch` wait for a returned promise; the combinators take an array, a
+    // set or any `IEnumerable`. Runs after the other timers, so its lines come last.
+    private function promises():void {
+      setTimeout(async () => {
+        var id:Promise<int> = Promise.resolve(7)
+        var label:String = await id.then(n => Promise.resolve('#' + n))   // not a Promise<Promise<String>>
+        var doubled:int = await id.then(n => n * 2)
+        var failing:Promise<int> = Promise.reject(new Exception('offline'))
+        var fallback:int = await failing.catch(_ => -1)
+        var logged:int? = await failing.catch(e => trace('caught:', Exception.from(e).message))
+        trace(label, doubled, fallback, logged == null)
+
+        var both:Array<int> = await Promise.all([id, Promise.resolve(8)])
+        var mixed:Array<*> = await Promise.all([id, Promise.resolve('eight')])   // mixed types: `*`
+        var settled:Array<PromiseSettledResult<int>> = await Promise.allSettled(new Set<Promise<int>>([id, failing]))
+        var first:int = await Promise.any([failing, id])
+        var fastest:String = await Promise.race([Main.delay(30, 'slow'), Main.delay(1, 'fast')])
+        trace(both.join(','), mixed.join(','), settled.map((s, i) => s.status).join(','), first, fastest)
+
+        var later:PromiseWithResolvers<String> = Promise.withResolvers()
+        setTimeout(() => later.resolve('resolved from outside'), 1)
+        var parsed:String = await Promise.try(() => JSON.parse('{')).then(_ => 'parsed', e => 'parse failed')
+        await new Promise<void>((resolve, reject) => setTimeout(() => resolve(), 1))
+        trace(await later.promise, parsed, await id.finally(() => trace('finally')))
+      }, 20)
+    }
+
+    private static function delay(ms:Float, value:String):Promise<String> {
+      return new Promise((resolve, reject) => setTimeout(() => resolve(value), ms))
     }
 
     private function globals():void {

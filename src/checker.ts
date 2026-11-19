@@ -10,6 +10,7 @@ import {
   arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, arrayOf, elementOf, isDynamic, isNullable, isNumeric, isPrim, nonNull, nullableOf,
   bind, eraseParams, memberTypeIn, stdClassOf, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
   supertypeArgs, T, type Type, type TypeParamInfo, typeToString, unify,
+  requiredParams,
 } from "./types.ts";
 
 /** A class known to the project. */
@@ -151,7 +152,19 @@ export interface CheckResult {
   operatorCalls: Set<A.Expr>;
   /** `x.getEnumerator` resolving to `IEnumerable`'s declaration (x may be built-in): compiled to `Enumerable.enumerate(x)`. */
   enumerateCalls: Set<A.Expr>;
+  /**
+   * Calls of standard-library overloads typed differently from TypeScript's `lib` (`p.catch(log)`
+   * is a `Promise<T?>` here, a `Promise<T | void>` there): the TypeScript output casts their result.
+   */
+  tsResultCasts: Set<A.Expr>;
   classes: Map<string, ClassInfo>;
+}
+
+/** A nullable type inside a type argument (`Promise<T?>`), where TypeScript's `T | undefined` doesn't stand in for it. */
+function nestedNullable(node: A.TypeNode | undefined, inArgs = false): boolean {
+  if (!node) return false;
+  if (node.kind === "NullableType") return inArgs || nestedNullable(node.inner, inArgs);
+  return node.kind === "TypeName" && node.args.some((a) => nestedNullable(a, true));
 }
 
 /** Names visible inside one file. */
@@ -256,7 +269,7 @@ class Scope {
  */
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
-    resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), classes,
+    resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), classes,
   };
   const env = new Env(classes, typedefs, diags, result);
   env.jsBindings = jsBindings;
@@ -3185,6 +3198,7 @@ class BodyChecker {
           const pick = this.pickOverload(overloads, e.args, scope, e.callee.span, name);
           if (!pick) return overloads[0]!.type.ret;
           chosen = pick;
+          if (pick.decl.name.span.file.prelude && nestedNullable(pick.decl.returnType)) this.env.result.tsResultCasts.add(e);
         }
         const target = chosen.type;
         const sig = target.typeParams?.length ? this.instantiate(target, target.typeParams, e.args, scope, e.callee.span, expected && [target.ret, expected]).sig : target;
@@ -3588,13 +3602,22 @@ class BodyChecker {
     args.forEach((a, i) => {
       const pattern = patternAt(i);
       if (a.kind === "Function" || a.kind === "Spread" || !pattern) return;
-      const patternElement = a.kind === "Array" ? elementOf(pattern) : undefined;
+      // An array literal for `Array<X>` or `IEnumerable<X>` (`Promise.all([a, b])`): unify `X` with each element.
+      const enumerable = pattern.kind === "class" && pattern.info.qname === "xenon.IEnumerable" ? pattern.args?.[0] : undefined;
+      const patternElement = a.kind === "Array" ? elementOf(pattern) ?? enumerable : undefined;
       if (a.kind === "Array" && patternElement) {
         for (const el of a.elements) {
           if (el.kind === "Spread") continue;
           const t = this.valueExpr(el, scope);
           this.preTyped.set(el, t);
-          unify(patternElement, t, set, out);
+          // Elements of different types: the wider one, or `*` if neither holds the other.
+          const mine = new Map<TypeParamInfo, Type>();
+          unify(patternElement, t, set, mine);
+          for (const [v, b] of mine) {
+            const old = out.get(v);
+            if (!old || assignable(old, b)) out.set(v, b);
+            else if (!assignable(b, old)) out.set(v, T.any);
+          }
         }
         return;
       }
@@ -3604,10 +3627,14 @@ class BodyChecker {
       this.preTyped.set(a, t);
       unify(pattern, t, set, out);
     });
+    // What the expected type says, as a fallback context for function arguments: in
+    // `var p:Promise<void> = new Promise((resolve, reject) => resolve())`, `resolve` takes a `void`.
+    const seeded = new Map<TypeParamInfo, Type>();
+    if (seed) unify(seed[0], seed[1], set, seeded);
     args.forEach((a, i) => {
       const pattern = patternAt(i);
       if (a.kind !== "Function" || !pattern) return;
-      const known = subst(pattern, out);
+      const known = subst(pattern, new Map([...seeded, ...out]));
       const t = this.record(a, this.fnExpr(a, scope, known.kind === "method" ? (eraseParams(known, set) as MethodType) : undefined));
       this.preTyped.set(a, t);
       unify(pattern, t, set, out);
@@ -3652,7 +3679,7 @@ class BodyChecker {
       const sig = c.type;
       const erase = (t: Type) => (sig.typeParams?.length ? eraseParams(t, sig.typeParams) : t);
       const rest = sig.params.find((p) => p.rest);
-      const required = sig.params.filter((p) => !p.optional && !p.rest).length;
+      const required = requiredParams(sig.params);
       if (!args.some((a) => a.kind === "Spread") && (args.length < required || (!rest && args.length > sig.params.length))) return false;
       return args.every((a, i) => {
         const p = i < sig.params.length && !sig.params[i]!.rest ? sig.params[i] : rest;
@@ -3676,7 +3703,8 @@ class BodyChecker {
         return c.ok && isNumeric(pt) && typeof c.value === "number" && fits(c.value, pt);
       });
     };
-    const found = cands.find(matches);
+    const fitting = cands.filter(matches);
+    const found = fitting.length > 1 ? this.byCallbackResults(fitting, args, scope) : fitting[0];
     if (found) return found;
     const given = args.map((a, i) => (types[i] ? typeToString(types[i]!) : a.kind === "Function" ? "function" : a.kind === "Array" ? "array literal" : a.kind === "Object" ? "object literal" : "…"));
     const d = this.diags.error("X0604", `no overload of \`${name}\` accepts (${given.join(", ")})`, at, "no matching overload");
@@ -3684,6 +3712,35 @@ class BodyChecker {
     for (const a of args) if (literal(a)) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
     for (const a of args) this.preTyped.delete(a);
     return undefined;
+  }
+
+  /**
+   * Among overloads that all fit, the first whose callbacks type-check with it: overloads may
+   * differ only in what a callback returns (`then(f:(value:T) -> Promise<U>)` before
+   * `then(f:(value:T) -> U)`). Each function literal is tried with the overload's parameter type
+   * as its context; the trial's diagnostics are discarded (the chosen overload checks it for real).
+   */
+  private byCallbackResults(cands: { decl: A.Method; type: MethodType }[], args: A.Expr[], scope: Scope): { decl: A.Method; type: MethodType } | undefined {
+    if (!args.some((a) => a.kind === "Function")) return cands[0];
+    const fits = (c: { type: MethodType }) => args.every((a, i) => {
+      const p = c.type.params[i];
+      if (a.kind !== "Function" || !p || p.rest || p.type.kind !== "method") return true;
+      const set = new Set(c.type.typeParams ?? []);
+      const context = (set.size ? eraseParams(p.type, [...set]) : p.type) as MethodType;
+      const { result, failed } = this.diags.speculate(() => this.fnExpr(a, scope, context));
+      if (failed) return false;
+      const want = p.type.ret;
+      // An untyped result (`*`) can't bind `U` in `Promise<U>`: it fits a bare `U` or a concrete type.
+      if (isDynamic(result.ret)) return want.kind === "void" || want.kind === "typeParam" || sameType(eraseParams(want, [...set]), want);
+      // `-> Void` among overloads means "returns nothing" (`catch(e => trace(e))`), not "any result ignored".
+      if (want.kind === "void") return result.ret.kind === "void";
+      if (isDynamic(context.ret) || assignable(result.ret, context.ret)) return true;
+      // A generic result (`Promise<U>`): bind it from the callback's result, then compare.
+      const bound = new Map<TypeParamInfo, Type>();
+      unify(want, result.ret, set, bound);
+      return bound.size > 0 && assignable(result.ret, eraseParams(subst(want, bound), [...set]));
+    });
+    return cands.find(fits) ?? cands[0];
   }
 
   /** `super(...)`: only as the first statement of a constructor of a class with a superclass. */
@@ -3790,7 +3847,7 @@ class BodyChecker {
 
   private checkArgs(e: { args: A.Expr[]; span: Span }, sig: MethodType, decl: A.Method | undefined, scope: Scope) {
     const hasSpread = e.args.some((a) => a.kind === "Spread");
-    const required = sig.params.filter((p) => !p.optional && !p.rest).length;
+    const required = requiredParams(sig.params);
     const rest = sig.params.find((p) => p.rest);
     const max = rest ? Infinity : sig.params.length;
     if (!hasSpread && (e.args.length < required || e.args.length > max)) {
@@ -3802,7 +3859,7 @@ class BodyChecker {
         const n = extra.length;
         d = this.diags.error("X0601", message, cover(extra[0]!.span, extra.at(-1)!.span), `unexpected argument${n === 1 ? "" : "s"}`);
       } else {
-        const missing = sig.params.slice(e.args.length).filter((p) => !p.optional && !p.rest);
+        const missing = sig.params.slice(e.args.length, required);
         const list = missing.map((p) => `\`${p.name}:${typeToString(p.type)}\``).join(", ");
         d = this.diags.error("X0601", message, e.span, `missing ${list}`);
       }
