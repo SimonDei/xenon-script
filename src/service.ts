@@ -1168,26 +1168,32 @@ export class XenonProject {
 
 /**
  * Whether a name starting at `at` is written where a type goes: after `var x:`, a parameter's `x:`,
- * a return type's `):`, `<`, `->`, `as`, `is`, `new`, `extends` or `implements`. An object
- * literal's `{ key: …` and `a ? b : …` are values.
+ * a return type's `):`, a shape member's `x:`, `<`, `->`, `as`, `is`, `new`, `extends` or
+ * `implements`. An object literal's `{ key: …` and `a ? b : …` are values.
  */
 export function isTypePosition(text: string, at: number): boolean {
   const before = text.slice(0, at);
   if (/(?:<|->|\bas|\bis|\bnew|\bextends|\bimplements|\)\s*:)\s*$/.test(before)) return true;
   if (/\b(?:var|const|final)\s+[A-Za-z_$][\w$]*\s*:\s*$/.test(before)) return true;
-  // `(a:int, b:` is a parameter list; `{ a: 1, b:` an object literal: the innermost open bracket decides.
-  const param = /[(,]\s*(?:\.\.\.)?[A-Za-z_$][\w$]*\s*:\s*$/.exec(before);
-  return !!param && innermostOpen(text, param.index + 1) === "(";
+  // `(a:int, b:` is a parameter list, `{ ?a:int, b:` a shape, `{ a: 1, b:` an object literal:
+  // the innermost open bracket decides; a `{` opens a shape after `typedef X =` or in a type.
+  const member = /[(,{]\s*(?:\.\.\.|\?|final\s+)?[A-Za-z_$][\w$]*\s*:\s*$/.exec(before);
+  if (!member) return false;
+  const open = innermostOpen(text, member.index + 1);
+  if (open === undefined) return false;
+  if (text[open] === "(") return true;
+  if (text[open] !== "{") return false;
+  return /\btypedef\s+[A-Za-z_$][\w$]*\s*(?:<[^>]*>)?\s*=\s*$/.test(text.slice(0, open)) || isTypePosition(text, open);
 }
 
-/** The innermost bracket still open at `at` (scanning back, skipping strings roughly). */
-function innermostOpen(text: string, at: number): string | undefined {
+/** The position of the innermost bracket still open at `at` (scanning back, skipping strings roughly). */
+function innermostOpen(text: string, at: number): number | undefined {
   let depth = 0;
   for (let i = at - 1; i >= 0; i--) {
     const c = text[i]!;
     if (")]}".includes(c)) depth++;
     else if ("([{".includes(c)) {
-      if (depth === 0) return c;
+      if (depth === 0) return i;
       depth--;
     }
   }

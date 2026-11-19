@@ -389,5 +389,9 @@ test("type positions: annotations, parameters, return types; not object literal 
   const at = (code: string) => isTypePosition(code, code.length);
   expect([at("var c:"), at("const N:"), at("function f(a:int, b:"), at("function f(...rest:"), at("function f():"), at("x as "), at("x is "), at("new "), at("Array<"), at("(a:int) -> "), at("class A extends ")])
     .toEqual([true, true, true, true, true, true, true, true, true, true, true]);
-  expect([at("var o = { a: 1, b: "), at("f({ key: "), at("var x = ok ? a : "), at("f(a, b")]).toEqual([false, false, false, false]);
+  // Shapes: in a typedef (members on their own lines, optional, final, nested) and in an annotation.
+  expect([at("typedef Sheet = {\n  columns:"), at("typedef P<T> = { ?x:"), at("typedef A = { final id:int, b:"), at("typedef A = { b:{ c:"), at("var p:{ x:"), at("f(a:Array<{ x:")])
+    .toEqual([true, true, true, true, true, true]);
+  expect([at("var o = { a: 1, b: "), at("f({ key: "), at("var x = ok ? a : "), at("f(a, b"), at("var o:P = { a: "), at("typedef A = { b:int }\nvar o = { c: ")])
+    .toEqual([false, false, false, false, false, false]);
 });
