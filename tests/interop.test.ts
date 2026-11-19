@@ -40,3 +40,58 @@ console.log(p.speak(), p.calories, p instanceof Animal, Animal.population);
     await rm(out, { recursive: true, force: true });
   }
 });
+
+test("fields as JavaScript sees them: private ones are #private, final/const ones read-only", async () => {
+  const sources = [
+    { path: "Account.xn", text: `public class Account {
+  public var balance:Float = 0
+  private var pin:int = 1234
+  public final id:int
+  public const CURRENCY:String = 'EUR'
+  public static final START:int
+  private static var opened:int = 0
+  static { START = 100 }
+
+  public function Account(id:int) {
+    this.id = id
+    Account.opened++
+    pin += id
+  }
+  public function check(other:Account):Boolean { return other.pin == pin }
+  public static function count():int { return Account.opened }
+}
+` },
+    { path: "Savings.xn", text: "public class Savings extends Account {\n  public function Savings() { super(7) }\n}\n" },
+    { path: "Main.xn", text: "public class Main {\n  public function Main() {}\n}\n" },
+  ];
+  const result = compileProject(sources, { main: "Main" });
+  expect(result.diagnostics.hasErrors).toBe(false);
+  const account = result.outputs.find((o) => o.path === "Account.js")!.text;
+  expect(account).toContain("#pin = 1234;");
+  expect(account).toContain("#id = 0;\n  get id() { return this.#id; }");
+  expect(account).toContain("static get START() { return Account.#START; }");
+
+  const out = join(import.meta.dir, ".fields-out");
+  await rm(out, { recursive: true, force: true });
+  try {
+    for (const o of result.outputs) {
+      await mkdir(dirname(join(out, o.path)), { recursive: true });
+      await Bun.write(join(out, o.path), o.text);
+    }
+    await Bun.write(join(out, "consumer.mjs"), `import { Account } from './Account.js';
+import { Savings } from './Savings.js';
+const a = new Account(1), s = new Savings();
+const tryAssign = (f) => { try { f(); return 'assigned'; } catch (e) { return e.constructor.name; } };
+console.log(a.id, s.id, a.CURRENCY, a.pin, Savings.START, JSON.stringify(s), Object.keys(a).join());
+console.log(tryAssign(() => { a.id = 5; }), tryAssign(() => { Account.START = 1; }), a.id);
+a.balance = 10;
+console.log(a.balance, a.check(new Account(1)), Account.opened === undefined, Account.count());
+`);
+    const proc = Bun.spawn(["bun", join(out, "consumer.mjs")], { stdout: "pipe", stderr: "pipe" });
+    const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+    expect(stderr).toBe("");
+    expect(stdout).toBe("1 7 EUR undefined 100 {\"balance\":0} balance\nTypeError TypeError 1\n10 true true 3\n");
+  } finally {
+    await rm(out, { recursive: true, force: true });
+  }
+});

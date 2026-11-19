@@ -1,0 +1,10 @@
+public class Main {
+  private var pin:int = 42
+  public final id:int = 7
+
+  public function Main() {
+    var { pin, id } = this          // `pin` is a JavaScript #private field: not destructurable
+    var { id: copy } = this         // fine: a final field is read through its getter
+    trace(pin, id, copy)
+  }
+}

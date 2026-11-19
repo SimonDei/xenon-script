@@ -220,6 +220,7 @@ export const CODES: Record<string, CodeInfo> = {
   // ---- destructuring ----
   X0770: c("can't destructure", "Only objects can be destructured with `{…}`, and only arrays/vectors/strings with `[…]`."),
   X0771: c("destructuring a method", "A method taken out of its object would lose `this`; call it instead."),
+  X0772: c("destructuring a private field", "Private fields compile to JavaScript `#private` fields, which destructuring can't read; read the field directly."),
 
   // ---- interfaces and typedefs ----
   X0780: c("interface member with a body", "Interfaces only declare signatures."),

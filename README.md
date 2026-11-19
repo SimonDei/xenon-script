@@ -175,6 +175,9 @@ Paths in `xenon.json` are relative to the file.
 - **JavaScript (default):** one ES module per class, plus the prelude classes that are used, and a
   source map next to each module. Debuggers and `node --enable-source-maps` show the `.xn` files,
   and `xenon run` maps stack traces itself.
+  Visibility holds at runtime too: `private` fields become JavaScript `#private` fields, and
+  `final`/`const` fields are read through a getter, so JavaScript code can read but not assign them.
+  Plain `var` fields stay ordinary properties (for `JSON.stringify`, spread and proxies).
 - **Bundle (`--bundle`):** all compiled modules in one `out/xenon-main.js`, built with Bun's
   bundler, with unused prelude classes left out. npm packages, `node:`/`bun:` modules and your
   JavaScript files stay outside as imports. The source map still points at the `.xn` files.

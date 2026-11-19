@@ -1,0 +1,8 @@
+error[X0772]: private field `pin` can't be destructured
+ --> private-fields.xn:6:11
+  |
+6 |     var { pin, id } = this          // `pin` is a JavaScript #private field: not destructurable
+  |           ^^^
+  |
+  = note: private fields are JavaScript `#private` fields, which destructuring can't read
+help: read it directly: `var pin:int = ….pin`

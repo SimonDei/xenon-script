@@ -3436,6 +3436,12 @@ class BodyChecker {
         return T.error;
       }
       this.env.checkAccess(m.decl, m.owner, this.info, key.span);
+      // A private field is a JavaScript `#private` field, which destructuring can't read.
+      if (m.decl.kind === "Field" && visibilityOf(m.decl) === "private" && !m.owner.decl.isEnum && !isNative(m.owner) && !m.owner.file.file.prelude) {
+        this.diags.error("X0772", `private field \`${key.name}\` can't be destructured`, key.span)
+          .note("private fields are JavaScript `#private` fields, which destructuring can't read")
+          .help(`read it directly: \`var ${key.name}:${typeToString(m.type)} = ….${key.name}\``);
+      }
       if (m.isStatic) {
         this.diags.error("X0413", `\`${key.name}\` is static and can't be destructured from an instance`, key.span);
         return T.error;

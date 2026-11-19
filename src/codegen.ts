@@ -1,10 +1,22 @@
 import { posix } from "node:path";
 import type * as A from "./ast.ts";
-import { type CheckResult, chainDestructor, type ClassInfo, findMember, isNative, jsNameOf, type RuntimeCheck, type TypedefInfo, visibilityOf } from "./checker.ts";
+import { type CheckResult, chainDestructor, type ClassInfo, findMember, isNative, jsNameOf, type MemberSig, type RuntimeCheck, type TypedefInfo, visibilityOf } from "./checker.ts";
 import { bind, isSubclass, nonNull, subst, supertypes, type Type } from "./types.ts";
 import { constToJs } from "./consteval.ts";
 import { buildSourceMap, type LineOrigin, originOf } from "./sourcemap.ts";
 import type { SourceFile, Span } from "./source.ts";
+
+/**
+ * How a field is stored in JavaScript. Private fields are `#name` (really private: invisible to
+ * other code, `JSON.stringify` and spread). Other `final`/`const` fields are `#name` behind a
+ * getter, so JavaScript code can read but not assign them. Everything else is a plain property.
+ * Enums, native classes and the prelude keep plain properties.
+ */
+function fieldStorage(m: MemberSig | undefined): "private" | "readonly" | "plain" {
+  if (!m || m.decl.kind !== "Field" || m.owner.decl.isEnum || isNative(m.owner) || m.owner.file.file.prelude) return "plain";
+  if (visibilityOf(m.decl) === "private") return "private";
+  return m.decl.decl === "var" ? "plain" : "readonly";
+}
 
 /** Standard-library classes that are iterable at runtime but not in TypeScript's typings: the TypeScript output casts them in `for … of`. */
 const TS_NOT_ITERABLE = new Set(["xenon.FormData"]);
@@ -656,7 +668,19 @@ class ModuleGen {
     const folded = this.check.inlineFields.get(f);
     const init = folded !== undefined ? constToJs(folded, jsString).code : f.init ? this.expr(f.init).code : defaultValue(f.type);
     const type = f.type ? this.ann(f.type) : this.annType(info.members.get(f.name.name)?.type);
-    this.w.line(`${this.visibility(f)}${f.modifiers.static ? "static " : ""}${this.name(f.name)}${type} = ${init};`);
+    const st = f.modifiers.static ? "static " : "";
+    const storage = fieldStorage(info.members.get(f.name.name));
+    if (storage === "plain") {
+      this.w.line(`${this.visibility(f)}${st}${this.name(f.name)}${type} = ${init};`);
+      return;
+    }
+    // `#name`; a `final`/`const` field that isn't private is read through a getter. A static getter
+    // names its class: `this.#x` would throw when called through a subclass (`Sub.X`).
+    this.w.line(`${st}#${f.name.name}${type} = ${init};`);
+    if (storage === "readonly") {
+      const owner = f.modifiers.static ? this.classRef(info) : "this";
+      this.w.line(`${this.visibility(f)}${st}get ${this.name(f.name)}()${type} { return ${owner}.#${f.name.name}; }`);
+    }
   }
 
   /** Parameter list; `signature`: without default values (interfaces), optional ones marked `?`. */
@@ -787,6 +811,20 @@ class ModuleGen {
   }
 
   /** How instance members are reached here: `this`, or `$self` inside `function` expressions. */
+  /** Member expressions being assigned (`this.x = …`, `x++`, `[this.a, this.b] = …`). */
+  private writeTargets = new Set<A.Expr>();
+
+  /**
+   * The property name for an access to member `m` (see `fieldStorage`): `#x` for a private field,
+   * and for writing a `final`/`const` one (only its class can); the plain name otherwise.
+   */
+  private fieldName(m: MemberSig | undefined, access: A.Expr, id: A.Ident, plain = this.name(id)): string {
+    const storage = fieldStorage(m);
+    // The `#` stays outside the mapped token: `items` in the source maps to `items` in `#items`.
+    if (storage === "private" || (storage === "readonly" && this.writeTargets.has(access))) return `#${this.tok(id.span, id.name)}`;
+    return plain;
+  }
+
   private receiver(): string {
     if (this.dynDepth === 0) return "this";
     this.selfNeeded = true;
@@ -1095,6 +1133,7 @@ class ModuleGen {
       case "BindingName":
         return this.name(p.name) + init;
       case "Target":
+        this.writeTargets.add(p.expr);
         return this.expr(p.expr).code + init;
       case "ObjectPattern": {
         const props = p.props.map((prop) => {
@@ -1260,7 +1299,8 @@ class ModuleGen {
         const r = this.check.resolutions.get(e);
         const name = this.tok(e.span, e.name);
         if (r?.kind === "member") {
-          return { code: r.isStatic ? `${this.classRef(r.owner)}.${name}` : `${this.receiver()}.${name}`, prec: P.call };
+          const prop = this.fieldName(findMember(r.owner, e.name), e, e, name);
+          return { code: r.isStatic ? `${this.classRef(r.owner)}.${prop}` : `${this.receiver()}.${prop}`, prec: P.call };
         }
         if (r?.kind === "class") return { code: this.tok(e.span, this.classRef(r.info)), prec: P.primary };
         if (r?.kind === "function") return { code: this.tok(e.span, r.decl.modifiers.nativeName ?? e.name), prec: P.primary };
@@ -1292,7 +1332,10 @@ class ModuleGen {
           if (p.kind === "SpreadProp") return `...${this.wrap(this.expr(p.arg), P.assign)}`;
           if (p.kind === "Shorthand") {
             const r = this.check.resolutions.get(p);
-            if (r?.kind === "member") return `${p.name.name}: ${r.isStatic ? this.classRef(r.owner) : this.receiver()}.${p.name.name}`;
+            if (r?.kind === "member") {
+              const prop = this.fieldName(findMember(r.owner, p.name.name), p as unknown as A.Expr, p.name, p.name.name);
+              return `${p.name.name}: ${r.isStatic ? this.classRef(r.owner) : this.receiver()}.${prop}`;
+            }
             return p.name.name;
           }
           const key = "name" in p.key ? p.key.name : p.key.kind === "StringKey" ? jsString(p.key.value) : `[${this.expr(p.key.expr).code}]`;
@@ -1308,11 +1351,11 @@ class ModuleGen {
         // Inherited statics are addressed through their declaring class: in JS, `Dog.count++`
         // would create a new property on `Dog` instead of updating `Animal.count`.
         const objType = this.check.exprTypes.get(e.object);
-        if (objType?.kind === "classRef") {
-          const m = findMember(objType.info, e.name.name);
-          if (m?.isStatic && m.owner !== objType.info) return { code: `${this.classRef(m.owner)}.${this.name(e.name)}`, prec: P.call };
-        }
-        return { code: `${this.wrap(this.expr(e.object), P.call)}${e.optional ? "?." : "."}${this.name(e.name)}`, prec: P.call };
+        const t = objType && nonNull(objType);
+        const m = t?.kind === "class" || t?.kind === "classRef" ? findMember(t.info, e.name.name) : undefined;
+        const prop = this.fieldName(m, e, e.name);
+        if (t?.kind === "classRef" && m?.isStatic && m.owner !== t.info) return { code: `${this.classRef(m.owner)}.${prop}`, prec: P.call };
+        return { code: `${this.wrap(this.expr(e.object), P.call)}${e.optional ? "?." : "."}${prop}`, prec: P.call };
       }
       case "Index":
         return { code: `${this.wrap(this.expr(e.object), P.call)}${e.optional ? "?." : ""}[${this.expr(e.index).code}]`, prec: P.call };
@@ -1337,6 +1380,7 @@ class ModuleGen {
       case "Await":
         return { code: `await ${this.wrap(this.expr(e.arg), P.unary)}`, prec: P.unary };
       case "Update": {
+        this.writeTargets.add(e.arg);
         const arg = this.wrap(this.expr(e.arg), P.postfix);
         return e.prefix ? { code: e.op + arg, prec: P.unary } : { code: arg + e.op, prec: P.postfix };
       }
@@ -1344,6 +1388,7 @@ class ModuleGen {
         return this.binary(e);
       case "Assign":
         if (this.check.operatorCalls.has(e)) return this.operatorAssign(e);
+        this.writeTargets.add(e.target);
         return { code: `${this.expr(e.target).code} ${e.op} ${this.wrap(this.expr(e.value), P.assign)}`, prec: P.assign };
       case "Conditional":
         return {
