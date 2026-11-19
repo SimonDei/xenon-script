@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#211a5c"/>
+      <stop offset="1" stop-color="#0b1f3d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#8b6cff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#8b6cff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="x" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#67e8f9"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <radialGradient id="dot" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.45" stop-color="#f5d0fe"/>
+      <stop offset="1" stop-color="#e879f9" stop-opacity="0"/>
+    </radialGradient>
+    <!-- The half of the orbit that passes in front of the X. -->
+    <clipPath id="front">
+      <polygon points="388,-22 -132,278 18,538 538,238"/>
+    </clipPath>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <circle cx="128" cy="128" r="112" fill="url(#glow)"/>
+  <ellipse cx="128" cy="128" rx="100" ry="38" transform="rotate(-30 128 128)" fill="none" stroke="#7dd3fc" stroke-opacity="0.55" stroke-width="6"/>
+  <g stroke="url(#x)" stroke-width="34" stroke-linecap="round">
+    <line x1="80" y1="72" x2="176" y2="184"/>
+    <line x1="176" y1="72" x2="80" y2="184"/>
+  </g>
+  <g clip-path="url(#front)">
+    <ellipse cx="128" cy="128" rx="100" ry="38" transform="rotate(-30 128 128)" fill="none" stroke="#171a4a" stroke-width="16"/>
+    <ellipse cx="128" cy="128" rx="100" ry="38" transform="rotate(-30 128 128)" fill="none" stroke="#7dd3fc" stroke-width="6"/>
+  </g>
+  <circle cx="216" cy="92" r="20" fill="url(#dot)"/>
+  <circle cx="216" cy="92" r="8" fill="#ffffff"/>
+</svg>

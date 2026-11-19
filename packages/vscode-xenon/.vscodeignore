@@ -3,3 +3,4 @@ scripts/**
 node_modules/**
 bun.lock
 *.vsix
+icons/logo.svg
