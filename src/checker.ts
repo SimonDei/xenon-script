@@ -3370,14 +3370,21 @@ class BodyChecker {
       return args.every((a, i) => {
         const p = i < sig.params.length && !sig.params[i]!.rest ? sig.params[i] : rest;
         if (!p) return a.kind === "Spread";
-        let pt = erase(p.type);
-        if (p.rest) pt = pt.kind === "builtin" && pt.args.length === 1 ? pt.args[0]! : T.any;
+        const pattern = p.rest ? (p.type.kind === "builtin" && p.type.args.length === 1 ? p.type.args[0]! : T.any) : p.type;
+        const pt = erase(pattern);
         if (isDynamic(pt) || a.kind === "Spread") return true;
         if (a.kind === "Function") return pt.kind === "method" || (pt.kind === "builtin" && (pt.name === "Function" || pt.name === "Object"));
         if (a.kind === "Array") return pt.kind === "builtin" && (pt.name === "Array" || pt.name === "Object");
         if (a.kind === "Object") return pt.kind === "shape" || (pt.kind === "builtin" && pt.name === "Object");
         const t = types[i]!;
         if (assignable(t, pt)) return true;
+        // Generic parameters: bind them from this argument first, so `Array<Array<V>>` accepts an
+        // `Array<Array<String>>` (erased, the nested `Array<*>` wouldn't match: type arguments are invariant).
+        if (sig.typeParams?.length) {
+          const bound = new Map<TypeParamInfo, Type>();
+          unify(pattern, t, new Set(sig.typeParams), bound);
+          if (bound.size > 0 && assignable(t, erase(subst(pattern, bound)))) return true;
+        }
         const c = this.constValue(a);
         return c.ok && isNumeric(pt) && typeof c.value === "number" && fits(c.value, pt);
       });

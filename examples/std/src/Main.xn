@@ -62,16 +62,20 @@ package {
       trace(Object.keys(config).join(','), Object.values(config).join(','), Object.entries(config)[1].join('='))
       trace(Object.hasOwn(config, 'port'), Object.hasOwn([7], 0), Object.is(Float.NaN, Float.NaN))
 
-      // assign/freeze return their argument with its own type; the expected type names `T`
-      var origin:Point = Object.assign({ x: 0, y: 0 } as Point, { y: 5 })
+      // assign merges into its first argument (the result is `*`); freeze returns its argument's type
+      var defaults:Point = { x: 0, y: 0 }
+      var origin:Point = Object.assign({}, defaults, { y: 5 })
       var fixed:Point = Object.freeze({ x: 1, y: 2 })
       trace(origin.y, Object.isFrozen(fixed), Object.isFrozen(origin))
 
       // fromEntries builds an object from pairs or a map; groupBy sorts items into lists
       var ages:Map<String, int> = new Map([['ann', 31], ['bob', 27]])
+      var pairs:Array<Array<String>> = [['en', 'hello'], ['de', 'hallo']]
       trace(JSON.stringify(Object.fromEntries(ages)), JSON.stringify(Object.fromEntries([['a', 1], ['b', 2]])))
+      trace(JSON.stringify(Object.fromEntries(pairs)), JSON.stringify(Object.fromEntries(ages.entries())))
       var parity:Object = Object.groupBy([1, 2, 3, 4, 5], (n:int, _:int):String => n % 2 == 0 ? 'even' : 'odd')
       trace(JSON.stringify(parity), Object.getPrototypeOf(parity) == null)
+      trace(JSON.stringify(Object.groupBy(new Set(['ant', 'bee', 'asp']), (word:String):String => word.charAt(0))))
     }
 
     private function json():void {
