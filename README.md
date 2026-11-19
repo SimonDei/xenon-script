@@ -101,5 +101,6 @@ Project layout: `src/` (compiler), `examples/<name>/src` + `expected.txt` (golde
 
 ## License
 
-Public domain, under the [Unlicense](LICENSE): use, change and distribute Xenon, and the programs
-you compile with it, for any purpose and without conditions.
+Public domain, under [CC0 1.0 Universal](LICENSE): use, change and distribute Xenon, and the
+programs you compile with it, for any purpose and without conditions. Where dedicating a work to
+the public domain isn't possible, CC0's fallback license grants the same freedoms.

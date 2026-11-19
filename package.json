@@ -1,6 +1,6 @@
 {
   "name": "xenonscript",
-  "license": "Unlicense",
+  "license": "CC0-1.0",
   "module": "src/compiler.ts",
   "type": "module",
   "private": true,
