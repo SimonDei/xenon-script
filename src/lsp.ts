@@ -42,8 +42,10 @@ const KINDS: Record<CompletionKind, CompletionItemKind> = {
   variable: CompletionItemKind.Variable,
   function: CompletionItemKind.Function,
   keyword: CompletionItemKind.Keyword,
-  typedef: CompletionItemKind.TypeParameter,
+  typedef: CompletionItemKind.Struct,
   value: CompletionItemKind.Value,
+  typeParameter: CompletionItemKind.TypeParameter,
+  module: CompletionItemKind.Module,
 };
 
 const SYMBOLS: Record<XenonSymbolKind, SymbolKind> = {

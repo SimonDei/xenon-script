@@ -166,6 +166,8 @@ export interface CheckResult {
    */
   overloadPicks: Map<A.Expr, { all: { decl: A.Method; type: MethodType }[]; chosen?: { decl: A.Method; type: MethodType } }>;
   classes: Map<string, ClassInfo>;
+  /** Every typedef by qualified name (for completion). */
+  typedefs: Map<string, TypedefInfo>;
 }
 
 /** X0521's note and fix: `inline var` becomes `inline final` (the `var` right before the name). */
@@ -334,7 +336,7 @@ class Scope {
  */
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
-    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes,
+    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs,
   };
   const env = new Env(classes, typedefs, diags, result);
   env.jsBindings = jsBindings;

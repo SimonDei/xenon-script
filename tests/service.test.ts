@@ -2,7 +2,7 @@
 import { expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { XenonProject } from "../src/service.ts";
+import { XenonProject, isTypePosition } from "../src/service.ts";
 
 const ANIMAL = `package zoo {
   /** Something that lives in the zoo. */
@@ -356,4 +356,38 @@ public class Main {
   expect(sorted(at("pos: {  }", 7))).toEqual(["x", "y"]);
   expect(at("f(1,  )", 5).map((i) => i.label)).toContain("rows");
   expect(at("{ excelRow: 2", 2)[0]!.detail).toBe("excelRow:int");
+});
+
+test("in a type annotation, completion lists types only: typedefs too, type parameters and namespace imports", () => {
+  const text = `import * as path from 'node:path'
+
+typedef Column = { key:String, index:int }
+
+public class Main {
+  public function Main() {
+    var columns:Array<Column> = []
+    for (var c:Co) {
+    }
+  }
+  private function first<T>(items:Array<T>, fallback:T):T => items[0] ?? fallback
+}
+`;
+  const p = project({ "Main.xn": text });
+  const labels = p.completions("Main.xn", offset(text, "var c:Co", 8)).map((i) => i.label);
+  expect(labels).toContain("Column");
+  expect(labels).toContain("PromiseSettledResult"); // the prelude's typedefs
+  expect(labels).toContain("path");                 // for `path.ParsedPath`
+  expect(labels).not.toContain("columns");          // a local: a value, not a type
+  expect(labels).not.toContain("trace");
+  const column = p.completions("Main.xn", offset(text, "var c:Co", 8)).find((i) => i.label === "Column")!;
+  expect([column.kind, column.detail]).toEqual(["typedef", "typedef Column = { key:String, index:int }"]);
+  // A method's type parameters, in its parameter list.
+  expect(p.completions("Main.xn", offset(text, "fallback:T", 10)).map((i) => i.label)).toContain("T");
+});
+
+test("type positions: annotations, parameters, return types; not object literal values or `? :`", () => {
+  const at = (code: string) => isTypePosition(code, code.length);
+  expect([at("var c:"), at("const N:"), at("function f(a:int, b:"), at("function f(...rest:"), at("function f():"), at("x as "), at("x is "), at("new "), at("Array<"), at("(a:int) -> "), at("class A extends ")])
+    .toEqual([true, true, true, true, true, true, true, true, true, true, true]);
+  expect([at("var o = { a: 1, b: "), at("f({ key: "), at("var x = ok ? a : "), at("f(a, b")]).toEqual([false, false, false, false]);
 });

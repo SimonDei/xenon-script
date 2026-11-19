@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import ts from "typescript";
 import type * as A from "./ast.ts";
-import { type CheckResult, type ClassInfo, findMember, type MemberSig, readDecl, type Resolution, visibilityOf } from "./checker.ts";
+import { type CheckResult, type ClassInfo, findMember, type TypedefInfo, type MemberSig, readDecl, type Resolution, visibilityOf } from "./checker.ts";
 import { generatedOffsetAt, type Mapping, type OutputFile, sourceOffsetAt } from "./codegen.ts";
 import { compileProject, type CompileResult, PRELUDE, type SourceInput } from "./compiler.ts";
 import { KEYWORDS } from "./lexer.ts";
@@ -56,7 +56,7 @@ export interface ServiceDiagnostic {
   fixes: Fix[];
 }
 
-export type CompletionKind = "field" | "method" | "property" | "class" | "interface" | "enum" | "variable" | "function" | "keyword" | "typedef" | "value";
+export type CompletionKind = "field" | "method" | "property" | "class" | "interface" | "enum" | "variable" | "function" | "keyword" | "typedef" | "value" | "typeParameter" | "module";
 
 export interface CompletionItem {
   label: string;
@@ -191,6 +191,18 @@ function memberText(m: MemberSig): string {
   if (m.kind === "accessor") return `${st}function get ${owner}.${m.name}():${typeToString(m.type)}`;
   const kw = m.readonly === "const" ? "const" : m.readonly === "final" ? "final" : "var";
   return `${st}${kw} ${owner}.${m.name}:${typeToString(m.type)}`;
+}
+
+function classItem(c: ClassInfo): CompletionItem {
+  return { label: c.decl.name.name, kind: c.decl.isInterface ? "interface" : c.decl.isEnum ? "enum" : "class", detail: classText(c), documentation: docComment(c.decl.span.file, c.decl.span.start) };
+}
+
+/** `typedef Column = { key:String, index:int, … }`, shortened to a line. */
+function typedefText(td: TypedefInfo): string {
+  const target = spanText(td.decl.type.span).replace(/\s+/g, " ").replace(/\{ /g, "{ ");
+  const tps = td.params.length ? `<${td.params.map((p) => p.name).join(", ")}>` : "";
+  const text = `typedef ${td.decl.name.name}${tps} = ${target}`;
+  return text.length > 100 ? `${text.slice(0, 99)}…` : text;
 }
 
 function classText(info: ClassInfo): string {
@@ -936,6 +948,7 @@ export class XenonProject {
     let start = offset;
     while (start > 0 && /[\w$]/.test(text[start - 1]!)) start--;
     if (text[start - 1] === ".") return this.typeCompletions(path, text, start) ?? this.memberCompletions(path, text, start, offset);
+    if (isTypePosition(text, start)) return this.typeNameCompletions(path, offset);
     return this.keyCompletions(path, text, start, offset) ?? this.scopeCompletions(path, offset);
   }
 
@@ -973,13 +986,13 @@ export class XenonProject {
   }
 
   /**
-   * `xlsx.` in a type (after `:`, `<`, `as`, `is`, `extends`, `implements` or `->`): the types the
+   * `xlsx.` in a type (see `isTypePosition`): the types the
    * namespace import exports. Undefined elsewhere, where `xlsx.` is a value (its functions).
    */
   private typeCompletions(path: string, text: string, nameStart: number): CompletionItem[] | undefined {
     const before = text.slice(0, nameStart - 1);
     const receiver = /[A-Za-z_$][\w$]*$/.exec(before);
-    if (!receiver || !/(?::|<|->|\bas|\bis|\bextends|\bimplements)\s*$/.test(before.slice(0, receiver.index))) return undefined;
+    if (!receiver || !isTypePosition(text, receiver.index)) return undefined;
     const a = this.analyze();
     const ast = this.astOf(a, path);
     const types = ast && a.result.check.qualifiedTypes.get(ast);
@@ -1063,6 +1076,45 @@ export class XenonProject {
     return decl && [...a.result.check.classes.values()].find((c) => c.decl === decl);
   }
 
+  /**
+   * A type annotation (`var c:Co|`): the classes, interfaces, enums and typedefs this file can
+   * name, the type parameters in scope, the built-in types, and namespace imports (`xlsx.` types).
+   */
+  private typeNameCompletions(path: string, offset: number): CompletionItem[] {
+    const a = this.analyze();
+    const ast = this.astOf(a, path);
+    if (!ast) return [];
+    const items = new Map<string, CompletionItem>();
+    const add = (item: CompletionItem) => {
+      if (!items.has(item.label)) items.set(item.label, item);
+    };
+    for (const n of nodesAt(ast, offset)) {
+      for (const p of (n as { typeParams?: A.Ident[] }).typeParams ?? []) add({ label: p.name, kind: "typeParameter", detail: `type parameter ${p.name}` });
+    }
+    for (const t of ["int", "uint", "Float", "String", "Boolean", "void"]) add({ label: t, kind: "class" });
+    const { classes, typedefs } = this.visibleTypes(a, ast);
+    for (const c of classes) add(classItem(c));
+    for (const td of typedefs) {
+      add({ label: td.decl.name.name, kind: "typedef", detail: typedefText(td), documentation: docComment(td.decl.span.file, td.decl.span.start) });
+    }
+    for (const imp of ast.imports) {
+      if (imp.kind === "JsImport" && imp.namespace) add({ label: imp.namespace.name, kind: "module", detail: `import * as ${imp.namespace.name} from '${imp.module}'` });
+    }
+    return [...items.values()];
+  }
+
+  /** Classes and typedefs this file can name: its package, its imports, the prelude, its own file-private ones. */
+  private visibleTypes(a: Analysis, ast: A.XenonFile): { classes: ClassInfo[]; typedefs: TypedefInfo[] } {
+    const pkg = ast.packageName.map((n) => n.name).join(".");
+    const imported = new Set(ast.imports.flatMap((i) => (i.kind === "JsImport" ? [] : [i.path.map((p) => p.name).join(".")])));
+    const visible = (t: { filePrivate: boolean; file: A.XenonFile; pkg: string; qname: string }, name: string) =>
+      !name.startsWith("__") && (t.filePrivate ? t.file === ast : t.pkg === pkg || t.pkg === "xenon" || imported.has(t.qname) || imported.has(t.pkg));
+    return {
+      classes: [...a.result.check.classes.values()].filter((c) => visible(c, c.decl.name.name)),
+      typedefs: [...a.result.check.typedefs.values()].filter((t) => visible(t, t.decl.name.name)),
+    };
+  }
+
   /** Anywhere else: locals and parameters in scope, the class's members, classes, functions and keywords. */
   private scopeCompletions(path: string, offset: number): CompletionItem[] {
     const a = this.analyze();
@@ -1099,14 +1151,7 @@ export class XenonProject {
         if (this.visible(m, cls)) add({ label: m.name, kind: memberKind(m), detail: memberText(m), documentation: docComment(m.decl.span.file, m.decl.span.start) });
       }
     }
-    // Classes this file can name: its package, its imports, the prelude, its own file-private ones.
-    const pkg = ast.packageName.map((n) => n.name).join(".");
-    const imported = new Set(ast.imports.flatMap((i) => (i.kind === "JsImport" ? [] : [i.path.map((p) => p.name).join(".")])));
-    for (const c of check.classes.values()) {
-      const visibleHere = c.filePrivate ? c.file === ast : c.pkg === pkg || c.pkg === "xenon" || imported.has(c.qname) || imported.has(c.pkg);
-      if (!visibleHere || c.decl.name.name.startsWith("__")) continue;
-      add({ label: c.decl.name.name, kind: c.decl.isInterface ? "interface" : c.decl.isEnum ? "enum" : "class", detail: classText(c), documentation: docComment(c.decl.span.file, c.decl.span.start) });
-    }
+    for (const c of this.visibleTypes(a, ast).classes) add(classItem(c));
     for (const f of a.result.asts.filter((f) => f.file.prelude).flatMap((f) => f.functions)) {
       add({ label: f.name.name, kind: "function", documentation: docComment(f.span.file, f.span.start) });
     }
@@ -1119,6 +1164,34 @@ export class XenonProject {
     for (const t of ["int", "uint", "Float", "String", "Boolean"]) add({ label: t, kind: "class" });
     return [...items.values()];
   }
+}
+
+/**
+ * Whether a name starting at `at` is written where a type goes: after `var x:`, a parameter's `x:`,
+ * a return type's `):`, `<`, `->`, `as`, `is`, `new`, `extends` or `implements`. An object
+ * literal's `{ key: …` and `a ? b : …` are values.
+ */
+export function isTypePosition(text: string, at: number): boolean {
+  const before = text.slice(0, at);
+  if (/(?:<|->|\bas|\bis|\bnew|\bextends|\bimplements|\)\s*:)\s*$/.test(before)) return true;
+  if (/\b(?:var|const|final)\s+[A-Za-z_$][\w$]*\s*:\s*$/.test(before)) return true;
+  // `(a:int, b:` is a parameter list; `{ a: 1, b:` an object literal: the innermost open bracket decides.
+  const param = /[(,]\s*(?:\.\.\.)?[A-Za-z_$][\w$]*\s*:\s*$/.exec(before);
+  return !!param && innermostOpen(text, param.index + 1) === "(";
+}
+
+/** The innermost bracket still open at `at` (scanning back, skipping strings roughly). */
+function innermostOpen(text: string, at: number): string | undefined {
+  let depth = 0;
+  for (let i = at - 1; i >= 0; i--) {
+    const c = text[i]!;
+    if (")]}".includes(c)) depth++;
+    else if ("([{".includes(c)) {
+      if (depth === 0) return c;
+      depth--;
+    }
+  }
+  return undefined;
 }
 
 /** The number of top-level commas between `from` and `to`: the argument the cursor is in. */
