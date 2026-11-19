@@ -1,8 +1,8 @@
 {
   "name": "vscode-xenon",
   "displayName": "XenonScript",
-  "description": "XenonScript (.xn): syntax highlighting, diagnostics, hover, go to definition and completion",
-  "version": "0.2.0",
+  "description": "XenonScript (.xn): syntax highlighting, diagnostics with quick fixes, hover, go to definition, completion, signature help, references, rename and outline",
+  "version": "0.3.0",
   "publisher": "xenon",
   "license": "MIT",
   "private": true,

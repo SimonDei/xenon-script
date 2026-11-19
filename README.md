@@ -65,9 +65,10 @@ union types. TypeScript accepts the output of every example (`tests/tsemit.test.
 directly (`xenon run --target ts`). `compileProject(…, { target: "ts" })` also returns token mappings
 between each `.xn` file and its `.ts` module.
 
-`xenon lsp` is a language server (LSP over stdio) for editors: diagnostics as you type, hover with
-Xenon types and doc comments, go to definition (also into the standard library and `.d.ts` files),
-and completion. Xenon's checker answers for Xenon code; TypeScript runs over the virtual `.ts`
+`xenon lsp` is a language server (LSP over stdio) for editors: diagnostics as you type with quick
+fixes, hover with Xenon types and doc comments, go to definition (also into the standard library
+and `.d.ts` files), completion, signature help, find references, rename (a class's file too) and
+the outline. Xenon's checker answers for Xenon code; TypeScript runs over the virtual `.ts`
 files and adds the types of JavaScript and npm imports (and errors in their use) where Xenon only
 knows `*`. The VS Code extension in `packages/vscode-xenon` bundles it (with syntax highlighting):
 `cd packages/vscode-xenon && bun install && bun run package && code --install-extension xenon.vsix`.

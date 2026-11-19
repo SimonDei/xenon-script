@@ -7,17 +7,23 @@
 import { join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
+  type CodeAction,
+  CodeActionKind,
   CompletionItemKind,
   type Connection,
   createConnection,
   DiagnosticSeverity,
   MarkupKind,
   ProposedFeatures,
+  LSPErrorCodes,
+  ResponseError,
+  SymbolKind,
   TextDocuments,
   TextDocumentSyncKind,
+  type WorkspaceEdit as LspWorkspaceEdit,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { type CompletionKind, type Location, XenonProject } from "./service.ts";
+import { type CompletionKind, type DocumentSymbol, type Fix, type Location, type SymbolKind as XenonSymbolKind, XenonProject } from "./service.ts";
 
 const KINDS: Record<CompletionKind, CompletionItemKind> = {
   field: CompletionItemKind.Field,
@@ -31,6 +37,18 @@ const KINDS: Record<CompletionKind, CompletionItemKind> = {
   keyword: CompletionItemKind.Keyword,
   typedef: CompletionItemKind.TypeParameter,
   value: CompletionItemKind.Value,
+};
+
+const SYMBOLS: Record<XenonSymbolKind, SymbolKind> = {
+  class: SymbolKind.Class,
+  interface: SymbolKind.Interface,
+  enum: SymbolKind.Enum,
+  typedef: SymbolKind.TypeParameter,
+  field: SymbolKind.Field,
+  method: SymbolKind.Method,
+  property: SymbolKind.Property,
+  constructor: SymbolKind.Constructor,
+  constant: SymbolKind.Constant,
 };
 
 const SEVERITY = { error: DiagnosticSeverity.Error, warning: DiagnosticSeverity.Warning, info: DiagnosticSeverity.Information };
@@ -82,6 +100,8 @@ export function startServer(connection: Connection = createConnection(ProposedFe
           code: d.code,
           source: d.source,
           relatedInformation: d.related.map((r) => ({ location: toLsp(r.location), message: r.message })),
+          // Kept by the editor and handed back with code action requests.
+          data: d.fixes.length > 0 ? d.fixes : undefined,
         })),
       });
     }
@@ -91,7 +111,11 @@ export function startServer(connection: Connection = createConnection(ProposedFe
     timer = setTimeout(publish, delay);
   };
 
+  /** Can the editor rename files as part of a workspace edit (a renamed class renames its file)? */
+  let fileRenames = false;
+
   connection.onInitialize(async (params) => {
+    fileRenames = !!params.capabilities.workspace?.workspaceEdit?.resourceOperations?.includes("rename");
     const folder = params.workspaceFolders?.[0]?.uri ?? params.rootUri;
     const root = folder ? fileURLToPath(folder) : process.cwd();
     const config = await projectConfig(root);
@@ -104,6 +128,11 @@ export function startServer(connection: Connection = createConnection(ProposedFe
         hoverProvider: true,
         definitionProvider: true,
         completionProvider: { triggerCharacters: ["."] },
+        referencesProvider: true,
+        renameProvider: { prepareProvider: true },
+        signatureHelpProvider: { triggerCharacters: ["(", ","], retriggerCharacters: [","] },
+        documentSymbolProvider: true,
+        codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
       },
       serverInfo: { name: "xenon-language-server" },
     };
@@ -169,6 +198,63 @@ export function startServer(connection: Connection = createConnection(ProposedFe
       detail: c.detail,
       documentation: c.documentation ? { kind: MarkupKind.Markdown, value: c.documentation } : undefined,
     }));
+  });
+
+  connection.onReferences(({ textDocument, position, context }) => {
+    const q = at(textDocument.uri, position);
+    return q ? q.project.references(q.path, q.offset, context.includeDeclaration).map(toLsp) : null;
+  });
+
+  connection.onPrepareRename(({ textDocument, position }) => {
+    const q = at(textDocument.uri, position);
+    if (!q) return null;
+    const r = q.project.prepareRename(q.path, q.offset);
+    if ("error" in r) throw new ResponseError(LSPErrorCodes.RequestFailed, r.error);
+    return r;
+  });
+
+  connection.onRenameRequest(({ textDocument, position, newName }): LspWorkspaceEdit | null => {
+    const q = at(textDocument.uri, position);
+    if (!q) return null;
+    const r = q.project.rename(q.path, q.offset, newName);
+    if ("error" in r) throw new ResponseError(LSPErrorCodes.RequestFailed, r.error);
+    const edits = [...r.changes].map(([path, es]) => {
+      const uri = pathToFileURL(path).href;
+      return { textDocument: { uri, version: documents.get(uri)?.version ?? null }, edits: es };
+    });
+    if (!fileRenames) return { changes: Object.fromEntries(edits.map((e) => [e.textDocument.uri, e.edits])) };
+    const renames = r.renames.map((x) => ({ kind: "rename" as const, oldUri: pathToFileURL(x.from).href, newUri: pathToFileURL(x.to).href }));
+    return { documentChanges: [...edits, ...renames] };
+  });
+
+  connection.onSignatureHelp(({ textDocument, position }) => {
+    const q = at(textDocument.uri, position);
+    return (q && q.project.signatureHelp(q.path, q.offset)) ?? null;
+  });
+
+  connection.onDocumentSymbol(({ textDocument }) => {
+    const path = pathOf(textDocument.uri);
+    const doc = documents.get(textDocument.uri);
+    if (!path || !project) return null;
+    if (doc) project.set(path, doc.getText());
+    const convert = (s: DocumentSymbol): object => ({ ...s, kind: SYMBOLS[s.kind], children: s.children.map(convert) });
+    return project.documentSymbols(path).map(convert) as never;
+  });
+
+  connection.onCodeAction(({ context }) => {
+    const actions: CodeAction[] = [];
+    for (const d of context.diagnostics) {
+      (d.data as Fix[] | undefined)?.forEach((fix, i) => {
+        actions.push({
+          title: fix.title,
+          kind: CodeActionKind.QuickFix,
+          diagnostics: [d],
+          isPreferred: i === 0,
+          edit: { changes: Object.fromEntries(fix.edits.map((e) => [pathToFileURL(e.path).href, e.edits])) },
+        });
+      });
+    }
+    return actions;
   });
 
   documents.listen(connection);

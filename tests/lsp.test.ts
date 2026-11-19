@@ -52,7 +52,8 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
   rpc.listen();
 
   try {
-    const init = await rpc.sendRequest("initialize", { processId: null, rootUri: pathToFileURL(dir).href, capabilities: {} });
+    const capabilities = { workspace: { workspaceEdit: { documentChanges: true, resourceOperations: ["rename"] } } };
+    const init = await rpc.sendRequest("initialize", { processId: null, rootUri: pathToFileURL(dir).href, capabilities });
     expect(init).toMatchObject({ capabilities: { hoverProvider: true, definitionProvider: true, completionProvider: { triggerCharacters: ["."] } } });
     rpc.sendNotification("initialized", {});
 
@@ -80,6 +81,33 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
 
     const items = (await rpc.sendRequest("textDocument/completion", { textDocument: { uri }, position: { line: 4, character: 19 } })) as { label: string }[];
     expect(items.map((i) => i.label)).toContain("toUpperCase");
+
+    // References: the declaration and the use.
+    const refs = (await rpc.sendRequest("textDocument/references", { textDocument: { uri }, position: { line: 4, character: 12 }, context: { includeDeclaration: true } })) as { range: { start: unknown } }[];
+    expect(refs.map((r) => r.range.start)).toEqual([{ line: 3, character: 8 }, { line: 4, character: 10 }]);
+
+    // Rename the class: both names, plus the file (the editor supports resource operations).
+    const prep = await rpc.sendRequest("textDocument/prepareRename", { textDocument: { uri }, position: { line: 1, character: 14 } });
+    expect(prep).toMatchObject({ placeholder: "Main" });
+    const edit = (await rpc.sendRequest("textDocument/rename", { textDocument: { uri }, position: { line: 1, character: 14 }, newName: "App" })) as { documentChanges: unknown[] };
+    expect(edit.documentChanges).toEqual([
+      { textDocument: { uri, version: 3 }, edits: [{ range: { start: { line: 1, character: 13 }, end: { line: 1, character: 17 } }, newText: "App" }, { range: { start: { line: 2, character: 18 }, end: { line: 2, character: 22 } }, newText: "App" }] },
+      { kind: "rename", oldUri: uri, newUri: uri.replace("Main.xn", "App.xn") },
+    ]);
+    await expect(rpc.sendRequest("textDocument/prepareRename", { textDocument: { uri }, position: { line: 4, character: 22 } })).rejects.toThrow("`toUpperCase` is part of the standard library.");
+
+    const sig = await rpc.sendRequest("textDocument/signatureHelp", { textDocument: { uri }, position: { line: 4, character: 48 } });
+    expect(sig).toMatchObject({ signatures: [{ label: "basename(path: string, suffix?: string): string" }], activeParameter: 0 });
+
+    const symbols = (await rpc.sendRequest("textDocument/documentSymbol", { textDocument: { uri } })) as { name: string; kind: number; children: { name: string }[] }[];
+    expect(symbols.map((x) => [x.name, x.kind, x.children.map((c) => c.name)])).toEqual([["Main", 5, ["constructor"]]]);
+
+    // A quick fix from the diagnostic's suggestion.
+    const strict = MAIN.replace("trace(", "trace(1 === 1, ");
+    rpc.sendNotification("textDocument/didChange", { textDocument: { uri, version: 4 }, contentChanges: [{ text: strict }] });
+    const withFix = await diagnosticsFor(uri, (d) => d.length > 0);
+    const actions = (await rpc.sendRequest("textDocument/codeAction", { textDocument: { uri }, range: (withFix[0] as { range: object }).range, context: { diagnostics: withFix } })) as { title: string; isPreferred: boolean; edit: { changes: Record<string, { newText: string }[]> } }[];
+    expect(actions.map((a) => [a.title, a.isPreferred, a.edit.changes[uri]!.map((e) => e.newText)])).toEqual([["use ==", true, ["=="]]]);
 
     await rpc.sendRequest("shutdown");
     rpc.sendNotification("exit");

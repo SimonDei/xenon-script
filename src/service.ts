@@ -16,7 +16,7 @@ import { type ClassInfo, findMember, type MemberSig, type Resolution, visibility
 import { generatedOffsetAt, type Mapping, type OutputFile, sourceOffsetAt } from "./codegen.ts";
 import { compileProject, type CompileResult, PRELUDE, type SourceInput } from "./compiler.ts";
 import { KEYWORDS } from "./lexer.ts";
-import { SourceFile, type Span } from "./source.ts";
+import { SourceFile, type Span, spanText } from "./source.ts";
 import { isSubclass, memberTypeIn, type MethodType, stdClassOf, supertypes, type Type, typeToString } from "./types.ts";
 
 /** Options of the virtual TypeScript project. Xenon references may be `null`: no strict null checks. */
@@ -53,6 +53,7 @@ export interface ServiceDiagnostic {
   code?: string;
   source: "xenon" | "typescript";
   related: { location: Location; message: string }[];
+  fixes: Fix[];
 }
 
 export type CompletionKind = "field" | "method" | "property" | "class" | "interface" | "enum" | "variable" | "function" | "keyword" | "typedef" | "value";
@@ -63,6 +64,42 @@ export interface CompletionItem {
   /** The type or signature. */
   detail?: string;
   documentation?: string;
+}
+
+export interface TextEdit {
+  range: Range;
+  newText: string;
+}
+
+/** A fix the checker suggests for a diagnostic (`help:` with edits): a quick fix in the editor. */
+export interface Fix {
+  title: string;
+  /** Edits by absolute file path. */
+  edits: { path: string; edits: TextEdit[] }[];
+}
+
+export interface WorkspaceEdit {
+  /** Text edits by absolute file path. */
+  changes: Map<string, TextEdit[]>;
+  /** Files to rename (absolute paths), after the text edits: a public class lives in a file of its name. */
+  renames: { from: string; to: string }[];
+}
+
+export interface SignatureHelp {
+  signatures: { label: string; documentation?: string; parameters: { label: [number, number] }[] }[];
+  activeSignature: number;
+  activeParameter: number;
+}
+
+export type SymbolKind = "class" | "interface" | "enum" | "typedef" | "field" | "method" | "property" | "constructor" | "constant";
+
+export interface DocumentSymbol {
+  name: string;
+  detail?: string;
+  kind: SymbolKind;
+  range: Range;
+  selectionRange: Range;
+  children: DocumentSymbol[];
 }
 
 export interface Hover {
@@ -154,6 +191,20 @@ function classText(info: ClassInfo): string {
 
 function memberKind(m: MemberSig): CompletionKind {
   return m.kind === "method" ? "method" : m.kind === "accessor" ? "property" : "field";
+}
+
+/** What a name refers to: its description for hovers, and its declaration. */
+interface Sym {
+  text: string;
+  doc?: string;
+  /** The name at the cursor. */
+  span: Span;
+  /** Where it's declared (undefined: built in). */
+  decl?: Span;
+  /** A class member: overrides of one another are the same symbol for references and rename. */
+  member?: MemberSig;
+  /** A class (or interface/enum): renaming it renames its file too. */
+  info?: ClassInfo;
 }
 
 interface Analysis {
@@ -295,6 +346,13 @@ export class XenonProject {
         code: d.code,
         source: "xenon",
         related: d.labels.filter((l) => l !== primary && l.message).map((l) => ({ location: this.location(l.span), message: l.message! })),
+        fixes: d.help.flatMap((h) => {
+          const edits = (h.edits ?? []).filter((e) => !e.span.file.prelude);
+          if (edits.length === 0) return [];
+          const byFile = new Map<SourceFile, TextEdit[]>();
+          for (const e of edits) byFile.set(e.span.file, [...(byFile.get(e.span.file) ?? []), { range: rangeOf(e.span.file, e.span.start, e.span.end), newText: e.text }]);
+          return [{ title: h.message.replace(/`/g, ""), edits: [...byFile].map(([f, es]) => ({ path: this.pathOf(f), edits: es })) }];
+        }),
       });
       if (d.severity === "error") xenonSpans.set(path, [...(xenonSpans.get(path) ?? []), primary.span]);
     }
@@ -315,6 +373,7 @@ export class XenonProject {
           code: `TS${d.code}`,
           source: "typescript",
           related: [],
+          fixes: [],
         });
       }
     }
@@ -356,13 +415,13 @@ export class XenonProject {
   }
 
   /** What the innermost name at the cursor is, in Xenon terms, and where it's declared. */
-  private describe(a: Analysis, chain: Node[]): { text: string; doc?: string; span: Span; decl?: Span } | undefined {
+  private describe(a: Analysis, chain: Node[]): Sym | undefined {
     const check = a.result.check;
     const node = chain.at(-1);
     const parent = chain.at(-2);
     if (!node) return undefined;
-    const ofMember = (m: MemberSig, span: Span) => ({ text: memberText(m), doc: docComment(m.decl.span.file, m.decl.span.start), span, decl: m.decl.name.span });
-    const ofClass = (info: ClassInfo, span: Span) => ({ text: classText(info), doc: docComment(info.decl.span.file, info.decl.span.start), span, decl: info.decl.name.span });
+    const ofMember = (m: MemberSig, span: Span): Sym => ({ text: memberText(m), doc: docComment(m.decl.span.file, m.decl.span.start), span, decl: m.decl.name.span, member: m });
+    const ofClass = (info: ClassInfo, span: Span): Sym => ({ text: classText(info), doc: docComment(info.decl.span.file, info.decl.span.start), span, decl: info.decl.name.span, info });
 
     // A name inside a larger node: `obj.name`, a declaration's name, a type name.
     if (!node.kind && parent) {
@@ -384,12 +443,31 @@ export class XenonProject {
         const t = check.typeNodeTypes.get((parent as A.TypedefDecl).type);
         return { text: `typedef ${(node as A.Ident).name} = ${t ? typeToString({ ...t, alias: undefined } as Type) : "?"}`, span: node.span, decl: node.span };
       }
-      if (parent.kind === "TypeName") return this.describeType(a, parent as A.TypeNode, node.span);
-      const declared = this.declaredType(a, parent, node as A.Ident);
-      if (declared) return { text: `${(node as A.Ident).name}:${typeToString(declared)}`, span: node.span, decl: node.span };
+      // `com.zoo.Animal`: the last part names the type.
+      if (parent.kind === "TypeName") return (parent as A.TypeNode & { kind: "TypeName" }).name.at(-1) === node ? this.describeType(a, parent as A.TypeNode, node.span) : undefined;
+      if (parent.kind === "XenonImport") {
+        const imp = parent as A.XenonImport;
+        const info = imp.path.at(-1) === node && !imp.wildcard ? check.classes.get(imp.path.map((p) => p.name).join(".")) : undefined;
+        return info && ofClass(info, node.span);
+      }
+      // `{ name }`: the property is a variable or member in scope.
+      if (parent.kind === "Shorthand") {
+        const r = check.resolutions.get(parent as A.ObjectProp) as Resolution | undefined;
+        if (r?.kind === "local") return { text: (node as A.Ident).name, span: node.span, decl: r.decl };
+        if (r?.kind === "member") {
+          const m = findMember(r.owner, (node as A.Ident).name);
+          return m && ofMember(m, node.span);
+        }
+        return undefined;
+      }
+      // Any other declaration's name: a parameter, local, loop or catch variable, a destructured name.
+      if (parent.name === node) {
+        const declared = this.declaredType(a, parent, node as A.Ident);
+        return { text: declared ? `${(node as A.Ident).name}:${typeToString(declared)}` : (node as A.Ident).name, span: node.span, decl: node.span };
+      }
       return undefined;
     }
-    if (node.kind === "TypeName") return this.describeType(a, node as A.TypeNode, node.span);
+    if (node.kind === "TypeName") return this.describeType(a, node as A.TypeNode, (node as A.TypeNode & { kind: "TypeName" }).name.at(-1)!.span);
     if (node.kind === "Ident") {
       const e = node as A.Expr & { kind: "Ident" };
       const r = check.resolutions.get(e) as Resolution | undefined;
@@ -420,9 +498,9 @@ export class XenonProject {
     return undefined;
   }
 
-  private describeType(a: Analysis, node: A.TypeNode, span: Span): { text: string; doc?: string; span: Span; decl?: Span } | undefined {
+  private describeType(a: Analysis, node: A.TypeNode, span: Span): Sym | undefined {
     const info = a.result.check.typeResolutions.get(node);
-    if (info) return { text: classText(info), doc: docComment(info.decl.span.file, info.decl.span.start), span, decl: info.decl.name.span };
+    if (info) return { text: classText(info), doc: docComment(info.decl.span.file, info.decl.span.start), span, decl: info.decl.name.span, info };
     const t = a.result.check.typeNodeTypes.get(node);
     if (!t) return undefined;
     const td = (t.kind === "shape" || t.kind === "method") ? t.typedef : undefined;
@@ -493,6 +571,231 @@ export class XenonProject {
       const s = sf.getLineAndCharacterOfPosition(d.textSpan.start);
       const e = sf.getLineAndCharacterOfPosition(d.textSpan.start + d.textSpan.length);
       return [{ path: d.fileName, range: { start: s, end: e } }];
+    });
+  }
+
+  // ---- references and rename ----
+
+  /** The symbol of the name at the cursor. */
+  private symbolAt(a: Analysis, path: string, offset: number): Sym | undefined {
+    const ast = this.astOf(a, path);
+    if (!ast) return undefined;
+    const sym = this.describe(a, nodesAt(ast, offset));
+    return sym?.decl ? sym : undefined;
+  }
+
+  /** The topmost declarations a member overrides or implements (itself, if it overrides nothing). */
+  private roots(m: MemberSig): A.Member[] {
+    if (m.isStatic) return [m.decl];
+    const declaring = [...supertypes(m.owner)].flatMap((c) => {
+      const other = c.members.get(m.name);
+      return other && !other.isStatic ? [other] : [];
+    });
+    return declaring.filter((d) => !declaring.some((x) => x !== d && x.owner !== d.owner && isSubclass(d.owner, x.owner))).map((d) => d.decl);
+  }
+
+  private same(x: Sym, target: Sym, targetRoots: A.Member[] | undefined): boolean {
+    if (x.member && targetRoots) return x.member.name === target.member!.name && this.roots(x.member).some((r) => targetRoots.includes(r));
+    return !!x.decl && x.decl.file === target.decl!.file && x.decl.start === target.decl!.start;
+  }
+
+  /** Every name in the project's files that refers to `target`. */
+  private occurrences(a: Analysis, target: Sym): { span: Span; shorthand: boolean }[] {
+    const roots = target.member && this.roots(target.member);
+    const found: { span: Span; shorthand: boolean }[] = [];
+    const visit = (node: Node, parent: Node | undefined) => {
+      if (!node.kind || node.kind === "Ident") {
+        const sym = this.describe(a, parent ? [parent, node] : [node]);
+        if (sym && this.same(sym, target, roots)) found.push({ span: sym.span, shorthand: parent?.kind === "Shorthand" });
+      }
+      for (const child of childNodes(node)) visit(child, node);
+    };
+    for (const ast of a.result.asts) {
+      if (ast.file.prelude) continue;
+      for (const n of childNodes([ast.imports, ast.decls, ast.privateDecls])) visit(n, undefined);
+    }
+    return found;
+  }
+
+  /** Where the symbol at the cursor is used (with its declaration when `includeDeclaration`). */
+  references(path: string, offset: number, includeDeclaration = true): Location[] {
+    const a = this.analyze();
+    const target = this.symbolAt(a, path, offset);
+    if (!target) return [];
+    const isDecl = (s: Span) => s.file === target.decl!.file && s.start === target.decl!.start;
+    return this.occurrences(a, target).filter((o) => includeDeclaration || !isDecl(o.span)).map((o) => this.location(o.span));
+  }
+
+  /** Can the name at the cursor be renamed? Its range and text, or why not. */
+  prepareRename(path: string, offset: number): { range: Range; placeholder: string } | { error: string } {
+    const a = this.analyze();
+    const target = this.symbolAt(a, path, offset);
+    if (!target) return { error: "This isn't something that can be renamed." };
+    const builtIn = target.decl!.file.prelude || (target.member && this.roots(target.member).some((r) => r.span.file.prelude));
+    if (builtIn) return { error: `\`${spanText(target.span)}\` is part of the standard library.` };
+    return { range: rangeOf(target.span.file, target.span.start, target.span.end), placeholder: spanText(target.span) };
+  }
+
+  rename(path: string, offset: number, newName: string): WorkspaceEdit | { error: string } {
+    const ok = this.prepareRename(path, offset);
+    if ("error" in ok) return ok;
+    if (!/^[A-Za-z_$][\w$]*$/.test(newName) || KEYWORDS.has(newName)) return { error: `\`${newName}\` isn't a valid name.` };
+    const a = this.analyze();
+    const target = this.symbolAt(a, path, offset)!;
+    const old = spanText(target.span);
+    const changes = new Map<string, TextEdit[]>();
+    for (const o of this.occurrences(a, target)) {
+      const file = this.pathOf(o.span.file);
+      // `{ name }` keeps its property name: `{ name: renamed }`.
+      const newText = o.shorthand ? `${old}: ${newName}` : newName;
+      changes.set(file, [...(changes.get(file) ?? []), { range: rangeOf(o.span.file, o.span.start, o.span.end), newText }]);
+    }
+    // A class declared in the package block lives in a file named after it.
+    const renames: WorkspaceEdit["renames"] = [];
+    const info = target.info;
+    if (info && !info.filePrivate && info.file.file.path.replace(/^.*\//, "") === `${old}.xn`) {
+      const from = this.pathOf(info.file.file);
+      renames.push({ from, to: join(dirname(from), `${newName}.xn`) });
+    }
+    return { changes, renames };
+  }
+
+  // ---- signature help ----
+
+  /** Inside a call's parentheses: the callee's signatures and the parameter at the cursor. */
+  signatureHelp(path: string, offset: number): SignatureHelp | undefined {
+    const text = this.sources.get(path);
+    if (text === undefined) return undefined;
+    // `f(1, ` with nothing after the comma yet doesn't parse: fill in a placeholder argument.
+    const before = text.slice(0, offset).trimEnd();
+    const patched = before.endsWith(",") ? text.slice(0, offset) + "null" + text.slice(offset) : text;
+    const a = patched === text ? this.analyze() : this.compile([...this.sources].map(([p, t]) => ({ path: p, text: p === path ? patched : t })));
+    const ast = this.astOf(a, path);
+    if (!ast) return undefined;
+    const call = nodesAt(ast, offset).findLast((n) => {
+      if (n.kind !== "Call" && n.kind !== "New") return false;
+      const open = patched.indexOf("(", (n.callee as Node).span.end);
+      return open >= 0 && open < offset && offset < n.span.end;
+    }) as (A.Expr & { kind: "Call" | "New" }) | undefined;
+    if (!call) return undefined;
+    const open = patched.indexOf("(", call.callee.span.end);
+    const active = commasBefore(patched, open + 1, offset);
+    const signatures = this.signaturesOf(a, call);
+    if (signatures.length === 0) return this.tsSignatureHelp(a, path, call, active);
+    const fits = signatures.findIndex((s) => s.parameters.length > active || s.rest);
+    return {
+      signatures: signatures.map(({ rest: _, ...s }) => s),
+      activeSignature: Math.max(0, fits),
+      activeParameter: Math.min(active, Math.max(0, (signatures[Math.max(0, fits)]?.parameters.length ?? 1) - 1)),
+    };
+  }
+
+  /** A callee Xenon only knows as `*` (a JavaScript import): TypeScript's signatures. */
+  private tsSignatureHelp(a: Analysis, path: string, call: A.Expr & { kind: "Call" | "New" }, active: number): SignatureHelp | undefined {
+    const o = a.outputs.get(path);
+    // Just inside the generated call's parentheses: after the callee's last token, past the `(`.
+    const last = o?.mappings && generatedOffsetAt(o.mappings, call.callee.span.end - 1);
+    if (!o || last === undefined) return undefined;
+    const at = o.text.indexOf("(", last) + 1;
+    if (at <= 0) return undefined;
+    const file = join(this.virtualRoot, o.path);
+    // A patched analysis (placeholder argument): TypeScript sees it until the next analysis restores the file.
+    if (this.virtual.get(file)?.text !== o.text) {
+      this.virtual.set(file, { text: o.text, version: ++this.version });
+      this.cached = undefined;
+    }
+    const help = this.tsService.getSignatureHelpItems(file, at, undefined);
+    if (!help) return undefined;
+    const text = (parts: ts.SymbolDisplayPart[]) => ts.displayPartsToString(parts);
+    const signatures = help.items.map((item) => {
+      let label = text(item.prefixDisplayParts);
+      const parameters: { label: [number, number] }[] = [];
+      item.parameters.forEach((p, i) => {
+        if (i > 0) label += text(item.separatorDisplayParts);
+        const t = text(p.displayParts);
+        parameters.push({ label: [label.length, label.length + t.length] });
+        label += t;
+      });
+      label += text(item.suffixDisplayParts);
+      const doc = text(item.documentation);
+      return { label, parameters, ...(doc ? { documentation: doc } : {}), rest: item.isVariadic };
+    });
+    const fits = signatures.findIndex((s) => s.parameters.length > active || s.rest);
+    const chosen = fits >= 0 ? fits : help.selectedItemIndex;
+    return {
+      signatures: signatures.map(({ rest: _, ...s }) => s),
+      activeSignature: chosen,
+      activeParameter: Math.min(active, Math.max(0, (signatures[chosen]?.parameters.length ?? 1) - 1)),
+    };
+  }
+
+  private signaturesOf(a: Analysis, call: A.Expr & { kind: "Call" | "New" }) {
+    const check = a.result.check;
+    const make = (name: string, t: MethodType, doc?: string) => {
+      let label = `${name}(`;
+      const parameters: { label: [number, number] }[] = [];
+      t.params.forEach((p, i) => {
+        if (i > 0) label += ", ";
+        const text = `${p.rest ? "..." : ""}${p.name}${p.optional ? "?" : ""}:${typeToString(p.type)}`;
+        parameters.push({ label: [label.length, label.length + text.length] });
+        label += text;
+      });
+      label += `):${typeToString(t.ret)}`;
+      return { label, documentation: doc, parameters, rest: t.params.at(-1)?.rest ?? false };
+    };
+    if (call.kind === "New") {
+      const info = check.typeResolutions.get(call.callee);
+      if (!info) return [];
+      const ctors = info.ctorOverloads ?? (info.ctor ? [info.ctor] : []);
+      const doc = (d: A.Method) => docComment(d.span.file, d.span.start);
+      return ctors.length ? ctors.map((c) => make(`new ${info.decl.name.name}`, c.type, doc(c.decl))) : [make(`new ${info.decl.name.name}`, { kind: "method", params: [], ret: { kind: "void" } })];
+    }
+    const callee = call.callee;
+    const name = callee.kind === "Member" ? callee.name.name : callee.kind === "Ident" ? callee.name : "function";
+    const sym = this.describe(a, callee.kind === "Member" ? [callee, callee.name as unknown as Node] : [callee as Node]);
+    const doc = sym?.doc;
+    // Overloads (standard library): each as its own signature, as seen on this receiver.
+    const m = sym?.member;
+    if (m?.overloads?.length) {
+      const objType = callee.kind === "Member" ? check.exprTypes.get(callee.object) : undefined;
+      const args = objType?.kind === "class" ? objType.args ?? [] : [];
+      return m.overloads.map((o) => {
+        const t = args.length && objType?.kind === "class" ? memberTypeIn(objType.info, args, m.owner, o.type) : o.type;
+        return make(name, t as MethodType, doc);
+      });
+    }
+    const t = check.exprTypes.get(callee);
+    if (t?.kind === "method") return [make(name, t, doc)];
+    if (callee.kind === "Ident" && callee.name === "trace") return [make("trace", { kind: "method", params: [{ name: "values", type: { kind: "any" }, optional: false, rest: true }], ret: { kind: "void" } })];
+    return [];
+  }
+
+  // ---- outline ----
+
+  /** The file's declarations: classes with their members, typedefs. */
+  documentSymbols(path: string): DocumentSymbol[] {
+    const a = this.analyze();
+    const ast = this.astOf(a, path);
+    if (!ast) return [];
+    const file = ast.file;
+    const r = (s: Span) => rangeOf(file, s.start, s.end);
+    return [...ast.decls, ...ast.privateDecls].map((d): DocumentSymbol => {
+      if (d.kind === "Typedef") {
+        const t = a.result.check.typeNodeTypes.get(d.type);
+        return { name: d.name.name, detail: t && typeToString({ ...t, alias: undefined } as Type), kind: "typedef", range: r(d.span), selectionRange: r(d.name.span), children: [] };
+      }
+      const info = [...a.result.check.classes.values()].find((c) => c.decl === d);
+      const children = d.members.flatMap((m): DocumentSymbol[] => {
+        if (m.kind === "StaticBlock") return [];
+        const sig = m.kind === "Method" && m.isConstructor ? undefined : info?.members.get(m.name.name);
+        const kind: SymbolKind = m.kind === "Field"
+          ? (d.isEnum || m.decl === "const" ? "constant" : "field")
+          : m.isConstructor ? "constructor" : m.accessor ? "property" : "method";
+        const detail = sig ? (sig.type.kind === "method" ? signature(sig.type, "") : typeToString(sig.type)) : undefined;
+        return [{ name: m.kind === "Method" && m.isConstructor ? "constructor" : m.kind === "Method" && m.accessor ? `${m.accessor} ${m.name.name}` : m.name.name, detail, kind, range: r(m.span), selectionRange: r(m.name.span), children: [] }];
+      });
+      const kind: SymbolKind = d.isInterface ? "interface" : d.isEnum ? "enum" : "class";
+      return { name: d.name.name, detail: info && classText(info), kind, range: r(d.span), selectionRange: r(d.name.span), children };
     });
   }
 
@@ -608,6 +911,24 @@ export class XenonProject {
     for (const t of ["int", "uint", "Float", "String", "Boolean"]) add({ label: t, kind: "class" });
     return [...items.values()];
   }
+}
+
+/** The number of top-level commas between `from` and `to`: the argument the cursor is in. */
+function commasBefore(text: string, from: number, to: number): number {
+  let depth = 0;
+  let commas = 0;
+  let quote: string | undefined;
+  for (let i = from; i < to; i++) {
+    const c = text[i]!;
+    if (quote) {
+      if (c === "\\") i++;
+      else if (c === quote) quote = undefined;
+    } else if (c === "'" || c === '"') quote = c;
+    else if ("([{".includes(c)) depth++;
+    else if (")]}".includes(c)) depth--;
+    else if (c === "," && depth === 0) commas++;
+  }
+  return commas;
 }
 
 function tsKind(kind: string): CompletionKind {

@@ -7,7 +7,9 @@ Language support for XenonScript (`.xn` files): syntax highlighting, plus a lang
   errors and warnings in every file of the project, and TypeScript's errors where Xenon only knows
   `*` (the types of JavaScript and npm imports come from their `.d.ts`). Hover shows Xenon types and
   `/** … */` comments; go to definition reaches Xenon declarations, the standard library and
-  `.d.ts` files; completion after `.` lists the members of the receiver's type. The project is the
+  `.d.ts` files; completion after `.` lists the members of the receiver's type. Also signature
+  help, find references, rename (overrides together; a public class's file is renamed with it),
+  the outline (**Go to Symbol in Editor**) and quick fixes from the compiler's suggestions. The project is the
   workspace folder: its `xenon.json` (`src`, `main`) or `src/` and `Main`. It runs with **Bun**,
   which must be installed (`xenon.bunPath` if it isn't on the `PATH`).
 - **Grammar** `syntaxes/xenon.tmLanguage.json`: keywords and modifiers, declarations (classes,
