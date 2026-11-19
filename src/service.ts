@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import ts from "typescript";
 import type * as A from "./ast.ts";
-import { type ClassInfo, findMember, type MemberSig, type Resolution, visibilityOf } from "./checker.ts";
+import { type CheckResult, type ClassInfo, findMember, type MemberSig, type Resolution, visibilityOf } from "./checker.ts";
 import { generatedOffsetAt, type Mapping, type OutputFile, sourceOffsetAt } from "./codegen.ts";
 import { compileProject, type CompileResult, PRELUDE, type SourceInput } from "./compiler.ts";
 import { KEYWORDS } from "./lexer.ts";
@@ -201,6 +201,36 @@ function shapeMember(shape: ShapeType, name: string): { member: ShapeMember; nod
 /** `?to:String`, `final id:int`: as written in a shape. */
 function shapeMemberText(m: ShapeMember): string {
   return `${m.readonly ? "final " : ""}${m.optional ? "?" : ""}${m.name}:${typeToString(m.type())}`;
+}
+
+/** Completion inserts this name after a bare `obj.`, so the text parses. */
+const PLACEHOLDER = "__xenon_complete";
+
+/**
+ * The expression before the dot ending at `nameStart` (`res`, `this.items[0]`, `load(x)?.data`):
+ * names, member accesses and balanced `(…)`/`[…]`. Undefined if there is none.
+ */
+function receiverBefore(text: string, nameStart: number): { start: number } | undefined {
+  let i = nameStart - 1; // the dot
+  if (text[i] !== ".") return undefined;
+  for (;;) {
+    if (text[i - 1] === "?") i--; // `?.`
+    let j = i;
+    while (j > 0 && (text[j - 1] === ")" || text[j - 1] === "]")) {
+      // A balanced group: a call's arguments or an index.
+      let depth = 0;
+      do {
+        j--;
+        if (text[j] === ")" || text[j] === "]") depth++;
+        else if (text[j] === "(" || text[j] === "[") depth--;
+      } while (j > 0 && depth > 0);
+      if (depth > 0) return undefined;
+    }
+    while (j > 0 && /[\w$]/.test(text[j - 1]!)) j--;
+    if (j === i) return undefined; // nothing before this dot
+    if (text[j - 1] !== ".") return { start: j };
+    i = j - 1; // continue with the dot before
+  }
 }
 
 function memberKind(m: MemberSig): CompletionKind {
@@ -457,14 +487,8 @@ export class XenonProject {
         }
         const m = this.memberOf(a, objType, (node as A.Ident).name);
         // A call of an overloaded method: the overload it chose, as called (`append(name, value:Blob, fileName)`).
-        const pick = check.overloadPicks.get(parent as A.Expr);
-        if (m && pick) {
-          // An overload without a doc comment shares the one above it (`append(name, value:Blob)` documents the `fileName` one too).
-          const group = m.overloads?.map((o) => o.decl) ?? [];
-          const before = group.slice(0, group.indexOf(pick.decl) + 1).reverse();
-          const doc = before.map((d) => docComment(d.span.file, d.span.start)).find((d) => d);
-          return { ...ofMember({ ...m, decl: pick.decl, type: pick.type }, node.span), doc, decl: pick.decl.name.span };
-        }
+        const pick = check.overloadPicks.get(parent as A.Expr)?.chosen;
+        if (m && pick) return { ...ofMember({ ...m, decl: pick.decl, type: pick.type }, node.span), doc: this.overloadDoc(check, parent as A.Expr, pick.decl), decl: pick.decl.name.span };
         return m && ofMember(m, node.span);
       }
       if ((parent.kind === "Field" || parent.kind === "Method") && parent.name === node) {
@@ -518,6 +542,9 @@ export class XenonProject {
         }
         case "class": return ofClass(r.info, e.span);
         case "function": {
+          // A call of an overloaded function (`fetch(url, options)`): the overload it chose.
+          const pick = check.overloadPicks.get(e)?.chosen;
+          if (pick) return { text: `function ${signature(pick.type, e.name)}`, doc: this.overloadDoc(check, e, pick.decl), span: e.span, decl: pick.decl.name.span };
           const doc = docComment(r.decl.span.file, r.decl.span.start);
           return { text: t?.kind === "method" ? `function ${signature(t, e.name)}` : `function ${e.name}`, doc, span: e.span, decl: r.decl.name.span };
         }
@@ -525,6 +552,13 @@ export class XenonProject {
       }
     }
     return undefined;
+  }
+
+  /** An overload's doc comment; one without its own shares the nearest one above it in its group. */
+  private overloadDoc(check: CheckResult, callee: A.Expr, decl: A.Method): string | undefined {
+    const group = check.overloadPicks.get(callee)?.all.map((o) => o.decl) ?? [decl];
+    const before = group.slice(0, group.indexOf(decl) + 1).reverse();
+    return before.map((d) => docComment(d.span.file, d.span.start)).find((d) => d);
   }
 
   /** The type a declaration gives its name: a parameter, local, loop or catch variable. */
@@ -709,23 +743,35 @@ export class XenonProject {
     if (text === undefined) return undefined;
     // `f(1, ` with nothing after the comma yet doesn't parse: fill in a placeholder argument.
     const before = text.slice(0, offset).trimEnd();
-    const patched = before.endsWith(",") ? text.slice(0, offset) + "null" + text.slice(offset) : text;
-    const a = patched === text ? this.analyze() : this.compile([...this.sources].map(([p, t]) => ({ path: p, text: p === path ? patched : t })));
-    const ast = this.astOf(a, path);
-    if (!ast) return undefined;
-    const call = nodesAt(ast, offset).findLast((n) => {
-      if (n.kind !== "Call" && n.kind !== "New") return false;
-      const open = patched.indexOf("(", (n.callee as Node).span.end);
-      return open >= 0 && open < offset && offset < n.span.end;
-    }) as (A.Expr & { kind: "Call" | "New" }) | undefined;
-    if (!call) return undefined;
+    const filled = before.endsWith(",") ? text.slice(0, offset) + "null" + text.slice(offset) : text;
+    // If the statement doesn't parse yet (`if (f(x, ))` with no body so far), the parser drops it:
+    // try again with an empty body at the end of the line.
+    const lineEnd = filled.indexOf("\n", offset) < 0 ? filled.length : filled.indexOf("\n", offset);
+    let found: { a: Analysis; patched: string; ast: A.XenonFile; call: A.Expr & { kind: "Call" | "New" } } | undefined;
+    for (const patched of [filled, filled.slice(0, lineEnd) + " {}" + filled.slice(lineEnd)]) {
+      const a = patched === text ? this.analyze() : this.compile([...this.sources].map(([p, t]) => ({ path: p, text: p === path ? patched : t })));
+      const ast = this.astOf(a, path);
+      const call = ast && (nodesAt(ast, offset).findLast((n) => {
+        if (n.kind !== "Call" && n.kind !== "New") return false;
+        const open = patched.indexOf("(", (n.callee as Node).span.end);
+        return open >= 0 && open < offset && offset < n.span.end;
+      }) as (A.Expr & { kind: "Call" | "New" }) | undefined);
+      if (ast && call) {
+        found = { a, patched, ast, call };
+        break;
+      }
+    }
+    if (!found) return undefined;
+    const { a, patched, call } = found;
     const open = patched.indexOf("(", call.callee.span.end);
     const active = commasBefore(patched, open + 1, offset);
     const signatures = this.signaturesOf(a, call);
     if (signatures.length === 0) return this.tsSignatureHelp(a, path, call, active);
-    const fits = signatures.findIndex((s) => s.parameters.length > active || s.rest);
+    // The overload the checker chose, else the first with enough parameters.
+    const chosen = signatures.findIndex((s) => s.chosen);
+    const fits = chosen >= 0 ? chosen : signatures.findIndex((s) => s.parameters.length > active || s.rest);
     return {
-      signatures: signatures.map(({ rest: _, ...s }) => s),
+      signatures: signatures.map((s) => ({ label: s.label, documentation: s.documentation, parameters: s.parameters })),
       activeSignature: Math.max(0, fits),
       activeParameter: Math.min(active, Math.max(0, (signatures[Math.max(0, fits)]?.parameters.length ?? 1) - 1)),
     };
@@ -770,7 +816,7 @@ export class XenonProject {
     };
   }
 
-  private signaturesOf(a: Analysis, call: A.Expr & { kind: "Call" | "New" }) {
+  private signaturesOf(a: Analysis, call: A.Expr & { kind: "Call" | "New" }): { label: string; documentation?: string; parameters: { label: [number, number] }[]; rest: boolean; chosen?: boolean }[] {
     const check = a.result.check;
     const make = (name: string, t: MethodType, doc?: string) => {
       let label = `${name}(`;
@@ -793,6 +839,9 @@ export class XenonProject {
     }
     const callee = call.callee;
     const name = callee.kind === "Member" ? callee.name.name : callee.kind === "Ident" ? callee.name : "function";
+    // Overloads (standard library methods and functions): each as its own signature, as seen on this receiver.
+    const set = check.overloadPicks.get(callee);
+    if (set) return set.all.map((o) => ({ ...make(name, o.type, this.overloadDoc(check, callee, o.decl)), chosen: o.decl === set.chosen?.decl }));
     const sym = this.describe(a, callee.kind === "Member" ? [callee, callee.name as unknown as Node] : [callee as Node]);
     const doc = sym?.doc;
     // Overloads (standard library): each as its own signature, as seen on this receiver.
@@ -854,13 +903,27 @@ export class XenonProject {
   /** After `obj.`: the members of `obj`'s type (TypeScript's members where Xenon only knows `*`). */
   private memberCompletions(path: string, text: string, nameStart: number, offset: number): CompletionItem[] {
     // `obj.` with no name yet doesn't parse: complete against a placeholder name.
-    const PLACEHOLDER = "__xenon_complete";
     const patched = nameStart === offset ? text.slice(0, offset) + PLACEHOLDER + text.slice(offset) : text;
+    const items = this.memberCompletionsIn(path, text, patched, nameStart);
+    if (items) return items;
+    // Still no `obj.name` node: the statement around it doesn't parse yet (`if (!res.)` with no body
+    // so far), and the parser drops it. Complete `obj.` as a statement of its own, on a line inserted
+    // above (the same block, so the same locals are in scope).
+    const receiver = receiverBefore(text, nameStart);
+    if (!receiver) return [];
+    const lineStart = text.lastIndexOf("\n", receiver.start - 1) + 1;
+    const statement = `${text.slice(receiver.start, nameStart)}${PLACEHOLDER};\n`;
+    const alone = text.slice(0, lineStart) + statement + text.slice(lineStart);
+    return this.memberCompletionsIn(path, text, alone, lineStart + nameStart - receiver.start) ?? [];
+  }
+
+  /** Members after the dot whose name starts at `nameStart` in `patched`; undefined if there is no such member expression. */
+  private memberCompletionsIn(path: string, text: string, patched: string, nameStart: number): CompletionItem[] | undefined {
     const a = patched === text ? this.analyze() : this.compile([...this.sources].map(([p, t]) => ({ path: p, text: p === path ? patched : t })));
     const ast = this.astOf(a, path);
-    if (!ast) return [];
+    if (!ast) return undefined;
     const member = nodesAt(ast, nameStart).findLast((n) => n.kind === "Member" && (n.name as A.Ident).span.start === nameStart) as (A.Expr & { kind: "Member" }) | undefined;
-    if (!member) return [];
+    if (!member) return undefined;
     const t = a.result.check.exprTypes.get(member.object);
     // A shape (`typedef Mail = { to:String, … }`, `{ x:Float }`): its members, with their doc comments.
     const shape = t?.kind === "nullable" ? t.inner : t;

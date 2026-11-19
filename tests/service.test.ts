@@ -293,3 +293,26 @@ test("hover and definition on a call of an overloaded method: the overload it ch
   const [b] = p.definition("Main.xn", offset(text, "form.append('b", 7));
   expect(a!.range.start.line).toBeLessThan(b!.range.start.line);
 });
+
+test("while typing: completion and signature help in a statement that doesn't parse yet; overloaded functions", () => {
+  const at = (text: string, needle: string) => offset(text, needle, needle.length);
+  const body = (code: string) => `public class Main {\n  public async function run():Promise<void> {\n    var res:Response = await fetch('x')\n    ${code}\n  }\n}\n`;
+  const p = project({});
+  // `if (!res.)` has no body yet: the parser drops the statement, so `res.` is completed on its own.
+  for (const code of ["if (!res.)", "if (!res.", "trace(res?.)"]) {
+    const text = body(code);
+    p.set("Main.xn", text);
+    expect(p.completions("Main.xn", at(text, code.includes("?.") ? "res?." : "res.")).map((i) => i.label).slice(0, 3)).toEqual(["ok", "status", "statusText"]);
+  }
+  // `fetch` is an overloaded function: both signatures, the one with options active after the comma.
+  for (const code of ["fetch('x', )", "if (fetch('x', ))"]) {
+    const text = body(code);
+    p.set("Main.xn", text);
+    const help = p.signatureHelp("Main.xn", at(text, "fetch('x', "))!;
+    expect(help.signatures.map((s) => s.label)).toEqual(["fetch(url:String):Promise<Response>", "fetch(url:String, options:RequestInit):Promise<Response>"]);
+    expect([help.activeSignature, help.activeParameter]).toEqual([1, 1]);
+  }
+  const text = body("fetch('y', { method: 'POST' })");
+  p.set("Main.xn", text);
+  expect((p.hover("Main.xn", offset(text, "fetch('y'", 2))?.contents as string).split("\n")[1]).toBe("function fetch(url:String, options:RequestInit):Promise<Response>");
+});
