@@ -47,12 +47,17 @@ export async function bundleOutputs(outputs: OutputFile[], outDir: string, sourc
     const abs = resolve(process.cwd(), path);
     return modules.has(abs) ? `// ${posix(relative(outDir, abs))}` : line;
   });
+  // No blank lines (Bun separates modules and statements with them); `kept` maps the remaining
+  // lines to the bundle's original lines, for the source map.
+  const kept = text.split("\n").flatMap((line, i) => (line.trim() === "" ? [] : [i]));
+  const allLines = text.split("\n");
+  text = kept.map((i) => allLines[i]).join("\n") + "\n";
 
   const out: OutputFile[] = outputs.filter((o) => o.asset);
   if (sourceMaps) {
     const map = result.outputs.find((o) => o.kind === "sourcemap");
     if (map) {
-      out.push({ path: `${ENTRY_FILE}.map`, text: JSON.stringify(composeMap(JSON.parse(await map.text()) as SourceMap, maps, outDir, text)) + "\n" });
+      out.push({ path: `${ENTRY_FILE}.map`, text: JSON.stringify(composeMap(JSON.parse(await map.text()) as SourceMap, maps, outDir, text, kept)) + "\n" });
       text = text.replace(/\n?$/, `\n//# sourceMappingURL=${ENTRY_FILE}.map\n`);
     }
   }
@@ -63,9 +68,10 @@ export async function bundleOutputs(outputs: OutputFile[], outDir: string, sourc
 /**
  * The bundle's map points at the compiled modules; each module's map points at its `.xn` file.
  * Their composition points from the bundle straight at the `.xn` files (per segment: the module's
- * last segment at or before that column on that line).
+ * last segment at or before that column on that line). `kept` lists the bundle's lines left in
+ * `code` (blank lines are removed), by their line in the bundle Bun wrote.
  */
-function composeMap(bundle: SourceMap, moduleMaps: Map<string, SourceMap>, outDir: string, code: string): SourceMap {
+function composeMap(bundle: SourceMap, moduleMaps: Map<string, SourceMap>, outDir: string, code: string, kept: number[]): SourceMap {
   const sources: string[] = [];
   const contents: (string | null)[] = [];
   const index = new Map<string, number>();
@@ -82,7 +88,8 @@ function composeMap(bundle: SourceMap, moduleMaps: Map<string, SourceMap>, outDi
     return { source: index.get(xn)!, lines: decodeMappings(map.mappings) };
   });
   const codeLines = code.split("\n");
-  const lines = decodeMappings(bundle.mappings).map((segs, i) => segs.flatMap(([genCol, src, line, col]): [number, number, number, number][] => {
+  const bundleLines = decodeMappings(bundle.mappings);
+  const lines = kept.map((k) => bundleLines[k] ?? []).map((segs, i) => segs.flatMap(([genCol, src, line, col]): [number, number, number, number][] => {
     // Bun maps a line's indentation to the end of the previous token (the line before): drop it,
     // so a line's first segment is its first token, as in the modules' maps.
     const text = codeLines[i] ?? "";
