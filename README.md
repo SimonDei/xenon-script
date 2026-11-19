@@ -23,7 +23,9 @@ public class Main {
 
 `int?` (or `Null<int>`) is an `int` that may be `null`; `String`, arrays and class types can always
 be null. Results that may be missing are typed that way (`map.get(key)` is `V?`), and using one
-needs a value: `map.get(key) ?? 0`, `if (var n:int = map.get(key)) …`, or `n?.toFixed(2)`.
+needs a value: `map.get(key) ?? 0`, `if (var n:int = map.get(key)) …`, or `n?.toFixed(2)`. A null
+check narrows a local or parameter: after `if (n != null)`, `if (n == null) return`, `n != null && …`
+or `n ??= 0`, `n` is an `int`.
 `examples/nullable` shows the rules.
 
 ## Standard library

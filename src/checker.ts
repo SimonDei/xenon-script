@@ -1,7 +1,7 @@
 import type * as A from "./ast.ts";
 import type { DiagnosticBag, DiagnosticBuilder, Edit } from "./diagnostics.ts";
 import { type ConstValue, fits, type Fold, fold } from "./consteval.ts";
-import { breaksOut, completes, mentions } from "./flow.ts";
+import { assignedNames, breaksOut, completes, mentions } from "./flow.ts";
 import { GLOBAL_HINTS, JS_GLOBALS } from "./globals.ts";
 import { cover, type SourceFile, type Span, span, spanText } from "./source.ts";
 import { suggest } from "./suggest.ts";
@@ -175,11 +175,58 @@ interface Local {
   typeSpan?: Span;
 }
 
+/** Null-check facts of a condition: locals known non-null when it is true / when it is false. */
+interface Facts {
+  whenTrue: Local[];
+  whenFalse: Local[];
+}
+const NO_FACTS: Facts = { whenTrue: [], whenFalse: [] };
+
 class Scope {
   private locals = new Map<string, Local>();
+  /** Locals narrowed to their non-null type in this scope (`if (x != null) { … }`); `undefined` cancels an outer one. */
+  private narrowed?: Map<Local, true | undefined>;
+  /** A function expression's scope: narrowing of outer variables doesn't reach in (the function may run later). */
+  boundary = false;
   constructor(readonly parent?: Scope) {}
+
+  /** A child scope in which these locals are known to be non-null. */
+  withFacts(locals: Local[]): Scope {
+    if (locals.length === 0) return this;
+    const s = new Scope(this);
+    for (const l of locals) s.narrow(l);
+    return s;
+  }
+  narrow(local: Local) {
+    if (local.type.kind === "nullable") (this.narrowed ??= new Map()).set(local, true);
+  }
+  /** The variable was assigned a value that may be null: drop narrowing up to where it was declared. */
+  unnarrow(local: Local) {
+    for (let s: Scope | undefined = this; s; s = s.parent) {
+      if (s.narrowed?.has(local)) s.narrowed.set(local, undefined);
+      if (s.owns(local)) return;
+    }
+  }
+  /** The local's type here: narrowed to non-null if a check says so. `blocked`: a check exists outside a function boundary. */
+  typeOf(local: Local): { type: Type; blocked: boolean } {
+    let crossed = false;
+    for (let s: Scope | undefined = this; s; s = s.parent) {
+      if (s.narrowed?.has(local)) {
+        const on = s.narrowed.get(local) === true;
+        if (on && crossed && local.kind !== "final" && local.kind !== "const") return { type: local.type, blocked: true };
+        return { type: on ? nonNull(local.type) : local.type, blocked: false };
+      }
+      if (s.owns(local)) break;
+      if (s.boundary) crossed = true;
+    }
+    return { type: local.type, blocked: false };
+  }
   declare(name: string, local: Local) {
     this.locals.set(name, local);
+  }
+  private owns(local: Local): boolean {
+    for (const l of this.locals.values()) if (l === local) return true;
+    return false;
   }
   get(name: string): Local | undefined {
     return this.locals.get(name) ?? this.parent?.get(name);
@@ -1748,6 +1795,8 @@ class BodyChecker {
   private declared: { local: Local; name: A.Ident; fn?: boolean }[] = [];
   /** Name of the enclosing `const` method: `this` is read-only there (arrows inherit it). */
   private constMethod?: string;
+  /** Reads of a variable whose null check is outside the enclosing function expression (for an X0398 note). */
+  private narrowingBlocked = new Set<A.Expr>();
   /** The callee of the call being checked (`d?.bark` in `d?.bark()`): a method there isn't taken as a value. */
   private calledCallee?: A.Expr;
   /** The identifier currently used as the object of a member access (`x` in `x.dispose()`). */
@@ -2080,30 +2129,47 @@ class BodyChecker {
         return;
       case "Return":
         return this.returnStmt(s, scope);
-      case "If":
+      case "If": {
         this.condition(s.cond, scope);
-        return this.branches(s.then, s.else, scope, scope);
+        const f = this.facts(s.cond, scope);
+        this.branches(s.then, s.else, scope.withFacts(f.whenTrue), scope.withFacts(f.whenFalse));
+        // `if (x == null) return;`: the rest of the block knows `x` isn't null (and vice versa).
+        if (!completes(s.then) && (!s.else || completes(s.else))) for (const l of f.whenFalse) scope.narrow(l);
+        else if (s.else && !completes(s.else) && completes(s.then)) for (const l of f.whenTrue) scope.narrow(l);
+        return;
+      }
       case "IfVar":
         return this.branches(s.then, s.else, this.header(s.header, scope), scope);
-      case "While":
-        return this.loopBody(() => {
+      case "While": {
+        this.unnarrowAssignedIn(s, scope);
+        this.loopBody(() => {
           this.condition(s.cond, scope);
-          this.nested(s.body, scope);
+          this.nested(s.body, scope.withFacts(this.facts(s.cond, scope).whenTrue));
         });
+        // `while (x == null) x = next()`: afterwards `x` isn't null (unless a `break` left early).
+        if (!breaksOut(s.body)) for (const l of this.facts(s.cond, scope).whenFalse) scope.narrow(l);
+        return;
+      }
       case "WhileVar":
+        this.unnarrowAssignedIn(s, scope);
         return this.loopBody(() => this.nested(s.body, this.header(s.header, scope)));
       case "DoWhile":
+        this.unnarrowAssignedIn(s, scope);
         return this.loopBody(() => {
           this.nested(s.body, scope);
           this.condition(s.cond, scope);
         }, true);
       case "For":
+        this.unnarrowAssignedIn(s, scope);
         return this.forStmt(s, scope);
       case "ForIn":
+        this.unnarrowAssignedIn(s, scope);
         return this.forIn(s, scope);
       case "ForOf":
+        this.unnarrowAssignedIn(s, scope);
         return this.forOf(s, scope);
       case "ForRange":
+        this.unnarrowAssignedIn(s, scope);
         return this.forRange(s, scope);
       case "Switch":
         return this.switchStmt(s, scope);
@@ -2303,6 +2369,7 @@ class BodyChecker {
     for (const item of items) {
       if (item.kind === "Cond") {
         this.condition(item.expr, inner);
+        for (const l of this.facts(item.expr, inner).whenTrue) inner.narrow(l);
         continue;
       }
       if (mentions(item.init, item.name.name) && scope.get(item.name.name)) {
@@ -2362,7 +2429,7 @@ class BodyChecker {
     else if (s.init) this.expr(s.init.expr, scope);
     this.loopBody(() => {
       if (s.cond) this.condition(s.cond, scope);
-      this.nested(s.body, scope);
+      this.nested(s.body, s.cond ? scope.withFacts(this.facts(s.cond, scope).whenTrue) : scope);
       if (s.update) this.expr(s.update, scope);
     });
   }
@@ -2567,8 +2634,18 @@ class BodyChecker {
     if (t.kind !== "nullable") return t;
     const d = this.diags.error("X0398", `this value may be null`, e.span, `\`${typeToString(t)}\``);
     const fallback = written ? undefined : defaultFor(t.inner); // `n++` can't become `(n ?? 0)++`
+    const isField = (e.kind === "Ident" && this.env.result.resolutions.get(e)?.kind === "member") || e.kind === "Member";
+    if (isField) d.note("a null check narrows only local variables and parameters (a field can change in between): copy it into a local first");
+    if (this.narrowingBlocked.has(e)) {
+      d.note("a null check outside a function expression doesn't reach into it: the variable could change before the function runs")
+        .help(`copy it into a \`final\` local after the check: \`final value:${typeToString(t.inner)} = ${spanText(e.span)}\``);
+      return t.inner;
+    }
     if (fallback) d.help(`give a default with \`??\``, nullishFix(e, fallback, true));
-    d.help(`or check it first: \`if (var x:${typeToString(t.inner)} = …) { … }\` runs only when it isn't null`);
+    const local = e.kind === "Ident" && this.env.result.resolutions.get(e)?.kind === "local";
+    d.help(local
+      ? `or check it first: inside \`if (${spanText(e.span)} != null) { … }\` it can't be null`
+      : `or check it first: \`if (var x:${typeToString(t.inner)} = …) { … }\` runs only when it isn't null`);
     return t.inner;
   }
 
@@ -2735,7 +2812,9 @@ class BodyChecker {
       }
       if (local.inline !== undefined) this.env.result.inlineValues.set(e, local.inline);
       if (this.da.has(local)) this.daRead(local, e.span, local.nameSpan, `final \`${name}\``);
-      return local.type;
+      const seen = scope.typeOf(local);
+      if (seen.blocked) this.narrowingBlocked.add(e);
+      return seen.type;
     }
     const member = findMember(this.info, name) ?? (hasJsAncestor(this.info) ? undefined : this.env.rootMember(name));
     if (member) {
@@ -3292,6 +3371,7 @@ class BodyChecker {
     if (sig.typeParams?.length) this.tparams = new Map([...savedParams, ...sig.typeParams.map((p) => [p.name, p] as const)]);
     try {
       const inner = new Scope(scope);
+      inner.boundary = true; // null checks outside don't hold when the function runs later
       if (f.name && !this.fnSigs.has(f)) inner.declare(f.name.name, { type: sig, kind: "const", nameSpan: f.name.span }); // named function expression
       f.params.forEach((p, i) => {
         const pt = sig.params[i]!.type;
@@ -3876,7 +3956,10 @@ class BodyChecker {
   private binary(e: A.Expr & { kind: "Binary" }, scope: Scope): Type {
     if (["==", "!=", "===", "!=="].includes(e.op)) return this.equality(e, scope);
     const l = this.valueExpr(e.left, scope);
-    const r = this.valueExpr(e.right, scope);
+    // `x != null && x > 0`, `x == null || x > 0`: the right side knows `x` isn't null.
+    const rightScope = e.op === "&&" ? scope.withFacts(this.facts(e.left, scope).whenTrue)
+      : e.op === "||" ? scope.withFacts(this.facts(e.left, scope).whenFalse) : scope;
+    const r = this.valueExpr(e.right, rightScope);
     if (e.op === "+") {
       const ret = this.operatorPlus(e, l, r, e.left, e.right, e.opSpan);
       if (ret) return ret;
@@ -4018,7 +4101,8 @@ class BodyChecker {
     };
     if (target.kind === "Ident") {
       const local = scope.get(target.name);
-      const type = evalTarget();
+      const read = evalTarget();
+      const type = plain && local ? local.type : read; // `x = …` checks against the declared type, `x += …` reads the narrowed one
       if (local?.kind === "range") {
         this.diags.error("X0332", `the range loop variable \`${target.name}\` can't be assigned`, target.span)
           .secondary(local.nameSpan, "declared by the range loop here")
@@ -4092,6 +4176,7 @@ class BodyChecker {
     if (e.op === "=") {
       this.checkAssign(e.value, targetType, origin, scope);
       commit();
+      this.assigned(e.target, this.env.result.exprTypes.get(e.value), scope);
       return targetType;
     }
     const op = e.op.slice(0, -1);
@@ -4099,12 +4184,60 @@ class BodyChecker {
     commit();
     const overloaded = op === "+" ? this.operatorPlus(e, targetType, r, e.target, e.value, e.opSpan) : undefined;
     const result = overloaded ?? this.binaryResult(op, targetType, r, e.opSpan, e.target, e.value);
+    this.assigned(e.target, result, scope);
     if (result && !assignable(result, targetType)) {
       const d = this.diags.error("X0308", "mismatched types", e.span, `\`${e.op}\` produces \`${typeToString(result)}\`, but the target is \`${typeToString(targetType)}\``);
       if (origin) d.secondary(origin.span, origin.label);
       if (isPrim(targetType, "int") && op === "/") d.help("use `x = int(x / y)` for integer division");
     }
     return targetType;
+  }
+
+  /** After `x = value` / `x ??= 0`: a non-null value narrows a nullable local, anything else ends its narrowing. */
+  private assigned(target: A.Expr, value: Type | undefined, scope: Scope) {
+    if (target.kind !== "Ident") return;
+    const local = scope.get(target.name);
+    if (!local || local.type.kind !== "nullable") return;
+    scope.unnarrow(local);
+    if (value && value.kind !== "nullable" && value.kind !== "null" && !isDynamic(value)) scope.narrow(local);
+  }
+
+  /** Locals a condition proves non-null when true / false: `x != null`, `!`, `&&`, `||`. */
+  private facts(e: A.Expr, scope: Scope): Facts {
+    switch (e.kind) {
+      case "Binary": {
+        if (["==", "!=", "===", "!=="].includes(e.op)) {
+          const side = e.right.kind === "Null" ? e.left : e.left.kind === "Null" ? e.right : undefined;
+          const local = side?.kind === "Ident" ? scope.get(side.name) : undefined;
+          if (!local || local.type.kind !== "nullable") return NO_FACTS;
+          return e.op.startsWith("!") ? { whenTrue: [local], whenFalse: [] } : { whenTrue: [], whenFalse: [local] };
+        }
+        if (e.op === "&&") {
+          const l = this.facts(e.left, scope);
+          return { whenTrue: [...l.whenTrue, ...this.facts(e.right, scope.withFacts(l.whenTrue)).whenTrue], whenFalse: [] };
+        }
+        if (e.op === "||") {
+          const l = this.facts(e.left, scope);
+          return { whenTrue: [], whenFalse: [...l.whenFalse, ...this.facts(e.right, scope.withFacts(l.whenFalse)).whenFalse] };
+        }
+        return NO_FACTS;
+      }
+      case "Unary": {
+        if (e.op !== "!") return NO_FACTS;
+        const inner = this.facts(e.arg, scope);
+        return { whenTrue: inner.whenFalse, whenFalse: inner.whenTrue };
+      }
+      default:
+        return NO_FACTS;
+    }
+  }
+
+  /** Before a loop: locals assigned anywhere in it lose their narrowing (a later iteration may see the new value). */
+  private unnarrowAssignedIn(node: object, scope: Scope) {
+    for (const name of assignedNames(node)) {
+      const local = scope.get(name);
+      if (local) scope.unnarrow(local);
+    }
   }
 
   /** Where the type of an assignment target was declared (for secondary labels). */
@@ -4126,8 +4259,9 @@ class BodyChecker {
 
   private conditional(e: A.Expr & { kind: "Conditional" }, scope: Scope): Type {
     this.condition(e.cond, scope);
-    const a = this.valueExpr(e.then, scope);
-    const b = this.valueExpr(e.else, scope);
+    const f = this.facts(e.cond, scope);
+    const a = this.valueExpr(e.then, scope.withFacts(f.whenTrue));
+    const b = this.valueExpr(e.else, scope.withFacts(f.whenFalse));
     if (isDynamic(a) || isDynamic(b)) return T.any;
     if (sameType(a, b)) return a;
     if (assignable(a, b)) return b.kind === "null" ? a : b;

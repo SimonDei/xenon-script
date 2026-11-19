@@ -5,6 +5,9 @@ bob has 8
 8.0 true
 record none best 8
 record 9 best 9
+big doubled 16
+nothing small 40 big 12
+1 -1
 4 null
 null four
 null null

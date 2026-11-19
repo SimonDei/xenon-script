@@ -100,3 +100,32 @@ export function mentions(e: A.Expr, name: string): boolean {
   visit(e);
   return found;
 }
+
+/** Names of variables assigned anywhere inside a statement or expression (`x = …`, `x += …`, `x++`, `[x] = …`). */
+export function assignedNames(node: object): Set<string> {
+  const out = new Set<string>();
+  // Only names count: `obj.x = 1` assigns a member, not `obj`.
+  const targets = (t: A.Expr | A.Pattern | null | undefined) => {
+    if (!t) return;
+    if (t.kind === "Ident") out.add(t.name);
+    else if (t.kind === "Target") targets(t.expr);
+    else if (t.kind === "ArrayPattern") {
+      t.elements.forEach(targets);
+      targets(t.rest);
+    } else if (t.kind === "ObjectPattern") {
+      for (const p of t.props) targets(p.value);
+      targets(t.rest);
+    }
+  };
+  const walk = (v: unknown) => {
+    if (!v || typeof v !== "object") return;
+    if (Array.isArray(v)) return v.forEach(walk);
+    const n = v as { kind?: string; target?: A.Expr; arg?: A.Expr; pattern?: A.Pattern };
+    if (n.kind === "Assign") targets(n.target);
+    if (n.kind === "Update") targets(n.arg);
+    if (n.kind === "DestructAssign") targets(n.pattern);
+    for (const [k, child] of Object.entries(n)) if (k !== "span" && k !== "file") walk(child);
+  };
+  walk(node);
+  return out;
+}

@@ -22,6 +22,13 @@ public class Main {
     record(huge)
     record(9)
 
+    // a null check narrows a local or parameter: after it, the value is an `int`
+    if (big != null && big > 5) trace('big doubled', big * 2)
+    trace(describe(null), describe(4), describe(12))
+    var next:int? = scores.get('cid')
+    next ??= 0                                         // assigning a value narrows too
+    trace(next + 1, huge != null ? huge + 1 : -1)
+
     // `as int?` is a checked cast: null for anything that isn't an int
     var raw:* = JSON.parse('[4, "four", 4.5]')
     for (var item:* of raw as Array) trace(item as int?, item as String)
@@ -37,6 +44,11 @@ public class Main {
     counter.value = 41
     var text:Box<String> = new Box<String>()
     trace((counter.value ?? 0) + 1, text.value, text.or('fallback'), counter.or(0))
+  }
+
+  private function describe(n:int?):String {
+    if (n == null) return 'nothing'                    // early return: below, `n` is an `int`
+    return n > 9 ? $'big {n}' : $'small {n * 10}'
   }
 
   private function record(score:int?):void {

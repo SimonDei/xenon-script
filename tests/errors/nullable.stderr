@@ -8,7 +8,7 @@ help: give a default with `??`
   |
 5 |     var sum:int = (n ?? 0) + 1                                // may be null: arithmetic needs a value
   |                   + ++++++
-help: or check it first: `if (var x:int = …) { … }` runs only when it isn't null
+help: or check it first: inside `if (n != null) { … }` it can't be null
 
 error[X0308]: mismatched types
  --> nullable.xn:6:21
@@ -33,7 +33,7 @@ help: give a default with `??`
   |
 8 |     trace((n ?? 0).toFixed(2), n?.toFixed(2), -n, sum, plain, fine, m)
   |           + ++++++
-help: or check it first: `if (var x:int = …) { … }` runs only when it isn't null
+help: or check it first: inside `if (n != null) { … }` it can't be null
 
 error[X0398]: this value may be null
  --> nullable.xn:8:41
@@ -45,7 +45,7 @@ help: give a default with `??`
   |
 8 |     trace(n.toFixed(2), n?.toFixed(2), -(n ?? 0), sum, plain, fine, m)
   |                                         + ++++++
-help: or check it first: `if (var x:int = …) { … }` runs only when it isn't null
+help: or check it first: inside `if (n != null) { … }` it can't be null
 
 error[X0398]: this value may be null
  --> nullable.xn:9:5
@@ -53,7 +53,7 @@ error[X0398]: this value may be null
 9 |     n++
   |     ^ `int?`
   |
-help: or check it first: `if (var x:int = …) { … }` runs only when it isn't null
+help: or check it first: inside `if (n != null) { … }` it can't be null
 
 error[X0398]: this value may be null
   --> nullable.xn:11:11
@@ -61,6 +61,7 @@ error[X0398]: this value may be null
 11 |     trace(opts.count + 1, opts.count == null)          // an optional member reads as int?
    |           ^^^^^^^^^^ `int?`
    |
+   = note: a null check narrows only local variables and parameters (a field can change in between): copy it into a local first
 help: give a default with `??`
    |
 11 |     trace((opts.count ?? 0) + 1, opts.count == null)          // an optional member reads as int?

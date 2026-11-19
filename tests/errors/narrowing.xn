@@ -1,0 +1,33 @@
+public class Main {
+  private var field:int?
+
+  public function Main() {
+    var m:int? = null
+    m ??= 7
+    trace(m + 1)                                      // fine: `??=` leaves a value
+    m = maybe()
+    trace(m + 1)                                      // reassigned with an `int?`
+    if (m != null) {
+      m = null
+      trace(m + 1)                                    // reassigned inside the check
+    }
+    var c:int? = 3
+    if (c != null) {
+      var f:() -> int = ():int => c + 1               // the closure may run after `c` changes
+      trace(f())
+    }
+    var loop:int? = 1
+    if (loop != null) {
+      while (true) {
+        trace(loop + 1)                               // the loop assigns `loop` below
+        loop = maybe()
+        if (loop == null) break
+      }
+    }
+    if (field != null) trace(field + 1)               // fields aren't narrowed
+    if (m != null || c != null) trace(m + c)          // `||`: neither is known
+    if (m == null) trace(m + 1)                       // wrong branch
+  }
+
+  private function maybe():int? { return 5 }
+}
