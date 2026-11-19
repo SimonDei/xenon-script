@@ -27,6 +27,14 @@ package {
       trace(String(s + new Vec2(1, 1)))
       var adder:IAddable = new Vec2(2, 2)
       trace(String(adder + new Vec2(1, 1)))
+
+      // `-`, `*` and `/` (the right operand's type is the method's parameter: here a `Float`)
+      var d:Vec2 = new Vec2(8, 6)
+      trace(String(d - a), String(d * 2), String(d / 2), String((d - a) * 3 + a))
+      d -= a
+      d *= 10
+      d /= 4
+      trace(String(d))
     }
 
     private function next(v:Array<Vec2>):Array<Vec2> {
@@ -51,6 +59,9 @@ class Vec2 implements IAddable {
   public function Vec2(x:Float, y:Float) { this.x = x; this.y = y }
 
   public function operator+(other:Vec2):Vec2 const { return new Vec2(x + other.x, y + other.y) }
+  public function operator-(other:Vec2):Vec2 const => new Vec2(x - other.x, y - other.y)
+  public function operator*(factor:Float):Vec2 const => new Vec2(x * factor, y * factor)
+  public function operator/(divisor:Float):Vec2 const => new Vec2(x / divisor, y / divisor)
 
   override public function toString():String { return $'({x}, {y})' }
 }

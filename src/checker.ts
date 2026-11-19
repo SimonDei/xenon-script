@@ -148,7 +148,7 @@ export interface CheckResult {
   typeChecks: Map<A.Expr, RuntimeCheck>;
   /** Instance methods used as values (not called): codegen binds them to their object, cached per instance. */
   methodClosures: Set<A.Expr>;
-  /** `a + b` / `a += b` that call `a['operator+'](b)`. */
+  /** `a + b` / `a -= b` & co. that call `a['operator+'](b)` (the operator is the node's). */
   operatorCalls: Set<A.Expr>;
   /** `x.getEnumerator` resolving to `IEnumerable`'s declaration (x may be built-in): compiled to `Enumerable.enumerate(x)`. */
   enumerateCalls: Set<A.Expr>;
@@ -190,6 +190,9 @@ export function accessorHalf(m: MemberSig, which: "get" | "set"): A.Method | und
 export function readDecl(m: MemberSig): A.Field | A.Method {
   return m.kind === "accessor" ? accessorHalf(m, "get") ?? m.decl : m.decl;
 }
+
+/** The operators a class can define with `operator<op>` methods. */
+const OVERLOADABLE = new Set(["+", "-", "*", "/"]);
 
 const TS_UNDICI_CLASSES = new Set(["Response", "FormData"]);
 
@@ -1426,16 +1429,17 @@ class Env {
       }
       if (m.kind === "Method" && m.name.name.startsWith("operator") && m.name.name !== "operator") {
         const sym = m.name.name.slice("operator".length);
-        if (sym !== "+") {
-          this.diags.error("X0371", `only \`operator+\` is supported for now`, m.name.span, `\`operator${sym}\``)
-            .note("`-`, `*`, `/`, `==` and unary `-` may follow later");
+        const op = `\`operator${sym}\``;
+        if (!OVERLOADABLE.has(sym)) {
+          this.diags.error("X0371", `\`${sym}\` can't be overloaded`, m.name.span, op)
+            .note("the operators that can be overloaded are `+`, `-`, `*` and `/`");
         } else {
-          if (m.modifiers.static) this.diags.error("X0373", "`operator+` must be an instance method", m.modifiers.static);
-          if (m.accessor) this.diags.error("X0372", "`operator+` must be a method, not an accessor", m.name.span);
+          if (m.modifiers.static) this.diags.error("X0373", `${op} must be an instance method`, m.modifiers.static);
+          if (m.accessor) this.diags.error("X0372", `${op} must be a method, not an accessor`, m.name.span);
           if (m.params.length !== 1 || m.params[0]!.rest || m.params[0]!.init) {
-            this.diags.error("X0372", "`operator+` takes exactly one (required) parameter: the right operand", m.name.span);
+            this.diags.error("X0372", `${op} takes exactly one (required) parameter: the right operand`, m.name.span);
           }
-          if (m.returnType?.kind === "VoidType") this.diags.error("X0372", "`operator+` must return a value", m.returnType.span);
+          if (m.returnType?.kind === "VoidType") this.diags.error("X0372", `${op} must return a value`, m.returnType.span);
         }
       }
       if (m.kind === "Method" && m.isConst) {
@@ -4175,36 +4179,46 @@ class BodyChecker {
     const rightScope = e.op === "&&" ? scope.withFacts(this.facts(e.left, scope).whenTrue)
       : e.op === "||" ? scope.withFacts(this.facts(e.left, scope).whenFalse) : scope;
     const r = this.valueExpr(e.right, rightScope);
-    if (e.op === "+") {
-      const ret = this.operatorPlus(e, l, r, e.left, e.right, e.opSpan);
+    if (OVERLOADABLE.has(e.op)) {
+      const ret = this.operatorCall(e, e.op, l, r, e.left, e.right, e.opSpan);
       if (ret) return ret;
     }
     return this.binaryResult(e.op, l, r, e.opSpan, e.left, e.right) ?? T.error;
   }
 
   /**
-   * `left + right` where the left operand's class has `operator+`: a method call, dispatched
-   * statically on the left type. Strings concatenate as usual. Returns undefined if not applicable.
+   * `left op right` (`+`, `-`, `*`, `/`, also as `+=` & co.) where the left operand's class declares
+   * `operator<op>`: a method call, dispatched statically on the left type. `+` with a `String`
+   * concatenates as usual. Returns undefined if not applicable.
    */
-  private operatorPlus(node: A.Expr, l: Type, r: Type, left: A.Expr, right: A.Expr, opSpan: Span): Type | undefined {
-    if (l.kind !== "class" || isPrim(r, "String")) return undefined;
-    const m = findMember(l.info, "operator+");
+  private operatorCall(node: A.Expr, op: string, l: Type, r: Type, left: A.Expr, right: A.Expr, opSpan: Span): Type | undefined {
+    if (l.kind !== "class" || (op === "+" && isPrim(r, "String"))) return undefined;
+    const name = `operator${op}`;
+    const m = findMember(l.info, name);
     if (!m || m.kind !== "method" || m.isStatic) return undefined;
     this.env.usedMembers.add(m);
     this.env.checkAccess(m.decl, m.owner, this.info, opSpan);
     const onThis = left.kind === "This";
     if (this.constMethod && onThis && !isConstMember(m)) {
-      this.diags.error("X0902", `cannot use non-const method \`operator+\` in const method \`${this.constMethod}\``, opSpan)
-        .secondary(m.decl.name.span, "`operator+` is not `const`");
+      this.diags.error("X0902", `cannot use non-const method \`${name}\` in const method \`${this.constMethod}\``, opSpan)
+        .secondary(m.decl.name.span, `\`${name}\` is not \`const\``);
     }
     const sig = this.seenThrough(l, m) as MethodType;
     const param = sig.params[0];
     if (param && !assignable(r, param.type)) {
       const decl = m.decl as A.Method;
-      this.mismatch(right, r, param.type, decl.params[0]?.type && { span: decl.params[0].type.span, label: "`operator+` parameter declared here" });
+      this.mismatch(right, r, param.type, decl.params[0]?.type && { span: decl.params[0].type.span, label: `\`${name}\` parameter declared here` });
     }
     this.env.result.operatorCalls.add(node);
     return sig.ret;
+  }
+
+  /** X0370: an arithmetic operator on an object whose class doesn't declare it. */
+  private noOperator(op: string, l: Type, left: A.Expr, opSpan: Span, note?: string): undefined {
+    const d = this.diags.error("X0370", `\`${op}\` is not defined for \`${typeToString(l)}\``, opSpan)
+      .secondary(left.span, `\`${typeToString(l)}\``);
+    d.note(note ?? `declare \`public function operator${op}(other:…):…\` in the class to define it`);
+    return undefined;
   }
 
   /** Result type of a binary operator; reports and returns undefined when it doesn't apply. */
@@ -4228,20 +4242,17 @@ class BodyChecker {
         if (isPrim(l, "String") || isPrim(r, "String")) return T.String;
         if (dyn) return T.any;
         if (isNumeric(l) && isNumeric(r)) return arithmeticResult(l, r);
-        if (l.kind === "class") {
-          this.diags.error("X0370", `\`+\` is not defined for \`${typeToString(l)}\``, opSpan)
-            .secondary(left.span, `\`${typeToString(l)}\``)
-            .note("concatenating with a `String` works; other uses need `operator+`");
-          return undefined;
-        }
+        if (l.kind === "class") return this.noOperator(op, l, left, opSpan, "concatenating with a `String` works; other uses need `operator+`");
         return fail();
       case "-": case "*": case "%":
         if (dyn) return T.any;
         if (isNumeric(l) && isNumeric(r)) return arithmeticResult(l, r);
+        if (l.kind === "class" && op !== "%") return this.noOperator(op, l, left, opSpan);
         return fail();
       case "/": case "**":
         if (dyn) return T.any;
         if (isNumeric(l) && isNumeric(r)) return T.Float;
+        if (l.kind === "class" && op === "/") return this.noOperator(op, l, left, opSpan);
         return fail();
       case "&": case "|": case "^": case "<<": case ">>": case ">>>":
         if (!dyn && !(isNumeric(l) && isNumeric(r))) return fail();
@@ -4400,7 +4411,7 @@ class BodyChecker {
     const op = e.op.slice(0, -1);
     const r = this.valueExpr(e.value, scope);
     commit();
-    const overloaded = op === "+" ? this.operatorPlus(e, targetType, r, e.target, e.value, e.opSpan) : undefined;
+    const overloaded = OVERLOADABLE.has(op) ? this.operatorCall(e, op, targetType, r, e.target, e.value, e.opSpan) : undefined;
     const result = overloaded ?? this.binaryResult(op, targetType, r, e.opSpan, e.target, e.value);
     this.assigned(e.target, result, scope);
     if (result && !assignable(result, targetType)) {

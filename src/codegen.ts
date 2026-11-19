@@ -1463,13 +1463,21 @@ class ModuleGen {
     return { code: `${callee}${e.optional ? "?." : ""}(${this.args(e.args)})`, prec: P.call };
   }
 
-  /** `a += b` with `operator+`: `a = a['operator+'](b)`, evaluating the target's object/index once. */
+  /** `a += b` with `operator+` (likewise `-=`, `*=`, `/=`): `a = a['operator+'](b)`, evaluating the target's object/index once. */
   private operatorAssign(e: A.Expr & { kind: "Assign" }): Code {
     const t = e.target;
     const rhs = this.wrap(this.expr(e.value), P.assign);
-    const call = (read: string) => `${read}['operator+'](${rhs})`;
+    const method = jsString(`operator${e.op.slice(0, -1)}`);
+    const call = (read: string) => `${read}[${method}](${rhs})`;
     if (t.kind === "Member") {
-      return this.reuse(t.object, (first, again) => ({ code: `${first}.${t.name.name} = ${call(`${again}.${t.name.name}`)}`, prec: P.assign }));
+      // The property as read and as written (`#x` for a private field or a private setter).
+      const objType = this.check.exprTypes.get(t.object);
+      const ot = objType && nonNull(objType);
+      const m = ot?.kind === "class" || ot?.kind === "classRef" ? findMember(ot.info, t.name.name) : undefined;
+      const read = this.fieldName(m, t, t.name);
+      this.writeTargets.add(t);
+      const write = this.fieldName(m, t, t.name);
+      return this.reuse(t.object, (first, again) => ({ code: `${first}.${write} = ${call(`${again}.${read}`)}`, prec: P.assign }));
     }
     if (t.kind === "Index") {
       return this.reuse(t.object, (fo, ao) => this.reuse(t.index, (fi, ai) => ({
@@ -1477,13 +1485,15 @@ class ModuleGen {
         prec: P.assign,
       })));
     }
-    const target = this.expr(t).code; // a local or `this.x`: repeating it is free
-    return { code: `${target} = ${call(target)}`, prec: P.assign };
+    const read = this.expr(t).code; // a local or `this.x`: repeating it is free
+    this.writeTargets.add(t);
+    const target = this.expr(t).code;
+    return { code: `${target} = ${call(read)}`, prec: P.assign };
   }
 
   private binary(e: A.Expr & { kind: "Binary" }): Code {
     if (this.check.operatorCalls.has(e)) {
-      return { code: `${this.wrap(this.expr(e.left), P.call)}['operator+'](${this.wrap(this.expr(e.right), P.assign)})`, prec: P.call };
+      return { code: `${this.wrap(this.expr(e.left), P.call)}[${jsString(`operator${e.op}`)}](${this.wrap(this.expr(e.right), P.assign)})`, prec: P.call };
     }
     let op = e.op;
     const nullCompare = e.left.kind === "Null" || e.right.kind === "Null";

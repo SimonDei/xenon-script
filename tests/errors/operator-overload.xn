@@ -7,6 +7,8 @@ package {
       var y:Vec = 5 + v
       var d:Dog = new Dog()
       trace(d + d)
+      trace(d - d, d * 2, d / 2)                    // no operator-, operator*, operator/ on Dog
+      var z:Vec = v * v                             // Vec has no operator*
       var h:Hidden = new Hidden()
       trace(h + h)
     }
@@ -15,7 +17,7 @@ package {
 
 class Vec {
   public function operator+(other:Vec):Vec const { return this }
-  public function operator-(other:Vec):Vec { return this }
+  public function operator%(other:Vec):Vec { return this }      // only + - * / can be overloaded
   public static function operator+(a:Vec):Vec { return a }
 }
 
