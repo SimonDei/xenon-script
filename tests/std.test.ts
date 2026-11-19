@@ -28,8 +28,11 @@ const SAMPLES: Record<string, unknown[]> = {
   Iterator: [[1, 2, 3].values(), new Set([4, 5]).values(), new Map([[1, 2]]).keys()],
 };
 
-/** Bun's `length` differs from the standard here (`Response.prototype.clone.length` is 1; the standard's takes no arguments). */
-const ARITY_QUIRKS = new Set(["Response.prototype.clone"]);
+/**
+ * Bun's `length` differs from the standard here: `Response.prototype.clone.length` is 1, and Bun's
+ * `Blob.prototype.stream` takes an optional chunk size; the standard's take no arguments.
+ */
+const ARITY_QUIRKS = new Set(["Response.prototype.clone", "Blob.prototype.stream"]);
 
 /** Does a runtime value match a declared (primitive) type name? Unknown types aren't checked. */
 function matches(type: A.TypeNode | undefined, value: unknown): boolean {

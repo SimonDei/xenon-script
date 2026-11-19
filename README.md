@@ -32,7 +32,7 @@ or `n ??= 0`, `n` is an `int`.
 
 The built-in types are declared in XenonScript itself, in `src/prelude/std/*.xn` (no import needed), and
 checked against the JavaScript runtime by `tests/std.test.ts`:
-`String`, `Float`/`int`/`uint`, `Boolean`, `Array<T>`, `Map<K, V>`, `Set<T>`, `Iterator<T>`, `Promise<T>`, `Response`, `ArrayBuffer`,
+`String`, `Float`/`int`/`uint`, `Boolean`, `Array<T>`, `Map<K, V>`, `Set<T>`, `Iterator<T>`, `Promise<T>`, `Response`, `Blob`, `ArrayBuffer`,
 `RegExp`, `Date`, `JSON`, `Math`, `Object`, `Function` and `console`,
 plus the global functions `setTimeout`/`setInterval`/`clearTimeout`/`clearInterval`, `queueMicrotask`,
 `structuredClone`, `fetch`, `encodeURIComponent` & co. and `atob`/`btoa`. `examples/std` shows each of them in use.

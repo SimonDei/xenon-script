@@ -9,7 +9,7 @@
 //
 // Typing: `json()` is `Promise<*>` (any JSON value; give it a type where you store it). Not typed
 // yet (`*`): `headers` (a `Headers`: `res.headers.get('content-type')`), `body` (a stream),
-// `blob()`, `formData()`, `bytes()` (a `Uint8Array`), and the body passed to the constructor
+// `formData()`, `bytes()` (a `Uint8Array`), and the body passed to the constructor
 // (text, an `ArrayBuffer`, a `Blob`, `FormData`, `URLSearchParams`, a stream or `null`).
 // Not declared: the static `Response.json(data)` (a class can't have a static and an instance
 // member of the same name): `new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } })`.
@@ -59,8 +59,8 @@ package xenon {
     function arrayBuffer():Promise<ArrayBuffer>
     /** The body's raw bytes as a `Uint8Array`. */
     function bytes():Promise<*>
-    /** The body as a `Blob`. */
-    function blob():Promise<*>
+    /** The body as a `Blob` (with the response's `content-type` as its `type`). */
+    function blob():Promise<Blob>
     /** The body parsed as form data (a `FormData`). */
     function formData():Promise<*>
     /** A copy whose body can be read separately (call it before reading). */

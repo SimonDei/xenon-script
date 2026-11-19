@@ -81,6 +81,12 @@ package {
         var part:ArrayBuffer = buffer.slice(2, 6)
         var fixed:ArrayBuffer = buffer.transferToFixedLength()
         trace(buffer.detached, buffer.byteLength, fixed.byteLength, fixed.resizable, part.byteLength, ArrayBuffer.isView(fixed))
+
+        var csv:Blob = new Blob(['name,count\n', 'ann,3\n'], { type: 'text/csv' })
+        var head:Blob = csv.slice(0, 4, 'text/plain')
+        var fromBody:Blob = await new Response(csv).blob()
+        var raw:ArrayBuffer = await csv.arrayBuffer()
+        trace(csv.size, csv.type, await head.text(), head.type, fromBody.size, raw.byteLength, new Blob().size)
       }, 40)
     }
 

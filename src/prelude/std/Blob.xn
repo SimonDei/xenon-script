@@ -1,0 +1,49 @@
+// Standard library: the web platform's `Blob`: immutable raw bytes with a media type, e.g. from
+// `await res.blob()` or built from parts: `new Blob(['name,count\n', 'ann,3\n'], { type: 'text/csv' })`.
+// Read it with `await blob.text()` or `await blob.arrayBuffer()`; `slice` cuts out a part without
+// copying.
+//
+// Typing: the parts are `Array<*>` (strings, `ArrayBuffer`s, typed arrays, `DataView`s or other
+// `Blob`s). Not typed yet (`*`): `bytes()` (a `Uint8Array`) and `stream()` (a `ReadableStream`).
+// Not declared: Bun's own additions on its `Blob` (`json()`, `formData()`, and the `BunFile`
+// methods such as `exists()` and `write()`); use `(blob as *)`.
+package xenon {
+  /** The options of `new Blob(parts, options)`. */
+  public typedef BlobOptions = {
+    /** The media type, e.g. `'text/plain'` or `'image/png'` (empty if not given). */
+    ?type:String,
+    /** `'transparent'` (the default) keeps line breaks in string parts; `'native'` converts them to the platform's. */
+    ?endings:String
+  }
+
+  public native class Blob {
+    /** An empty blob. */
+    function Blob()
+    /** The parts joined: strings are encoded as UTF-8, buffers and blobs copied as they are. */
+    function Blob(parts:Array<*>)
+    function Blob(parts:Array<*>, options:BlobOptions)
+
+    /** The size in bytes. */
+    function get size():int
+    /** The media type given when it was made (`'text/csv'`), or `''`. */
+    function get type():String
+
+    /**
+     * The bytes from `start` up to (not including) `end`, as a new blob with `contentType`
+     * (default `''`); negative positions count from the end.
+     */
+    function slice():Blob
+    function slice(start:int):Blob
+    function slice(start:int, end:int):Blob
+    function slice(start:int, end:int, contentType:String):Blob
+
+    /** The bytes decoded as UTF-8 text. */
+    function text():Promise<String>
+    /** A copy of the bytes. */
+    function arrayBuffer():Promise<ArrayBuffer>
+    /** A copy of the bytes as a `Uint8Array`. */
+    function bytes():Promise<*>
+    /** The bytes as a `ReadableStream`, read in chunks. */
+    function stream():*
+  }
+}
