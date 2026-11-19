@@ -15,9 +15,9 @@ export interface Config {
   quiet: boolean;
 }
 
-/** Reads every `.kl` file below the source root (paths use `/`). */
+/** Reads every `.xn` file below the source root (paths use `/`). */
 export async function readSources(srcRoot: string): Promise<SourceInput[]> {
-  const glob = new Bun.Glob("**/*.kl");
+  const glob = new Bun.Glob("**/*.xn");
   const paths = (await Array.fromAsync(glob.scan({ cwd: srcRoot }))).sort();
   return Promise.all(
     paths.map(async (p) => ({ path: p.split("\\").join("/"), text: await Bun.file(join(srcRoot, p)).text() })),
@@ -36,13 +36,13 @@ export function report(result: CompileResult, config: Config, srcRoot: string): 
     console.log(JSON.stringify(json, null, 2));
   } else if (diags.items.length > 0) {
     const displayPath = (f: { path: string; prelude: boolean }) =>
-      f.prelude ? `<klass prelude>/${f.path}` : relative(process.cwd(), join(srcRoot, f.path)) || f.path;
+      f.prelude ? `<xenon prelude>/${f.path}` : relative(process.cwd(), join(srcRoot, f.path)) || f.path;
     process.stderr.write(renderAll(diags.sorted(), { color: config.color, displayPath }) + "\n\n");
     const summary = renderSummary(diags, config.color);
     if (summary) process.stderr.write(summary + "\n");
     const codes = [...new Set(diags.sorted().filter((d) => d.severity === "error" && d.code).map((d) => d.code!))];
     if (codes.length > 0) {
-      const which = codes.length === 1 ? `this error, try \`klass explain ${codes[0]}\`` : `an error, try \`klass explain ${codes[0]}\``;
+      const which = codes.length === 1 ? `this error, try \`xenon explain ${codes[0]}\`` : `an error, try \`xenon explain ${codes[0]}\``;
       process.stderr.write(`For more information about ${which}.\n`);
     }
   }
@@ -86,7 +86,7 @@ export async function writeOutputs(result: CompileResult, outDir: string): Promi
 }
 
 /** Name of the file in the output directory listing what the last build wrote. */
-export const MANIFEST = ".klass-outputs";
+export const MANIFEST = ".xenon-outputs";
 
 /**
  * Writes the outputs and removes files the previous build produced but this one doesn't (outputs of

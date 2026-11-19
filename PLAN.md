@@ -1,4 +1,4 @@
-# Plan: Klass — an ActionScript-3-style language that compiles to JavaScript
+# Plan: XenonScript — an ActionScript-3-style language that compiles to JavaScript
 
 ## Progress
 - [x] Steps 0–2: scaffolding, CLI (`build`/`check`/`run`), Rust-style diagnostics, lexer, parser, hello world
@@ -7,30 +7,30 @@
 - [x] Step 5: static blocks, definite assignment for `final` locals/fields/static fields (assign exactly once, no reads before assignment, not in loops, every constructor path)
 - [x] Step 5b: `inline` constants — constant folder (`src/consteval.ts`), cycle detection, value-based fitting, pasted at use sites, private ones not emitted
 - [x] Step 6: packages & multi-file — import priority (explicit > package > wildcard), clashes, ambiguous wildcard names, unused/duplicate/redundant import warnings, file-private import errors, qualified type names, module cycles
-- [x] Step 7: JS interop — `is`/`as` (Klass classes, JS classes, primitives) as plain JS with hoisted temporaries, `delete` only on dynamic objects, npm (`lodash`) + Node built-ins example, plain JS importing/subclassing compiled classes
-- [x] Step 8: inheritance & super — `super(...)` (first statement, no `this` before it, implicit `super()`), `super.member`, mandatory `override` (K0720–K0726), `final` classes/methods, cycles, extending JS classes, accessor-half delegation, inherited statics addressed via the declaring class
+- [x] Step 7: JS interop — `is`/`as` (XenonScript classes, JS classes, primitives) as plain JS with hoisted temporaries, `delete` only on dynamic objects, npm (`lodash`) + Node built-ins example, plain JS importing/subclassing compiled classes
+- [x] Step 8: inheritance & super — `super(...)` (first statement, no `this` before it, implicit `super()`), `super.member`, mandatory `override` (X0720–X0726), `final` classes/methods, cycles, extending JS classes, accessor-half delegation, inherited statics addressed via the declaring class
 - [x] Step 9: visibility — `public`/`internal` (default)/`protected`/`private` on members and constructors (incl. implicit `super()`), `internal` classes across packages, "use the public getter" hints
-- [x] Step 10: getters/setters polish (void setters, setter-only reads, matching visibility) and method closures — bound and cached per instance under `Symbol.for('klass.bound.<name>')`, so `this.handle` keeps its identity (`dynamic` classes deferred)
-- [x] Step 11: exceptions — prelude `klass/Exception.kl` (written in Klass, one module), `Exception.from`, JS `Error` classes hidden with hints, `throw` only Exceptions (`*` normalized), typed multi-catch/finally with original-value rethrow, catch reachability; codegen now emits one module per source file; classes without a constructor inherit their parent's
+- [x] Step 10: getters/setters polish (void setters, setter-only reads, matching visibility) and method closures — bound and cached per instance under `Symbol.for('xenon.bound.<name>')`, so `this.handle` keeps its identity (`dynamic` classes deferred)
+- [x] Step 11: exceptions — prelude `xenon/Exception.xn` (written in XenonScript, one module), `Exception.from`, JS `Error` classes hidden with hints, `throw` only Exceptions (`*` normalized), typed multi-catch/finally with original-value rethrow, catch reachability; codegen now emits one module per source file; classes without a constructor inherit their parent's
 - [x] Step 12: functions — `function(){}` expressions (dynamic `this`; bare member names reach the instance via `$self`), arrows (lexical `this`, expression bodies infer their type), hoisted local functions, named function expressions, async methods/functions/arrows with `Promise<T>`, `await` checks with fix-its, closures can't assign outer `final`s
 - [x] Step 13: modern syntax — destructuring declarations/assignments/`for…of` patterns (renaming, defaults, nesting, holes, rest; binding types from the source, methods can't be destructured), plus `??=`/`&&=`/`||=`/`**=`, object spread, optional calls
 - [ ] Step 14: skipped → standard library (Later)
 - [x] Step 15: interfaces — `interface … extends …`, `implements`, member rules, implementation check with a multi-line stubs fix-it, signature/visibility/accessor-half matching, interface types and subtyping, `new` on interfaces rejected, runtime `is`/`as` via `Symbol` markers on prototypes (inherited by subclasses)
-- [x] Step 15a: abstract classes — `abstract` classes/members (rules K0710–K0718), missing implementations with an `override` stubs fix-it, abstract classes may defer interface members, `new.target` guard (synthesized constructor when needed) and `NotImplementedException` stubs in the output; bodiless non-abstract methods are now an error; `new` on a local holding a class gives `*`
+- [x] Step 15a: abstract classes — `abstract` classes/members (rules X0710–X0718), missing implementations with an `override` stubs fix-it, abstract classes may defer interface members, `new.target` guard (synthesized constructor when needed) and `NotImplementedException` stubs in the output; bodiless non-abstract methods are now an error; `new` on a local holding a class gives `*`
 - [x] Step 15b: typedefs — aliases, structural shapes (optional/`final` members, recursion through members, class instances fit structurally), function types (contravariant params, covariant return, contextual typing of arrows), inline `{…}`/`(…) -> T` types, excess/missing-member checks on literals, unchecked `as`, `is` rejected; typedef files emit nothing
-- [x] Step 15c: destructors — `~Name()` / `async ~Name()` → `[Symbol.dispose]`/`[Symbol.asyncDispose]` with a once-only `#disposed` flag and the parent destructor chained in `finally`, implicit `dispose()`, prelude `IDisposable`/`IAsyncDisposable` (implemented automatically, manual implementation rejected), `using` declarations and `using (…)` blocks (type optional: inferred from the value), K0801 for disposables that are never disposed or handed on; prelude file is now `src/prelude/Prelude.kl` (module `klass/Prelude.js`)
-- [x] Step 15d: const methods — `:T const` on methods and getters, no writes through `this` (K0901), only const members used on `this`/`super` (K0902), arrows inherit the restriction, `function` expressions don't, overrides and interface implementations must stay const, invalid placements K0903; static fields remain writable
-- [x] Step 15e: `operator+` — instance method `['operator+']`, static dispatch on the left operand (strings still concatenate), right operand checked against the parameter, `+=` lowered with object/index evaluated once, inherited/overridable/abstract/interface, visibility and const rules at the use site, K0371–K0373; also `Vector<T>[i]` is now typed `T`
-- [x] Step 16: enums — `enum Name { A, B = 2 }` / string enums → `Object.freeze({…})`, auto-numbering, constant values (K0811–K0817), nominal typing, `values()` → `Object.values(E)`, `x is/as Enum` checks raw values, switch exhaustiveness warning (K0814), enum members in `inline` constants; enums and interface symbols are emitted before classes in a module
-- [x] Step 17: error quality — unused locals (K0861, `_name` exempt) and private members (K0862), `=` as a condition (K0322), `return`⏎ hints, `--max-errors` cap, `klass-allow` suppression comments, parser recovery that keeps broken declarations/returns (no cascades), error code catalog (`src/codes.ts`, every code covered by a test) and `klass explain <code>`
-- [x] Step 17b: watch mode — `klass watch [--run] [--no-clear] [-- args]`: debounced rebuilds, files re-read only when changed, whole-project re-check (fast; signature-based incremental checking deferred until projects need it), only changed outputs written, stale outputs removed, `--run` restarts after successful builds and stops on errors, `klass.json` reload, clean Ctrl+C
+- [x] Step 15c: destructors — `~Name()` / `async ~Name()` → `[Symbol.dispose]`/`[Symbol.asyncDispose]` with a once-only `#disposed` flag and the parent destructor chained in `finally`, implicit `dispose()`, prelude `IDisposable`/`IAsyncDisposable` (implemented automatically, manual implementation rejected), `using` declarations and `using (…)` blocks (type optional: inferred from the value), X0801 for disposables that are never disposed or handed on; prelude file is now `src/prelude/Prelude.xn` (module `xenon/Prelude.js`)
+- [x] Step 15d: const methods — `:T const` on methods and getters, no writes through `this` (X0901), only const members used on `this`/`super` (X0902), arrows inherit the restriction, `function` expressions don't, overrides and interface implementations must stay const, invalid placements X0903; static fields remain writable
+- [x] Step 15e: `operator+` — instance method `['operator+']`, static dispatch on the left operand (strings still concatenate), right operand checked against the parameter, `+=` lowered with object/index evaluated once, inherited/overridable/abstract/interface, visibility and const rules at the use site, X0371–X0373; also `Vector<T>[i]` is now typed `T`
+- [x] Step 16: enums — `enum Name { A, B = 2 }` / string enums → `Object.freeze({…})`, auto-numbering, constant values (X0811–X0817), nominal typing, `values()` → `Object.values(E)`, `x is/as Enum` checks raw values, switch exhaustiveness warning (X0814), enum members in `inline` constants; enums and interface symbols are emitted before classes in a module
+- [x] Step 17: error quality — unused locals (X0861, `_name` exempt) and private members (X0862), `=` as a condition (X0322), `return`⏎ hints, `--max-errors` cap, `xenon-allow` suppression comments, parser recovery that keeps broken declarations/returns (no cascades), error code catalog (`src/codes.ts`, every code covered by a test) and `xenon explain <code>`
+- [x] Step 17b: watch mode — `xenon watch [--run] [--no-clear] [-- args]`: debounced rebuilds, files re-read only when changed, whole-project re-check (fast; signature-based incremental checking deferred until projects need it), only changed outputs written, stale outputs removed, `--run` restarts after successful builds and stops on errors, `xenon.json` reload, clean Ctrl+C
 - [x] G1: generics — type parameters on classes, interfaces, methods, local functions and typedefs (no bounds), substitution through inheritance and interfaces, invariant type arguments, inference of method/constructor type arguments from arguments (arrows: from their return type) and the expected type, raw types for `is`/`as`, erased output
-- [x] G2: native declarations — `native` / `native('JsName')` classes (no output, referenced by JS name, no imports), bodiless public members, statics and constructors, overloads with first-match selection (K0604), closed member sets with the `(x as *)` escape hatch, primitive members from natives named `String`/`Float`/`Boolean`, Klass classes extending natives (K0820/K0821 for code in natives)
-- [~] G3: std library — infrastructure done (`src/prelude/std/*.kl` loaded with the prelude, no output; conformance test `tests/std.test.ts` checks every member against Bun incl. return types on sample values; `examples/std`). Types declared: `Boolean`, `Float` (JS `Number`; members shared by `int`/`uint`; overloads where JS has no real default, e.g. `toPrecision()`; `parseInt`/`MAX_SAFE_INTEGER` are `Float`; `is…` tests take `*`; the `Number` global is hidden with a fix-it to `Float`), `int`, `uint` (separate files; AS3-style `MAX_VALUE`/`MIN_VALUE` as `inline` constants — compile-time literals, no runtime object; `native('Number') … extends Float` so they keep the number members, `valueOf()` returns `int`/`uint`; inherited statics like `int.parseInt` stay `Float`), `Array<T>` (the type stays built into the compiler; a std native class `Array<T>` supplies its members, `T` = the element type: mutators, copies (`toSorted`, `with`, …), typed callbacks with `map<U>`/`reduce<U>` inference, `sort` with and without comparator, `Array.from`/`of`/`isArray`; `length` is an assignable `int`; positions `int`; `flat()` returns `Array<*>`; `copyWithin` and `fromAsync` left out; untyped `Function` values no longer pass as callbacks, give them a function type), `String` (members of the primitive; positions/counts `int`; overloads instead of fake defaults (`lastIndexOf`, `endsWith`, `slice`, `split` with limit); `replace`/`replaceAll` take text or regex with a text or `Function` replacement; `match`/`matchAll` return `Array<String>`/`Iterator<Array<String>>`; hidden constructor; deprecated HTML methods, `substr`, `trimLeft`/`trimRight` and `String.raw` left out; local `native class String` declarations now clash with it (K0028); fixes: member writes on primitives are checked (`s.length = 3` is K0504) and string indexes must be ints), `Map<K, V>` (constructors from nothing/pairs/map, `groupBy`, get/set/has/delete/clear/size/forEach, `keys`/`values`/`entries` as iterators; `for (var [k, v]:* of map)` types `k` as `K` and `v` as `V`; `get` is typed `V` though a missing key is `undefined` at runtime, so primitives need `has()` first (Klass has no nullable `int`); `getOrInsert*` left out as too new; the `Map` global is no longer untyped, and the natives/inheritance examples now use it), `RegExp` (a std native class instead of a compiler built-in, also the type of `~/…/` literals; constructor overloads, `test`, `exec` returning `Array<String>` — the match extras `index`/`input`/`groups` stay untyped, reachable via `(m as *)` —, flag getters, assignable `lastIndex`; legacy statics, `compile`, `RegExp.escape` left out), `Iterator<T>` (what `values()`/`keys()`/`entries()` return; hidden constructor, `Iterator.from` overloads, `next():IteratorResult<T>` with `typedef IteratorResult<T> = { done:Boolean, value:T }`, the lazy ES2025 helpers `map`/`filter`/`take`/`drop`/`flatMap`, and `toArray`/`forEach`/`reduce`/`some`/`every`/`find`; `for (… of iterator)` is typed; `Iterator.concat` left out as too new; the conformance test also checks members against sample objects, since `next` lives on concrete iterators), `Set<T>` (constructors from nothing/array/set with `T` inferred, add/has/delete/clear/size/forEach and the ES2025 algebra methods; `for (… of set)` types the loop variable `T`, also for subclasses of `Set<T>`; `values()`/`keys()`/`entries()` return `Iterator`; the `Set` global is no longer untyped), `Date` (constructor overloads for now/ms/text/copy/local parts; getters `int`, time values `Float`; setters as overloads because an omitted part means "keep"; `new Date()` comparisons go through `getTime()`; invalid dates make getters NaN at runtime, documented; deprecated `getYear`/`setYear`/`toGMTString` left out), `Math` (namespace; all results `Float` incl. `floor`/`round`/`ceil`/`trunc`/`sign`, only `clz32`/`imul` are `int`; `max`/`min`/`hypot` take `...values:Array<Float>`; `f16round`/`sumPrecise` left out as too new; the `Math` global is no longer untyped), `console` (namespace like `JSON`: hidden constructor, typed static methods with `...data:Array` rest parameters, shared Bun/Node/browser members only; the `console` global is no longer untyped), `JSON` (namespace: hidden constructor, `new JSON()` is K0415; overloaded `stringify` with function/key-list replacer and int/String indent; `rawJSON`/`isRawJSON` left out as not yet portable). Fixes along the way: `Boolean(x)`/`String(x)`/`Float(x)` stay casts when a std class has that name; method closures on primitives emit `x.m.bind(x)`; `new Boolean(…)` explains wrapper objects; overload notes print signatures as declared; generic typedef names keep substituted arguments in messages (`IteratorResult<int>`, not `<T>`); integer literals before `.` are parenthesized in JS (`(255).toString(16)`); the conformance test also checks static constants' values against their types; `inline` constants allowed in natives; a typedef naming a class (or a primitive with a std class) works as a value: `Int.MAX_VALUE`, `Int(x)`, `Bool(x)`; `Int`/`UInt`/`Bool`/`Any`/`Void` moved from the compiler's built-in table to prelude typedefs
-- [x] Root files may leave out `package { … }` (top-level package only; subfolders keep it, K0010 with a wrapping fix-it)
-- [x] Part D (partial): VS Code syntax highlighting only — `packages/vscode-klass` (TextMate grammar, language configuration, README with install steps), tested with VS Code's tokenizer (`tests/grammar.test.ts`); no language server / IntelliSense yet
-- [x] One array type (decided 2026-11-18): `Vector<T>` removed, `Array<T>` is the typed array and a bare `Array` is `Array<*>`; `*` as a type argument is a wildcard (`Box<int>` fits `Box<*>` and back); `Vector` is K0424 with a fix-it; `is Array<int>` is K0394 (`is Array` works)
-- [x] `Promise<T>` is a std native class (`src/prelude/std/Promise.kl`, written by the user) instead of a compiler built-in; `async`/`await` use it; reserved words are allowed as member names (`function catch(…)`, `p.finally(…)`)
+- [x] G2: native declarations — `native` / `native('JsName')` classes (no output, referenced by JS name, no imports), bodiless public members, statics and constructors, overloads with first-match selection (X0604), closed member sets with the `(x as *)` escape hatch, primitive members from natives named `String`/`Float`/`Boolean`, XenonScript classes extending natives (X0820/X0821 for code in natives)
+- [~] G3: std library — infrastructure done (`src/prelude/std/*.xn` loaded with the prelude, no output; conformance test `tests/std.test.ts` checks every member against Bun incl. return types on sample values; `examples/std`). Types declared: `Boolean`, `Float` (JS `Number`; members shared by `int`/`uint`; overloads where JS has no real default, e.g. `toPrecision()`; `parseInt`/`MAX_SAFE_INTEGER` are `Float`; `is…` tests take `*`; the `Number` global is hidden with a fix-it to `Float`), `int`, `uint` (separate files; AS3-style `MAX_VALUE`/`MIN_VALUE` as `inline` constants — compile-time literals, no runtime object; `native('Number') … extends Float` so they keep the number members, `valueOf()` returns `int`/`uint`; inherited statics like `int.parseInt` stay `Float`), `Array<T>` (the type stays built into the compiler; a std native class `Array<T>` supplies its members, `T` = the element type: mutators, copies (`toSorted`, `with`, …), typed callbacks with `map<U>`/`reduce<U>` inference, `sort` with and without comparator, `Array.from`/`of`/`isArray`; `length` is an assignable `int`; positions `int`; `flat()` returns `Array<*>`; `copyWithin` and `fromAsync` left out; untyped `Function` values no longer pass as callbacks, give them a function type), `String` (members of the primitive; positions/counts `int`; overloads instead of fake defaults (`lastIndexOf`, `endsWith`, `slice`, `split` with limit); `replace`/`replaceAll` take text or regex with a text or `Function` replacement; `match`/`matchAll` return `Array<String>`/`Iterator<Array<String>>`; hidden constructor; deprecated HTML methods, `substr`, `trimLeft`/`trimRight` and `String.raw` left out; local `native class String` declarations now clash with it (X0028); fixes: member writes on primitives are checked (`s.length = 3` is X0504) and string indexes must be ints), `Map<K, V>` (constructors from nothing/pairs/map, `groupBy`, get/set/has/delete/clear/size/forEach, `keys`/`values`/`entries` as iterators; `for (var [k, v]:* of map)` types `k` as `K` and `v` as `V`; `get` is typed `V` though a missing key is `undefined` at runtime, so primitives need `has()` first (XenonScript has no nullable `int`); `getOrInsert*` left out as too new; the `Map` global is no longer untyped, and the natives/inheritance examples now use it), `RegExp` (a std native class instead of a compiler built-in, also the type of `~/…/` literals; constructor overloads, `test`, `exec` returning `Array<String>` — the match extras `index`/`input`/`groups` stay untyped, reachable via `(m as *)` —, flag getters, assignable `lastIndex`; legacy statics, `compile`, `RegExp.escape` left out), `Iterator<T>` (what `values()`/`keys()`/`entries()` return; hidden constructor, `Iterator.from` overloads, `next():IteratorResult<T>` with `typedef IteratorResult<T> = { done:Boolean, value:T }`, the lazy ES2025 helpers `map`/`filter`/`take`/`drop`/`flatMap`, and `toArray`/`forEach`/`reduce`/`some`/`every`/`find`; `for (… of iterator)` is typed; `Iterator.concat` left out as too new; the conformance test also checks members against sample objects, since `next` lives on concrete iterators), `Set<T>` (constructors from nothing/array/set with `T` inferred, add/has/delete/clear/size/forEach and the ES2025 algebra methods; `for (… of set)` types the loop variable `T`, also for subclasses of `Set<T>`; `values()`/`keys()`/`entries()` return `Iterator`; the `Set` global is no longer untyped), `Date` (constructor overloads for now/ms/text/copy/local parts; getters `int`, time values `Float`; setters as overloads because an omitted part means "keep"; `new Date()` comparisons go through `getTime()`; invalid dates make getters NaN at runtime, documented; deprecated `getYear`/`setYear`/`toGMTString` left out), `Math` (namespace; all results `Float` incl. `floor`/`round`/`ceil`/`trunc`/`sign`, only `clz32`/`imul` are `int`; `max`/`min`/`hypot` take `...values:Array<Float>`; `f16round`/`sumPrecise` left out as too new; the `Math` global is no longer untyped), `console` (namespace like `JSON`: hidden constructor, typed static methods with `...data:Array` rest parameters, shared Bun/Node/browser members only; the `console` global is no longer untyped), `JSON` (namespace: hidden constructor, `new JSON()` is X0415; overloaded `stringify` with function/key-list replacer and int/String indent; `rawJSON`/`isRawJSON` left out as not yet portable). Fixes along the way: `Boolean(x)`/`String(x)`/`Float(x)` stay casts when a std class has that name; method closures on primitives emit `x.m.bind(x)`; `new Boolean(…)` explains wrapper objects; overload notes print signatures as declared; generic typedef names keep substituted arguments in messages (`IteratorResult<int>`, not `<T>`); integer literals before `.` are parenthesized in JS (`(255).toString(16)`); the conformance test also checks static constants' values against their types; `inline` constants allowed in natives; a typedef naming a class (or a primitive with a std class) works as a value: `Int.MAX_VALUE`, `Int(x)`, `Bool(x)`; `Int`/`UInt`/`Bool`/`Any`/`Void` moved from the compiler's built-in table to prelude typedefs
+- [x] Root files may leave out `package { … }` (top-level package only; subfolders keep it, X0010 with a wrapping fix-it)
+- [x] Part D (partial): VS Code syntax highlighting only — `packages/vscode-xenon` (TextMate grammar, language configuration, README with install steps), tested with VS Code's tokenizer (`tests/grammar.test.ts`); no language server / IntelliSense yet
+- [x] One array type (decided 2026-11-18): `Vector<T>` removed, `Array<T>` is the typed array and a bare `Array` is `Array<*>`; `*` as a type argument is a wildcard (`Box<int>` fits `Box<*>` and back); `Vector` is X0424 with a fix-it; `is Array<int>` is X0394 (`is Array` works)
+- [x] `Promise<T>` is a std native class (`src/prelude/std/Promise.xn`, written by the user) instead of a compiler built-in; `async`/`await` use it; reserved words are allowed as member names (`function catch(…)`, `p.finally(…)`)
 - [x] G4: migration — examples typed where they were only untyped for lack of built-in types (`Map<String, int>` in destructuring/interop, `Array<String>` from parsed JSON in enums); `globals.ts` holds only the JS globals without a declaration, and the coercing global functions/values (`parseInt`, `parseFloat`, `isNaN`, `isFinite`, `NaN`, `Infinity`) are hidden with `Float.…` fix-its (`tests/errors/globals`); README gains a standard-library section
 - [ ] Part G follow-ups (G5): `Object` statics, top-level native functions (`setTimeout`, `fetch`, …), nullable primitives, overload choice by array-literal elements, tuple types, a `RegExp` match type; then source maps and the language server (Part D)
 - [ ] Part D (VS Code extension) and Later items
@@ -40,7 +40,7 @@
 
 Decisions so far:
 - AS3 syntax & semantics: `package {}`, `public class`, `var`/`const`, `function`, postfix `:Type`, constructor named like the class, `override`, getters/setters, `trace()`.
-- Deviations from AS3: generics written `Array<T>` (no dot, unlike AS3's `Vector.<T>`; Klass has one array type), `Float` instead of `Number`, `final` usable on classes, methods, fields, locals and parameters, an `inline` modifier for compile-time constants that are substituted at every use site, and `typedef` (Haxe-style aliases, structural shapes and function types).
+- Deviations from AS3: generics written `Array<T>` (no dot, unlike AS3's `Vector.<T>`; XenonScript has one array type), `Float` instead of `Number`, `final` usable on classes, methods, fields, locals and parameters, an `inline` modifier for compile-time constants that are substituted at every use site, and `typedef` (Haxe-style aliases, structural shapes and function types).
 - Static types from day one. Priority class features: inheritance + `super`, visibility, static members. Plus **enums**.
 - Modern JS additions: **async/await, arrow functions, `?.` / `??`, destructuring & spread**. Strings use single quotes only; template strings are written `$'Hi {name}'`.
 - **Optional semicolons** (JS-style automatic semicolon insertion).
@@ -49,7 +49,7 @@ Decisions so far:
 - Imports: `import com.game.Player;` for own code, `import _ from 'lodash';` for JS.
 - Entry point: document class — compiler emits `new Main()`.
 
-Working name **Klass**, extension `.kl`.
+Working name **XenonScript**, extension `.xn`.
 
 ---
 
@@ -65,7 +65,7 @@ Working name **Klass**, extension `.kl`.
 | Control flow | `if` `else` `switch` `case` `default` `while` `do` `for` `in` `break` `continue` `return` |
 | Exceptions | `throw` `try` `catch` `finally` |
 | Expressions | `new` `this` `super` `is` `as` `typeof` `delete` `await` |
-| Literals | `true` `false` `null` `undefined` (compatibility only — every use produces warning K0840, see A2) |
+| Literals | `true` `false` `null` `undefined` (compatibility only — every use produces warning X0840, see A2) |
 | Types | `void` |
 | Reserved for future use | `namespace` `use` `with` `yield` `let` `goto` |
 
@@ -99,18 +99,18 @@ class DogHelper { ... }                 // after the package block: file-private
 ```
 **Files in the source root** (the top-level package) may leave out the package block:
 ```actionscript
-// src/Main.kl
+// src/Main.xn
 import _ from 'lodash';
 
 public class Main { ... }               // the declaration named after the file: visible to other files
 class Helper { ... }                    // any other declaration: file-private, as after a package block
 ```
-A second `public` declaration in such a file is K0025 (with "move it to its own file"). Files in folders still need `package com.zoo { … }`: without it K0010 offers a fix-it wrapping the file, and the file is still read as part of that package so files importing it get no follow-up errors.
+A second `public` declaration in such a file is X0025 (with "move it to its own file"). Files in folders still need `package com.zoo { … }`: without it X0010 offers a fix-it wrapping the file, and the file is still read as part of that package so files importing it get no follow-up errors.
 
 JS output: `out/com/zoo/Dog.js`, an ES module with `export class Dog`, relative imports between classes, JS imports emitted as-is.
 
 ### A2. Types
-| Klass | Meaning | JS |
+| XenonScript | Meaning | JS |
 |---|---|---|
 | `int`, `uint` | integers (checker-enforced; `int(x)` cast) | number (`int(x)` → `x \| 0`, `uint(x)` → `x >>> 0`) |
 | `Float` | floating-point number (replaces AS3's `Number`) | number |
@@ -127,22 +127,22 @@ JS output: `out/com/zoo/Dog.js`, an ES module with `export class Dog`, relative 
 | `(Float, Float) -> Float` | function type (usually named via `typedef`) | function, erased |
 | `TypedefName` | alias for any of the above (see A6b) | erased |
 
-**Built-in typedefs** (A6b): every compile-time primitive also gets a capitalized alias, so code can use one consistent naming style. They are ordinary transparent typedefs in the prelude (package `klass`, visible in every file without an import), each next to the class it aliases; the compiler itself only knows the lowercase names:
+**Built-in typedefs** (A6b): every compile-time primitive also gets a capitalized alias, so code can use one consistent naming style. They are ordinary transparent typedefs in the prelude (package `xenon`, visible in every file without an import), each next to the class it aliases; the compiler itself only knows the lowercase names:
 ```actionscript
-public typedef Int  = int        // src/prelude/std/int.kl
-public typedef UInt = uint       // src/prelude/std/uint.kl
-public typedef Bool = Boolean    // src/prelude/std/Boolean.kl
-public typedef Any  = *          // src/prelude/Prelude.kl
-public typedef Void = void       // src/prelude/Prelude.kl (only the prelude may alias `void`)
+public typedef Int  = int        // src/prelude/std/int.xn
+public typedef UInt = uint       // src/prelude/std/uint.xn
+public typedef Bool = Boolean    // src/prelude/std/Boolean.xn
+public typedef Any  = *          // src/prelude/Prelude.xn
+public typedef Void = void       // src/prelude/Prelude.xn (only the prelude may alias `void`)
 ```
-`Int` and `int` are the same type everywhere (messages print the underlying type, `int`). `Void` is only valid where `void` is (return types, function types, `Promise<Void>`; elsewhere K0421). As values they stand for their class like any typedef: `Int.MAX_VALUE`, `Int(x)`, `Bool(x)`. User code cannot redeclare these names (K0028).
+`Int` and `int` are the same type everywhere (messages print the underlying type, `int`). `Void` is only valid where `void` is (return types, function types, `Promise<Void>`; elsewhere X0421). As values they stand for their class like any typedef: `Int.MAX_VALUE`, `Int(x)`, `Bool(x)`. User code cannot redeclare these names (X0028).
 
 Generic syntax is `Name<T>` with no dot (unlike AS3's `Vector.<T>`). Type arguments only appear in type positions (after `:`, `new`, `as`, `is`, and inside other type arguments), so the parser never confuses `<` with less-than. Nested generics like `Array<Array<int>>` are handled by splitting `>>` into two `>` tokens in type positions.
 
-**`null` vs `undefined`**: Klass has one "no value", `null`. The `undefined` literal exists only for JS compatibility (e.g. passing it to a library that distinguishes the two) and every use produces **warning K0840**:
+**`null` vs `undefined`**: XenonScript has one "no value", `null`. The `undefined` literal exists only for JS compatibility (e.g. passing it to a library that distinguishes the two) and every use produces **warning X0840**:
 ```
-warning[K0840]: `undefined` is only supported for JavaScript compatibility
-  --> src/Main.kl:12:13
+warning[X0840]: `undefined` is only supported for JavaScript compatibility
+  --> src/Main.xn:12:13
    |
 12 |   if (x == undefined) return
    |            ^^^^^^^^^ use `null` instead
@@ -153,12 +153,12 @@ help: `x == null` matches both null and undefined
    |            ~~~~
 ```
 - The fix-it depends on context: comparisons → `== null` / `!= null` (covers both values, see A5 — while `x == undefined` compiles to strict `x === undefined` and only matches `undefined`); assignments, arguments, returns and initializers → `null`.
-- Values that are `undefined` at runtime without being written (missing optional members, JS return values, `*` reads) produce no warning. The null checks Klass generates (`if (var …)`, `?.`, `??`) always use `!= null` so they treat both the same.
-- `--deny-warnings` turns it into an error. A single intentional use can be marked with `/* klass-allow K0840 */` directly before it (a general per-line suppression comment usable for any warning code).
+- Values that are `undefined` at runtime without being written (missing optional members, JS return values, `*` reads) produce no warning. The null checks XenonScript generates (`if (var …)`, `?.`, `??`) always use `!= null` so they treat both the same.
+- `--deny-warnings` turns it into an error. A single intentional use can be marked with `/* xenon-allow X0840 */` directly before it (a general per-line suppression comment usable for any warning code).
 
-Default values (AS3 semantics, emitted explicitly): `int`/`uint` → `0`, `Float` → `NaN`, `Boolean` → `false`, `*` → `null` (Klass never emits `undefined` as a default), everything else → `null`.
+Default values (AS3 semantics, emitted explicitly): `int`/`uint` → `0`, `Float` → `NaN`, `Boolean` → `false`, `*` → `null` (XenonScript never emits `undefined` as a default), everything else → `null`.
 
-Conversions / checks (all plain JS expressions): `int(x)` → `x | 0`, `uint(x)` → `x >>> 0`, `Float(x)` → `Number(x)`, `String(x)`, `Boolean(x)` unchanged; `x as Dog` → `(x instanceof Dog ? x : null)`; `x is Dog` → `x instanceof Dog`; `x is String` → `typeof x === 'string'`, `x is int` → `Number.isInteger(x)`; interfaces see A6. When `x` is not a simple name it's stored in a temp first. AS3's throwing class cast `Dog(x)` is **not supported** (it would need a helper, because JS has no throw expressions); use `as` with `if (var d:Dog = x as Dog)`. `Dog(x)` is K0380 with that fix-it.
+Conversions / checks (all plain JS expressions): `int(x)` → `x | 0`, `uint(x)` → `x >>> 0`, `Float(x)` → `Number(x)`, `String(x)`, `Boolean(x)` unchanged; `x as Dog` → `(x instanceof Dog ? x : null)`; `x is Dog` → `x instanceof Dog`; `x is String` → `typeof x === 'string'`, `x is int` → `Number.isInteger(x)`; interfaces see A6. When `x` is not a simple name it's stored in a temp first. AS3's throwing class cast `Dog(x)` is **not supported** (it would need a helper, because JS has no throw expressions); use `as` with `if (var d:Dog = x as Dog)`. `Dog(x)` is X0380 with that fix-it.
 
 ### A3. Variables
 ```actionscript
@@ -174,7 +174,7 @@ var [first, ...rest]:Array = list
 Block-scoped (`let`/`const` in output) — a deliberate break from AS3's function-scoped hoisting, so behavior matches modern JS.
 
 ### A4. Control structures (complete list)
-| Construct | Klass syntax | JS output |
+| Construct | XenonScript syntax | JS output |
 |---|---|---|
 | Block | `{ ... }` | same |
 | If / else-if / else | `if (c) {...} else if (d) {...} else {...}` | same |
@@ -186,7 +186,7 @@ Block-scoped (`let`/`const` in output) — a deliberate break from AS3's functio
 | Do-while | `do {...} while (c)` | same |
 | C-style for | `for (var i:int = 0; i < n; i++) {...}` | `for (let i = 0; ...)` |
 | For-in (keys) | `for (var k:String in obj) {...}` | `for (const k in obj)` (arrays: index strings, like AS3) |
-| For-of (values) | `for (var v:T of coll) {...}`, `for (var [k, v]:* of map) {...}` — replaces AS3's `for each` (`for each (...)` is a parse error with a hint to use `of`) | `for (const v of coll)` — always plain `for...of`. The source must be iterable (Array, String, Map, Set, any JS iterable, `*`). A source typed `Object` is K0390 with the fix-it `Object.values(obj)` |
+| For-of (values) | `for (var v:T of coll) {...}`, `for (var [k, v]:* of map) {...}` — replaces AS3's `for each` (`for each (...)` is a parse error with a hint to use `of`) | `for (const v of coll)` — always plain `for...of`. The source must be iterable (Array, String, Map, Set, any JS iterable, `*`). A source typed `Object` is X0390 with the fix-it `Object.values(obj)` |
 | Range loop | `for (var i:int of 0..10) {...}` — see below | `for (let i = 0; i < 10; i++)` |
 | Break / continue | `break;` `continue;` (no labels for now; `ident:` at statement start is a parse error with a "labels are not supported yet" hint) | same |
 | Return | `return expr;` | same |
@@ -216,9 +216,9 @@ for (let n = 2; ; n++) { ... }
 ```
 Rules:
 - Bounds are `int` or `uint` expressions, evaluated **once** before the loop (cached in `$end` when not a constant).
-- **Ranges only count up.** The loop always tests `i < end` (`..`) or `i <= end` (`..=`), so a range whose start is greater than its end runs **zero times**, as in Rust. When both bounds are constants and the range is empty, the checker warns (K0331: "range `10..0` is empty and runs 0 times"). To count down, use a C-style `for` or `while`.
-- `step` (contextual keyword) must be a **positive** compile-time constant (literal or `inline` constant); default `1`. `step 0` or a negative step → error K0330 ("ranges can't count down; use a C-style `for`").
-- The loop variable is read-only inside the body (assigning it is K0332), so the range can't be skipped around by accident.
+- **Ranges only count up.** The loop always tests `i < end` (`..`) or `i <= end` (`..=`), so a range whose start is greater than its end runs **zero times**, as in Rust. When both bounds are constants and the range is empty, the checker warns (X0331: "range `10..0` is empty and runs 0 times"). To count down, use a C-style `for` or `while`.
+- `step` (contextual keyword) must be a **positive** compile-time constant (literal or `inline` constant); default `1`. `step 0` or a negative step → error X0330 ("ranges can't count down; use a C-style `for`").
+- The loop variable is read-only inside the body (assigning it is X0332), so the range can't be skipped around by accident.
 - Ranges are only valid as the source of a `for (… of …)` loop for now. Elsewhere (`var r = 0..10`) the error says "ranges are only supported in loops". First-class `Range` values are a possible later extension.
 - Lexer: `..` and `..=` are new tokens, distinct from spread `...`. A number followed by `..` stops before the dot (`0..10` is `0` `..` `10`, not `0.` `.10`).
 
@@ -240,7 +240,7 @@ else if (var fallback:Config = defaults()) { ... }
 Rules:
 - The block runs only if every bound value is **not `null`/`undefined`**; this is a null check, not a truthiness check, so `''` passes. Items are evaluated left to right and stop at the first failure. Plain Boolean conditions can be mixed in after the bindings they use.
 - Bindings are visible only in the `then` block (and in later items of the same header), not in `else`.
-- Binding types must be nullable (class types, `String`, `Object`, `*`, typedef shapes…). `if (var n:int = …)` is an error (K0320: "`int` can never be null; use a normal `if`").
+- Binding types must be nullable (class types, `String`, `Object`, `*`, typedef shapes…). `if (var n:int = …)` is an error (X0320: "`int` can never be null; use a normal `if`").
 - The binding is a normal mutable `var` inside the block.
 - JS output:
   ```js
@@ -257,9 +257,9 @@ while (var line:String = reader.readLine()) {
 
 while (var job:Job = queue.poll(), !stopped) { job.run() }   // binding + extra condition
 
-while (var next:TreeNode = queue.next()) { depth++ }  // a binding can't refer to an outer variable of the same name (K0321)
+while (var next:TreeNode = queue.next()) { depth++ }  // a binding can't refer to an outer variable of the same name (X0321)
 ```
-Rules: bindings are visible only in the loop body, are fresh for every iteration (closures created in the body capture that iteration's value), and must have nullable types (K0320 as for `if`). `do … while (var …)` is not supported (the body would run before the binding exists).
+Rules: bindings are visible only in the loop body, are fresh for every iteration (closures created in the body capture that iteration's value), and must have nullable types (X0320 as for `if`). `do … while (var …)` is not supported (the body would run before the binding exists).
 
 JS output uses a `for` with an empty update so each iteration gets its own `let` binding:
 ```js
@@ -271,9 +271,9 @@ Deliberately excluded: labels (for now), `with` (breaks static typing), `goto`, 
 
 ### A5. Operators & expressions
 - Arithmetic `+ - * / % **`, increment/decrement `++ --` (prefix/postfix), unary `- + ! ~`
-- Comparison `== != < <= > >=`. **`==` and `!=` are always strict**: compiled to `===` / `!==`, so there is no type coercion (`'1' == 1` is `false`). The one exception is comparing with the `null` literal: `x == null` / `x != null` compile to JS's loose `x == null` / `x != null`, so they match both `null` and `undefined` (consistent with Klass having a single "no value").
-  - `===` / `!==` are accepted for JS familiarity but produce warning K0841 ("`===` is the same as `==` in Klass") with a fix-it to the short form.
-  - Comparing values whose static types can never be equal (`int == String`, `Dog == Cat` for unrelated classes) is **error K0309** ("this comparison is always false"); comparisons involving `*` or `Object` are unchecked.
+- Comparison `== != < <= > >=`. **`==` and `!=` are always strict**: compiled to `===` / `!==`, so there is no type coercion (`'1' == 1` is `false`). The one exception is comparing with the `null` literal: `x == null` / `x != null` compile to JS's loose `x == null` / `x != null`, so they match both `null` and `undefined` (consistent with XenonScript having a single "no value").
+  - `===` / `!==` are accepted for JS familiarity but produce warning X0841 ("`===` is the same as `==` in XenonScript") with a fix-it to the short form.
+  - Comparing values whose static types can never be equal (`int == String`, `Dog == Cat` for unrelated classes) is **error X0309** ("this comparison is always false"); comparisons involving `*` or `Object` are unchecked.
   - Loose JS equality is not available; use explicit conversions (`String(n) == s`).
 - Logical `&& || !`, nullish `??`, optional chaining `a?.b`, `a?.[i]`, `a?.()`
 - Bitwise `& | ^ << >> >>>`
@@ -293,7 +293,7 @@ var calc:String = $'{a} + {b} = {a + b}'               // any expression inside 
 var nested:String = $'Hello {user?.name ?? 'guest'}!'  // strings may appear inside an interpolation
 var braces:String = $'set: \{1, 2\}'                   // \{ and \} for literal braces
 ```
-- `"…"` and `` `…` `` are not strings in Klass: the lexer reports K0360 with a fix-it converting `"…"` to `'…'` and `` `Hi ${x}` `` to `$'Hi {x}'`.
+- `"…"` and `` `…` `` are not strings in XenonScript: the lexer reports X0360 with a fix-it converting `"…"` to `'…'` and `` `Hi ${x}` `` to `$'Hi {x}'`.
 - Plain `'…'` strings treat `{` and `}` as normal characters; only `$'…'` interpolates.
 - `$` must touch the quote (`$'…'`); `$` stays a valid identifier character elsewhere.
 - Strings can't span lines (use `\n`); an unterminated string is reported at its opening quote. Multi-line strings may come later.
@@ -311,15 +311,15 @@ for (var m:* of text.matchAll(~/(?<key>\w+)=(?<val>\w+)/g)) trace(m.groups.key)
 var dyn:RegExp = new RegExp('^' + prefix, 'i')             // runtime-built patterns
 ```
 - Lexer: `~` immediately followed by `/` (no whitespace) starts a regex literal; it runs to the next unescaped `/` outside a `[...]` class, followed by flags. `~/` can't mean anything else, because `/` can't start an expression. A plain `/` is always division; something like `var r = /abc/` gets a parse error with the hint "regex literals start with `~`: `~/abc/`".
-- Flags `d g i m s u v y`. Unknown or duplicate flags are error K0350, pointing at the flag.
-- The pattern is validated at compile time (the compiler constructs `new RegExp(pattern, flags)`); syntax errors are reported as K0351 with the caret inside the pattern.
+- Flags `d g i m s u v y`. Unknown or duplicate flags are error X0350, pointing at the flag.
+- The pattern is validated at compile time (the compiler constructs `new RegExp(pattern, flags)`); syntax errors are reported as X0351 with the caret inside the pattern.
 - Type `RegExp` is a built-in class with typed members: `test(s:String):Boolean`, `exec(s:String):Array` (null when no match), `source:String`, `flags:String`, `lastIndex:int`, `global:Boolean`… `String` methods `match`, `matchAll`, `replace`, `replaceAll`, `split`, `search` accept `RegExp`.
 - JS output: the literal without the `~` (`/[A-Z]+/g`). Regex literals are not compile-time constants (not allowed in `inline`).
 
 ### A6. Class features (complete list)
 **Class declaration modifiers**: `public` | `internal` (default; package-visible), `final` (no subclassing). `dynamic` (instances accept arbitrary new properties, typed `*`) is **deferred** — the keyword stays reserved; until then use `*`/`Object` values for open-ended data.
 
-**Inheritance**: `extends` one class (Klass class *or* an imported JS class, then inherited members are `*`); `implements` any number of interfaces.
+**Inheritance**: `extends` one class (XenonScript class *or* an imported JS class, then inherited members are `*`); `implements` any number of interfaces.
 
 **Constructor**: `public function Dog(name:String, age:int = 1) { super(name) }` — exactly one per class; `super(...)` must be the first statement; implicit `super()` inserted if omitted and the parent's constructor needs no arguments. A class **without** a constructor inherits its parent's constructor (like a JS default constructor), so `class SaveException extends Exception {}` accepts a message; the inherited constructor is as visible as the class (a `protected` parent constructor is fine). → JS `constructor`.
 
@@ -355,7 +355,7 @@ if (hp > HALF_HP) trace(VERSION)   →   if (this.hp > 50) console.log('v1.2');
 Rules:
 - Allowed on `static final` and `static const` fields, and on local `final` / `const`; the initializer is mandatory. Not allowed on instance fields, methods or parameters (inline functions are a possible later extension).
 - `inline` requires `final` or `const`: the value can never change.
-- The initializer must be a **compile-time constant expression**: number/string/boolean/`null` literals, other `inline` constants (from any class, across files), enum members, and the operators `+ - * / % ** << >> >>> & | ^ ~ ! && || ?: == != < <= > >=` (with Klass's strict `==`) and casts `int()` `uint()` `Float()` `String()` `Boolean()` applied to those. Calls, `new`, object/array literals and non-inline variables are errors ("inline initializer is not a compile-time constant").
+- The initializer must be a **compile-time constant expression**: number/string/boolean/`null` literals, other `inline` constants (from any class, across files), enum members, and the operators `+ - * / % ** << >> >>> & | ^ ~ ! && || ?: == != < <= > >=` (with XenonScript's strict `==`) and casts `int()` `uint()` `Float()` `String()` `Boolean()` applied to those. Calls, `new`, object/array literals and non-inline variables are errors ("inline initializer is not a compile-time constant").
 - The checker evaluates the expression with a constant folder (`src/consteval.ts`) using exact JS semantics (so `7 / 2` → `3.5`, `int(7 / 2)` → `3`), checks the result fits the declared type, and detects cycles (`A = B + 1; B = A`).
 - Codegen replaces every reference with the folded literal. A `private` inline constant is **not emitted at all**; `public`/`internal`/`protected` ones are still emitted as a static field so plain JS code importing the class can read them.
 - An `inline` constant can be used in `switch` `case` labels and other inline initializers, which is where folding matters most.
@@ -364,13 +364,13 @@ Rules:
 
 **`override` is mandatory**:
 ```
-error[K0720]: `speak` overrides a method of `Animal` but is not marked `override`
-  --> src/com/zoo/Dog.kl:6:19
+error[X0720]: `speak` overrides a method of `Animal` but is not marked `override`
+  --> src/com/zoo/Dog.xn:6:19
    |
  6 |   public function speak():String { return 'woof' }
    |                   ^^^^^ overrides `Animal.speak`
    |
-  ::: src/com/zoo/Animal.kl:9:19
+  ::: src/com/zoo/Animal.xn:9:19
    |
  9 |   public function speak():String { ... }
    |                   ----- original declared here
@@ -380,13 +380,13 @@ help: add `override`
  6 |   override public function speak():String { return 'woof' }
    |   +++++++++
 ```
-- Every instance method, getter or setter that has the same name as an inherited member must be marked `override`; otherwise it's **error K0720** (with the fix-it above). Accidental shadowing is impossible.
+- Every instance method, getter or setter that has the same name as an inherited member must be marked `override`; otherwise it's **error X0720** (with the fix-it above). Accidental shadowing is impossible.
 - This includes implementing `abstract` members and redefining built-in inherited methods (`toString()`, which every class inherits from `Object`).
-- `override` on a member that overrides nothing is **error K0721**, with "did you mean" when a parent member has a similar name (`override function speek()` → "did you mean `speak`?"). This catches typos and parents that renamed a method.
-- The override must match the original: same parameter types and count, same return type (or a subclass of it), same visibility, same `async`, and a getter overrides a getter (K0722 lists the differences). It can't override a `final` member (K0723), and an override of a `const` method must be `const`.
-- Fields can't be overridden; redeclaring an inherited field is K0724.
+- `override` on a member that overrides nothing is **error X0721**, with "did you mean" when a parent member has a similar name (`override function speek()` → "did you mean `speak`?"). This catches typos and parents that renamed a method.
+- The override must match the original: same parameter types and count, same return type (or a subclass of it), same visibility, same `async`, and a getter overrides a getter (X0722 lists the differences). It can't override a `final` member (X0723), and an override of a `const` method must be `const`.
+- Fields can't be overridden; redeclaring an inherited field is X0724.
 - `static` members are never overridden: a static with the same name as a parent static simply hides it, and `override static` is an error.
-- Implementing an **interface** method does *not* use `override` (nothing is being replaced); `override` there is K0721. If the method also overrides a parent class member, `override` is required as usual.
+- Implementing an **interface** method does *not* use `override` (nothing is being replaced); `override` there is X0721. If the method also overrides a parent class member, `override` is required as usual.
 - Parent classes imported from JS (typed `*`) have unknown members, so `override` can't be checked against them. It is optional there and only becomes enforced once `.d.ts` typing exists (Part D).
 
 **Getters / setters** (instance or static, overridable):
@@ -407,7 +407,7 @@ Overrides must keep the same visibility.
 
 **Implicit member access**: inside a class, `name`, `speak()`, `MAX_SPEED` resolve to instance or static members (incl. inherited) and compile to `this.name` / `Dog.MAX_SPEED`. Locals shadow members.
 
-**Method closures**: a method referenced without calling it (`timer.onTick = tick`, `arr.map(this.format)`) compiles to a bound function, so `this` stays correct — the AS3 behavior. The bound function is cached on the instance (`obj[Symbol.for('klass.bound.tick')] ??= obj.tick.bind(obj)`), so the same method reference is always the same function and `removeEventListener(handle)` works; symbol keys keep it out of `JSON.stringify`/`Object.keys`.
+**Method closures**: a method referenced without calling it (`timer.onTick = tick`, `arr.map(this.format)`) compiles to a bound function, so `this` stays correct — the AS3 behavior. The bound function is cached on the instance (`obj[Symbol.for('xenon.bound.tick')] ??= obj.tick.bind(obj)`), so the same method reference is always the same function and `removeEventListener(handle)` works; symbol keys keep it out of `JSON.stringify`/`Object.keys`.
 
 **Static initialization**: static field initializers + optional `static { ... }` block → JS static block. Static members are inherited for lookup via the class name.
 
@@ -423,13 +423,13 @@ public class Circle implements IShape { ... }
 ```
 Compile-time contracts. For runtime checks each interface is emitted as a symbol, `export const IShape = Symbol('IShape')`; implementing classes mark their prototype, `Circle.prototype[IShape] = true` (including all super-interfaces); and `x is IShape` → `x?.[IShape] === true`. Subclasses inherit the marks through the prototype chain. Plain JS, no helper.
 
-**Enums** (Klass extension):
+**Enums** (XenonScript extension):
 ```actionscript
 public enum Direction { Up, Down, Left, Right }
 public enum Status { Ok = 200, NotFound = 404 }
 public enum Level { Low = 'low', High = 'high' }
 ```
-→ `export const Direction = Object.freeze({ Up: 0, Down: 1, ... })`. Typed: `var d:Direction = Direction.Up`; switch over enum values (a `switch` without `default` that misses members warns, K0814); `Direction.values()` compiles inline to `Object.values(Direction)`. Members auto-number from the previous `int`; `String` enums need explicit values; values are unique compile-time constants. Enums are nominal (no mixing with numbers or other enums; `int(d)`/`String(d)` convert); `raw is Direction` / `raw as Direction` test raw values against the members (`Object.values(Direction).includes(raw)`).
+→ `export const Direction = Object.freeze({ Up: 0, Down: 1, ... })`. Typed: `var d:Direction = Direction.Up`; switch over enum values (a `switch` without `default` that misses members warns, X0814); `Direction.values()` compiles inline to `Object.values(Direction)`. Members auto-number from the previous `int`; `String` enums need explicit values; values are unique compile-time constants. Enums are nominal (no mixing with numbers or other enums; `int(d)`/`String(d)` convert); `raw is Direction` / `raw as Direction` test raw values against the members (`Object.values(Direction).includes(raw)`).
 
 **Abstract classes**:
 ```actionscript
@@ -446,9 +446,9 @@ public class Circle extends Shape {
 }
 ```
 Rules:
-- `new Shape(...)` is an error (K0710); abstract types are fine as variable/parameter types and with `is`/`as`.
+- `new Shape(...)` is an error (X0710); abstract types are fine as variable/parameter types and with `is`/`as`.
 - Only `abstract class` may declare `abstract` members (methods, getters, setters); they have no body and can't be `private`, `static`, `final` or `inline`. `abstract final class` is an error.
-- Concrete subclasses must implement every inherited abstract member using `override`; one error (K0711) lists all missing members, with a fix-it that inserts stubs throwing `NotImplementedException`. Abstract subclasses may leave members unimplemented.
+- Concrete subclasses must implement every inherited abstract member using `override`; one error (X0711) lists all missing members, with a fix-it that inserts stubs throwing `NotImplementedException`. Abstract subclasses may leave members unimplemented.
 - `super.m()` on an abstract method is an error. Constructors may be `protected`.
 - JS output (runtime guards for plain-JS consumers): the constructor starts with `if (new.target === Shape) throw new StateException("Shape is abstract")`, and each abstract member is emitted as a stub throwing `NotImplementedException("Shape.area")`.
 
@@ -461,8 +461,8 @@ public class Inventory {
   public function count():int const { return items.length }
 
   public function report():String const {
-    total = 0                                           // error[K0901]: cannot assign `total` in const method `report`
-    add(new Item())                                     // error[K0902]: cannot call non-const method `add` from const method
+    total = 0                                           // error[X0901]: cannot assign `total` in const method `report`
+    add(new Item())                                     // error[X0902]: cannot call non-const method `add` from const method
     items.push(x)                                       // allowed (shallow): mutates the array, not the field
     return $'{count()} items, empty: {isEmpty}'         // ok: count() and the getter are const
   }
@@ -498,11 +498,11 @@ Rules:
 - Declared as an instance method `function operator+(name:Type):ReturnType` with exactly one parameter and a non-`void` return type. The return type doesn't have to be the class itself. At most one `operator+` per class (no overloading on the parameter type).
 - Can be `const` (recommended), `final`, `abstract`, declared in interfaces, and is inherited. A subclass redefining it needs `override`, as with any method.
 - Not `static`. Visibility is checked at the use site like a normal call.
-- **Dispatch is static** and based on the left operand: if its static type is a class with `operator+` (own or inherited), `a + b` becomes a method call and the right operand must match the parameter type (K0308 otherwise). There is no reverse lookup: `1 + vec` is an error.
-- `+` on a class that has no `operator+` is error K0370 ("`+` is not defined for `Dog`"). In plain JS that would silently concatenate `[object Object]`. Exception: if either side is `String`, `+` is string concatenation as usual.
+- **Dispatch is static** and based on the left operand: if its static type is a class with `operator+` (own or inherited), `a + b` becomes a method call and the right operand must match the parameter type (X0308 otherwise). There is no reverse lookup: `1 + vec` is an error.
+- `+` on a class that has no `operator+` is error X0370 ("`+` is not defined for `Dog`"). In plain JS that would silently concatenate `[object Object]`. Exception: if either side is `String`, `+` is string concatenation as usual.
 - `*` or `Object` on the left → plain JS `+` (no dispatch, unchecked).
 - `a += b` → `a = a['operator+'](b)`; with a member or index target, the object/index is evaluated once (`(t = obj).pos = t.pos['operator+'](v)`).
-- Any other `operator<symbol>` declaration is K0371 ("only `operator+` is supported for now"). Later candidates: `- * / ==` and unary `-`.
+- Any other `operator<symbol>` declaration is X0371 ("only `operator+` is supported for now"). Later candidates: `- * / ==` and unary `-`.
 - JS output: the method is emitted with the computed name `['operator+'](other) { … }`, so JS code can call it as `a['operator+'](b)`.
 
 **Destructors**:
@@ -546,7 +546,7 @@ JS output: a plain block containing `using` declarations:
 { using $r1 = existingUser; ... }
 { await using c = await Db.connect(); await c.query("..."); }
 ```
-Parsing: `using` followed by `(` is the block statement; otherwise it's the declaration form shown above. The variables in a block's header are `final` and only visible inside the block. The checker requires every resource to be disposable (K0802 otherwise, with a hint when the type has no destructor).
+Parsing: `using` followed by `(` is the block statement; otherwise it's the declaration form shown above. The variables in a block's header are `final` and only visible inside the block. The checker requires every resource to be disposable (X0802 otherwise, with a hint when the type has no destructor).
 JavaScript is garbage-collected and never destroys objects at a predictable moment, so destructors use JS **explicit resource management** (`using`, `Symbol.dispose`; supported by Bun and TypeScript 5.2+). They are deterministic: they run when a `using` scope ends or when `dispose()` is called, **not** when the GC collects the object.
 
 Rules:
@@ -556,7 +556,7 @@ Rules:
 - **Inheritance**: subclass destructors automatically call the parent destructor *after* their own body (C++ order: derived, then base). A subclass without its own destructor inherits the parent's.
 - **Runs at most once**: a second `dispose()` or scope exit is a no-op.
 - `using x:T = expr` requires `T` to be disposable; the type annotation is optional (inferred from the value). The variable is implicitly `final`. `null` is allowed (nothing to dispose).
-- Warning K0801: a disposable created into a plain `var` local that is never disposed, returned or stored ("use `using` or call `dispose()`").
+- Warning X0801: a disposable created into a plain `var` local that is never disposed, returned or stored ("use `using` or call `dispose()`").
 - Exceptions thrown in destructors during unwinding are combined, as in JS: `SuppressedError` is normalized by `Exception.from` into an `Exception` with both errors in `cause`.
 
 JS output:
@@ -573,7 +573,7 @@ export class User {
 }
 // using u:User = new User("42")  →  using u = new User("42");
 ```
-Plain JS can dispose Klass objects with `using` or by calling `dispose()`. `using` is passed through to JS directly (Bun supports it), so no lowering is needed.
+Plain JS can dispose XenonScript objects with `using` or by calling `dispose()`. `using` is passed through to JS directly (Bun supports it), so no lowering is needed.
 
 **Not included** (decided): method overloading (except in `native` declarations, Part G), operator overloading beyond `operator+`, inner/nested classes (use file-private helpers), custom namespaces, metadata tags.
 
@@ -610,14 +610,14 @@ Rules:
 - **Structural assignability** for shapes: any value whose static type has all required members with compatible types fits — object literals, class instances, other shapes. Extra members are allowed except in a fresh object literal (catches typos like `{ x: 1, yy: 2 }`). Missing `?optional` members are fine; reading one yields `T` or `undefined`.
 - **Function types**: parameter types contravariant, return type covariant; a method closure (A6) or `function(){}`/arrow expression is assignable if it matches. `Function` remains the untyped callable.
 - Shapes can be used to type JS imports and dynamic data: `import cfg from './config.json'` then `cfg as Config` (unchecked cast; no runtime check because shapes are erased). `x is Point` is a compile error — shapes have no runtime identity.
-- Placement follows the class file rules: one `public typedef` per file named after it (e.g. `geom/Point.kl`), any number of file-private typedefs after the package block. Imported like classes: `import geom.Point;`.
+- Placement follows the class file rules: one `public typedef` per file named after it (e.g. `geom/Point.xn`), any number of file-private typedefs after the package block. Imported like classes: `import geom.Point;`.
 - Recursive typedefs are allowed through members (`typedef Node = { value:int, ?next:Node }`); a direct cycle (`typedef A = B; typedef B = A`) is an error.
 - Type parameters come with generics (Part G): `typedef Pair<A, B> = { first:A, second:B }`.
 
 New token: `->` (function type arrow), and `?` before a member name inside a shape type.
 
 ### A6c. Built-in `Exception` class
-Klass code always uses `Exception` instead of JS's `Error`. It is defined in the prelude (written in Klass itself, the only file allowed to touch `Error`) and auto-imported:
+XenonScript code always uses `Exception` instead of JS's `Error`. It is defined in the prelude (written in XenonScript itself, the only file allowed to touch `Error`) and auto-imported:
 ```actionscript
 package {
   public class Exception extends Error {
@@ -642,7 +642,7 @@ package {
 User exceptions extend it: `public class SaveException extends Exception { public final path:String; ... }`.
 
 Rules ("always Exception, never Error"):
-- `Error` and its JS subclasses (`TypeError`, `RangeError`, `SyntaxError`, …) are **not visible** in Klass code: using them is a compile error with the hint "use Exception / TypeException …". (Escape hatch: `globalThis.Error` via `*` for rare interop.)
+- `Error` and its JS subclasses (`TypeError`, `RangeError`, `SyntaxError`, …) are **not visible** in XenonScript code: using them is a compile error with the hint "use Exception / TypeException …". (Escape hatch: `globalThis.Error` via `*` for rare interop.)
 - `throw` only accepts expressions whose static type is `Exception` or a subclass (or `*`, checked at runtime: non-Exception values are wrapped).
 - Catch clause types must be `Exception` or subclasses; `catch (e)` without a type means `catch (e:Exception)`. `catch (e:*)` is not allowed.
 - **Everything caught is an `Exception`**: generated code passes the raw value through `Exception.from()`:
@@ -652,7 +652,7 @@ Rules ("always Exception, never Error"):
   
   So errors from npm libraries and rejected promises (`await`) are caught as typed `Exception`s. The original JS error is always in `e.cause`.
 - Compiler-generated failures throw the built-in classes: abstract instantiation → `StateException`, abstract stubs → `NotImplementedException`.
-- Because `Exception` really extends JS `Error`, exceptions thrown from Klass into plain JS code behave as normal errors (stack traces, `instanceof Error`, `cause`).
+- Because `Exception` really extends JS `Error`, exceptions thrown from XenonScript into plain JS code behave as normal errors (stack traces, `instanceof Error`, `cause`).
 
 ### A7. Semicolons (ASI)
 Statements end with `;` or a newline, following JS's ASI rules: restricted productions (`return`, `break`, `continue`, `throw`, postfix `++`/`--` cannot be followed by a line break before their operand), and a statement continues onto the next line when the next token can't start a new statement. The lexer records "newline before token" on each token so the parser can apply this.
@@ -665,21 +665,21 @@ The generated code should look like what a person would write by hand in modern 
 - **Vanilla first.** Every construct compiles to standard ES2022+ syntax (`using` from explicit resource management, which Bun supports). The current design needs no helpers (see the table below).
 - **Runtime helpers only as a last resort.** A helper may be added only after showing that the feature can't be compiled to plain JS expressions/statements, not even with temporaries, an extra block, or a different lowering. Each helper:
   - is recorded in `docs/runtime-helpers.md` with the feature it serves, the vanilla lowerings that were considered and why they fail, and its JS source;
-  - is a small named export in `out/klass/runtime.js`, imported only by modules that actually use it (`import { castOrThrow } from '../klass/runtime.js'`), never a global and never inlined boilerplate;
+  - is a small named export in `out/xenon/runtime.js`, imported only by modules that actually use it (`import { castOrThrow } from '../xenon/runtime.js'`), never a global and never inlined boilerplate;
   - has its own unit test.
   The first candidate if wanted later is AS3's throwing cast `Dog(x)`, because JS has no throw expressions.
-- Besides any justified helpers, the only runtime code Klass ships is the **prelude** (the `Exception` family, A6c). These are ordinary classes written in Klass, emitted as `out/klass/Exception.js` etc., and imported only by modules that use them.
+- Besides any justified helpers, the only runtime code XenonScript ships is the **prelude** (the `Exception` family, A6c). These are ordinary classes written in XenonScript, emitted as `out/xenon/Exception.js` etc., and imported only by modules that use them.
 - Names are preserved (classes, methods, fields, locals). Generated temporaries (`$t1`, `$end`) appear only where an expression must be evaluated once, and are declared with `let`/`const` in the nearest scope.
 - Compile-time-only features leave nothing behind: types, typedefs, visibility, `final`, `const` methods, `override`, `inline` constants (folded).
 
-| Klass feature | Vanilla JS output |
+| XenonScript feature | Vanilla JS output |
 |---|---|
 | class, fields, getters/setters, statics, static block | `class`, class fields, `get`/`set`, `static`, `static {}` |
 | `int(x)` / `uint(x)` / `Float(x)` | `x \| 0` / `x >>> 0` / `Number(x)` |
 | `x as Dog` / `x is Dog` | `x instanceof Dog ? x : null` / `x instanceof Dog` |
 | `x is IShape` | `x?.[IShape] === true` (interface symbol) |
 | `==` / `!=` (`== null`) | `===` / `!==` (`== null`) |
-| method closure `this.handle` | `this[Symbol.for('klass.bound.handle')] ??= this.handle.bind(this)` (cached → stable identity) |
+| method closure `this.handle` | `this[Symbol.for('xenon.bound.handle')] ??= this.handle.bind(this)` (cached → stable identity) |
 | `if (var x:T = e)` / `while (var …)` | block + `if ((x = e) != null)` / `for (let x; (x = e) != null; )` |
 | range loop `0..n step 2` | `for (let i = 0, $end = n; i < $end; i += 2)` |
 | for-of / for-in | `for…of` / `for…in` |
@@ -693,7 +693,7 @@ The generated code should look like what a person would write by hand in modern 
 
 ## Part B — Compiler architecture
 ```
-.kl files → lexer → parser → AST → resolver (packages/imports) → checker → codegen → .js ESM → bun run
+.xn files → lexer → parser → AST → resolver (packages/imports) → checker → codegen → .js ESM → bun run
 ```
 Files under `src/`:
 - `lexer.ts` – tokens with line/col + `newlineBefore` flag; `'…'` strings, `$'…'` template strings with nested `{expr}` lexing, `~/…/flags` regex literals (no regex-vs-divide guessing needed); keyword table from A0
@@ -709,7 +709,7 @@ Files under `src/`:
 - `diagnostics.ts` – `Diagnostic` data model + Rust-style renderer (Part E)
 - `suggest.ts` – "did you mean" (edit distance over names in scope/members/imports), fix-it suggestions
 - `compiler.ts` – `compileProject(srcRoot, mainClass, outDir)`
-- `cli.ts` + `watch.ts` – the `klass` command line tool (Part F)
+- `cli.ts` + `watch.ts` – the `xenon` command line tool (Part F)
 
 Tests: `tests/*.test.ts` (unit per stage), golden e2e over `examples/<name>/` (compile → run with Bun → compare to `expected.txt`), negative tests in `examples/errors/` with expected messages.
 
@@ -726,22 +726,22 @@ Tests: `tests/*.test.ts` (unit per stage), golden e2e over `examples/<name>/` (c
 5b. **Inline constants** – `inline` modifier, constant folder, use-site substitution, cycle detection, private inline constants omitted from output; extended to cross-file use in step 6 and to enum values in step 16.
 6. **Packages & multi-file** – `package`, own imports, file-private classes, one ESM per class, entry file.
 7. **JS interop** – JS imports typed `*`, globals table, object/array literals, `is`/`as`, example using `lodash` + `node:fs`.
-8. **Inheritance & super** – `extends` (Klass and JS classes), mandatory `override` with K0720–K0724, `final` classes/methods, implicit `super()`, `super.x`.
+8. **Inheritance & super** – `extends` (XenonScript and JS classes), mandatory `override` with X0720–X0724, `final` classes/methods, implicit `super()`, `super.x`.
 9. **Visibility** – public/internal/protected/private rules.
 10. **Getters/setters, method closures** (`dynamic` classes deferred to "Later").
-11. **Exceptions** – prelude `Exception` hierarchy compiled from Klass, `Exception.from` normalization, hiding `Error`, `throw` type rule, typed multi-catch, finally, catching errors thrown by an npm library as `Exception`.
+11. **Exceptions** – prelude `Exception` hierarchy compiled from XenonScript, `Exception.from` normalization, hiding `Error`, `throw` type rule, typed multi-catch, finally, catching errors thrown by an npm library as `Exception`.
 12. **Functions** – function expressions, arrows, local functions, `Function` type, async/await, `Promise.<T>`.
 13. **Modern syntax** – `?.`, `??`, `??=`, `$'…{expr}…'` template strings, destructuring, spread.
 14. ~~**Collections**~~ – the language parts are done (`Vector<T>` literals typed from context, `for…of`/`for…in`, destructuring); typed members for built-in types moved to the **standard library** (see Later).
 15. **Interfaces** – `interface`, `implements`, runtime `is` support.
-15e. **Operator `+` overloading** – `function operator+(…)`, static dispatch, `+=` lowering, K0370/K0371.
-15d. **Const methods** – `const` suffix on methods and getters, override/interface rules, K0901/K0902.
-15c. **Destructors** – `~Name()` / `async ~Name()`, `using` / `await using` declarations and C#-style `using (...) { }` blocks, implicit `dispose()`, base-destructor chaining, once-only guard, `IDisposable`, K0801 warning.
+15e. **Operator `+` overloading** – `function operator+(…)`, static dispatch, `+=` lowering, X0370/X0371.
+15d. **Const methods** – `const` suffix on methods and getters, override/interface rules, X0901/X0902.
+15c. **Destructors** – `~Name()` / `async ~Name()`, `using` / `await using` declarations and C#-style `using (...) { }` blocks, implicit `dispose()`, base-destructor chaining, once-only guard, `IDisposable`, X0801 warning.
 15a. **Abstract classes** – `abstract` classes/members, instantiation and unimplemented-member checks with stub fix-it, `new.target` guard and `NotImplementedException` stubs in output.
 15b. **Typedefs** – `typedef` aliases, structural shapes with optional/final members, function types, structural assignability, excess-property check on object literals, typedef imports, and the auto-imported prelude with `Int` `UInt` `Void` `Bool` `Any`.
 16. **Enums**.
-17. **Error quality pass** – parser recovery everywhere, secondary labels on all type errors, "did you mean", fix-it `help:` suggestions, unclosed-delimiter tracking, warnings (unused, untyped, `===` usage, `undefined`), always-false comparison errors, error codes + `klass explain`.
-17b. **Watch mode** – `klass watch` with incremental recompilation (Part F).
+17. **Error quality pass** – parser recovery everywhere, secondary labels on all type errors, "did you mean", fix-it `help:` suggestions, unclosed-delimiter tracking, warnings (unused, untyped, `===` usage, `undefined`), always-false comparison errors, error codes + `xenon explain`.
+17b. **Watch mode** – `xenon watch` with incremental recompilation (Part F).
 
 Later: the **standard library and generics** are planned in Part G. `dynamic` classes, first-class `Range` values, a `while` clause on range loops (`for (var n:int of 2.. while !s.has(x))`), labels, **explicit type arguments on calls** (see Part G1), `Bun.serve()` playground, and the VS Code extension in Part D (which also brings `.d.ts` typing and source maps). From step 1 on, follow the "what the compiler must do now" list in Part D.
 
@@ -751,8 +751,8 @@ Later: the **standard library and generics** are planned in Part G. `dynamic` cl
 
 ### Output format
 ```
-error[K0308]: mismatched types
-  --> src/com/zoo/Dog.kl:14:24
+error[X0308]: mismatched types
+  --> src/com/zoo/Dog.xn:14:24
    |
  9 |     private var age:int
    |                     --- field declared as `int` here
@@ -765,21 +765,21 @@ help: convert the value with `int()`
 14 |         age = int('three')
    |               ++++      +
 
-error[K0425]: cannot find `spek` in this scope
-  --> src/Main.kl:7:11
+error[X0425]: cannot find `spek` in this scope
+  --> src/Main.xn:7:11
    |
  7 |     trace(dog.spek())
    |               ^^^^ no method `spek` on `Dog`
    |
 help: a method with a similar name exists: `speak`
 
-error[K0603]: `_name` is private to `Animal`
-  --> src/Main.kl:8:15
+error[X0603]: `_name` is private to `Animal`
+  --> src/Main.xn:8:15
    |
  8 |     trace(dog._name)
    |               ^^^^^ private field
    |
-  ::: src/com/zoo/Animal.kl:4:17
+  ::: src/com/zoo/Animal.xn:4:17
    |
  4 |     private var _name:String
    |                 ----- declared private here
@@ -794,7 +794,7 @@ Elements: severity + error code, `-->` location, gutter with line numbers, **pri
 ```ts
 interface Diagnostic {
   severity: "error" | "warning" | "note";
-  code: string;                       // "K0308"
+  code: string;                       // "X0308"
   message: string;
   labels: { span: Span; message?: string; primary: boolean }[];
   notes: string[];
@@ -810,29 +810,29 @@ The same data feeds the terminal renderer, `--format json` (for scripts/CI) and 
 - **"Did you mean"**: Levenshtein/Damerau over locals, members (incl. inherited), imports, and package classes; also suggests a missing `import com.zoo.Dog;` when a class exists elsewhere in the project.
 - **Targeted hints**: `Number` → "use `Float`", `final var` → "remove `var`", `Error` → "use `Exception`", `catch (e:*)`, missing `override` (with fix-it), calling an instance member from a static context, `==` vs `=` in conditions, ASI pitfalls (`return` followed by newline), `async` missing when `await` is used (fix-it adds `async`).
 - **Limits**: deduplicate identical diagnostics; cap at `--max-errors` (default 50).
-- **Warnings**: unused locals/imports/private members, untyped declarations, unreachable code, `===`/`!==` (K0841), any use of `undefined` (K0840). Comparisons that are always false (K0309) are errors. `--deny-warnings` turns them into errors; `/* klass-allow Kxxxx */` suppresses one occurrence.
-- **Error codes catalog** (`src/diagnostics/codes.ts`): each code has a long explanation with a wrong and corrected example; `klass explain K0308` prints it.
+- **Warnings**: unused locals/imports/private members, untyped declarations, unreachable code, `===`/`!==` (X0841), any use of `undefined` (X0840). Comparisons that are always false (X0309) are errors. `--deny-warnings` turns them into errors; `/* xenon-allow Kxxxx */` suppresses one occurrence.
+- **Error codes catalog** (`src/diagnostics/codes.ts`): each code has a long explanation with a wrong and corrected example; `xenon explain X0308` prints it.
 
-Tests: snapshot tests over `examples/errors/*.kl` comparing the full rendered output (colors off) to `*.stderr` files, so formatting regressions are caught.
+Tests: snapshot tests over `examples/errors/*.xn` comparing the full rendered output (colors off) to `*.stderr` files, so formatting regressions are caught.
 
 ---
 
 ## Part F — Command line tool
 
-Installed as `klass` (`bin` entry in `package.json`, runnable via `bunx klass` or `bun link`).
+Installed as `xenon` (`bin` entry in `package.json`, runnable via `bunx xenon` or `bun link`).
 
 | Command | What it does |
 |---|---|
-| `klass init [dir]` | create `klass.json`, `src/Main.kl`, `.gitignore` |
-| `klass build` | compile the project to `outDir` |
-| `klass check` | type-check only, no output |
-| `klass run [-- args]` | build, then run the entry with Bun |
-| `klass watch` | rebuild on every change; `--run` restarts the program after each successful build |
-| `klass explain <code>` | long explanation of an error code |
+| `xenon init [dir]` | create `xenon.json`, `src/Main.xn`, `.gitignore` |
+| `xenon build` | compile the project to `outDir` |
+| `xenon check` | type-check only, no output |
+| `xenon run [-- args]` | build, then run the entry with Bun |
+| `xenon watch` | rebuild on every change; `--run` restarts the program after each successful build |
+| `xenon explain <code>` | long explanation of an error code |
 
-Common flags: `--project klass.json`, `--src src`, `--out out`, `--main Main`, `--sourcemap`, `--format pretty|json`, `--color auto|always|never`, `--max-errors N`, `--deny-warnings`, `--quiet`.
+Common flags: `--project xenon.json`, `--src src`, `--out out`, `--main Main`, `--sourcemap`, `--format pretty|json`, `--color auto|always|never`, `--max-errors N`, `--deny-warnings`, `--quiet`.
 
-**Project file `klass.json`** (all optional, CLI flags override):
+**Project file `xenon.json`** (all optional, CLI flags override):
 ```json
 { "src": "src", "out": "out", "main": "Main", "sourcemap": true, "denyWarnings": false }
 ```
@@ -840,7 +840,7 @@ Common flags: `--project klass.json`, `--src src`, `--out out`, `--main Main`, `
 **Exit codes**: `0` success, `1` compile errors, `2` invalid usage/config, program's own exit code for `run`.
 
 ### Watch mode (`src/watch.ts`)
-- Watches `src` recursively with `fs.watch` (Bun supports it), plus `klass.json`; changes debounced (~50 ms) so editor save-bursts compile once.
+- Watches `src` recursively with `fs.watch` (Bun supports it), plus `xenon.json`; changes debounced (~50 ms) so editor save-bursts compile once.
 - **Incremental**: a per-file cache of `{ text hash, AST, exported signatures }`. A change re-parses only that file; files are re-checked if they changed or if a dependency's *public signature* changed (dependency graph from imports). Only output files whose content changed are rewritten.
 - Output per cycle: clear screen (unless `--no-clear`), the diagnostics, then a status line like `✓ built 3 of 42 files in 18 ms — watching for changes` or `✗ 2 errors — watching for changes`.
 - `--run`: kills the previous child process (via `Bun.spawn`) and starts the new build; if the build fails, the old process is stopped and nothing is started.
@@ -852,7 +852,7 @@ Common flags: `--project klass.json`, `--src src`, `--out out`, `--main Main`, `
 
 ## Part G — Generics and the standard library
 
-Decided 2026-11-18: the standard library is **hand-written Klass declarations** of the JS built-ins (curated types: `int` vs `Float`, nullability, `Array<T>`), not generated from `lib.d.ts` (TS unions/overloads/`undefined` map poorly; `.d.ts` stays the source for the long tail — DOM, Node, npm — in Part D). This needs **full generics**, which user code gets too (reversing the earlier "no user generics" decision).
+Decided 2026-11-18: the standard library is **hand-written XenonScript declarations** of the JS built-ins (curated types: `int` vs `Float`, nullability, `Array<T>`), not generated from `lib.d.ts` (TS unions/overloads/`undefined` map poorly; `.d.ts` stays the source for the long tail — DOM, Node, npm — in Part D). This needs **full generics**, which user code gets too (reversing the earlier "no user generics" decision).
 
 ### G1. Generics
 ```actionscript
@@ -872,9 +872,9 @@ var c:Box<int> = new Box(5)                            // T inferred from the co
 ```
 - Type parameters on classes, interfaces, methods, local functions and typedefs. **No bounds** (decided 2026-11-18: `T extends X` is skipped for now), so inside a generic body a `T` value can only be stored, passed on, compared with `==` and assigned to `Object`/`*`.
 - Member types are substituted per use (`Box<int>.get()` is `int`); method type arguments are **inferred** from the arguments (and from the expected type for arrows); explicit type arguments at call sites are not supported at first (`<` stays unambiguous: type arguments only appear in type positions, after `new`, and in declarations).
-- **Later: explicit type arguments on calls**, `Promise.reject<int>('boom')`, `Box.of<Float>(1)`, `parse<Config>(text)`. Needed when nothing determines a type parameter: no argument mentions it and there's no expected type (today such a call is K0797, and the workaround is a typed variable: `var p:Promise<int> = Promise.reject('boom')`).
+- **Later: explicit type arguments on calls**, `Promise.reject<int>('boom')`, `Box.of<Float>(1)`, `parse<Config>(text)`. Needed when nothing determines a type parameter: no argument mentions it and there's no expected type (today such a call is X0797, and the workaround is a typed variable: `var p:Promise<int> = Promise.reject('boom')`).
   - Parsing: `name<…>(` after an identifier or member access is ambiguous with `<` comparisons (`a < b > (c)`). Use the TypeScript/C# rule: speculatively parse a type-argument list and accept it only if it closes with `>` directly followed by `(`; otherwise backtrack and parse a comparison.
-  - Checking: explicit arguments replace inference for that call (count must match the method's type parameters, K0422/K0423); partial lists are not allowed.
+  - Checking: explicit arguments replace inference for that call (count must match the method's type parameters, X0422/X0423); partial lists are not allowed.
   - Output: erased, nothing changes in the JS.
   - Until then: give `name<…>(` a clear error instead of today's `<`-comparison cascade ("type arguments can't be written on calls yet; give the result a type: `var p:Promise<int> = …`").
 - Generic types are **invariant** (`Array<Dog>` is not an `Array<Animal>`), except that `*` as a type argument is a **wildcard** on either side: any `Box<T>` fits a `Box<*>` and back (writes through it are unchecked, as with `*` everywhere). So a bare `Array` (= `Array<*>`) accepts every typed array.
@@ -897,12 +897,12 @@ public native class String {
 - Globals (`Math`, `JSON`, `console`, …) become typed by their declarations; JS globals without a declaration stay `*`.
 
 ### G3. The standard library
-- Files in `src/prelude/std/*.kl`, auto-imported like the prelude: `String`, `Boolean`, `Number` methods, `Array<T>`, `Math`, `JSON`, `RegExp`, `Promise<T>`, `Map<K, V>`, `Set<T>`, `Date`, `console`.
+- Files in `src/prelude/std/*.xn`, auto-imported like the prelude: `String`, `Boolean`, `Number` methods, `Array<T>`, `Math`, `JSON`, `RegExp`, `Promise<T>`, `Map<K, V>`, `Set<T>`, `Date`, `console`.
 - Typing rules: **`int` where the result is always whole** (`length`, `indexOf`, `charCodeAt`, `getFullYear`, …); `Math.floor/round/ceil` stay `Float` (results can exceed the `int` range); JS `T | undefined` results become nullable `T` (`find`, `Map.get`, `pop`).
 - A **conformance test** checks that every declared member exists at runtime in Bun.
-- One file per type (`std/Boolean.kl`, package `klass`), each listed in `PRELUDE` (`src/compiler.ts`); the test fails if a file isn't loaded. Users can't declare a class with a std name (K0028).
+- One file per type (`std/Boolean.xn`, package `xenon`), each listed in `PRELUDE` (`src/compiler.ts`); the test fails if a file isn't loaded. Users can't declare a class with a std name (X0028).
 - Constructors that would create JS wrapper objects (`new Boolean`, `new String`, `new Number`) are hidden; the cast functions `Boolean(x)`, `String(x)`, `Float(x)` keep working.
-- Methods of primitives used as values compile to `x.m.bind(x)` (a primitive can't hold the cached-identity property used for Klass method closures, and has no identity to keep).
+- Methods of primitives used as values compile to `x.m.bind(x)` (a primitive can't hold the cached-identity property used for XenonScript method closures, and has no identity to keep).
 
 ### G4. Migration
 - Examples and tests updated where typed built-ins now catch mistakes; `globals.ts` shrinks to the globals that have no declaration yet.
@@ -913,39 +913,39 @@ Milestones: G1 generics → G2 native declarations → G3 std library → G4 mig
 Left over from G3/G4, roughly in the order they pay off:
 
 1. **`Object` statics.** `Object.keys/values/entries/assign/freeze/isFrozen/seal/fromEntries/hasOwn/getPrototypeOf` are the most used untyped global. Declare a std native class `Object` for the statics only (the `Object` *type* stays built in, its instance members stay unchecked), like `Array` supplies the members of the built-in array type. `Object.keys(o):Array<String>`, `Object.entries(o):Array<Array<*>>`, `fromEntries(pairs:Array<Array<*>>):Object`.
-2. **Top-level native functions.** `setTimeout`, `setInterval`, `clearTimeout`, `fetch`, `structuredClone`, `queueMicrotask`, `encodeURIComponent`/`decodeURIComponent`/`encodeURI`/`decodeURI`, `atob`/`btoa` are free functions, and Klass has no top-level functions to declare them with. Sketch: a `native function` declaration at package level in a std file (no body, emitted as nothing, referenced by its JS name, overloads allowed as in native classes), auto-visible like the other prelude names. `setTimeout(callback:() -> Void, ms:int = 0):*` (the timer handle is a `Timeout` object in Node/Bun and an int in browsers, so it stays `*` until the platform is chosen), `fetch(url:String, options:* = null):Promise<*>` (typing `Response` is the `.d.ts` question below).
+2. **Top-level native functions.** `setTimeout`, `setInterval`, `clearTimeout`, `fetch`, `structuredClone`, `queueMicrotask`, `encodeURIComponent`/`decodeURIComponent`/`encodeURI`/`decodeURI`, `atob`/`btoa` are free functions, and XenonScript has no top-level functions to declare them with. Sketch: a `native function` declaration at package level in a std file (no body, emitted as nothing, referenced by its JS name, overloads allowed as in native classes), auto-visible like the other prelude names. `setTimeout(callback:() -> Void, ms:int = 0):*` (the timer handle is a `Timeout` object in Node/Bun and an int in browsers, so it stays `*` until the platform is chosen), `fetch(url:String, options:* = null):Promise<*>` (typing `Response` is the `.d.ts` question below).
 3. **Platform APIs through `.d.ts`.** `process`, `Bun`, `URL`, `TextEncoder`, streams, `WebSocket`, `crypto`, `performance`, the DOM: too many and too platform-specific for hand-written declarations. They arrive with `.d.ts` support (Part D, milestone 23), which also types npm packages, in the same `native` form.
-4. **Nullable primitives.** `Map<String, int>.get` and `Array<int>.pop()` return `undefined` when empty, but `int` can't be null, so the checker refuses `== null` on them and the declaration can't say "maybe absent" (documented in `Map.kl` and `Array.kl`: check `has`/`length` first). Options: an `int?` type (nullable form of any type), or `Optional<T>`-style return types in the std declarations. Needs a language decision.
+4. **Nullable primitives.** `Map<String, int>.get` and `Array<int>.pop()` return `undefined` when empty, but `int` can't be null, so the checker refuses `== null` on them and the declaration can't say "maybe absent" (documented in `Map.xn` and `Array.xn`: check `has`/`length` first). Options: an `int?` type (nullable form of any type), or `Optional<T>`-style return types in the std declarations. Needs a language decision.
 5. **Overload choice by array-literal elements.** Today every array literal matches the first array-typed overload, so typed and wildcard overloads can't coexist (`Promise.all<T>(Array<Promise<T>>)` next to `all(Array<Promise<*>>)` for mixed lists). Match literals on their element types instead.
 6. **Tuple types** (`[int, String]`) would type `Promise.all` exactly, `Map` pairs and `new Map([['a', 1]])` (inferring `K` and `V`), `entries()`, and `Array.entries()` (today `Array<*>`). A larger feature; see also variadic generics.
 7. **Match type for `RegExp.exec` / `String.match`.** The array with `index`, `input` and `groups` is `Array<String>` with untyped extras. A built-in array-with-properties type, or a native class extending `Array<String>`, would type `match.groups.year`.
 8. **Small diagnostics:** a hint for `Math.min([1, 2])` (spread it: `Math.min(...values)`); a clear error for `name<…>(…)` until explicit call type arguments exist (see G1).
 9. **`Function` and typed callbacks.** An untyped `Function` value can't be passed where a typed callback is expected (`nums.map(fn)` with `fn:Function` is an error; declare `fn:(int) -> int`). Decide whether `Function` should convert implicitly like `*` or stay strict; strict is the current, deliberate behavior.
-10. **Declarations not yet written:** `Object` instance members (`hasOwnProperty`, …), `Symbol`, `BigInt`, `WeakMap`/`WeakSet`/`WeakRef`, typed arrays, `Intl`, `Iterator.concat`, `RegExp.escape`, `Map.getOrInsert*`, `Array.copyWithin`/`fromAsync` — each as it's needed, in the existing style (`src/prelude/std/<Name>.kl` + the conformance test + a section in `examples/std`).
+10. **Declarations not yet written:** `Object` instance members (`hasOwnProperty`, …), `Symbol`, `BigInt`, `WeakMap`/`WeakSet`/`WeakRef`, typed arrays, `Intl`, `Iterator.concat`, `RegExp.escape`, `Map.getOrInsert*`, `Array.copyWithin`/`fromAsync` — each as it's needed, in the existing style (`src/prelude/std/<Name>.xn` + the conformance test + a section in `examples/std`).
 
 ## Part D — Later: VS Code extension with IntelliSense via the TypeScript 5 API
 
-**Approach (same idea as Vue/Svelte tooling):** for each `.kl` file the compiler produces a *virtual TypeScript file* — typed TS equivalent of the Klass code — plus a position map between `.kl` and the virtual `.ts`. A TypeScript 5 `LanguageService` runs over these virtual files together with the project's real `node_modules` `.d.ts` files. Every editor request is translated `.kl` position → `.ts` position, answered by TypeScript, and mapped back.
+**Approach (same idea as Vue/Svelte tooling):** for each `.xn` file the compiler produces a *virtual TypeScript file* — typed TS equivalent of the XenonScript code — plus a position map between `.xn` and the virtual `.ts`. A TypeScript 5 `LanguageService` runs over these virtual files together with the project's real `node_modules` `.d.ts` files. Every editor request is translated `.xn` position → `.ts` position, answered by TypeScript, and mapped back.
 
 This also delivers real types for npm imports inside the editor (completion on `_.` from `@types/lodash`), and the same mechanism can later replace the `*` typing of JS imports in the compiler itself.
 
-Features: diagnostics (Klass checker errors + mapped TS errors), completion, hover, signature help, go to definition (into `.kl` and into `.d.ts`), find references, rename, document symbols/outline, semantic highlighting; plus a TextMate grammar for syntax highlighting and a language configuration (brackets, comments, auto-indent).
+Features: diagnostics (XenonScript checker errors + mapped TS errors), completion, hover, signature help, go to definition (into `.xn` and into `.d.ts`), find references, rename, document symbols/outline, semantic highlighting; plus a TextMate grammar for syntax highlighting and a language configuration (brackets, comments, auto-indent).
 
 Structure:
-- `packages/klass-compiler` – the compiler (`src/` above), exposing an API, not just a CLI
-- `packages/klass-language-server` – LSP server built on **Volar.js** (`@volar/language-server`, `@volar/typescript`), which provides the virtual-file + TS LanguageService + position-mapping plumbing
-- `packages/vscode-klass` – thin VS Code client: starts the server, registers `.kl`, grammar, snippets
+- `packages/xenon-compiler` – the compiler (`src/` above), exposing an API, not just a CLI
+- `packages/xenon-language-server` – LSP server built on **Volar.js** (`@volar/language-server`, `@volar/typescript`), which provides the virtual-file + TS LanguageService + position-mapping plumbing
+- `packages/vscode-xenon` – thin VS Code client: starts the server, registers `.xn`, grammar, snippets
 
-Klass-specific features TS can't provide (keyword completion for modifiers, `override` quick-fix, "add missing interface members", package path ↔ file checks) come from the Klass checker in the same server.
+XenonScript-specific features TS can't provide (keyword completion for modifiers, `override` quick-fix, "add missing interface members", package path ↔ file checks) come from the XenonScript checker in the same server.
 
 ### What the compiler must do *now* so this is possible later
 These are cheap if built in from step 1 and painful to retrofit:
 1. **Precise spans** on every token and AST node (start/end offsets, not just line/col).
 2. **Error-tolerant parser**: recovers at statement/member boundaries and produces a partial AST with error nodes, so half-typed code still gets completions.
-3. **Mapping-aware emitter**: codegen writes through a `CodeWriter` that records `(klassSpan → outputSpan)` mappings; used for JS source maps (milestone) and for the virtual TS file.
+3. **Mapping-aware emitter**: codegen writes through a `CodeWriter` that records `(xenonSpan → outputSpan)` mappings; used for JS source maps (milestone) and for the virtual TS file.
 4. **Second emit target `ts`**: same codegen with type annotations kept (`int`/`Float` → `number`, `Array<T>` → `T[]`, typedefs → `type`, shapes → object types, `*` → `any`, visibility → TS `private`/`protected`). Add once the JS backend is stable (after milestone 15b).
 5. **Compiler as a library**: `compileProject` works on in-memory files (`Map<path, text>`), incremental per-file re-checking, no `process.exit` in the core.
-6. Checker results queryable by position (symbol at offset, type of expression) for Klass-only features.
+6. Checker results queryable by position (symbol at offset, type of expression) for XenonScript-only features.
 
 Milestones (after Part C):
 18. Source maps for the JS output (uses the mapping writer).
@@ -958,18 +958,18 @@ Milestones (after Part C):
 ## Verification
 - `bun test` – unit tests + golden e2e + negative tests.
 - Diagnostics: snapshot tests of rendered error output (Part E); manually check colors and caret alignment in a terminal.
-- Watch: `klass watch --run` in `examples/zoo`, edit a file → only it is rebuilt and the program restarts; introduce a type error → error shown and process stopped; fix it → recovers.
-- `klass run examples/zoo` prints the expected output; `klass build examples/zoo --out out` yields readable ESM that plain JS can `import { Dog } from "./out/com/zoo/Dog.js"`.
+- Watch: `xenon watch --run` in `examples/zoo`, edit a file → only it is rebuilt and the program restarts; introduce a type error → error shown and process stopped; fix it → recovers.
+- `xenon run examples/zoo` prints the expected output; `xenon build examples/zoo --out out` yields readable ESM that plain JS can `import { Dog } from "./out/com/zoo/Dog.js"`.
 - Interop example importing an npm package (installed via `bun install`) and `node:fs/promises` with `await` runs correctly.
-- Exception tests: a JS `TypeError` from a library is caught by `catch (e:TypeException)` with the original in `e.cause`; `throw "x"` from JS becomes an `Exception`; using `Error` in Klass code is a compile error; a Klass exception caught in plain JS is `instanceof Error`.
-- String tests: `$'{a} + {b} = {a + b}'` output, nested quotes inside `{}`, `\{` escapes, a literal backtick inside a template; `"x"` and `` `x` `` give K0360 with the right fix-its.
-- Regex tests: `a / b / c` stays division; `~/a\/b[/]/g.test(s)` lexes correctly; bad flag (K0350) and invalid pattern (K0351) point into the literal; plain `/abc/` gives the `~` hint.
-- Equality tests: `'1' == 1` doesn't compile (K0309); `*`-typed `'1' == 1` is `false` at runtime; `x == null` is true for a JS `undefined`; `===` gives K0841.
-- Operator tests: `Vec2 + Vec2` and `+=` (including `obj.pos += v` evaluating `obj` once), inherited/overridden `operator+`, `'s' + vec` concatenates, `Dog + Dog` → K0370, `operator-` → K0371, wrong right-operand type → K0308.
+- Exception tests: a JS `TypeError` from a library is caught by `catch (e:TypeException)` with the original in `e.cause`; `throw "x"` from JS becomes an `Exception`; using `Error` in XenonScript code is a compile error; a XenonScript exception caught in plain JS is `instanceof Error`.
+- String tests: `$'{a} + {b} = {a + b}'` output, nested quotes inside `{}`, `\{` escapes, a literal backtick inside a template; `"x"` and `` `x` `` give X0360 with the right fix-its.
+- Regex tests: `a / b / c` stays division; `~/a\/b[/]/g.test(s)` lexes correctly; bad flag (X0350) and invalid pattern (X0351) point into the literal; plain `/abc/` gives the `~` hint.
+- Equality tests: `'1' == 1` doesn't compile (X0309); `*`-typed `'1' == 1` is `false` at runtime; `x == null` is true for a JS `undefined`; `===` gives X0841.
+- Operator tests: `Vec2 + Vec2` and `+=` (including `obj.pos += v` evaluating `obj` once), inherited/overridden `operator+`, `'s' + vec` concatenates, `Dog + Dog` → X0370, `operator-` → X0371, wrong right-operand type → X0308.
 - Range tests: printed sequences for `0..5`, `0..=5`, `0..10 step 3`, `5..0` and runtime `a..b` with `a > b` running 0 times, open range with `break`; `step 0`, `step -1`, assigning the loop variable and a range outside a loop fail with their codes.
 - Const method tests: field assignment, `++`, setter use and non-const calls on `this` in a const method fail; calls on other objects and const getters pass; a non-const override of a const method fails.
 - Destructor tests: output order for nested `using` blocks (reverse order, derived before base), destructor runs when an exception leaves the block, double `dispose()` runs once, `await using` with an async destructor.
-- Abstract tests: `new Shape()` and a subclass missing `area()` fail with K0710/K0711; a plain JS file doing `new Shape()` against the build output gets a `StateException`.
+- Abstract tests: `new Shape()` and a subclass missing `area()` fail with X0710/X0711; a plain JS file doing `new Shape()` against the build output gets a `StateException`.
 - Typedef tests: shapes accept matching literals/class instances and reject missing or mistyped members; built output contains no trace of typedefs.
 - Inline test: an example whose built output contains the folded literals and no `private static inline` field, plus negative tests (non-constant initializer, missing `final`, cyclic constants).
 - Each class rule (private access, missing `override`, unimplemented interface member, wrong enum type, …) has a failing example with its expected error message.

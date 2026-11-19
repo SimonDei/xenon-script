@@ -98,8 +98,8 @@ export class DiagnosticBag {
   }
 
   /**
-   * Drops warnings silenced in the source: `/* klass-allow K0840 *\/` earlier on the warned
-   * line, or `// klass-allow K0840` on the line above. Errors can't be silenced.
+   * Drops warnings silenced in the source: `/* xenon-allow X0840 *\/` earlier on the warned
+   * line, or `// xenon-allow X0840` on the line above. Errors can't be silenced.
    */
   applySuppressions() {
     const allowed = (d: Diagnostic): boolean => {
@@ -108,8 +108,8 @@ export class DiagnosticBag {
       const file = l.span.file;
       const line = file.lineOf(l.span.start);
       const before = file.text.slice(file.lineStarts[line - 1]!, l.span.start);
-      const inline = /\/\*\s*klass-allow\s+([^*]*)\*\//.exec(before);
-      const above = line > 1 ? /^\s*\/\/\s*klass-allow\s+(.*)$/.exec(file.lineText(line - 1)) : null;
+      const inline = /\/\*\s*xenon-allow\s+([^*]*)\*\//.exec(before);
+      const above = line > 1 ? /^\s*\/\/\s*xenon-allow\s+(.*)$/.exec(file.lineText(line - 1)) : null;
       return [inline, above].some((m) => !!m && m[1]!.split(/[\s,]+/).includes(d.code!));
     };
     const kept = this.items.filter((d) => !allowed(d));

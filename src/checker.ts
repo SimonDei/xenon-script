@@ -14,7 +14,7 @@ import {
 /** A class known to the project. */
 export interface ClassInfo {
   decl: A.ClassDecl;
-  file: A.KlassFile;
+  file: A.XenonFile;
   /** Dotted package name ('' for the top level). */
   pkg: string;
   /** Fully qualified name, e.g. `com.zoo.Dog`. */
@@ -23,7 +23,7 @@ export interface ClassInfo {
   filePrivate: boolean;
   /** Output module path relative to the out dir, e.g. `com/zoo/Dog.js`. */
   module: string;
-  /** Klass superclass, once resolved. */
+  /** Xenon superclass, once resolved. */
   parent?: ClassInfo;
   /** The class extends a JavaScript class: inherited members are unknown (`*`). */
   jsParent?: boolean;
@@ -59,7 +59,7 @@ export function jsNameOf(info: ClassInfo): string {
 /** A `typedef` known to the project. Its target is resolved lazily (and cached in `state`). */
 export interface TypedefInfo {
   decl: A.TypedefDecl;
-  file: A.KlassFile;
+  file: A.XenonFile;
   pkg: string;
   qname: string;
   filePrivate: boolean;
@@ -147,7 +147,7 @@ export interface CheckResult {
 
 /** Names visible inside one file. */
 interface FileScope {
-  file: A.KlassFile;
+  file: A.XenonFile;
   /** Classes by simple name: own package, file-private classes and imports. */
   classes: Map<string, ClassInfo>;
   /** Names offered by several wildcard imports (and those imports); an error only when used. */
@@ -192,7 +192,7 @@ class Scope {
 
 /* ===================================================================== */
 
-export function check(files: A.KlassFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag): CheckResult {
+export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag): CheckResult {
   const result: CheckResult = {
     resolutions: new Map(), typeResolutions: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), classes,
   };
@@ -221,7 +221,7 @@ export function check(files: A.KlassFile[], classes: Map<string, ClassInfo>, typ
 
 /** Project-wide state shared by the phases. */
 class Env {
-  readonly scopes = new Map<A.KlassFile, FileScope>();
+  readonly scopes = new Map<A.XenonFile, FileScope>();
   /** Shape members whose types are resolved after all signatures (reports errors inside shapes). */
   readonly pendingShapeMembers: ShapeMember[] = [];
   /** Members referenced anywhere (for the unused-private-member warning). */
@@ -229,14 +229,14 @@ class Env {
   /** Files with syntax errors (unused-code warnings are skipped there). */
   readonly syntaxErrors: Set<SourceFile>;
 
-  /** K0862: private members that nothing refers to. */
+  /** X0862: private members that nothing refers to. */
   reportUnusedPrivates(info: ClassInfo) {
     if (info.file.file.prelude || isNative(info) || info.decl.isInterface || info.decl.isEnum || this.syntaxErrors.has(info.file.file)) return;
     for (const m of info.members.values()) {
       if (m.owner !== info || this.usedMembers.has(m) || visibilityOf(m.decl) !== "private") continue;
       if (m.decl.kind === "Method" && (m.decl.isConstructor || m.decl.isDestructor || m.decl.name.name.startsWith("operator"))) continue;
       const what = m.kind === "field" ? "field" : m.kind === "accessor" ? "property" : "method";
-      this.diags.warning("K0862", `private ${what} \`${m.name}\` is never used`, m.decl.name.span, "declared here")
+      this.diags.warning("X0862", `private ${what} \`${m.name}\` is never used`, m.decl.name.span, "declared here")
         .help("remove it, or use it");
     }
   }
@@ -248,11 +248,11 @@ class Env {
     readonly diags: DiagnosticBag,
     readonly result: CheckResult,
   ) {
-    this.syntaxErrors = new Set(diags.items.filter((d) => d.severity === "error" && /^K0[01]\d\d$/.test(d.code ?? "") && d.code !== "K0001")
+    this.syntaxErrors = new Set(diags.items.filter((d) => d.severity === "error" && /^X0[01]\d\d$/.test(d.code ?? "") && d.code !== "X0001")
       .flatMap((d) => d.labels.map((l) => l.span.file)));
   }
 
-  fileScope(file: A.KlassFile): FileScope {
+  fileScope(file: A.XenonFile): FileScope {
     const pkg = file.packageName.map((n) => n.name).join(".");
     const scope: FileScope = { file, classes: new Map(), ambiguous: new Map(), jsImports: new Set(), typedefs: new Map(), importOf: new Map(), used: new Set() };
     for (const td of this.typedefs.values()) {
@@ -272,7 +272,7 @@ class Env {
       const name = info.decl.name.name;
       const prev = origin.get(name);
       if (prev) {
-        this.diags.error("K0434", `file-private class \`${name}\` has the same name as a class in this package`, info.decl.name.span)
+        this.diags.error("X0434", `file-private class \`${name}\` has the same name as a class in this package`, info.decl.name.span)
           .secondary(prev.span, "the other class");
       }
       scope.classes.set(name, info);
@@ -282,14 +282,14 @@ class Env {
     const clash = (name: string, at: Span) => {
       const prev = origin.get(name);
       if (!prev || prev.kind === "package") return false; // an explicit import shadows a same-package class
-      this.diags.error("K0432", `\`${name}\` is imported more than once`, at, "this import")
+      this.diags.error("X0432", `\`${name}\` is imported more than once`, at, "this import")
         .secondary(prev.span, prev.kind === "private" ? "a file-private class has this name" : "already imported here")
         .help("import one of them under another name, or use a qualified name");
       return true;
     };
 
-    // 2. Explicit imports: Klass classes and JS bindings.
-    const wildcards: A.KlassImport[] = [];
+    // 2. Explicit imports: Xenon classes and JS bindings.
+    const wildcards: A.XenonImport[] = [];
     for (const imp of file.imports) {
       if (imp.kind === "JsImport") {
         for (const n of [imp.defaultName, imp.namespace, ...imp.named.map((x) => x.alias ?? x.name)]) {
@@ -315,7 +315,7 @@ class Env {
       if (td && !td.filePrivate && !this.classes.has(path)) {
         if (td.pkg !== pkg && visibilityOf(td.decl) !== "public") {
           scope.used.add(imp);
-          this.diags.error("K0441", `typedef \`${td.qname}\` is internal to package \`${td.pkg}\``, at, "not visible here")
+          this.diags.error("X0441", `typedef \`${td.qname}\` is internal to package \`${td.pkg}\``, at, "not visible here")
             .secondary(td.decl.name.span, "declared without `public`");
           continue;
         }
@@ -328,19 +328,19 @@ class Env {
         scope.used.add(imp); // reported here; no "unused" warning on top
         const hidden = [...this.classes.values()].find((c) => c.filePrivate && c.pkg === path.split(".").slice(0, -1).join(".") && c.decl.name.name === imp.path.at(-1)!.name);
         if (hidden) {
-          this.diags.error("K0435", `\`${hidden.decl.name.name}\` is file-private and can't be imported`, at)
+          this.diags.error("X0435", `\`${hidden.decl.name.name}\` is file-private and can't be imported`, at)
             .secondary(hidden.decl.name.span, "declared after the package block, so only its own file can use it");
           continue;
         }
         const names = [...this.classes.values()].filter((c) => !c.filePrivate).map((c) => c.qname);
-        const d = this.diags.error("K0431", `cannot find class \`${path}\``, at, "not found");
+        const d = this.diags.error("X0431", `cannot find class \`${path}\``, at, "not found");
         const sug = suggest(path, names);
         if (sug) d.help(`a class with a similar name exists: \`${sug}\``, [{ span: at, text: sug }]);
         continue;
       }
       const name = info.decl.name.name;
       if (scope.classes.get(name) === info && origin.get(name)?.kind === "import") {
-        this.diags.warning("K0871", `\`${path}\` is imported twice`, imp.span).secondary(origin.get(name)!.span, "first imported here");
+        this.diags.warning("X0871", `\`${path}\` is imported twice`, imp.span).secondary(origin.get(name)!.span, "first imported here");
         scope.used.add(imp);
         continue;
       }
@@ -350,7 +350,7 @@ class Env {
         continue;
       }
       if (info.pkg === pkg) {
-        this.diags.warning("K0872", `\`${name}\` is in this package and needs no import`, imp.span);
+        this.diags.warning("X0872", `\`${name}\` is in this package and needs no import`, imp.span);
         scope.used.add(imp);
         continue;
       }
@@ -377,14 +377,14 @@ class Env {
       if (found.length === 0 && foundTypedefs.length > 0) continue;
       if (found.length === 0) {
         scope.used.add(imp);
-        const d = this.diags.error("K0430", `package \`${path}\` not found`, cover(imp.path[0]!.span, imp.path.at(-1)!.span));
+        const d = this.diags.error("X0430", `package \`${path}\` not found`, cover(imp.path[0]!.span, imp.path.at(-1)!.span));
         const pkgs = [...new Set([...this.classes.values()].map((c) => c.pkg).filter((p) => p !== ""))];
         const sug = suggest(path, pkgs);
         if (sug) d.help(`a package with a similar name exists: \`${sug}\``);
         continue;
       }
       if (path === pkg) {
-        this.diags.warning("K0872", `package \`${path}\` is this file's own package and needs no import`, imp.span);
+        this.diags.warning("X0872", `package \`${path}\` is this file's own package and needs no import`, imp.span);
         scope.used.add(imp);
         continue;
       }
@@ -418,7 +418,7 @@ class Env {
 
   classAccessError(info: ClassInfo, at: Span) {
     const vis = info.decl.modifiers.visibility;
-    this.diags.error("K0441", `class \`${info.qname}\` is ${VIS_DESCRIPTION.internal(info)}`, at, "not visible here")
+    this.diags.error("X0441", `class \`${info.qname}\` is ${VIS_DESCRIPTION.internal(info)}`, at, "not visible here")
       .secondary(info.decl.name.span, "declared without `public`")
       .help("make the class `public` to use it from other packages", vis ? undefined : [
         { span: span(info.decl.span.file, info.decl.span.start, info.decl.span.start), text: "public " },
@@ -431,7 +431,7 @@ class Env {
     if (canAccess(vis, owner, from)) return true;
     const name = what ?? `\`${d.name.name}\``;
     const label = vis === "private" ? "private member" : vis === "protected" ? "protected member" : "internal member";
-    const diag = this.diags.error("K0603", `${name} is ${VIS_DESCRIPTION[vis](owner)}`, at, label)
+    const diag = this.diags.error("X0603", `${name} is ${VIS_DESCRIPTION[vis](owner)}`, at, label)
       .secondary(d.name.span, `declared \`${vis}\` here`);
     // `_name` with a public `name` accessor is the usual pattern.
     const plain = d.name.name.replace(/^_+/, "");
@@ -451,12 +451,12 @@ class Env {
 
   /** The std library's `Set<T>` and `Iterator<T>`: the types `for … of` knows the element type of. */
   private iterableClasses(): ClassInfo[] {
-    return ["klass.Set", "klass.Iterator"].flatMap((q) => this.classes.get(q) ?? []);
+    return ["xenon.Set", "xenon.Iterator"].flatMap((q) => this.classes.get(q) ?? []);
   }
 
   /** The `[K, V]` of a `Map<K, V>` (or a subclass of one), for `for (var [k, v]:* of map)`. */
   mapArgs(t: Type): [Type, Type] | undefined {
-    const map = this.classes.get("klass.Map");
+    const map = this.classes.get("xenon.Map");
     if (!map || t.kind !== "class" || !isSubclass(t.info, map)) return undefined;
     const args = supertypeArgs(t.info, t.args ?? [], map) ?? [];
     return [args[0] ?? T.any, args[1] ?? T.any];
@@ -471,19 +471,19 @@ class Env {
     return undefined;
   }
 
-  /** The std library's `RegExp` (src/prelude/std/RegExp.kl): the type of `~/…/` literals. */
+  /** The std library's `RegExp` (src/prelude/std/RegExp.xn): the type of `~/…/` literals. */
   get regexpClass(): ClassInfo | undefined {
-    return this.classes.get("klass.RegExp");
+    return this.classes.get("xenon.RegExp");
   }
 
-  /** The std library's `Array<T>` (src/prelude/std/Array.kl): the members of the built-in array type. */
+  /** The std library's `Array<T>` (src/prelude/std/Array.xn): the members of the built-in array type. */
   get arrayClass(): ClassInfo | undefined {
-    return this.classes.get("klass.Array");
+    return this.classes.get("xenon.Array");
   }
 
-  /** The std library's `Promise<T>` (src/prelude/std/Promise.kl). */
+  /** The std library's `Promise<T>` (src/prelude/std/Promise.xn). */
   get promiseClass(): ClassInfo | undefined {
-    return this.classes.get("klass.Promise");
+    return this.classes.get("xenon.Promise");
   }
 
   /** `Promise<T>`: the type of an `async` function's result. */
@@ -500,7 +500,7 @@ class Env {
 
   /** The prelude's `Exception` class. */
   get exception(): ClassInfo | undefined {
-    return this.classes.get("klass.Exception");
+    return this.classes.get("xenon.Exception");
   }
 
   /** Looks a class name up in a file scope; marks the providing import as used. */
@@ -509,7 +509,7 @@ class Env {
     if (ambiguous) {
       for (const imp of ambiguous.imports) scope.used.add(imp);
       if (at) {
-        this.diags.error("K0433", `\`${name}\` is ambiguous`, at, "imported by more than one wildcard import")
+        this.diags.error("X0433", `\`${name}\` is ambiguous`, at, "imported by more than one wildcard import")
           .note(`it could be ${ambiguous.infos.map((c) => `\`${c.qname}\``).join(" or ")}`)
           .help(`add an explicit import, e.g. \`import ${ambiguous.infos[0]!.qname};\``);
       }
@@ -534,7 +534,7 @@ class Env {
   /** A typedef's target (transparent). Direct cycles are errors; cycles through shape members are fine. */
   resolveTypedef(td: TypedefInfo): Type {
     if (td.state === "busy") {
-      this.diags.error("K0790", `typedef \`${td.decl.name.name}\` refers to itself`, td.decl.type.span)
+      this.diags.error("X0790", `typedef \`${td.decl.name.name}\` refers to itself`, td.decl.type.span)
         .note("a typedef can refer to itself only inside a shape member, e.g. `{ value:int, ?next:Node }`");
       td.state = T.error;
       return T.error;
@@ -566,7 +566,7 @@ class Env {
       if (scope.used.has(imp)) continue;
       if (imp.kind === "JsImport" && !imp.defaultName && !imp.namespace && imp.named.length === 0) continue;
       const what = imp.kind === "JsImport" ? `\`${imp.module}\`` : `\`${imp.path.map((p) => p.name).join(".")}${imp.wildcard ? ".*" : ""}\``;
-      this.diags.warning("K0870", `unused import ${what}`, imp.span, "nothing in this file uses it").help("remove the import");
+      this.diags.warning("X0870", `unused import ${what}`, imp.span, "nothing in this file uses it").help("remove the import");
     }
   }
 
@@ -581,7 +581,7 @@ class Env {
       const members = new Map<string, ShapeMember>();
       for (const m of node.members) {
         if (members.has(m.name.name)) {
-          this.diags.error("K0795", `\`${m.name.name}\` appears twice in this shape`, m.name.span);
+          this.diags.error("X0795", `\`${m.name.name}\` appears twice in this shape`, m.name.span);
           continue;
         }
         let cached: Type | undefined;
@@ -604,7 +604,7 @@ class Env {
       };
     }
     if (node.kind === "VoidType") {
-      if (!allowVoid) this.diags.error("K0421", "`void` is only allowed as a return type", node.span);
+      if (!allowVoid) this.diags.error("X0421", "`void` is only allowed as a return type", node.span);
       return allowVoid ? T.void : T.error;
     }
     const names = node.name.map((n) => n.name);
@@ -615,31 +615,31 @@ class Env {
         if (!classAccessible(info, scope.file.packageName.map((n) => n.name).join("."))) this.classAccessError(info, whole);
         return this.genericClass(node, info, scope, tparams, allowRaw);
       }
-      this.diags.error("K0420", `cannot find type \`${names.join(".")}\``, whole, "not found");
+      this.diags.error("X0420", `cannot find type \`${names.join(".")}\``, whole, "not found");
       return T.error;
     }
     const name = names[0]!;
     const param = tparams?.get(name);
     if (param) {
-      if (node.args.length > 0) this.diags.error("K0423", `type parameter \`${name}\` doesn't take type arguments`, node.span);
+      if (node.args.length > 0) this.diags.error("X0423", `type parameter \`${name}\` doesn't take type arguments`, node.span);
       return { kind: "typeParam", param };
     }
     if (name === "Array" || (name === "Vector" && !this.lookupClass(scope, name, whole))) {
       if (name === "Vector") {
-        this.diags.error("K0424", "`Vector` is called `Array<T>` in Klass", node.name[0]!.span, "unknown type")
+        this.diags.error("X0424", "`Vector` is called `Array<T>` in Xenon", node.name[0]!.span, "unknown type")
           .help("use `Array<T>`: a typed array (a bare `Array` is `Array<*>`)", [{ span: node.name[0]!.span, text: "Array" }]);
       }
       if (node.args.length > 1) {
-        this.diags.error("K0422", "`Array` takes 1 type argument, the element type", node.span, `${node.args.length} given`);
+        this.diags.error("X0422", "`Array` takes 1 type argument, the element type", node.span, `${node.args.length} given`);
         return T.error;
       }
       return arrayOf(node.args[0] ? this.resolveType(node.args[0], scope, false, tparams) : T.any);
     }
     const builtin = BUILTIN_TYPES[name];
-    if (builtin && node.args.length > 0) this.diags.error("K0423", `\`${name}\` doesn't take type arguments`, node.span);
+    if (builtin && node.args.length > 0) this.diags.error("X0423", `\`${name}\` doesn't take type arguments`, node.span);
     if (builtin) {
       if (builtin.kind === "void" && !allowVoid) {
-        this.diags.error("K0421", "`Void` is only allowed as a return type", node.span);
+        this.diags.error("X0421", "`Void` is only allowed as a return type", node.span);
         return T.error;
       }
       return builtin;
@@ -650,7 +650,7 @@ class Env {
     if (td) {
       const target = this.resolveTypedef(td);
       if (target.kind === "void" && !allowVoid) {
-        this.diags.error("K0421", `\`${name}\` is only allowed as a return type`, node.span);
+        this.diags.error("X0421", `\`${name}\` is only allowed as a return type`, node.span);
         return T.error;
       }
       if (!this.checkArgCount(node, td.decl.name.name, td.params.length, false)) return target;
@@ -660,14 +660,14 @@ class Env {
       return t.kind === "shape" || t.kind === "method" ? { ...t, alias: td.decl.name.name, aliasArgs: args } : t;
     }
     if (this.isJsImport(scope, name)) return T.any; // JS classes are dynamic until .d.ts support
-    const d = this.diags.error("K0420", `cannot find type \`${name}\``, whole, "not found");
+    const d = this.diags.error("X0420", `cannot find type \`${name}\``, whole, "not found");
     const ownerWithParam = [...this.classes.values()].find((c) => c.file === scope.file && c.typeParams.some((p) => p.name === name) &&
       c.decl.span.start <= whole.start && whole.end <= c.decl.span.end);
     if (ownerWithParam) {
       d.note(`\`${name}\` is a type parameter of \`${ownerWithParam.decl.name.name}\`, which static members can't use (there's no instance to give it a type)`);
-    } else if (name === "Number") d.help("Klass calls floating-point numbers `Float`", [{ span: whole, text: "Float" }]);
+    } else if (name === "Number") d.help("Xenon calls floating-point numbers `Float`", [{ span: whole, text: "Float" }]);
     else if (name in ERROR_HINTS) {
-      d.help(`use \`${ERROR_HINTS[name]}\` (JavaScript error classes are hidden in Klass)`, [{ span: whole, text: ERROR_HINTS[name]! }]);
+      d.help(`use \`${ERROR_HINTS[name]}\` (JavaScript error classes are hidden in Xenon)`, [{ span: whole, text: ERROR_HINTS[name]! }]);
     } else {
       const s = suggest(name, [...Object.keys(BUILTIN_TYPES), ...scope.classes.keys(), ...scope.typedefs.keys()]);
       if (s) d.help(`a type with a similar name exists: \`${s}\``, [{ span: whole, text: s }]);
@@ -690,15 +690,15 @@ class Env {
     return this.classType(node, info, node.args.map((a) => this.resolveType(a, scope, allowVoid, tparams)));
   }
 
-  /** K0422/K0423: the number of type arguments must match the declaration. */
+  /** X0422/X0423: the number of type arguments must match the declaration. */
   private checkArgCount(node: A.TypeNode & { kind: "TypeName" }, name: string, want: number, isClass: boolean): boolean {
     const got = node.args.length;
     if (got === want) return true;
     if (want === 0) {
-      this.diags.error("K0423", `\`${name}\` doesn't take type arguments`, node.span);
+      this.diags.error("X0423", `\`${name}\` doesn't take type arguments`, node.span);
       return false;
     }
-    this.diags.error("K0422", `\`${name}\` needs ${want} type argument${want === 1 ? "" : "s"}`, node.span, got === 0 ? "missing type arguments" : `${got} given`)
+    this.diags.error("X0422", `\`${name}\` needs ${want} type argument${want === 1 ? "" : "s"}`, node.span, got === 0 ? "missing type arguments" : `${got} given`)
       .help(`for example \`${name}<${Array(want).fill("int").join(", ")}>\`${isClass && got === 0 ? "; `new` and `is`/`as` can leave them out" : ""}`);
     return false;
   }
@@ -716,13 +716,13 @@ class Env {
       const t = this.resolveType(node, scope, false, tparams);
       if (t.kind === "error") continue;
       if (t.kind !== "class" || !t.info.decl.isInterface) {
-        const d = this.diags.error(isInterface ? "K0783" : "K0784", `\`${typeToString(t)}\` is not an interface`, node.span,
+        const d = this.diags.error(isInterface ? "X0783" : "X0784", `\`${typeToString(t)}\` is not an interface`, node.span,
           isInterface ? "interfaces can only extend interfaces" : "only interfaces can be implemented");
         if (!isInterface && t.kind === "class") d.help("use `extends` for a superclass");
         continue;
       }
       if (info.interfaces.includes(t.info)) {
-        this.diags.warning("K0789", `\`${t.info.decl.name.name}\` is listed twice`, node.span);
+        this.diags.warning("X0789", `\`${t.info.decl.name.name}\` is listed twice`, node.span);
         continue;
       }
       info.interfaces.push(t.info);
@@ -737,9 +737,9 @@ class Env {
     }
     const t = this.resolveType(ext, scope, false, tparams);
     if (t.kind === "class" && t.info.decl.isEnum) {
-      this.diags.error("K0700", `enum \`${t.info.decl.name.name}\` can't be extended`, ext.span);
+      this.diags.error("X0700", `enum \`${t.info.decl.name.name}\` can't be extended`, ext.span);
     } else if (t.kind === "class" && t.info.decl.isInterface) {
-      this.diags.error("K0785", `\`${t.info.decl.name.name}\` is an interface`, ext.span, "can't be extended by a class")
+      this.diags.error("X0785", `\`${t.info.decl.name.name}\` is an interface`, ext.span, "can't be extended by a class")
         .help("use `implements`");
       info.interfaces.push(t.info);
       info.interfaceArgs.push(t.args ?? []);
@@ -750,28 +750,28 @@ class Env {
       // std: `native('Number') class int extends Float` inherits the members of numbers.
       info.parent = this.primClass(t.name);
     }
-    else if (t.kind !== "error") this.diags.error("K0700", `\`${typeToString(t)}\` can't be extended`, ext.span);
+    else if (t.kind !== "error") this.diags.error("X0700", `\`${typeToString(t)}\` can't be extended`, ext.span);
   }
 
   /** Interfaces only declare public method and accessor signatures. */
   private checkInterfaceMembers(decl: A.ClassDecl) {
     for (const m of decl.members) {
       if (m.kind === "StaticBlock") {
-        this.diags.error("K0782", "interfaces can't have `static` blocks", m.span);
+        this.diags.error("X0782", "interfaces can't have `static` blocks", m.span);
         continue;
       }
       if (m.kind === "Field") {
-        this.diags.error("K0781", "interfaces can't have fields", m.name.span).help("declare a getter instead: `function get x():T`");
+        this.diags.error("X0781", "interfaces can't have fields", m.name.span).help("declare a getter instead: `function get x():T`");
         continue;
       }
       if (m.body) {
-        this.diags.error("K0780", "interface members can't have a body", m.body.span).note("the implementing class provides the body");
+        this.diags.error("X0780", "interface members can't have a body", m.body.span).note("the implementing class provides the body");
       }
       const vis = m.modifiers.visibility;
-      if (vis && vis.value !== "public") this.diags.error("K0782", "interface members are always `public`", vis.span);
+      if (vis && vis.value !== "public") this.diags.error("X0782", "interface members are always `public`", vis.span);
       for (const key of ["static", "override", "final", "inline", "abstract", "async"] as const) {
         const mod = m.modifiers[key];
-        if (mod) this.diags.error("K0782", `interface members can't be \`${key}\``, mod);
+        if (mod) this.diags.error("X0782", `interface members can't be \`${key}\``, mod);
       }
     }
   }
@@ -790,7 +790,7 @@ class Env {
     for (const m of info.decl.members) {
       if (m.kind !== "Field") continue;
       if (m.name.name === "values") {
-        this.diags.error("K0816", "`values` is reserved in enums", m.name.span).note("`Enum.values()` lists all members");
+        this.diags.error("X0816", "`values` is reserved in enums", m.name.span).note("`Enum.values()` lists all members");
         continue;
       }
       let v: ConstValue;
@@ -800,14 +800,14 @@ class Env {
           return this.constRef(e, info, scope);
         });
         if (!f.ok) {
-          if (!f.reported) this.diags.error("K0817", "enum values must be compile-time constants", f.at, f.reason);
+          if (!f.reported) this.diags.error("X0817", "enum values must be compile-time constants", f.at, f.reason);
           next = undefined;
           continue;
         }
         v = f.value;
       } else {
         if (next === undefined) {
-          this.diags.error("K0812", `\`${m.name.name}\` needs a value`, m.name.span,
+          this.diags.error("X0812", `\`${m.name.name}\` needs a value`, m.name.span,
             kind === "string" ? "members of a `String` enum need explicit values" : "the previous member has no numeric value to count from");
           continue;
         }
@@ -815,17 +815,17 @@ class Env {
       }
       const vk = typeof v === "number" && Number.isInteger(v) ? "number" : typeof v === "string" ? "string" : undefined;
       if (!vk) {
-        this.diags.error("K0811", "enum values must be `int`s or `String`s", m.init?.span ?? m.name.span, `found ${JSON.stringify(v)}`);
+        this.diags.error("X0811", "enum values must be `int`s or `String`s", m.init?.span ?? m.name.span, `found ${JSON.stringify(v)}`);
         continue;
       }
       if (kind && vk !== kind) {
-        this.diags.error("K0811", "an enum can't mix numbers and strings", m.init?.span ?? m.name.span, `this is a ${vk === "number" ? "number" : "String"}`);
+        this.diags.error("X0811", "an enum can't mix numbers and strings", m.init?.span ?? m.name.span, `this is a ${vk === "number" ? "number" : "String"}`);
         continue;
       }
       kind = vk;
       const dup = seen.get(v);
       if (dup) {
-        this.diags.error("K0813", `\`${m.name.name}\` has the same value as \`${dup.name}\``, m.init?.span ?? m.name.span, `= ${JSON.stringify(v)}`)
+        this.diags.error("X0813", `\`${m.name.name}\` has the same value as \`${dup.name}\``, m.init?.span ?? m.name.span, `= ${JSON.stringify(v)}`)
           .secondary(dup.span, "first member with this value");
         continue;
       }
@@ -838,41 +838,41 @@ class Env {
   /** Native members describe JS: no bodies, no initial values. */
   private checkNativeMember(m: A.Member) {
     if (m.kind === "StaticBlock") {
-      this.diags.error("K0820", "native classes can't have `static` blocks", m.span);
+      this.diags.error("X0820", "native classes can't have `static` blocks", m.span);
     } else if (m.kind === "Method" && m.body) {
-      this.diags.error("K0820", "native members can't have a body", m.body.span).note("a native class only describes an existing JavaScript class");
+      this.diags.error("X0820", "native members can't have a body", m.body.span).note("a native class only describes an existing JavaScript class");
     } else if (m.kind === "Field" && m.init && !m.modifiers.inline) {
       // (`inline` constants are compile-time values: their initializer is needed, no JS is involved.)
-      this.diags.error("K0821", "native fields can't have an initial value", m.init.span).note("the value comes from JavaScript");
+      this.diags.error("X0821", "native fields can't have an initial value", m.init.span).note("the value comes from JavaScript");
     } else if (m.kind === "Method" && m.isDestructor) {
-      this.diags.error("K0820", "native classes can't declare destructors", m.name.span);
+      this.diags.error("X0820", "native classes can't declare destructors", m.name.span);
     }
   }
 
-  /** `~Name()` rules (K0800–K0804). */
+  /** `~Name()` rules (X0800–X0804). */
   private collectDestructor(info: ClassInfo, m: A.Method) {
     const name = info.decl.name.name;
     if (info.decl.isInterface) {
-      this.diags.error("K0800", "interfaces can't have destructors", m.name.span);
+      this.diags.error("X0800", "interfaces can't have destructors", m.name.span);
       return;
     }
     if (info.dtor) {
-      this.diags.error("K0800", `class \`${name}\` has more than one destructor`, m.name.span).secondary(info.dtor.decl.name.span, "first destructor here");
+      this.diags.error("X0800", `class \`${name}\` has more than one destructor`, m.name.span).secondary(info.dtor.decl.name.span, "first destructor here");
       return;
     }
     if (m.name.name !== name) {
-      this.diags.error("K0803", `a destructor must be named \`~${name}\``, m.name.span)
+      this.diags.error("X0803", `a destructor must be named \`~${name}\``, m.name.span)
         .help(`rename it to \`~${name}\``, [{ span: m.name.span, text: name }]);
     }
-    if (m.params.length > 0) this.diags.error("K0804", "destructors have no parameters", m.params[0]!.span);
-    if (m.returnType) this.diags.error("K0804", "destructors have no return type", m.returnType.span);
+    if (m.params.length > 0) this.diags.error("X0804", "destructors have no parameters", m.params[0]!.span);
+    if (m.returnType) this.diags.error("X0804", "destructors have no return type", m.returnType.span);
     for (const key of ["static", "abstract", "final", "inline", "override"] as const) {
       const mod = m.modifiers[key];
-      if (mod) this.diags.error("K0804", `destructors can't be \`${key}\``, mod);
+      if (mod) this.diags.error("X0804", `destructors can't be \`${key}\``, mod);
     }
     const vis = m.modifiers.visibility;
     if (vis && vis.value !== "public" && vis.value !== "protected") {
-      this.diags.error("K0804", "destructors are `public` or `protected`", vis.span).note("`dispose()` gets the same visibility");
+      this.diags.error("X0804", "destructors are `public` or `protected`", vis.span).note("`dispose()` gets the same visibility");
     }
     // Destructors default to public (unlike other members), so `dispose()` can be called;
     // an invalid visibility was reported above and is treated as public from here on.
@@ -885,13 +885,13 @@ class Env {
    * `IDisposable`/`IAsyncDisposable` interfaces they implement, and the rules tying them together.
    */
   wireDestructors(info: ClassInfo) {
-    const iSync = this.classes.get("klass.IDisposable");
-    const iAsync = this.classes.get("klass.IAsyncDisposable");
+    const iSync = this.classes.get("xenon.IDisposable");
+    const iAsync = this.classes.get("xenon.IAsyncDisposable");
     const inherited = info.parent ? chainDestructor(info.parent) : undefined;
     const own = info.dtor;
     if (own) {
       if (inherited && inherited.async !== own.async) {
-        this.diags.error("K0806", `\`${info.decl.name.name}\`'s destructor must be ${inherited.async ? "async" : "synchronous"} like its parent's`, own.decl.name.span)
+        this.diags.error("X0806", `\`${info.decl.name.name}\`'s destructor must be ${inherited.async ? "async" : "synchronous"} like its parent's`, own.decl.name.span)
           .secondary(inherited.decl.name.span, `\`${inherited.async ? "async " : ""}~${inherited.owner.decl.name.name}\` declared here`)
           .note("the parent destructor runs right after this one");
         own.async = inherited.async; // reported; avoid follow-up interface mismatches
@@ -899,7 +899,7 @@ class Env {
       const ret: Type = own.async ? this.promiseOf(T.void) : T.void;
       const userDispose = info.members.get("dispose");
       if (userDispose) {
-        this.diags.error("K0805", "a class with a destructor already has `dispose()`", userDispose.decl.name.span)
+        this.diags.error("X0805", "a class with a destructor already has `dispose()`", userDispose.decl.name.span)
           .secondary(own.decl.name.span, "the destructor provides `dispose()`");
       }
       info.members.set("dispose", {
@@ -909,14 +909,14 @@ class Env {
       const iface = own.async ? iAsync : iSync;
       if (iface && !inherited && !info.interfaces.includes(iface)) info.interfaces.push(iface);
     } else if (inherited && info.members.has("dispose")) {
-      this.diags.error("K0805", "this class inherits a destructor, which provides `dispose()`", info.members.get("dispose")!.decl.name.span)
+      this.diags.error("X0805", "this class inherits a destructor, which provides `dispose()`", info.members.get("dispose")!.decl.name.span)
         .secondary(inherited.decl.name.span, "inherited destructor");
     }
     const chain = own ?? inherited;
     for (const [iface, async] of [[iSync, false], [iAsync, true]] as const) {
       const node = info.decl.implements[info.interfaces.indexOf(iface!)];
       if (iface && info.interfaces.includes(iface) && (!chain || chain.async !== async) && node) {
-        this.diags.error("K0808", `implement \`${iface.decl.name.name}\` by declaring a destructor`, node.span)
+        this.diags.error("X0808", `implement \`${iface.decl.name.name}\` by declaring a destructor`, node.span)
           .help(`add \`${async ? "async " : ""}~${info.decl.name.name}() { … }\`; it provides \`dispose()\` and works with \`using\``);
       }
     }
@@ -926,37 +926,37 @@ class Env {
   private checkAbstractMembers(decl: A.ClassDecl) {
     const abstractClass = decl.modifiers.abstract;
     if (abstractClass && decl.modifiers.final) {
-      this.diags.error("K0717", "a class can't be both `abstract` and `final`", decl.modifiers.final)
+      this.diags.error("X0717", "a class can't be both `abstract` and `final`", decl.modifiers.final)
         .note("an abstract class only makes sense when it is extended");
     }
     for (const m of decl.members) {
       if (m.kind === "StaticBlock") continue;
       const abs = m.modifiers.abstract;
       if (m.kind === "Field") {
-        if (abs) this.diags.error("K0715", "fields can't be `abstract`", abs).help("declare an abstract getter instead");
+        if (abs) this.diags.error("X0715", "fields can't be `abstract`", abs).help("declare an abstract getter instead");
         continue;
       }
       if (m.isConstructor) {
-        if (abs) this.diags.error("K0715", "constructors can't be `abstract`", abs);
+        if (abs) this.diags.error("X0715", "constructors can't be `abstract`", abs);
         continue;
       }
       if (abs) {
         if (!abstractClass) {
           const kw = decl.span.file.text.indexOf("class", decl.span.start);
-          this.diags.error("K0712", `\`${m.name.name}\` is abstract, but \`${decl.name.name}\` isn't`, abs)
+          this.diags.error("X0712", `\`${m.name.name}\` is abstract, but \`${decl.name.name}\` isn't`, abs)
             .help("make the class abstract", [{ span: span(decl.span.file, kw, kw), text: "abstract " }]);
         }
-        if (m.body) this.diags.error("K0713", "abstract members can't have a body", m.body.span).note("subclasses provide the implementation");
+        if (m.body) this.diags.error("X0713", "abstract members can't have a body", m.body.span).note("subclasses provide the implementation");
         for (const key of ["static", "final", "inline"] as const) {
           const mod = m.modifiers[key];
-          if (mod) this.diags.error("K0716", `abstract members can't be \`${key}\``, mod);
+          if (mod) this.diags.error("X0716", `abstract members can't be \`${key}\``, mod);
         }
         if (m.modifiers.visibility?.value === "private") {
-          this.diags.error("K0716", "abstract members can't be `private`", m.modifiers.visibility.span).note("subclasses couldn't see it to implement it");
+          this.diags.error("X0716", "abstract members can't be `private`", m.modifiers.visibility.span).note("subclasses couldn't see it to implement it");
         }
       } else if (!m.body) {
         const end = m.span.end;
-        this.diags.error("K0714", `\`${m.name.name}\` has no body`, m.name.span)
+        this.diags.error("X0714", `\`${m.name.name}\` has no body`, m.name.span)
           .help(abstractClass ? "add a body, or mark it `abstract`" : "add a body", [{ span: span(m.span.file, end, end), text: " {}" }]);
       }
     }
@@ -980,7 +980,7 @@ class Env {
     }
     if (missing.length === 0) return;
     const names = missing.map((m) => `\`${m.name}\``).join(", ");
-    const d = this.diags.error("K0711", `\`${info.decl.name.name}\` doesn't implement the abstract ${missing.length === 1 ? "member" : "members"} ${names}`, info.decl.name.span, `inherits ${missing.length} abstract member${missing.length === 1 ? "" : "s"}`);
+    const d = this.diags.error("X0711", `\`${info.decl.name.name}\` doesn't implement the abstract ${missing.length === 1 ? "member" : "members"} ${names}`, info.decl.name.span, `inherits ${missing.length} abstract member${missing.length === 1 ? "" : "s"}`);
     for (const m of missing.slice(0, 3)) d.secondary(m.decl.name.span, `declared abstract in \`${m.owner.decl.name.name}\``);
     this.addStubsFix(d, info, missing, true);
   }
@@ -1021,7 +1021,7 @@ class Env {
         const implHalves = req.kind === "accessor" && impl.kind === "accessor" ? [...accessorHalves(impl), ...(impl.delegate ? [impl.delegate] : [])] : [];
         for (const h of reqHalves) if (impl.kind === "accessor" && !implHalves.includes(h)) diffs.push(`it has no ${h === "get" ? "getter" : "setter"}`);
         if (diffs.length > 0) {
-          const d = this.diags.error("K0788", `\`${impl.owner.decl.name.name}.${req.name}\` doesn't match \`${iface.decl.name.name}.${req.name}\``, impl.decl.name.span)
+          const d = this.diags.error("X0788", `\`${impl.owner.decl.name.name}.${req.name}\` doesn't match \`${iface.decl.name.name}.${req.name}\``, impl.decl.name.span)
             .secondary(req.decl.name.span, "required by this interface member");
           for (const diff of diffs) d.note(diff);
         }
@@ -1030,7 +1030,7 @@ class Env {
     // Abstract classes may leave interface members to their subclasses.
     if (missing.length === 0 || info.decl.modifiers.abstract) return;
     const names = missing.map((m) => `\`${m.name}\``).join(", ");
-    const d = this.diags.error("K0787", `\`${info.decl.name.name}\` doesn't implement ${names}`, info.decl.name.span, `missing ${missing.length} interface member${missing.length === 1 ? "" : "s"}`);
+    const d = this.diags.error("X0787", `\`${info.decl.name.name}\` doesn't implement ${names}`, info.decl.name.span, `missing ${missing.length} interface member${missing.length === 1 ? "" : "s"}`);
     for (const m of missing.slice(0, 3)) d.secondary(m.decl.name.span, `required by \`${m.owner.decl.name.name}\``);
     this.addStubsFix(d, info, missing, false);
   }
@@ -1047,7 +1047,7 @@ class Env {
     for (const i of [...info.interfaces]) {
       if (reaches(i, new Set())) {
         const node = info.decl.implements[info.interfaces.indexOf(i)] ?? info.decl.name;
-        this.diags.error("K0701", "inheritance cycle", "span" in node ? node.span : info.decl.name.span, `\`${i.decl.name.name}\` leads back to \`${info.decl.name.name}\``);
+        this.diags.error("X0701", "inheritance cycle", "span" in node ? node.span : info.decl.name.span, `\`${i.decl.name.name}\` leads back to \`${info.decl.name.name}\``);
         info.interfaces = info.interfaces.filter((x) => x !== i);
       }
     }
@@ -1058,7 +1058,7 @@ class Env {
     while (cur) {
       if (cur === info) {
         const names = [...chain, info].map((c) => c.decl.name.name).join(" extends ");
-        this.diags.error("K0701", "inheritance cycle", ext.span, names);
+        this.diags.error("X0701", "inheritance cycle", ext.span, names);
         info.parent = undefined; // break the cycle so later phases terminate
         return;
       }
@@ -1068,12 +1068,12 @@ class Env {
     }
     const finalMod = info.parent.decl.modifiers.final;
     if (finalMod) {
-      this.diags.error("K0702", `\`${info.parent.decl.name.name}\` is \`final\` and can't be extended`, ext.span)
+      this.diags.error("X0702", `\`${info.parent.decl.name.name}\` is \`final\` and can't be extended`, ext.span)
         .secondary(finalMod, "declared `final` here");
     }
   }
 
-  /** `override` rules (K0720–K0726) and accessor halves inherited from the parent. */
+  /** `override` rules (X0720–X0726) and accessor halves inherited from the parent. */
   checkOverrides(info: ClassInfo) {
     if (info.decl.isInterface || isNative(info)) return;
     const jsAncestor = hasJsAncestor(info);
@@ -1082,7 +1082,7 @@ class Env {
       const ov = m.modifiers.override;
       if (m.kind === "Method" && m.isDestructor) continue; // checked in collectDestructor
       if (m.kind === "Method" && m.isConstructor) {
-        if (ov) this.diags.error("K0721", "constructors can't be `override`", ov);
+        if (ov) this.diags.error("X0721", "constructors can't be `override`", ov);
         continue;
       }
       const name = m.name.name;
@@ -1092,18 +1092,18 @@ class Env {
       const parentName = inherited?.owner.decl.name.name;
 
       if (m.kind === "Field") {
-        if (ov) this.diags.error("K0726", "fields can't be overridden", ov).help("remove `override`");
+        if (ov) this.diags.error("X0726", "fields can't be overridden", ov).help("remove `override`");
         if (inherited && !(isStatic && inherited.isStatic)) {
-          this.diags.error("K0724", `\`${name}\` is already declared in \`${parentName}\``, m.name.span, "redeclared here")
+          this.diags.error("X0724", `\`${name}\` is already declared in \`${parentName}\``, m.name.span, "redeclared here")
             .secondary(inherited.decl.name.span, "inherited member")
             .note("fields can't be overridden; use the inherited one or pick another name");
         }
         continue;
       }
       if (isStatic) {
-        if (ov) this.diags.error("K0721", "static members can't be overridden", ov).note("a static member with a parent's name simply hides it");
+        if (ov) this.diags.error("X0721", "static members can't be overridden", ov).note("a static member with a parent's name simply hides it");
         if (inherited && !inherited.isStatic) {
-          this.diags.error("K0725", `static \`${name}\` conflicts with the instance member of \`${parentName}\``, m.name.span)
+          this.diags.error("X0725", `static \`${name}\` conflicts with the instance member of \`${parentName}\``, m.name.span)
             .secondary(inherited.decl.name.span, "instance member");
         }
         continue;
@@ -1113,10 +1113,10 @@ class Env {
         if (root && !jsAncestor) {
           if (!ov) this.missingOverride(m, `\`Object.${name}\``);
           if (m.params.length > 0 || m.accessor) {
-            this.diags.error("K0722", `\`${name}\` doesn't match \`Object.${name}\``, m.name.span).note(`it must be \`${name}():${typeToString(root)}\``);
+            this.diags.error("X0722", `\`${name}\` doesn't match \`Object.${name}\``, m.name.span).note(`it must be \`${name}():${typeToString(root)}\``);
           }
         } else if (ov && !jsAncestor) {
-          const d = this.diags.error("K0721", `\`${name}\` doesn't override anything`, ov, "nothing to override");
+          const d = this.diags.error("X0721", `\`${name}\` doesn't override anything`, ov, "nothing to override");
           const fromInterface = [...supertypes(info)].find((t) => t.decl.isInterface && t.members.has(name));
           if (fromInterface) d.note(`it implements \`${fromInterface.decl.name.name}.${name}\`; implementing an interface member doesn't use \`override\``);
           const names = info.parent ? allMemberNames(info.parent) : [];
@@ -1127,12 +1127,12 @@ class Env {
         continue;
       }
       if (inherited.isStatic) {
-        this.diags.error("K0725", `instance member \`${name}\` conflicts with static \`${parentName}.${name}\``, m.name.span)
+        this.diags.error("X0725", `instance member \`${name}\` conflicts with static \`${parentName}.${name}\``, m.name.span)
           .secondary(inherited.decl.name.span, "static member");
         continue;
       }
       if (inherited.kind === "field") {
-        this.diags.error("K0724", `\`${name}\` is a field in \`${parentName}\` and can't be redefined`, m.name.span)
+        this.diags.error("X0724", `\`${name}\` is a field in \`${parentName}\` and can't be redefined`, m.name.span)
           .secondary(inherited.decl.name.span, "inherited field");
         continue;
       }
@@ -1142,7 +1142,7 @@ class Env {
         : inherited.decl;
       const finalMod = parentHalf?.modifiers.final;
       if (finalMod) {
-        this.diags.error("K0723", `\`${parentName}.${name}\` is \`final\` and can't be overridden`, m.name.span)
+        this.diags.error("X0723", `\`${parentName}.${name}\` is \`final\` and can't be overridden`, m.name.span)
           .secondary(finalMod, "declared `final` here");
         continue;
       }
@@ -1152,12 +1152,12 @@ class Env {
 
   private missingOverride(m: A.Method, what: string, inherited?: MemberSig) {
     const at = span(m.span.file, m.span.start, m.span.start);
-    const d = this.diags.error("K0720", `\`${m.name.name}\` overrides ${what} but is not marked \`override\``, m.name.span, `overrides ${what}`);
+    const d = this.diags.error("X0720", `\`${m.name.name}\` overrides ${what} but is not marked \`override\``, m.name.span, `overrides ${what}`);
     if (inherited) d.secondary(inherited.decl.name.span, "original declared here");
     d.help("add `override`", [{ span: at, text: "override " }]);
   }
 
-  /** K0722: an override must match the original's shape. Also wires up inherited accessor halves. */
+  /** X0722: an override must match the original's shape. Also wires up inherited accessor halves. */
   private checkSignature(m: A.Method, info: ClassInfo, inherited: MemberSig) {
     const own = info.members.get(m.name.name)!;
     const diffs: string[] = [];
@@ -1197,7 +1197,7 @@ class Env {
       }
     }
     if (diffs.length === 0) return;
-    const d = this.diags.error("K0722", `\`${m.name.name}\` doesn't match the member it overrides`, m.name.span)
+    const d = this.diags.error("X0722", `\`${m.name.name}\` doesn't match the member it overrides`, m.name.span)
       .secondary(inherited.decl.name.span, `\`${inherited.owner.decl.name.name}.${m.name.name}\` declared here`);
     for (const diff of diffs) d.note(diff);
   }
@@ -1218,21 +1218,21 @@ class Env {
       if (m.kind === "Method" && m.name.name.startsWith("operator") && m.name.name !== "operator") {
         const sym = m.name.name.slice("operator".length);
         if (sym !== "+") {
-          this.diags.error("K0371", `only \`operator+\` is supported for now`, m.name.span, `\`operator${sym}\``)
+          this.diags.error("X0371", `only \`operator+\` is supported for now`, m.name.span, `\`operator${sym}\``)
             .note("`-`, `*`, `/`, `==` and unary `-` may follow later");
         } else {
-          if (m.modifiers.static) this.diags.error("K0373", "`operator+` must be an instance method", m.modifiers.static);
-          if (m.accessor) this.diags.error("K0372", "`operator+` must be a method, not an accessor", m.name.span);
+          if (m.modifiers.static) this.diags.error("X0373", "`operator+` must be an instance method", m.modifiers.static);
+          if (m.accessor) this.diags.error("X0372", "`operator+` must be a method, not an accessor", m.name.span);
           if (m.params.length !== 1 || m.params[0]!.rest || m.params[0]!.init) {
-            this.diags.error("K0372", "`operator+` takes exactly one (required) parameter: the right operand", m.name.span);
+            this.diags.error("X0372", "`operator+` takes exactly one (required) parameter: the right operand", m.name.span);
           }
-          if (m.returnType?.kind === "VoidType") this.diags.error("K0372", "`operator+` must return a value", m.returnType.span);
+          if (m.returnType?.kind === "VoidType") this.diags.error("X0372", "`operator+` must return a value", m.returnType.span);
         }
       }
       if (m.kind === "Method" && m.isConst) {
         const what = m.isConstructor ? "constructors" : m.modifiers.static ? "static methods" : m.accessor === "set" ? "setters" : undefined;
         if (what) {
-          this.diags.error("K0903", `${what} can't be \`const\``, m.name.span)
+          this.diags.error("X0903", `${what} can't be \`const\``, m.name.span)
             .note(m.modifiers.static ? "`const` restricts `this`, which static methods don't have" : "`const` means the method doesn't change `this`");
         }
       }
@@ -1243,12 +1243,12 @@ class Env {
       }
       if (m.kind === "Method" && m.isConstructor) {
         if (info.ctor) {
-          this.diags.error("K0202", `class \`${decl.name.name}\` has more than one constructor`, m.name.span)
+          this.diags.error("X0202", `class \`${decl.name.name}\` has more than one constructor`, m.name.span)
             .secondary(info.ctor.decl.name.span, "first constructor here")
-            .note("Klass has no overloading; use default parameter values instead");
+            .note("Xenon has no overloading; use default parameter values instead");
           continue;
         }
-        if (m.returnType) this.diags.error("K0203", "constructors don't have a return type", m.returnType.span);
+        if (m.returnType) this.diags.error("X0203", "constructors don't have a return type", m.returnType.span);
         info.ctor = { decl: m, type: this.methodType(m, scope, T.void, this.memberParams(info, m)) };
         continue;
       }
@@ -1259,22 +1259,22 @@ class Env {
         const valueType = m.accessor === "get"
           ? (m.returnType ? this.resolveType(m.returnType, scope, false, this.memberParams(info, m)) : this.untypedReturn(m.name, m.span, m.body, "getter"))
           : m.params[0]?.type ? this.resolveType(m.params[0].type, scope, false, this.memberParams(info, m)) : this.untyped(m.name.span, "setter parameter");
-        if (m.accessor === "get" && m.params.length > 0) this.diags.error("K0205", "getters can't have parameters", m.params[0]!.span);
-        if (m.accessor === "set" && m.params.length !== 1) this.diags.error("K0206", "setters take exactly one parameter", m.name.span);
+        if (m.accessor === "get" && m.params.length > 0) this.diags.error("X0205", "getters can't have parameters", m.params[0]!.span);
+        if (m.accessor === "set" && m.params.length !== 1) this.diags.error("X0206", "setters take exactly one parameter", m.name.span);
         if (m.accessor === "set" && m.returnType && m.returnType.kind !== "VoidType") {
-          this.diags.error("K0211", "a setter's return type must be `void`", m.returnType.span)
+          this.diags.error("X0211", "a setter's return type must be `void`", m.returnType.span)
             .help("use `:void`", [{ span: m.returnType.span, text: "void" }]);
         }
         if (prev && prev.kind === "accessor" && !prev.decl2 && (prev.decl as A.Method).accessor !== m.accessor && prev.isStatic === isStatic) {
           prev.decl2 = m;
           if (visibilityOf(m) !== visibilityOf(prev.decl)) {
-            this.diags.error("K0212", "a getter and its setter must have the same visibility", m.name.span, `\`${visibilityOf(m)}\``)
+            this.diags.error("X0212", "a getter and its setter must have the same visibility", m.name.span, `\`${visibilityOf(m)}\``)
               .secondary(prev.decl.name.span, `\`${visibilityOf(prev.decl)}\``);
           }
           const getterType = m.accessor === "get" ? valueType : prev.type;
           const setterType = m.accessor === "set" ? valueType : prev.type;
           if (!sameType(getterType, setterType) && !isDynamic(getterType) && !isDynamic(setterType)) {
-            this.diags.error("K0207", "getter and setter types don't match", m.name.span, `this is \`${typeToString(valueType)}\``)
+            this.diags.error("X0207", "getter and setter types don't match", m.name.span, `this is \`${typeToString(valueType)}\``)
               .secondary(prev.decl.name.span, `the other accessor uses \`${typeToString(prev.type)}\``);
           }
           prev.type = getterType;
@@ -1306,24 +1306,24 @@ class Env {
         continue;
       }
       if (m.modifiers.inline && m.kind === "Method") {
-        this.diags.error("K0520", "`inline` is only allowed on constants", m.modifiers.inline)
+        this.diags.error("X0520", "`inline` is only allowed on constants", m.modifiers.inline)
           .note("inline methods are not supported (yet)");
       }
       if (m.kind === "Field" && m.modifiers.inline) {
         if (!m.modifiers.static) {
-          this.diags.error("K0520", "an `inline` field must be `static`", m.modifiers.inline)
+          this.diags.error("X0520", "an `inline` field must be `static`", m.modifiers.inline)
             .help("add `static`", [{ span: span(m.modifiers.inline.file, m.modifiers.inline.start, m.modifiers.inline.start), text: "static " }]);
         }
         if (m.decl === "var") {
-          this.diags.error("K0521", "an `inline` field must be `final` or `const`", m.name.span, "declared with `var`")
+          this.diags.error("X0521", "an `inline` field must be `final` or `const`", m.name.span, "declared with `var`")
             .note("an inline constant's value can never change");
         }
-        if (!m.init) this.diags.error("K0522", `inline constant \`${m.name.name}\` needs a value`, m.name.span);
+        if (!m.init) this.diags.error("X0522", `inline constant \`${m.name.name}\` needs a value`, m.name.span);
       }
       if (m.kind === "Field") {
         const type = m.type ? this.resolveType(m.type, scope, false, this.memberParams(info, m)) : this.untyped(m.name.span, "field", m.init);
         if (m.decl === "const" && !m.init && !decl.isEnum && !isNative(info)) {
-          this.diags.error("K0503", `constant \`${m.name.name}\` must be initialized`, m.name.span)
+          this.diags.error("X0503", `constant \`${m.name.name}\` must be initialized`, m.name.span)
             .help("use `final` for a value assigned once in the constructor");
         }
         info.members.set(m.name.name, {
@@ -1374,14 +1374,14 @@ class Env {
   }
 
   private duplicate(m: A.Field | A.Method, prev: MemberSig) {
-    this.diags.error("K0201", `\`${m.name.name}\` is declared more than once in \`${prev.owner.decl.name.name}\``, m.name.span, "duplicate declaration")
+    this.diags.error("X0201", `\`${m.name.name}\` is declared more than once in \`${prev.owner.decl.name.name}\``, m.name.span, "duplicate declaration")
       .secondary(prev.decl.name.span, "first declared here");
   }
 
   /** Warns about a missing annotation and types the declaration as `*`. `fixAt`: where `:*` goes. */
   untyped(at: Span, what: string, init?: A.Expr, fixAt: number = at.end): Type {
-    const d = this.diags.warning("K0850", `missing type annotation on ${what}; it is untyped (\`*\`)`, at);
-    if (init) d.note("Klass doesn't infer declaration types");
+    const d = this.diags.warning("X0850", `missing type annotation on ${what}; it is untyped (\`*\`)`, at);
+    if (init) d.note("Xenon doesn't infer declaration types");
     d.help("add a type, or `:*` to make it explicitly dynamic", [{ span: span(at.file, fixAt, fixAt), text: ":*" }]);
     return T.any;
   }
@@ -1398,13 +1398,13 @@ class Env {
     let sawOptional = false;
     const params = m.params.map((p, i) => {
       const type = p.type ? this.resolveType(p.type, scope, false, tparams) : this.untyped(p.name.span, `parameter \`${p.name.name}\``);
-      if (p.rest && i !== m.params.length - 1) this.diags.error("K0208", "a rest parameter must be the last parameter", p.span);
+      if (p.rest && i !== m.params.length - 1) this.diags.error("X0208", "a rest parameter must be the last parameter", p.span);
       if (p.rest && p.type && !elementOf(type) && !isDynamic(type)) {
-        this.diags.error("K0209", "a rest parameter must be an `Array`, e.g. `...names:Array<String>`", p.type.span);
+        this.diags.error("X0209", "a rest parameter must be an `Array`, e.g. `...names:Array<String>`", p.type.span);
       }
       if (p.init) sawOptional = true;
       else if (sawOptional && !p.rest) {
-        this.diags.error("K0210", "a required parameter can't follow an optional one", p.span);
+        this.diags.error("X0210", "a required parameter can't follow an optional one", p.span);
       }
       return { name: p.name.name, type, optional: !!p.init, rest: p.rest };
     });
@@ -1420,7 +1420,7 @@ class Env {
       const seen = new Set<string>();
       ps = (m.typeParams ?? []).flatMap((p) => {
         if (seen.has(p.name)) {
-          this.diags.error("K0796", `type parameter \`${p.name}\` is declared twice`, p.span);
+          this.diags.error("X0796", `type parameter \`${p.name}\` is declared twice`, p.span);
           return [];
         }
         seen.add(p.name);
@@ -1441,7 +1441,7 @@ class Env {
   }
 }
 
-/** Looks a member up on a class and its Klass superclasses (implementations only, no interfaces). */
+/** Looks a member up on a class and its Xenon superclasses (implementations only, no interfaces). */
 export function findClassMember(info: ClassInfo, name: string): MemberSig | undefined {
   const own = info.members.get(name);
   if (own) return own;
@@ -1469,8 +1469,8 @@ function disposeKind(t: Type, env: Env): "sync" | "async" | "none" | "dynamic" {
   if (t.kind !== "class") return "none";
   const d = chainDestructor(t.info);
   if (d) return d.async ? "async" : "sync";
-  const iSync = env.classes.get("klass.IDisposable");
-  const iAsync = env.classes.get("klass.IAsyncDisposable");
+  const iSync = env.classes.get("xenon.IDisposable");
+  const iAsync = env.classes.get("xenon.IAsyncDisposable");
   if (iAsync && isSubclass(t.info, iAsync)) return "async";
   if (iSync && isSubclass(t.info, iSync)) return "sync";
   return "none";
@@ -1560,7 +1560,7 @@ function hasJsAncestor(info: ClassInfo): boolean {
   return false;
 }
 
-/** JS error classes are hidden from Klass code; each maps to the exception to use instead. */
+/** JS error classes are hidden from Xenon code; each maps to the exception to use instead. */
 const ERROR_HINTS: Record<string, string> = {
   Error: "Exception", TypeError: "TypeException", RangeError: "RangeException", SyntaxError: "Exception",
   ReferenceError: "Exception", EvalError: "Exception", URIError: "Exception", AggregateError: "Exception",
@@ -1706,7 +1706,7 @@ class BodyChecker {
     if (obj.kind === "class") return memberTypeIn(obj.info, obj.args ?? [], m.owner, m.type);
     return m.type;
   }
-  /** Locals holding a newly created disposable (for K0801): were they disposed or did they escape? */
+  /** Locals holding a newly created disposable (for X0801): were they disposed or did they escape? */
   private disposables = new Map<Local, { name: A.Ident; disposed: boolean; escaped: boolean; type: string }>();
   /** Locals declared in the current method (for the unused-variable warning). */
   private declared: { local: Local; name: A.Ident; fn?: boolean }[] = [];
@@ -1780,7 +1780,7 @@ class BodyChecker {
           if (pc.kind === "declared") this.env.checkAccess(pc.decl, pc.owner, this.info, m.name.span, `the constructor of \`${pc.owner.decl.name.name}\` (called implicitly)`);
           if (pc.kind === "declared" && requiresArgs(pc)) {
             const name = pc.owner.decl.name.name;
-            const d = this.diags.error("K0731", `the constructor must call \`super(...)\` first`, m.name.span, `\`${name}\`'s constructor needs arguments`);
+            const d = this.diags.error("X0731", `the constructor must call \`super(...)\` first`, m.name.span, `\`${name}\`'s constructor needs arguments`);
             d.secondary(pc.decl.name.span, `\`${name}\` constructor`);
             if (m.body) {
               const at = m.body.span.start + 1;
@@ -1810,7 +1810,7 @@ class BodyChecker {
       let bodyRet = ret;
       if (m.modifiers.async) {
         if (m.isConstructor || m.accessor) {
-          this.diags.error("K0761", `${m.isConstructor ? "constructors" : "getters and setters"} can't be \`async\``, m.modifiers.async);
+          this.diags.error("X0761", `${m.isConstructor ? "constructors" : "getters and setters"} can't be \`async\``, m.modifiers.async);
         } else bodyRet = this.asyncResult(ret, m.returnType);
       }
       this.method = { ret: bodyRet, retSpan: m.accessor === "set" ? undefined : m.returnType?.span, isConstructor: m.isConstructor, name: m.name.name, async: !!m.modifiers.async, asyncAt };
@@ -1828,7 +1828,7 @@ class BodyChecker {
       const close = span(m.body.span.file, m.body.span.end - 1, m.body.span.end);
       const needsValue = !m.isConstructor && m.accessor !== "set" && bodyRet.kind !== "void" && !isDynamic(bodyRet);
       if (needsValue && completes(m.body)) {
-        const d = this.diags.error("K0314", `not all code paths of \`${m.name.name}\` return a value`, close, "execution can reach the end of the method here");
+        const d = this.diags.error("X0314", `not all code paths of \`${m.name.name}\` return a value`, close, "execution can reach the end of the method here");
         if (m.returnType) d.secondary(m.returnType.span, `returns \`${typeToString(ret)}\``);
       }
       if (m.isConstructor && completes(m.body)) this.finalFieldsAssigned(close, "the constructor can end here");
@@ -1842,14 +1842,14 @@ class BodyChecker {
 
     for (const f of staticFinals) {
       if (!f.field.init && !f.field.modifiers.inline && staticDA.get(f.sig) !== "yes") {
-        this.diags.error("K0514", `static final field \`${f.field.name.name}\` is not assigned on every path`, f.field.name.span)
+        this.diags.error("X0514", `static final field \`${f.field.name.name}\` is not assigned on every path`, f.field.name.span)
           .help("give it a value, or assign it in a `static { }` block");
       }
     }
     if (!this.info.ctor) {
       for (const f of instanceFinals) {
         if (!f.field.init) {
-          this.diags.error("K0515", `final field \`${f.field.name.name}\` is never assigned`, f.field.name.span)
+          this.diags.error("X0515", `final field \`${f.field.name.name}\` is never assigned`, f.field.name.span)
             .help("give it a value, or assign it in the constructor");
         }
       }
@@ -1861,7 +1861,7 @@ class BodyChecker {
     for (const [key, state] of this.da) {
       const m = key as MemberSig;
       if (m.owner !== this.info || m.kind !== "field" || state === "yes") continue;
-      this.diags.error("K0514", `final field \`${m.name}\` is not assigned on every path through the constructor`, at, label)
+      this.diags.error("X0514", `final field \`${m.name}\` is not assigned on every path through the constructor`, at, label)
         .secondary(m.decl.name.span, `\`${m.name}\` declared \`final\` here`);
     }
   }
@@ -1892,10 +1892,10 @@ class BodyChecker {
   private reportFold(f: Fold, name: A.Ident, type: Type, typeSpan: Span | undefined, init: A.Expr): boolean {
     if (!f.ok) {
       if (f.cycle) {
-        this.diags.error("K0524", `inline constant \`${name.name}\` depends on itself`, name.span)
+        this.diags.error("X0524", `inline constant \`${name.name}\` depends on itself`, name.span)
           .secondary(f.at, "this reference leads back to it");
       } else if (!f.reported) {
-        this.diags.error("K0523", "inline initializer is not a compile-time constant", f.at, f.reason)
+        this.diags.error("X0523", "inline initializer is not a compile-time constant", f.at, f.reason)
           .secondary(name.span, `\`${name.name}\` is declared \`inline\``)
           .note("allowed: literals, other inline constants, operators and `int()`/`uint()`/`Float()`/`String()`/`Boolean()`");
       }
@@ -1903,7 +1903,7 @@ class BodyChecker {
     }
     const enumOk = type.kind === "class" && type.info.decl.isEnum && [...(type.info.enumValues?.values() ?? [])].includes(f.value);
     if (!enumOk && !fits(f.value, type)) {
-      const d = this.diags.error("K0525", `the value of \`${name.name}\` doesn't fit \`${typeToString(type)}\``, name.span, `evaluates to ${JSON.stringify(f.value)}`);
+      const d = this.diags.error("X0525", `the value of \`${name.name}\` doesn't fit \`${typeToString(type)}\``, name.span, `evaluates to ${JSON.stringify(f.value)}`);
       if (typeSpan) d.secondary(typeSpan, "declared type");
       if ((isPrim(type, "int") || isPrim(type, "uint")) && typeof f.value === "number") {
         const fn = isPrim(type, "int") ? "int" : "uint";
@@ -1943,9 +1943,9 @@ class BodyChecker {
     if (this.writing) return;
     const state = this.da.get(key);
     if (state === "no") {
-      this.diags.error("K0510", `${name} is used before it is assigned`, at).secondary(declSpan, "declared here without a value");
+      this.diags.error("X0510", `${name} is used before it is assigned`, at).secondary(declSpan, "declared here without a value");
     } else if (state === "maybe") {
-      this.diags.error("K0511", `${name} might not be assigned here`, at)
+      this.diags.error("X0511", `${name} might not be assigned here`, at)
         .secondary(declSpan, "declared here without a value")
         .note("it is assigned on some paths but not on others");
     }
@@ -1954,13 +1954,13 @@ class BodyChecker {
   private daWrite(key: object, at: Span, declSpan: Span, name: string) {
     const state = this.da.get(key);
     if (this.loopDepth > (this.daDepth.get(key) ?? 0)) {
-      this.diags.error("K0513", `${name} can't be assigned inside a loop or a function`, at)
+      this.diags.error("X0513", `${name} can't be assigned inside a loop or a function`, at)
         .secondary(declSpan, "declared `final` here")
         .note("the loop or function could run more than once");
     } else if (state === "yes") {
-      this.diags.error("K0501", `cannot assign twice to ${name}`, at).secondary(declSpan, "declared `final` here");
+      this.diags.error("X0501", `cannot assign twice to ${name}`, at).secondary(declSpan, "declared `final` here");
     } else if (state === "maybe") {
-      this.diags.error("K0512", `${name} might already be assigned`, at)
+      this.diags.error("X0512", `${name} might already be assigned`, at)
         .secondary(declSpan, "declared `final` here")
         .note("an earlier path may have assigned it");
     }
@@ -1992,7 +1992,7 @@ class BodyChecker {
       if (s.kind !== "FuncDecl") continue;
       const prev = scope.getOwn(s.fn.name.name);
       if (prev) {
-        this.diags.error("K0204", `\`${s.fn.name.name}\` is already declared in this scope`, s.fn.name.span).secondary(prev.nameSpan, "previously declared here");
+        this.diags.error("X0204", `\`${s.fn.name.name}\` is already declared in this scope`, s.fn.name.span).secondary(prev.nameSpan, "previously declared here");
       }
       const sig = this.fnSignature(s.fn, true);
       this.fnSigs.set(s.fn, sig);
@@ -2004,9 +2004,9 @@ class BodyChecker {
     let warned = false;
     for (const s of list) {
       if (!reachable && !warned && s.kind !== "Empty") {
-        const d = this.diags.warning("K0860", "unreachable code", s.span, "this is never executed");
+        const d = this.diags.warning("X0860", "unreachable code", s.span, "this is never executed");
         const prev = list[list.indexOf(s) - 1];
-        // Typed functions already get K0313 with this explanation; untyped (`*`) ones only get this warning.
+        // Typed functions already get X0313 with this explanation; untyped (`*`) ones only get this warning.
         if (prev?.kind === "Return" && prev.lineBreakBefore && this.method && isDynamic(this.method.ret) && !this.method.isConstructor) {
           d.note("a line break after `return` ends the statement; to return this value, put it on the same line as `return`");
         }
@@ -2073,7 +2073,7 @@ class BodyChecker {
         const t = this.valueExpr(s.value, scope);
         const exc = this.env.exception;
         if (exc && !isDynamic(t) && !assignable(t, { kind: "class", info: exc })) {
-          const d = this.diags.error("K0750", "only `Exception`s can be thrown", s.value.span, `this is \`${typeToString(t)}\``);
+          const d = this.diags.error("X0750", "only `Exception`s can be thrown", s.value.span, `this is \`${typeToString(t)}\``);
           if (isPrim(t, "String")) {
             d.help("wrap the message in an exception", [
               { span: span(s.value.span.file, s.value.span.start, s.value.span.start), text: "new Exception(" },
@@ -2115,10 +2115,10 @@ class BodyChecker {
         return;
       }
       case "Break":
-        if (this.targets.length === 0) this.diags.error("K0340", "`break` outside of a loop or `switch`", s.span);
+        if (this.targets.length === 0) this.diags.error("X0340", "`break` outside of a loop or `switch`", s.span);
         return;
       case "Continue":
-        if (!this.targets.includes("loop")) this.diags.error("K0341", "`continue` outside of a loop", s.span);
+        if (!this.targets.includes("loop")) this.diags.error("X0341", "`continue` outside of a loop", s.span);
         return;
       case "Empty":
         return;
@@ -2128,11 +2128,11 @@ class BodyChecker {
   private varDecl(s: A.VarDecl, scope: Scope) {
     const prev = scope.getOwn(s.name.name);
     if (prev) {
-      this.diags.error("K0204", `\`${s.name.name}\` is already declared in this scope`, s.name.span)
+      this.diags.error("X0204", `\`${s.name.name}\` is already declared in this scope`, s.name.span)
         .secondary(prev.nameSpan, "previously declared here");
     }
     if (!s.type) {
-      const d = this.diags.warning("K0850", `variable \`${s.name.name}\` has no type annotation; it is untyped (\`*\`)`, s.name.span);
+      const d = this.diags.warning("X0850", `variable \`${s.name.name}\` has no type annotation; it is untyped (\`*\`)`, s.name.span);
       const initType = s.init ? this.expr(s.init, scope) : undefined;
       const at = span(s.name.span.file, s.name.span.end, s.name.span.end);
       const describable = initType && !isDynamic(initType) && !["null", "void", "method", "classRef"].includes(initType.kind);
@@ -2145,7 +2145,7 @@ class BodyChecker {
     }
     const type = this.resolveT(s.type, this.scope);
     if (s.decl === "const" && !s.init) {
-      this.diags.error("K0503", `constant \`${s.name.name}\` must be initialized`, s.name.span)
+      this.diags.error("X0503", `constant \`${s.name.name}\` must be initialized`, s.name.span)
         .help("use `final` for a value assigned once later");
     }
     const local: Local = { type, kind: s.decl, nameSpan: s.name.span, typeSpan: s.type.span };
@@ -2158,8 +2158,8 @@ class BodyChecker {
       const f = this.constValue(s.init);
       if (this.reportFold(f, s.name, type, s.type.span, s.init)) local.inline = (f as { value: ConstValue }).value;
     } else {
-      if (s.inline && s.decl === "var") this.diags.error("K0521", "an `inline` constant must be `final` or `const`", s.name.span, "declared with `var`");
-      if (s.inline && !s.init) this.diags.error("K0522", `inline constant \`${s.name.name}\` needs a value`, s.name.span);
+      if (s.inline && s.decl === "var") this.diags.error("X0521", "an `inline` constant must be `final` or `const`", s.name.span, "declared with `var`");
+      if (s.inline && !s.init) this.diags.error("X0522", `inline constant \`${s.name.name}\` needs a value`, s.name.span);
       if (s.init) this.checkAssign(s.init, type, { span: s.type.span, label: "expected because of this type" }, scope);
     }
     if (s.decl === "final" && !s.init) {
@@ -2175,7 +2175,7 @@ class BodyChecker {
     if (m.isConstructor) this.finalFieldsAssigned(s.span, "the constructor can return here");
     if (!s.value) {
       if (!m.isConstructor && m.ret.kind !== "void" && !isDynamic(m.ret)) {
-        const d = this.diags.error("K0313", `\`${m.name}\` must return a \`${typeToString(m.ret)}\``, s.span, "missing return value");
+        const d = this.diags.error("X0313", `\`${m.name}\` must return a \`${typeToString(m.ret)}\``, s.span, "missing return value");
         if (m.retSpan) d.secondary(m.retSpan, "return type declared here");
         if (s.lineBreakBefore) {
           d.secondary(s.lineBreakBefore, "this is a separate statement")
@@ -2186,7 +2186,7 @@ class BodyChecker {
     }
     if (m.isConstructor || m.ret.kind === "void") {
       this.expr(s.value, scope);
-      const d = this.diags.error("K0312", `${m.isConstructor ? "a constructor" : `\`${m.name}\``} can't return a value`, s.value.span);
+      const d = this.diags.error("X0312", `${m.isConstructor ? "a constructor" : `\`${m.name}\``} can't return a value`, s.value.span);
       if (m.retSpan) d.secondary(m.retSpan, "declared `void` here");
       return;
     }
@@ -2211,16 +2211,16 @@ class BodyChecker {
         const t = this.resolveT(c.type, this.scope);
         if (t.kind === "class" && exc && isSubclass(t.info, exc)) info = t.info;
         else if (t.kind === "any") {
-          this.diags.error("K0752", "`catch (e:*)` is not allowed: everything caught is an `Exception`", c.type.span)
+          this.diags.error("X0752", "`catch (e:*)` is not allowed: everything caught is an `Exception`", c.type.span)
             .help("catch `Exception`", [{ span: c.type.span, text: "Exception" }]);
         } else if (t.kind !== "error") {
-          this.diags.error("K0751", `\`${typeToString(t)}\` is not an \`Exception\` and can't be caught`, c.type.span)
+          this.diags.error("X0751", `\`${typeToString(t)}\` is not an \`Exception\` and can't be caught`, c.type.span)
             .note("catch `Exception` or one of its subclasses");
         }
       }
       const shadow = info && caught.find((p) => isSubclass(info!, p.info));
       if (shadow && info) {
-        this.diags.error("K0753", "unreachable `catch`", c.type?.span ?? c.name.span, `\`${info.decl.name.name}\` is already caught above`)
+        this.diags.error("X0753", "unreachable `catch`", c.type?.span ?? c.name.span, `\`${info.decl.name.name}\` is already caught above`)
           .secondary(shadow.span, `catches \`${shadow.info.decl.name.name}\``);
       } else if (info) caught.push({ info, span: c.type?.span ?? c.name.span });
       const catchScope = new Scope(scope);
@@ -2268,7 +2268,7 @@ class BodyChecker {
         continue;
       }
       if (mentions(item.init, item.name.name) && scope.get(item.name.name)) {
-        this.diags.error("K0321", `the value bound to \`${item.name.name}\` refers to another \`${item.name.name}\``, item.init.span)
+        this.diags.error("X0321", `the value bound to \`${item.name.name}\` refers to another \`${item.name.name}\``, item.init.span)
           .secondary(item.name.span, "binding declared here")
           .help("give the binding a different name");
       }
@@ -2276,7 +2276,7 @@ class BodyChecker {
       if (item.type) {
         type = this.resolveT(item.type, this.scope);
         if (!isNullable(type) && !isDynamic(type)) {
-          this.diags.error("K0320", `\`${typeToString(type)}\` can never be null; use a normal condition`, item.type.span)
+          this.diags.error("X0320", `\`${typeToString(type)}\` can never be null; use a normal condition`, item.type.span)
             .note("`if (var x:T = …)` runs its block only when the value is not null");
         }
         this.checkAssign(item.init, type, { span: item.type.span, label: "expected because of this type" }, inner);
@@ -2295,7 +2295,7 @@ class BodyChecker {
       // `for (var [k, v] of …)`: an annotation states the element type; otherwise it comes from the source.
       const source = v.type ? this.resolveT(v.type, this.scope) : element;
       if (v.type && !assignable(element, source)) {
-        this.diags.error("K0308", "mismatched types", v.type.span, `the ${what} are \`${typeToString(element)}\``);
+        this.diags.error("X0308", "mismatched types", v.type.span, `the ${what} are \`${typeToString(element)}\``);
       }
       this.bindPattern(v.pattern, source, scope, v.decl === "var" ? "var" : v.decl);
       return;
@@ -2304,12 +2304,12 @@ class BodyChecker {
     if (v.type) {
       type = this.resolveT(v.type, this.scope);
       if (!assignable(element, type)) {
-        this.diags.error("K0308", "mismatched types", v.type.span, `the ${what} are \`${typeToString(element)}\``)
+        this.diags.error("X0308", "mismatched types", v.type.span, `the ${what} are \`${typeToString(element)}\``)
           .secondary(v.name.span, `\`${v.name.name}\` declared as \`${typeToString(type)}\``);
       }
     } else {
       type = element;
-      this.diags.warning("K0850", `loop variable \`${v.name.name}\` has no type annotation; it is untyped (\`*\`)`, v.name.span)
+      this.diags.warning("X0850", `loop variable \`${v.name.name}\` has no type annotation; it is untyped (\`*\`)`, v.name.span)
         .help(isDynamic(element) ? "add a type" : "add the element type", [{ span: span(v.name.span.file, v.name.span.end, v.name.span.end), text: `:${isDynamic(element) ? "*" : typeToString(element)}` }]);
       type = T.any;
     }
@@ -2331,7 +2331,7 @@ class BodyChecker {
     const scope = new Scope(outer);
     const t = this.valueExpr(s.object, outer);
     if (t.kind === "prim" || t.kind === "null") {
-      this.diags.error("K0392", `can't iterate over the keys of \`${typeToString(t)}\``, s.object.span);
+      this.diags.error("X0392", `can't iterate over the keys of \`${typeToString(t)}\``, s.object.span);
     }
     this.loopVar(s.variable, T.String, scope, "keys");
     this.loopBody(() => this.nested(s.body, scope));
@@ -2346,7 +2346,7 @@ class BodyChecker {
     else if (isPrim(t, "String")) element = T.String;
     else if (t.kind === "builtin" && t.name === "Object") {
       const e = s.iterable.span;
-      this.diags.error("K0390", "an `Object` is not iterable", e, "plain objects can't be used with `of`")
+      this.diags.error("X0390", "an `Object` is not iterable", e, "plain objects can't be used with `of`")
         .help("iterate over its values", [
           { span: span(e.file, e.start, e.start), text: "Object.values(" },
           { span: span(e.file, e.end, e.end), text: ")" },
@@ -2354,7 +2354,7 @@ class BodyChecker {
       element = T.error;
     } else if (t.kind === "prim" || t.kind === "null" || t.kind === "classRef" || t.kind === "method" ||
       (t.kind === "builtin" && t.name !== "Array")) {
-      this.diags.error("K0391", `\`${typeToString(t)}\` is not iterable`, s.iterable.span);
+      this.diags.error("X0391", `\`${typeToString(t)}\` is not iterable`, s.iterable.span);
       element = T.error;
     }
     // A map yields `[key, value]` pairs; destructuring them types `key` as `K` and `value` as `V`.
@@ -2375,7 +2375,7 @@ class BodyChecker {
       if (!bound) continue;
       const t = this.valueExpr(bound, outer);
       if (!isPrim(t, "int") && !isPrim(t, "uint") && !isDynamic(t)) {
-        this.diags.error("K0334", "range bounds must be `int` or `uint`", bound.span, `found \`${typeToString(t)}\``);
+        this.diags.error("X0334", "range bounds must be `int` or `uint`", bound.span, `found \`${typeToString(t)}\``);
       }
     }
     let integerStep = true;
@@ -2383,25 +2383,25 @@ class BodyChecker {
       this.valueExpr(s.step, outer);
       const step = this.constNumber(s.step);
       if (step === undefined) {
-        this.diags.error("K0330", "a range `step` must be a constant", s.step.span).note("use a C-style `for` for a computed step");
+        this.diags.error("X0330", "a range `step` must be a constant", s.step.span).note("use a C-style `for` for a computed step");
       } else if (step === 0) {
-        this.diags.error("K0330", "a range `step` can't be 0", s.step.span, "the step must be positive");
+        this.diags.error("X0330", "a range `step` can't be 0", s.step.span, "the step must be positive");
       } else if (step < 0) {
-        this.diags.error("K0330", "ranges can't count down", s.step.span, "the step must be positive")
+        this.diags.error("X0330", "ranges can't count down", s.step.span, "the step must be positive")
           .help("use a C-style `for`, e.g. `for (var i:int = 10; i >= 0; i--)`");
       } else integerStep = Number.isInteger(step);
     }
     const a = this.constNumber(s.start);
     const b = s.end && this.constNumber(s.end);
     if (a !== undefined && b !== undefined && (s.inclusive ? a > b : a >= b)) {
-      this.diags.warning("K0331", `range \`${a}${s.inclusive ? "..=" : ".."}${b}\` is empty and runs 0 times`, cover(s.start.span, s.end!.span))
+      this.diags.warning("X0331", `range \`${a}${s.inclusive ? "..=" : ".."}${b}\` is empty and runs 0 times`, cover(s.start.span, s.end!.span))
         .note("ranges never count down; use a C-style `for` for that");
     }
     const declared = s.variable.type ? this.resolveT(s.variable.type, this.scope) : undefined;
     if (declared && !isNumeric(declared) && !isDynamic(declared)) {
-      this.diags.error("K0334", "a range loop variable must be a number", s.variable.type!.span);
+      this.diags.error("X0334", "a range loop variable must be a number", s.variable.type!.span);
     } else if (declared && !integerStep && !isPrim(declared, "Float")) {
-      this.diags.error("K0330", "a fractional `step` needs a `Float` loop variable", s.step!.span);
+      this.diags.error("X0330", "a fractional `step` needs a `Float` loop variable", s.step!.span);
     }
     const element = declared && isPrim(declared, "uint") ? T.uint : T.int;
     this.loopVar(s.variable, element, scope, "range values", "range");
@@ -2415,20 +2415,20 @@ class BodyChecker {
     for (const c of s.cases) {
       if (!c.test) {
         if (defaultCase) {
-          this.diags.error("K0344", "a `switch` can only have one `default`", c.span).secondary(defaultCase.span, "first `default` here");
+          this.diags.error("X0344", "a `switch` can only have one `default`", c.span).secondary(defaultCase.span, "first `default` here");
         }
         defaultCase = c;
         continue;
       }
       const ct = this.valueExpr(c.test, scope);
       if (!comparable(t, ct)) {
-        this.diags.error("K0319", "this case can never match", c.test.span, `\`${typeToString(ct)}\``)
+        this.diags.error("X0319", "this case can never match", c.test.span, `\`${typeToString(ct)}\``)
           .secondary(s.discriminant.span, `the switch value is \`${typeToString(t)}\``);
       }
       const key = this.literalKey(c.test);
       if (key !== undefined) {
         const prev = seen.get(key);
-        if (prev) this.diags.error("K0343", "duplicate `case`", c.test.span).secondary(prev.span, "first used here");
+        if (prev) this.diags.error("X0343", "duplicate `case`", c.test.span).secondary(prev.span, "first used here");
         else seen.set(key, c.test);
       }
     }
@@ -2452,24 +2452,24 @@ class BodyChecker {
       const handled = new Set(s.cases.map((c) => (c.test ? this.enumMemberName(c.test, t.info) : undefined)).filter((n) => n));
       const missing = [...t.info.enumValues.keys()].filter((n) => !handled.has(n));
       if (missing.length > 0) {
-        this.diags.warning("K0814", `this \`switch\` doesn't handle ${missing.map((n) => `\`${t.info.decl.name.name}.${n}\``).join(", ")}`, s.discriminant.span)
+        this.diags.warning("X0814", `this \`switch\` doesn't handle ${missing.map((n) => `\`${t.info.decl.name.name}.${n}\``).join(", ")}`, s.discriminant.span)
           .help("add the missing cases, or a `default:`");
       }
     }
   }
 
-  /** Conditions must be `Boolean` (no truthiness in Klass). */
+  /** Conditions must be `Boolean` (no truthiness in Xenon). */
   private condition(e: A.Expr, scope: Scope) {
     if (e.kind === "Assign" && e.op === "=") {
       this.expr(e, scope);
-      this.diags.error("K0322", "`=` assigns; it can't be used as a condition", e.opSpan, "assignment")
+      this.diags.error("X0322", "`=` assigns; it can't be used as a condition", e.opSpan, "assignment")
         .help("compare with `==`", [{ span: e.opSpan, text: "==" }])
         .note("to bind a value and test it, use `if (var x:T = …)`");
       return;
     }
     const t = this.expr(e, scope);
     if (isPrim(t, "Boolean") || isDynamic(t)) return;
-    const d = this.diags.error("K0310", "condition must be a `Boolean`", e.span, `expected \`Boolean\`, found \`${typeToString(t)}\``);
+    const d = this.diags.error("X0310", "condition must be a `Boolean`", e.span, `expected \`Boolean\`, found \`${typeToString(t)}\``);
     const end = span(e.span.file, e.span.end, e.span.end);
     if (isNumeric(t)) d.help("compare explicitly", [{ span: end, text: " != 0" }]);
     else if (isNullable(t) && t.kind !== "null") d.help("check for null explicitly", [{ span: end, text: " != null" }]);
@@ -2477,7 +2477,7 @@ class BodyChecker {
 
   /* -------------------------- assignability -------------------------- */
 
-  /** Checks that `e` can be stored where `expected` is wanted; reports K0308 with fix-its otherwise. */
+  /** Checks that `e` can be stored where `expected` is wanted; reports X0308 with fix-its otherwise. */
   private checkAssign(e: A.Expr, expected: Type, origin?: { span: Span; label: string }, scope = new Scope()) {
     // Already checked while inferring a generic call: just compare.
     const pre = this.preTyped.get(e);
@@ -2519,7 +2519,7 @@ class BodyChecker {
   }
 
   private mismatch(e: A.Expr, actual: Type, expected: Type, origin?: { span: Span; label: string }) {
-    const d = this.diags.error("K0308", "mismatched types", e.span, `expected \`${typeToString(expected)}\`, found \`${typeToString(actual)}\``);
+    const d = this.diags.error("X0308", "mismatched types", e.span, `expected \`${typeToString(expected)}\`, found \`${typeToString(actual)}\``);
     if (origin) d.secondary(origin.span, origin.label);
     const wrap = (fn: string): Edit[] => [
       { span: span(e.span.file, e.span.start, e.span.start), text: `${fn}(` },
@@ -2579,17 +2579,17 @@ class BodyChecker {
         return T.any;
       case "This":
         if (this.beforeSuper) {
-          this.diags.error("K0736", "`this` can't be used before `super(...)` returns", e.span);
+          this.diags.error("X0736", "`this` can't be used before `super(...)` returns", e.span);
           return T.error;
         }
         if (this.dynamicThis > 0) return T.any; // `function(){}` has a dynamic `this`
         if (this.isStatic) {
-          this.diags.error("K0411", "`this` can't be used in a static context", e.span);
+          this.diags.error("X0411", "`this` can't be used in a static context", e.span);
           return T.error;
         }
         return this.thisType;
       case "Super":
-        this.diags.error("K0734", "`super` can only be used as `super(...)` or `super.member`", e.span);
+        this.diags.error("X0734", "`super` can only be used as `super(...)` or `super.member`", e.span);
         return T.error;
       case "Array":
         for (const el of e.elements) this.valueExpr(el.kind === "Spread" ? el.arg : el, scope);
@@ -2598,7 +2598,7 @@ class BodyChecker {
         this.objectLiteral(e, scope);
         return T.Object;
       case "Spread":
-        this.diags.error("K0335", "spread `...` is only allowed in calls and array literals", e.span);
+        this.diags.error("X0335", "spread `...` is only allowed in calls and array literals", e.span);
         this.expr(e.arg, scope);
         return T.error;
       case "Member":
@@ -2608,14 +2608,14 @@ class BodyChecker {
         const idx = this.valueExpr(e.index, scope);
         if (isPrim(obj, "String")) {
           if (!isNumeric(idx) && !isDynamic(idx)) {
-            this.diags.error("K0308", "mismatched types", e.index.span, `a \`String\` index is an \`int\`, found \`${typeToString(idx)}\``);
+            this.diags.error("X0308", "mismatched types", e.index.span, `a \`String\` index is an \`int\`, found \`${typeToString(idx)}\``);
           }
           return T.String;
         }
         const element = elementOf(obj);
         if (element && !isDynamic(element)) {
           if (!isNumeric(idx) && !isDynamic(idx)) {
-            this.diags.error("K0308", "mismatched types", e.index.span, `an \`Array\` index is an \`int\`, found \`${typeToString(idx)}\``);
+            this.diags.error("X0308", "mismatched types", e.index.span, `an \`Array\` index is an \`int\`, found \`${typeToString(idx)}\``);
           }
           return element;
         }
@@ -2655,7 +2655,7 @@ class BodyChecker {
   private valueExpr(e: A.Expr, scope: Scope): Type {
     const t = this.expr(e, scope);
     if (t.kind === "void") {
-      this.diags.error("K0311", "this expression has no value", e.span, "returns `void`");
+      this.diags.error("X0311", "this expression has no value", e.span, "returns `void`");
       return T.error;
     }
     return t;
@@ -2682,15 +2682,15 @@ class BodyChecker {
     if (member) {
       this.env.checkAccess(member.decl, member.owner, this.info, e.span);
       if (this.dynamicThis > 0 && this.fieldInit && !member.isStatic) {
-        this.diags.error("K0738", `\`${name}\` can't be reached from a \`function\` expression in a field initializer`, e.span)
+        this.diags.error("X0738", `\`${name}\` can't be reached from a \`function\` expression in a field initializer`, e.span)
           .help("use an arrow function, which keeps `this`");
       }
       if (this.beforeSuper && !member.isStatic) {
-        this.diags.error("K0736", `instance member \`${name}\` can't be used before \`super(...)\` returns`, e.span);
+        this.diags.error("X0736", `instance member \`${name}\` can't be used before \`super(...)\` returns`, e.span);
       }
       if (this.da.has(member)) this.daRead(member, e.span, member.decl.name.span, `final field \`${name}\``);
       if (!member.isStatic && this.isStatic) {
-        this.diags.error("K0410", `instance member \`${name}\` can't be used in a static context`, e.span)
+        this.diags.error("X0410", `instance member \`${name}\` can't be used in a static context`, e.span)
           .secondary(member.decl.name.span, "declared as an instance member here");
       }
       res.set(e, { kind: "member", isStatic: member.isStatic, owner: member.owner });
@@ -2720,9 +2720,9 @@ class BodyChecker {
       res.set(e, { kind: "member", isStatic: this.isStatic, owner: this.info });
       return T.any;
     }
-    const d = this.diags.error("K0425", `cannot find \`${name}\` in this scope`, e.span, "not found in this scope");
+    const d = this.diags.error("X0425", `cannot find \`${name}\` in this scope`, e.span, "not found in this scope");
     const s = suggest(name, [...scope.names(), ...allMemberNames(this.info), ...this.scope.classes.keys(), ...this.scope.jsImports, ...BUILTIN_FNS]);
-    if (name === "Number") d.help("JavaScript's `Number` is called `Float` in Klass", [{ span: e.span, text: "Float" }]);
+    if (name === "Number") d.help("JavaScript's `Number` is called `Float` in Xenon", [{ span: e.span, text: "Float" }]);
     else if (GLOBAL_HINTS[name]) {
       const hint = GLOBAL_HINTS[name]!;
       if (hint.note) d.note(hint.note);
@@ -2730,7 +2730,7 @@ class BodyChecker {
     }
     else if (s) d.help(`a name with a similar spelling exists: \`${s}\``, [{ span: e.span, text: s }]);
     else if (name in ERROR_HINTS) {
-      d.help(`use \`${ERROR_HINTS[name]}\` (JavaScript error classes are hidden in Klass)`, [{ span: e.span, text: ERROR_HINTS[name]! }]);
+      d.help(`use \`${ERROR_HINTS[name]}\` (JavaScript error classes are hidden in Xenon)`, [{ span: e.span, text: ERROR_HINTS[name]! }]);
     } else this.env.missingImportHint(d, name);
     return T.error;
   }
@@ -2771,29 +2771,29 @@ class BodyChecker {
       case "void":
         return T.error;
       case "typeParam":
-        this.diags.error("K0426", `no member \`${name}\` on type parameter \`${obj.param.name}\``, e.name.span, "unknown member")
+        this.diags.error("X0426", `no member \`${name}\` on type parameter \`${obj.param.name}\``, e.name.span, "unknown member")
           .note("a type parameter can be any type, so it has no members; type parameter bounds are not supported");
         return T.error;
       case "shape": {
         const m = obj.members.get(name);
         if (m) return m.type();
-        const d = this.diags.error("K0426", `no member \`${name}\` on \`${typeToString(obj)}\``, e.name.span, "unknown member");
+        const d = this.diags.error("X0426", `no member \`${name}\` on \`${typeToString(obj)}\``, e.name.span, "unknown member");
         const sug = suggest(name, [...obj.members.keys()]);
         if (sug) d.help(`a member with a similar name exists: \`${sug}\``, [{ span: e.name.span, text: sug }]);
         return T.error;
       }
       case "null":
-        this.diags.error("K0427", "can't access a member of `null`", e.span);
+        this.diags.error("X0427", "can't access a member of `null`", e.span);
         return T.error;
       case "prim": {
         const cls = this.env.primClass(obj.name);
         if (!cls) {
-          this.diags.error("K0426", `no member \`${name}\` on \`${obj.name}\``, e.name.span);
+          this.diags.error("X0426", `no member \`${name}\` on \`${obj.name}\``, e.name.span);
           return T.error;
         }
         const m = findMember(cls, name);
         if (!m || m.isStatic) {
-          const d = this.diags.error("K0426", `no member \`${name}\` on \`${obj.name}\``, e.name.span, "unknown member");
+          const d = this.diags.error("X0426", `no member \`${name}\` on \`${obj.name}\``, e.name.span, "unknown member");
           const sug = suggest(name, allMemberNames(cls));
           if (sug) d.help(`a member with a similar name exists: \`${sug}\``, [{ span: e.name.span, text: sug }]);
           else d.help(`if this JavaScript API exists, use it dynamically: \`(${dynamicReceiver(e.object)} as *).${name}\``);
@@ -2810,14 +2810,14 @@ class BodyChecker {
         if (m) this.env.checkAccess(m.decl, m.owner, this.info, e.name.span);
         if (!m) {
           if (hasJsAncestor(obj.info)) return T.any;
-          const d = this.diags.error("K0426", `no ${wantStatic ? "static " : ""}member \`${name}\` on \`${obj.info.decl.name.name}\``, e.name.span, "unknown member");
+          const d = this.diags.error("X0426", `no ${wantStatic ? "static " : ""}member \`${name}\` on \`${obj.info.decl.name.name}\``, e.name.span, "unknown member");
           const s = suggest(name, allMemberNames(obj.info));
           if (s) d.help(`a member with a similar name exists: \`${s}\``, [{ span: e.name.span, text: s }]);
           else if (isNative(obj.info)) d.help(`if this JavaScript API exists, use it dynamically: \`(${dynamicReceiver(e.object)} as *).${name}\``);
           return T.error;
         }
         if (wantStatic && !m.isStatic) {
-          this.diags.error("K0414", `\`${name}\` is an instance member; it can't be accessed through the class`, e.name.span)
+          this.diags.error("X0414", `\`${name}\` is an instance member; it can't be accessed through the class`, e.name.span)
             .secondary(m.decl.name.span, "declared here");
           return T.error;
         }
@@ -2832,7 +2832,7 @@ class BodyChecker {
         }
         if (!wantStatic && m.isStatic) {
           const owner = m.owner.decl.name.name;
-          this.diags.error("K0413", `\`${name}\` is static; access it through the class`, e.name.span)
+          this.diags.error("X0413", `\`${name}\` is static; access it through the class`, e.name.span)
             .help(`use \`${owner}.${name}\``, [{ span: e.span, text: `${owner}.${name}` }]);
           return T.error;
         }
@@ -2863,7 +2863,7 @@ class BodyChecker {
         return T.void;
       }
       if (e.args.length !== 1 || e.args[0]!.kind === "Spread") {
-        this.diags.error("K0601", `\`${res.name}()\` takes exactly 1 argument`, e.span);
+        this.diags.error("X0601", `\`${res.name}()\` takes exactly 1 argument`, e.span);
         for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
         return CASTS[res.name]!;
       }
@@ -2898,12 +2898,12 @@ class BodyChecker {
         }
         break;
       case "classRef":
-        this.diags.error("K0380", `\`${callee.info.decl.name.name}(x)\` casts are not supported`, e.span)
+        this.diags.error("X0380", `\`${callee.info.decl.name.name}(x)\` casts are not supported`, e.span)
           .help(`use \`x as ${callee.info.decl.name.name}\`, which gives \`null\` if the value has another type`);
         for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
         return { kind: "class", info: callee.info };
     }
-    this.diags.error("K0602", `\`${typeToString(callee)}\` is not callable`, e.callee.span);
+    this.diags.error("X0602", `\`${typeToString(callee)}\` is not callable`, e.callee.span);
     for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
     return T.error;
   }
@@ -2948,14 +2948,14 @@ class BodyChecker {
     const missing = spread ? [] : [...shape.members.values()].filter((m) => !m.optional && !given.has(m.name));
     const free = [...shape.members.keys()].filter((n) => !given.has(n));
     for (const key of unknown) {
-      const d = this.diags.error("K0791", `\`${key.name}\` is not a member of \`${typeToString(shape)}\``, key.span, "unknown member");
+      const d = this.diags.error("X0791", `\`${key.name}\` is not a member of \`${typeToString(shape)}\``, key.span, "unknown member");
       // One unknown key and one missing member: almost certainly a typo, even for short names.
       const sug = unknown.length === 1 && missing.length === 1 ? missing[0]!.name : suggest(key.name, free);
       if (sug) d.help(`did you mean \`${sug}\`?`, [{ span: key.span, text: sug }]);
       if (sug && missing.length === 1 && missing[0]!.name === sug) return; // the typo explains the missing member
     }
     if (missing.length > 0) {
-      this.diags.error("K0792", `missing ${missing.map((m) => `\`${m.name}\``).join(", ")} for \`${typeToString(shape)}\``, e.span,
+      this.diags.error("X0792", `missing ${missing.map((m) => `\`${m.name}\``).join(", ")} for \`${typeToString(shape)}\``, e.span,
         `${missing.length === 1 ? "this member is" : "these members are"} required`);
     }
   }
@@ -2978,20 +2978,20 @@ class BodyChecker {
     const kind = disposeKind(type, this.env);
     const at = typeNode?.span ?? init.span;
     if (kind === "none") {
-      const d = this.diags.error("K0802", `\`${typeToString(type)}\` can't be used with \`using\``, at, "not disposable");
+      const d = this.diags.error("X0802", `\`${typeToString(type)}\` can't be used with \`using\``, at, "not disposable");
       if (type.kind === "class") d.help(`give \`${type.info.decl.name.name}\` a destructor: \`~${type.info.decl.name.name}() { … }\``);
     } else if (kind === "async" && !isAwait) {
-      this.diags.error("K0807", `\`${typeToString(type)}\` has an async destructor and needs \`await using\``, at)
+      this.diags.error("X0807", `\`${typeToString(type)}\` has an async destructor and needs \`await using\``, at)
         .help("add `await`", [{ span: span(stmt.file, stmt.start, stmt.start), text: "await " }]);
     }
     if (isAwait && !this.method?.async) {
-      const d = this.diags.error("K0760", "`await using` is only allowed inside `async` functions", span(stmt.file, stmt.start, stmt.start + 5));
+      const d = this.diags.error("X0760", "`await using` is only allowed inside `async` functions", span(stmt.file, stmt.start, stmt.start + 5));
       if (this.method) d.help(`make \`${this.method.name}\` async`, [{ span: this.method.asyncAt, text: "async " }]);
     }
     return type;
   }
 
-  /** K0861: locals and local functions that are never read. `_name` marks intentionally unused ones. */
+  /** X0861: locals and local functions that are never read. `_name` marks intentionally unused ones. */
   private reportUnusedLocals() {
     // With syntax errors in the file, uses may sit in the broken code: the warning would be noise.
     if (this.env.syntaxErrors.has(this.info.file.file)) {
@@ -3000,18 +3000,18 @@ class BodyChecker {
     }
     for (const { local, name, fn } of this.declared) {
       if (local.used || name.name.startsWith("_")) continue;
-      this.diags.warning("K0861", `${fn ? "local function" : "variable"} \`${name.name}\` is never used`, name.span, "never read")
+      this.diags.warning("X0861", `${fn ? "local function" : "variable"} \`${name.name}\` is never used`, name.span, "never read")
         .help("remove it, or prefix the name with `_` if that's intended", [{ span: span(name.span.file, name.span.start, name.span.start), text: "_" }]);
     }
     this.declared = [];
   }
 
-  /** K0801: a new disposable stored in a local that is never disposed, returned, passed or stored. */
+  /** X0801: a new disposable stored in a local that is never disposed, returned, passed or stored. */
   private reportUndisposed() {
     for (const t of this.disposables.values()) {
       if (t.disposed || t.escaped) continue;
       const kw = t.name.span.file.text.lastIndexOf("var", t.name.span.start);
-      const d = this.diags.warning("K0801", `\`${t.name.name}\` holds a \`${t.type}\` that is never disposed`, t.name.span, "created here, never disposed")
+      const d = this.diags.warning("X0801", `\`${t.name.name}\` holds a \`${t.type}\` that is never disposed`, t.name.span, "created here, never disposed")
         .note(`\`${t.type}\` has a destructor; it only runs through \`using\` or \`dispose()\``);
       if (kw >= 0 && t.name.span.start - kw <= 4) {
         d.help("declare it with `using`", [{ span: span(t.name.span.file, kw, kw + 3), text: "using" }]);
@@ -3035,7 +3035,7 @@ class BodyChecker {
       case "BindingName": {
         const prev = scope.getOwn(p.name.name);
         if (prev) {
-          this.diags.error("K0204", `\`${p.name.name}\` is already declared in this scope`, p.name.span).secondary(prev.nameSpan, "previously declared here");
+          this.diags.error("X0204", `\`${p.name.name}\` is already declared in this scope`, p.name.span).secondary(prev.nameSpan, "previously declared here");
         }
         scope.declare(p.name.name, { type: source, kind: decl ?? "var", nameSpan: p.name.span });
         return;
@@ -3043,14 +3043,14 @@ class BodyChecker {
       case "Target": {
         const { type, commit } = this.lvalue(p.expr, scope, true);
         if (!assignable(source, type)) {
-          this.diags.error("K0308", "mismatched types", p.expr.span, `expected \`${typeToString(type)}\`, found \`${typeToString(source)}\``);
+          this.diags.error("X0308", "mismatched types", p.expr.span, `expected \`${typeToString(type)}\`, found \`${typeToString(source)}\``);
         }
         commit();
         return;
       }
       case "ObjectPattern": {
         const fail = source.kind === "prim" && source.name !== "String" || source.kind === "null" || source.kind === "void" || source.kind === "method";
-        if (fail) this.diags.error("K0770", `\`${typeToString(source)}\` values can't be destructured with \`{…}\``, p.span);
+        if (fail) this.diags.error("X0770", `\`${typeToString(source)}\` values can't be destructured with \`{…}\``, p.span);
         for (const prop of p.props) {
           this.bindPattern(prop.value, fail ? T.error : this.propertyType(source, prop.key), scope, decl);
         }
@@ -3067,7 +3067,7 @@ class BodyChecker {
         } else if (isPrim(source, "String")) element = T.String;
         else if (source.kind === "error") element = T.error;
         else if (!isDynamic(source) && !(source.kind === "builtin" && source.name === "Object")) {
-          this.diags.error("K0770", `\`${typeToString(source)}\` values can't be destructured with \`[…]\``, p.span);
+          this.diags.error("X0770", `\`${typeToString(source)}\` values can't be destructured with \`[…]\``, p.span);
           element = T.error;
         }
         for (const el of p.elements) if (el) this.bindPattern(el, element, scope, decl);
@@ -3084,18 +3084,18 @@ class BodyChecker {
       if (m) this.env.usedMembers.add(m);
       if (!m) {
         if (hasJsAncestor(source.info)) return T.any;
-        const d = this.diags.error("K0426", `no member \`${key.name}\` on \`${source.info.decl.name.name}\``, key.span, "unknown member");
+        const d = this.diags.error("X0426", `no member \`${key.name}\` on \`${source.info.decl.name.name}\``, key.span, "unknown member");
         const sug = suggest(key.name, allMemberNames(source.info));
         if (sug) d.help(`a member with a similar name exists: \`${sug}\``);
         return T.error;
       }
       this.env.checkAccess(m.decl, m.owner, this.info, key.span);
       if (m.isStatic) {
-        this.diags.error("K0413", `\`${key.name}\` is static and can't be destructured from an instance`, key.span);
+        this.diags.error("X0413", `\`${key.name}\` is static and can't be destructured from an instance`, key.span);
         return T.error;
       }
       if (m.kind === "method") {
-        this.diags.error("K0771", `method \`${key.name}\` can't be destructured`, key.span, "it would lose `this`")
+        this.diags.error("X0771", `method \`${key.name}\` can't be destructured`, key.span, "it would lose `this`")
           .help("call it on the object instead");
         return T.error;
       }
@@ -3105,7 +3105,7 @@ class BodyChecker {
     if (source.kind === "shape") {
       const m = source.members.get(key.name);
       if (m) return m.type();
-      this.diags.error("K0426", `no member \`${key.name}\` on \`${typeToString(source)}\``, key.span, "unknown member");
+      this.diags.error("X0426", `no member \`${key.name}\` on \`${typeToString(source)}\``, key.span, "unknown member");
       return T.error;
     }
     return source.kind === "error" ? T.error : T.any;
@@ -3118,7 +3118,7 @@ class BodyChecker {
     const arg = this.env.promiseArg(declared);
     if (arg) return arg;
     if (isDynamic(declared)) return T.any;
-    const d = this.diags.error("K0763", "an `async` function must return a `Promise<T>`", node?.span ?? this.method?.asyncAt, `found \`${typeToString(declared)}\``);
+    const d = this.diags.error("X0763", "an `async` function must return a `Promise<T>`", node?.span ?? this.method?.asyncAt, `found \`${typeToString(declared)}\``);
     if (node && declared.kind !== "void") d.help(`return \`Promise<${typeToString(declared)}>\``, [{ span: node.span, text: `Promise<${typeToString(declared)}>` }]);
     else if (node) d.help("use `Promise<void>`", [{ span: node.span, text: "Promise<void>" }]);
     return T.any;
@@ -3179,7 +3179,7 @@ class BodyChecker {
         this.block(f.body, inner);
         if (bodyRet.kind !== "void" && !isDynamic(bodyRet) && completes(f.body)) {
           const close = span(f.body.span.file, f.body.span.end - 1, f.body.span.end);
-          const d = this.diags.error("K0314", "not all code paths of this function return a value", close, "execution can reach the end here");
+          const d = this.diags.error("X0314", "not all code paths of this function return a value", close, "execution can reach the end here");
           if (f.returnType) d.secondary(f.returnType.span, `returns \`${typeToString(sig.ret)}\``);
         }
       } else if (f.returnType) {
@@ -3207,14 +3207,14 @@ class BodyChecker {
   private awaitExpr(e: A.Expr & { kind: "Await" }, scope: Scope): Type {
     const m = this.method;
     if (!m?.async) {
-      const d = this.diags.error("K0760", "`await` is only allowed inside `async` functions", e.span);
+      const d = this.diags.error("X0760", "`await` is only allowed inside `async` functions", e.span);
       if (m) d.help(`make \`${m.name}\` async`, [{ span: m.asyncAt, text: "async " }]);
     }
     const t = this.valueExpr(e.arg, scope);
     const arg = this.env.promiseArg(t);
     if (arg) return arg;
     if (isDynamic(t)) return T.any;
-    this.diags.warning("K0762", "`await` on a value that isn't a `Promise`", e.arg.span, `this is \`${typeToString(t)}\``)
+    this.diags.warning("X0762", "`await` on a value that isn't a `Promise`", e.arg.span, `this is \`${typeToString(t)}\``)
       .note("awaiting a plain value just returns it");
     return t;
   }
@@ -3239,16 +3239,16 @@ class BodyChecker {
     const onThis = e.kind === "Ident" || (e.kind === "Member" && (e.object.kind === "This" || e.object.kind === "Super"));
     if (this.constMethod && onThis && !m.isStatic && !this.writing && (m.kind === "method" || m.kind === "accessor") && !isConstMember(m)) {
       const what = m.kind === "method" ? "method" : "getter";
-      this.diags.error("K0902", `cannot use non-const ${what} \`${m.name}\` in const method \`${this.constMethod}\``, at)
+      this.diags.error("X0902", `cannot use non-const ${what} \`${m.name}\` in const method \`${this.constMethod}\``, at)
         .secondary(m.decl.name.span, `\`${m.name}\` is not \`const\``)
         .note(`it might change the object; mark it \`const\` if it doesn't`);
     }
     if (m.kind === "accessor" && !this.writing && !accessorHalves(m).includes("get") && m.delegate !== "get") {
-      this.diags.error("K0506", `\`${m.name}\` has a setter but no getter`, at, "can't be read").secondary(m.decl.name.span, "setter declared here");
+      this.diags.error("X0506", `\`${m.name}\` has a setter but no getter`, at, "can't be read").secondary(m.decl.name.span, "setter declared here");
     }
     if (m.kind === "method" && !m.isStatic) {
       if (e.kind === "Member" && e.optional) {
-        this.diags.error("K0607", "a method can't be taken as a value through `?.`", at).help("call it, or check for null first");
+        this.diags.error("X0607", "a method can't be taken as a value through `?.`", at).help("call it, or check for null first");
         return;
       }
       this.env.result.methodClosures.add(e);
@@ -3309,7 +3309,7 @@ class BodyChecker {
     });
     const missing = vars.filter((v) => !out.has(v));
     if (missing.length > 0) {
-      this.diags.error("K0797", `can't infer the type of ${missing.map((v) => `\`${v.name}\``).join(", ")}`, at, "type arguments are inferred from the arguments")
+      this.diags.error("X0797", `can't infer the type of ${missing.map((v) => `\`${v.name}\``).join(", ")}`, at, "type arguments are inferred from the arguments")
         .help("pass arguments that determine it, or assign the result to a variable with a type");
       for (const v of missing) out.set(v, T.any);
     }
@@ -3322,7 +3322,7 @@ class BodyChecker {
   /**
    * Chooses the first overload whose arity and argument types fit. Plain arguments are checked
    * once here (and remembered for `checkArgs`); literals and functions fit any compatible
-   * parameter. Reports K0604 and returns undefined when nothing fits.
+   * parameter. Reports X0604 and returns undefined when nothing fits.
    */
   private pickOverload(cands: { decl: A.Method; type: MethodType }[], args: A.Expr[], scope: Scope, at: Span, name: string): { decl: A.Method; type: MethodType } | undefined {
     if (cands.length === 1) return cands[0];
@@ -3357,7 +3357,7 @@ class BodyChecker {
     const found = cands.find(matches);
     if (found) return found;
     const given = args.map((a, i) => (types[i] ? typeToString(types[i]!) : a.kind === "Function" ? "function" : a.kind === "Array" ? "array literal" : a.kind === "Object" ? "object literal" : "…"));
-    const d = this.diags.error("K0604", `no overload of \`${name}\` accepts (${given.join(", ")})`, at, "no matching overload");
+    const d = this.diags.error("X0604", `no overload of \`${name}\` accepts (${given.join(", ")})`, at, "no matching overload");
     for (const c of cands) d.note(`\`${name}${signatureText(c.decl)}\``);
     for (const a of args) if (literal(a)) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
     for (const a of args) this.preTyped.delete(a);
@@ -3371,12 +3371,12 @@ class BodyChecker {
     };
     if (e !== this.superCall) {
       const where = this.method?.isConstructor ? "must be the first statement of the constructor" : "is only allowed in a constructor";
-      this.diags.error("K0732", `\`super(...)\` ${where}`, e.span);
+      this.diags.error("X0732", `\`super(...)\` ${where}`, e.span);
       dynamicArgs();
       return T.void;
     }
     if (!this.info.parent && !this.info.jsParent) {
-      this.diags.error("K0733", `\`${this.info.decl.name.name}\` has no superclass`, e.callee.span);
+      this.diags.error("X0733", `\`${this.info.decl.name.name}\` has no superclass`, e.callee.span);
       dynamicArgs();
       return T.void;
     }
@@ -3398,46 +3398,46 @@ class BodyChecker {
   private superMember(e: A.Expr & { kind: "Member" }): Type {
     this.record(e.object, this.parentType());
     if (this.dynamicThis > 0) {
-      this.diags.error("K0737", "`super` can't be used inside a `function` expression", e.object.span)
+      this.diags.error("X0737", "`super` can't be used inside a `function` expression", e.object.span)
         .help("use an arrow function, which keeps `this` and `super`");
       return T.error;
     }
     if (this.isStatic) {
-      this.diags.error("K0411", "`super` can't be used in a static context", e.object.span);
+      this.diags.error("X0411", "`super` can't be used in a static context", e.object.span);
       return T.error;
     }
     if (this.beforeSuper) {
-      this.diags.error("K0736", "`super.member` can't be used before `super(...)` returns", e.span);
+      this.diags.error("X0736", "`super.member` can't be used before `super(...)` returns", e.span);
       return T.error;
     }
     const parent = this.info.parent;
     if (!parent) {
-      if (!this.info.jsParent) this.diags.error("K0733", `\`${this.info.decl.name.name}\` has no superclass`, e.object.span);
+      if (!this.info.jsParent) this.diags.error("X0733", `\`${this.info.decl.name.name}\` has no superclass`, e.object.span);
       return this.info.jsParent ? T.any : T.error;
     }
     const m = findMember(parent, e.name.name);
     if (m) this.env.checkAccess(m.decl, m.owner, this.info, e.name.span);
     if (!m) {
       if (hasJsAncestor(parent)) return T.any;
-      const d = this.diags.error("K0426", `no member \`${e.name.name}\` in the superclass \`${parent.decl.name.name}\``, e.name.span);
+      const d = this.diags.error("X0426", `no member \`${e.name.name}\` in the superclass \`${parent.decl.name.name}\``, e.name.span);
       const sug = suggest(e.name.name, allMemberNames(parent));
       if (sug) d.help(`a member with a similar name exists: \`${sug}\``, [{ span: e.name.span, text: sug }]);
       return T.error;
     }
     this.memberUse(e, m, e.name.span);
     if (isAbstract(m) || m.owner.decl.isInterface) {
-      this.diags.error("K0718", `\`${m.owner.decl.name.name}.${e.name.name}\` is abstract and has no implementation to call`, e.span)
+      this.diags.error("X0718", `\`${m.owner.decl.name.name}.${e.name.name}\` is abstract and has no implementation to call`, e.span)
         .secondary(m.decl.name.span, "declared abstract here");
       return T.error;
     }
     if (m.kind === "field") {
-      this.diags.error("K0735", "fields can't be accessed through `super`", e.span)
+      this.diags.error("X0735", "fields can't be accessed through `super`", e.span)
         .help(`use \`this.${e.name.name}\``, [{ span: e.object.span, text: "this" }]);
       return T.error;
     }
     if (m.isStatic) {
       const owner = m.owner.decl.name.name;
-      this.diags.error("K0413", `\`${e.name.name}\` is static; access it through the class`, e.name.span)
+      this.diags.error("X0413", `\`${e.name.name}\` is static; access it through the class`, e.name.span)
         .help(`use \`${owner}.${e.name.name}\``, [{ span: e.span, text: `${owner}.${e.name.name}` }]);
       return T.error;
     }
@@ -3474,11 +3474,11 @@ class BodyChecker {
       if (e.args.length > max) {
         const extra = e.args.slice(max);
         const n = extra.length;
-        d = this.diags.error("K0601", message, cover(extra[0]!.span, extra.at(-1)!.span), `unexpected argument${n === 1 ? "" : "s"}`);
+        d = this.diags.error("X0601", message, cover(extra[0]!.span, extra.at(-1)!.span), `unexpected argument${n === 1 ? "" : "s"}`);
       } else {
         const missing = sig.params.slice(e.args.length).filter((p) => !p.optional && !p.rest);
         const list = missing.map((p) => `\`${p.name}:${typeToString(p.type)}\``).join(", ");
-        d = this.diags.error("K0601", message, e.span, `missing ${list}`);
+        d = this.diags.error("X0601", message, e.span, `missing ${list}`);
       }
       if (decl) d.secondary(decl.name.span, `\`${decl.isConstructor ? "constructor" : decl.name.name}\` defined here`);
     }
@@ -3512,7 +3512,7 @@ class BodyChecker {
         local.used = true;
         const lt = local.type;
         if (!isDynamic(lt) && !(lt.kind === "builtin" && (lt.name === "Class" || lt.name === "Function")) && lt.kind !== "classRef") {
-          this.diags.error("K0415", `\`${name}\` is a \`${typeToString(lt)}\` and can't be instantiated with \`new\``, t.span);
+          this.diags.error("X0415", `\`${name}\` is a \`${typeToString(lt)}\` and can't be instantiated with \`new\``, t.span);
         }
         dynamicArgs();
         return T.any;
@@ -3525,19 +3525,19 @@ class BodyChecker {
     const expected = this.takeExpected();
     let type = this.resolveT(t, this.scope, false, true);
     if (type.kind === "class" && type.info.decl.isEnum) {
-      this.diags.error("K0815", `\`${type.info.decl.name.name}\` is an enum; use one of its members`, t.span)
+      this.diags.error("X0815", `\`${type.info.decl.name.name}\` is an enum; use one of its members`, t.span)
         .help(`for example \`${type.info.decl.name.name}.${type.info.enumValues?.keys().next().value ?? "Member"}\``);
       dynamicArgs();
       return type;
     }
     if (type.kind === "class" && type.info.decl.isInterface) {
-      this.diags.error("K0786", `\`${type.info.decl.name.name}\` is an interface and can't be instantiated`, t.span)
+      this.diags.error("X0786", `\`${type.info.decl.name.name}\` is an interface and can't be instantiated`, t.span)
         .help("create an instance of a class that implements it");
       dynamicArgs();
       return type;
     }
     if (type.kind === "class" && type.info.decl.modifiers.abstract) {
-      this.diags.error("K0710", `\`${type.info.decl.name.name}\` is abstract and can't be instantiated`, t.span)
+      this.diags.error("X0710", `\`${type.info.decl.name.name}\` is abstract and can't be instantiated`, t.span)
         .secondary(type.info.decl.modifiers.abstract, "declared `abstract` here")
         .help("create an instance of a concrete subclass");
       dynamicArgs();
@@ -3553,7 +3553,7 @@ class BodyChecker {
         if (expected) unify(own, expected, new Set(info.typeParams), out);
         const missing = info.typeParams.filter((p) => !out.has(p));
         if (missing.length > 0) {
-          this.diags.error("K0797", `can't infer the type of ${missing.map((v) => `\`${v.name}\``).join(", ")}`, t.span)
+          this.diags.error("X0797", `can't infer the type of ${missing.map((v) => `\`${v.name}\``).join(", ")}`, t.span)
             .help(`write the type arguments: \`new ${info.decl.name.name}<…>()\``);
         }
         type = { kind: "class", info, args: info.typeParams.map((p) => out.get(p) ?? T.any) };
@@ -3563,7 +3563,7 @@ class BodyChecker {
         // the parent's constructor access is checked where the subclass is declared.
         if (ctor.owner === info && isNative(info) && visibilityOf(ctor.decl) === "private") {
           // A native with a hidden constructor is a namespace (`JSON`, `Math`) or a primitive.
-          this.diags.error("K0415", `\`${info.decl.name.name}\` can't be instantiated with \`new\``, t.span)
+          this.diags.error("X0415", `\`${info.decl.name.name}\` can't be instantiated with \`new\``, t.span)
             .note(`\`${info.decl.name.name}\` only has static members, e.g. \`${info.decl.name.name}.${staticExample(info)}\``);
           return T.error;
         }
@@ -3589,14 +3589,14 @@ class BodyChecker {
           this.checkArgs(e, memberTypeIn(info, type.args ?? [], ctor.owner, ctor.type) as MethodType, ctor.decl, scope);
         }
       } else if (ctor.kind === "none" && e.args.length > 0) {
-        this.diags.error("K0601", `\`${type.info.decl.name.name}\` has no constructor parameters but ${e.args.length} argument${e.args.length === 1 ? " was" : "s were"} given`, e.span);
+        this.diags.error("X0601", `\`${type.info.decl.name.name}\` has no constructor parameters but ${e.args.length} argument${e.args.length === 1 ? " was" : "s were"} given`, e.span);
         dynamicArgs();
       } else if (ctor.kind === "dynamic") dynamicArgs();
       return type;
     }
     dynamicArgs();
     if (type.kind === "builtin" || isDynamic(type)) return type;
-    const d = this.diags.error("K0415", `\`${typeToString(type)}\` can't be instantiated with \`new\``, t.span);
+    const d = this.diags.error("X0415", `\`${typeToString(type)}\` can't be instantiated with \`new\``, t.span);
     if (type.kind === "prim" && type.name in CASTS && type.name !== "int" && type.name !== "uint") {
       d.note("in JavaScript this creates a wrapper object, which is always truthy and never `==` a primitive value")
         .help(`to convert a value, call \`${type.name}(x)\` without \`new\``, [{ span: span(e.span.file, e.span.start, t.span.start), text: "" }]);
@@ -3626,13 +3626,13 @@ class BodyChecker {
         return T.String;
       case "delete": {
         if (e.arg.kind !== "Member" && e.arg.kind !== "Index") {
-          this.diags.error("K0316", "`delete` needs a property access", e.arg.span);
+          this.diags.error("X0316", "`delete` needs a property access", e.arg.span);
           return T.Boolean;
         }
         // Only dynamic objects can lose properties; class members are fixed.
         const objType = this.env.result.exprTypes.get(e.arg.object);
         if (objType && !isDynamic(objType) && !(objType.kind === "builtin" && (objType.name === "Object" || objType.name === "Array"))) {
-          this.diags.error("K0316", `can't \`delete\` a property of \`${typeToString(objType)}\``, e.arg.span)
+          this.diags.error("X0316", `can't \`delete\` a property of \`${typeToString(objType)}\``, e.arg.span)
             .note("`delete` only works on `*` and `Object` values");
         }
         return T.Boolean;
@@ -3660,46 +3660,46 @@ class BodyChecker {
     // `x as *`: give up static typing for this value (the escape hatch for undeclared JS APIs).
     if (target.kind === "any" && e.op === "as") return T.any;
     if (target.kind === "class" && target.args?.length && e.op === "is") {
-      this.diags.error("K0394", `\`${typeToString(target)}\` can't be checked at runtime`, t.span, "type arguments are erased")
+      this.diags.error("X0394", `\`${typeToString(target)}\` can't be checked at runtime`, t.span, "type arguments are erased")
         .help(`test the class: \`is ${target.info.decl.name.name}\``);
       return T.Boolean;
     }
     if (target.kind === "typeParam") {
-      this.diags.error("K0394", `type parameter \`${target.param.name}\` can't be checked at runtime`, t.span, "type parameters are erased");
+      this.diags.error("X0394", `type parameter \`${target.param.name}\` can't be checked at runtime`, t.span, "type parameters are erased");
       return e.op === "is" ? T.Boolean : T.error;
     }
     if (target.kind === "shape" || target.kind === "method") {
       // Structural types are erased: `as` is an unchecked cast, `is` is impossible.
       if (e.op === "is") {
-        this.diags.error("K0794", `\`${typeToString(target)}\` is a structural type and can't be tested at runtime`, t.span)
+        this.diags.error("X0794", `\`${typeToString(target)}\` is a structural type and can't be tested at runtime`, t.span)
           .note("typedef shapes and function types are erased when compiling");
         return T.Boolean;
       }
       if (!isDynamic(from) && !(from.kind === "builtin" && from.name === "Object") && !assignable(from, target) && !assignable(target, from)) {
-        this.diags.error("K0396", `\`${typeToString(from)}\` values can never be \`${typeToString(target)}\``, cover(opSpan, t.span));
+        this.diags.error("X0396", `\`${typeToString(from)}\` values can never be \`${typeToString(target)}\``, cover(opSpan, t.span));
       }
       return target;
     }
     const check = runtimeCheck(target);
     if (target.kind === "error") return e.op === "is" ? T.Boolean : T.error;
     if (!check) {
-      const d = this.diags.error("K0394", `\`${typeToString(target)}\` can't be checked at runtime`, t.span);
+      const d = this.diags.error("X0394", `\`${typeToString(target)}\` can't be checked at runtime`, t.span);
       if (elementOf(target)) d.help("check `is Array`; element types are not known at runtime");
       return e.op === "is" ? T.Boolean : T.error;
     }
     this.env.result.typeChecks.set(e, check);
     if (e.op === "as" && !isNullable(target)) {
       const fn = typeToString(target);
-      this.diags.error("K0393", `\`as ${fn}\` is not possible: \`${fn}\` can never be null`, cover(opSpan, t.span))
+      this.diags.error("X0393", `\`as ${fn}\` is not possible: \`${fn}\` can never be null`, cover(opSpan, t.span))
         .help(`convert with \`${fn}(x)\`, or test with \`x is ${fn}\``);
       return T.error;
     }
     if (!isDynamic(from) && !(from.kind === "builtin" && from.name === "Object")) {
       if (assignable(from, target) && from.kind !== "null") {
-        this.diags.warning("K0397", e.op === "is" ? `this test is always true unless the value is null` : "unnecessary cast", cover(opSpan, t.span))
+        this.diags.warning("X0397", e.op === "is" ? `this test is always true unless the value is null` : "unnecessary cast", cover(opSpan, t.span))
           .secondary(e.expr.span, `already \`${typeToString(from)}\``);
       } else if (!assignable(target, from) && !involvesInterface(from, target) && !enumFromRaw(from, target)) {
-        this.diags.error("K0396", `\`${typeToString(from)}\` values can never be \`${typeToString(target)}\``, cover(opSpan, t.span))
+        this.diags.error("X0396", `\`${typeToString(from)}\` values can never be \`${typeToString(target)}\``, cover(opSpan, t.span))
           .secondary(e.expr.span, `\`${typeToString(from)}\``);
       }
     }
@@ -3707,7 +3707,7 @@ class BodyChecker {
   }
 
   private opError(at: Span, message: string, operand: A.Expr, t: Type) {
-    this.diags.error("K0315", message, at).secondary(operand.span, `this is \`${typeToString(t)}\``);
+    this.diags.error("X0315", message, at).secondary(operand.span, `this is \`${typeToString(t)}\``);
   }
 
   private update(e: A.Expr & { kind: "Update" }, scope: Scope): Type {
@@ -3743,7 +3743,7 @@ class BodyChecker {
     this.env.checkAccess(m.decl, m.owner, this.info, opSpan);
     const onThis = left.kind === "This";
     if (this.constMethod && onThis && !isConstMember(m)) {
-      this.diags.error("K0902", `cannot use non-const method \`operator+\` in const method \`${this.constMethod}\``, opSpan)
+      this.diags.error("X0902", `cannot use non-const method \`operator+\` in const method \`${this.constMethod}\``, opSpan)
         .secondary(m.decl.name.span, "`operator+` is not `const`");
     }
     const sig = this.seenThrough(l, m) as MethodType;
@@ -3761,7 +3761,7 @@ class BodyChecker {
     if (l.kind === "error" || r.kind === "error") return T.error;
     const dyn = isDynamic(l) || isDynamic(r);
     const fail = (why?: string) => {
-      this.diags.error("K0315", why ?? `cannot apply \`${op}\` to \`${typeToString(l)}\` and \`${typeToString(r)}\``, opSpan)
+      this.diags.error("X0315", why ?? `cannot apply \`${op}\` to \`${typeToString(l)}\` and \`${typeToString(r)}\``, opSpan)
         .secondary(left.span, `\`${typeToString(l)}\``)
         .secondary(right.span, `\`${typeToString(r)}\``);
       return undefined;
@@ -3772,7 +3772,7 @@ class BodyChecker {
         if (dyn) return T.any;
         if (isNumeric(l) && isNumeric(r)) return arithmeticResult(l, r);
         if (l.kind === "class") {
-          this.diags.error("K0370", `\`+\` is not defined for \`${typeToString(l)}\``, opSpan)
+          this.diags.error("X0370", `\`+\` is not defined for \`${typeToString(l)}\``, opSpan)
             .secondary(left.span, `\`${typeToString(l)}\``)
             .note("concatenating with a `String` works; other uses need `operator+`");
           return undefined;
@@ -3795,14 +3795,14 @@ class BodyChecker {
       case "&&": case "||":
         for (const [t, side] of [[l, left], [r, right]] as const) {
           if (!isPrim(t, "Boolean") && !isDynamic(t)) {
-            const d = this.diags.error("K0315", `\`${op}\` needs \`Boolean\` operands`, side.span, `this is \`${typeToString(t)}\``);
+            const d = this.diags.error("X0315", `\`${op}\` needs \`Boolean\` operands`, side.span, `this is \`${typeToString(t)}\``);
             if (op === "||" && isNullable(t)) d.help("use `??` for a default value when something is null");
           }
         }
         return T.Boolean;
       case "??":
         if (!isNullable(l) && !isDynamic(l)) {
-          this.diags.warning("K0317", `\`??\` has no effect: \`${typeToString(l)}\` can never be null`, opSpan)
+          this.diags.warning("X0317", `\`??\` has no effect: \`${typeToString(l)}\` can never be null`, opSpan)
             .secondary(left.span, `\`${typeToString(l)}\``);
         }
         if (dyn) return T.any;
@@ -3818,8 +3818,8 @@ class BodyChecker {
   private equality(e: A.Expr & { kind: "Binary" }, scope: Scope): Type {
     if (e.op === "===" || e.op === "!==") {
       const short = e.op === "===" ? "==" : "!=";
-      this.diags.warning("K0841", `\`${e.op}\` is the same as \`${short}\` in Klass`, e.opSpan)
-        .note("`==` and `!=` are always strict in Klass")
+      this.diags.warning("X0841", `\`${e.op}\` is the same as \`${short}\` in Xenon`, e.opSpan)
+        .note("`==` and `!=` are always strict in Xenon")
         .help(`use \`${short}\``, [{ span: e.opSpan, text: short }]);
     }
     const types: Type[] = [];
@@ -3831,11 +3831,11 @@ class BodyChecker {
     }
     const [l, r] = types as [Type, Type];
     if (!comparable(l, r)) {
-      const d = this.diags.error("K0309", `this comparison is always ${e.op.startsWith("!") ? "true" : "false"}`, e.opSpan)
+      const d = this.diags.error("X0309", `this comparison is always ${e.op.startsWith("!") ? "true" : "false"}`, e.opSpan)
         .secondary(e.left.span, `\`${typeToString(l)}\``)
         .secondary(e.right.span, `\`${typeToString(r)}\``);
       if (l.kind === "null" || r.kind === "null") d.note(`\`${typeToString(l.kind === "null" ? r : l)}\` can never be null`);
-      else d.note("`==` never converts between types in Klass");
+      else d.note("`==` never converts between types in Xenon");
     }
     return T.Boolean;
   }
@@ -3860,7 +3860,7 @@ class BodyChecker {
       const local = scope.get(target.name);
       const type = evalTarget();
       if (local?.kind === "range") {
-        this.diags.error("K0332", `the range loop variable \`${target.name}\` can't be assigned`, target.span)
+        this.diags.error("X0332", `the range loop variable \`${target.name}\` can't be assigned`, target.span)
           .secondary(local.nameSpan, "declared by the range loop here")
           .note("use a `while` loop or a C-style `for` to control the counter yourself");
         return { type, commit: none };
@@ -3869,7 +3869,7 @@ class BodyChecker {
         return { type, commit: () => this.daWrite(local, target.span, local.nameSpan, `final \`${target.name}\``) };
       }
       if (local && (local.kind === "const" || local.kind === "final")) {
-        this.diags.error("K0501", `cannot assign twice to ${local.kind} \`${target.name}\``, target.span)
+        this.diags.error("X0501", `cannot assign twice to ${local.kind} \`${target.name}\``, target.span)
           .secondary(local.nameSpan, `declared \`${local.kind}\` here`);
         return { type, commit: none };
       }
@@ -3880,7 +3880,7 @@ class BodyChecker {
       const type = evalTarget();
       const objType = this.env.result.exprTypes.get(target.object);
       if (objType?.kind === "shape" && objType.members.get(target.name.name)?.readonly) {
-        this.diags.error("K0793", `\`${target.name.name}\` is read-only in \`${typeToString(objType)}\``, target.name.span)
+        this.diags.error("X0793", `\`${target.name.name}\` is read-only in \`${typeToString(objType)}\``, target.name.span)
           .note("it is declared `final` in the shape");
       }
       // A primitive's members come from its std class (`s.length = 3` is a getter-only write).
@@ -3893,7 +3893,7 @@ class BodyChecker {
       return { type, commit: none };
     }
     if (target.kind === "Index") return { type: this.expr(target, scope), commit: none };
-    this.diags.error("K0105", "invalid assignment target", target.span);
+    this.diags.error("X0105", "invalid assignment target", target.span);
     return { type: T.error, commit: none };
   }
 
@@ -3904,20 +3904,20 @@ class BodyChecker {
     if (!m) return none;
     this.env.usedMembers.add(m);
     if (this.constMethod && own && !m.isStatic && m.kind !== "method") {
-      this.diags.error("K0901", `cannot change \`${name}\` in const method \`${this.constMethod}\``, at, `assigns \`this.${name}\``)
+      this.diags.error("X0901", `cannot change \`${name}\` in const method \`${this.constMethod}\``, at, `assigns \`this.${name}\``)
         .note("a `const` method doesn't change the object; remove `const` if it has to");
       return none;
     }
     if (m.readonly === "const") {
-      this.diags.error("K0501", `cannot assign to constant \`${name}\``, at).secondary(m.decl.name.span, "declared `const` here");
+      this.diags.error("X0501", `cannot assign to constant \`${name}\``, at).secondary(m.decl.name.span, "declared `const` here");
     } else if (m.readonly === "getter") {
-      this.diags.error("K0504", `\`${name}\` has a getter but no setter`, at).secondary(m.decl.name.span, "getter declared here");
+      this.diags.error("X0504", `\`${name}\` has a getter but no setter`, at).secondary(m.decl.name.span, "getter declared here");
     } else if (m.kind === "method") {
-      this.diags.error("K0505", `cannot assign to method \`${name}\``, at);
+      this.diags.error("X0505", `cannot assign to method \`${name}\``, at);
     } else if (m.readonly === "final") {
       if (own && this.da.has(m)) return () => this.daWrite(m, at, m.decl.name.span, `final field \`${name}\``);
       const where = m.isStatic ? "in a `static { }` block of its class" : "in the constructor of its class";
-      this.diags.error("K0502", `\`${name}\` is \`final\` and can only be assigned ${where}`, at)
+      this.diags.error("X0502", `\`${name}\` is \`final\` and can only be assigned ${where}`, at)
         .secondary(m.decl.name.span, "declared `final` here");
     }
     return none;
@@ -3937,7 +3937,7 @@ class BodyChecker {
     const overloaded = op === "+" ? this.operatorPlus(e, targetType, r, e.target, e.value, e.opSpan) : undefined;
     const result = overloaded ?? this.binaryResult(op, targetType, r, e.opSpan, e.target, e.value);
     if (result && !assignable(result, targetType)) {
-      const d = this.diags.error("K0308", "mismatched types", e.span, `\`${e.op}\` produces \`${typeToString(result)}\`, but the target is \`${typeToString(targetType)}\``);
+      const d = this.diags.error("X0308", "mismatched types", e.span, `\`${e.op}\` produces \`${typeToString(result)}\`, but the target is \`${typeToString(targetType)}\``);
       if (origin) d.secondary(origin.span, origin.label);
       if (isPrim(targetType, "int") && op === "/") d.help("use `x = int(x / y)` for integer division");
     }
@@ -3969,7 +3969,7 @@ class BodyChecker {
     if (sameType(a, b)) return a;
     if (assignable(a, b)) return b.kind === "null" ? a : b;
     if (assignable(b, a)) return a.kind === "null" ? b : a;
-    this.diags.error("K0318", "the branches of `?:` have incompatible types", e.span)
+    this.diags.error("X0318", "the branches of `?:` have incompatible types", e.span)
       .secondary(e.then.span, `\`${typeToString(a)}\``)
       .secondary(e.else.span, `\`${typeToString(b)}\``);
     return T.error;
@@ -3993,7 +3993,7 @@ class BodyChecker {
   }
 
   private undefinedWarning(at: Span, comparison: boolean) {
-    this.diags.warning("K0840", "`undefined` is only supported for JavaScript compatibility", at, "use `null` instead")
+    this.diags.warning("X0840", "`undefined` is only supported for JavaScript compatibility", at, "use `null` instead")
       .help(comparison ? "compare with `null`: `x == null` matches both null and undefined" : "use `null`", [{ span: at, text: "null" }]);
   }
 }
@@ -4029,7 +4029,7 @@ function involvesInterface(a: Type, b: Type): boolean {
   return (iface(a) && (openClass(b) || iface(b))) || (iface(b) && openClass(a));
 }
 
-/** The runtime test for a Klass type, or undefined if it can't be tested. */
+/** The runtime test for a Xenon type, or undefined if it can't be tested. */
 function runtimeCheck(t: Type): RuntimeCheck | undefined {
   switch (t.kind) {
     case "class":

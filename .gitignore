@@ -1,7 +1,7 @@
 # dependencies (bun install)
 node_modules/
 
-# build output (klass build writes `out/` plus its manifest `out/.klass-outputs`)
+# build output (xenon build writes `out/` plus its manifest `out/.xenon-outputs`)
 /out/
 examples/*/out/
 /dist/

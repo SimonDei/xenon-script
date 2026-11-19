@@ -11,13 +11,13 @@ export interface WatchOptions {
   clear: boolean;
   /** Arguments passed to the program with `--run`. */
   args: string[];
-  /** Re-reads klass.json/flags when the project file changes. */
+  /** Re-reads xenon.json/flags when the project file changes. */
   reloadConfig: () => Promise<Config>;
   projectFile?: string;
 }
 
 /**
- * `klass watch`: rebuilds on every change. Files are read once and then only when they change;
+ * `xenon watch`: rebuilds on every change. Files are read once and then only when they change;
  * the project is re-checked as a whole (fast), only changed outputs are written, and outputs of
  * deleted files are removed. Resolves with the exit code when interrupted (Ctrl+C).
  */
@@ -106,7 +106,7 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
   const watchSources = () => {
     watchers.push(watch(srcRoot, { recursive: true }, (_event, file) => {
       const path = file ? String(file).split("\\").join("/") : "";
-      if (path.endsWith(".kl")) changed.add(path);
+      if (path.endsWith(".xn")) changed.add(path);
       else rescan = true; // a directory was added/removed/renamed
       schedule();
     }));

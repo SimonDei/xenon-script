@@ -1,17 +1,17 @@
-warning[K0841]: `===` is the same as `==` in Klass
- --> equality-warnings.kl:5:13
+warning[X0841]: `===` is the same as `==` in Xenon
+ --> equality-warnings.xn:5:13
   |
 5 |       if (x === undefined) trace('none')
   |             ^^^
   |
-  = note: `==` and `!=` are always strict in Klass
+  = note: `==` and `!=` are always strict in Xenon
 help: use `==`
   |
 5 |       if (x == undefined) trace('none')
   |             ~~
 
-warning[K0840]: `undefined` is only supported for JavaScript compatibility
- --> equality-warnings.kl:5:17
+warning[X0840]: `undefined` is only supported for JavaScript compatibility
+ --> equality-warnings.xn:5:17
   |
 5 |       if (x === undefined) trace('none')
   |                 ^^^^^^^^^ use `null` instead

@@ -1,13 +1,13 @@
-error[K0514]: static final field `ORIGIN` is not assigned on every path
- --> definite-assignment.kl:7:25
+error[X0514]: static final field `ORIGIN` is not assigned on every path
+ --> definite-assignment.xn:7:25
   |
 7 |     public static final ORIGIN:String
   |                         ^^^^^^
   |
 help: give it a value, or assign it in a `static { }` block
 
-error[K0501]: cannot assign twice to final field `VERSION`
-  --> definite-assignment.kl:11:7
+error[X0501]: cannot assign twice to final field `VERSION`
+  --> definite-assignment.xn:11:7
    |
  6 |     public static final VERSION:String
    |                         ------- declared `final` here
@@ -15,8 +15,8 @@ error[K0501]: cannot assign twice to final field `VERSION`
 11 |       VERSION = '1.1'
    |       ^^^^^^^
 
-error[K0510]: final field `id` is used before it is assigned
-  --> definite-assignment.kl:15:26
+error[X0510]: final field `id` is used before it is assigned
+  --> definite-assignment.xn:15:26
    |
  3 |     private final id:String
    |                   -- declared here without a value
@@ -24,8 +24,8 @@ error[K0510]: final field `id` is used before it is assigned
 15 |       var flag:Boolean = id == null
    |                          ^^
 
-error[K0510]: final field `id` is used before it is assigned
-  --> definite-assignment.kl:16:18
+error[X0510]: final field `id` is used before it is assigned
+  --> definite-assignment.xn:16:18
    |
  3 |     private final id:String
    |                   -- declared here without a value
@@ -33,8 +33,8 @@ error[K0510]: final field `id` is used before it is assigned
 16 |       trace(this.id)
    |                  ^^
 
-error[K0501]: cannot assign twice to final field `name`
-  --> definite-assignment.kl:18:7
+error[X0501]: cannot assign twice to final field `name`
+  --> definite-assignment.xn:18:7
    |
  4 |     private final name:String = 'fixed'
    |                   ---- declared `final` here
@@ -42,8 +42,8 @@ error[K0501]: cannot assign twice to final field `name`
 18 |       name = 'other'
    |       ^^^^
 
-error[K0514]: final field `id` is not assigned on every path through the constructor
-  --> definite-assignment.kl:19:17
+error[X0514]: final field `id` is not assigned on every path through the constructor
+  --> definite-assignment.xn:19:17
    |
  3 |     private final id:String
    |                   -- `id` declared `final` here
@@ -51,8 +51,8 @@ error[K0514]: final field `id` is not assigned on every path through the constru
 19 |       if (flag) return
    |                 ^^^^^^ the constructor can return here
 
-error[K0514]: final field `size` is not assigned on every path through the constructor
-  --> definite-assignment.kl:19:17
+error[X0514]: final field `size` is not assigned on every path through the constructor
+  --> definite-assignment.xn:19:17
    |
  5 |     private final size:int
    |                   ---- `size` declared `final` here
@@ -60,8 +60,8 @@ error[K0514]: final field `size` is not assigned on every path through the const
 19 |       if (flag) return
    |                 ^^^^^^ the constructor can return here
 
-error[K0514]: final field `id` is not assigned on every path through the constructor
-  --> definite-assignment.kl:21:5
+error[X0514]: final field `id` is not assigned on every path through the constructor
+  --> definite-assignment.xn:21:5
    |
  3 |     private final id:String
    |                   -- `id` declared `final` here
@@ -69,16 +69,16 @@ error[K0514]: final field `id` is not assigned on every path through the constru
 21 |     }
    |     ^ the constructor can end here
 
-error[K0510]: final `a` is used before it is assigned
-  --> definite-assignment.kl:25:13
+error[X0510]: final `a` is used before it is assigned
+  --> definite-assignment.xn:25:13
    |
 24 |       final a:int
    |             - declared here without a value
 25 |       trace(a)
    |             ^
 
-error[K0511]: final `a` might not be assigned here
-  --> definite-assignment.kl:27:13
+error[X0511]: final `a` might not be assigned here
+  --> definite-assignment.xn:27:13
    |
 24 |       final a:int
    |             - declared here without a value
@@ -88,8 +88,8 @@ error[K0511]: final `a` might not be assigned here
    |
    = note: it is assigned on some paths but not on others
 
-error[K0501]: cannot assign twice to final `b`
-  --> definite-assignment.kl:33:7
+error[X0501]: cannot assign twice to final `b`
+  --> definite-assignment.xn:33:7
    |
 29 |       final b:int
    |             - declared `final` here
@@ -97,8 +97,8 @@ error[K0501]: cannot assign twice to final `b`
 33 |       b = 3
    |       ^
 
-error[K0513]: final `c` can't be assigned inside a loop or a function
-  --> definite-assignment.kl:36:31
+error[X0513]: final `c` can't be assigned inside a loop or a function
+  --> definite-assignment.xn:36:31
    |
 35 |       final c:int
    |             - declared `final` here
@@ -107,8 +107,8 @@ error[K0513]: final `c` can't be assigned inside a loop or a function
    |
    = note: the loop or function could run more than once
 
-error[K0512]: final `d` might already be assigned
-  --> definite-assignment.kl:40:7
+error[X0512]: final `d` might already be assigned
+  --> definite-assignment.xn:40:7
    |
 38 |       final d:int
    |             - declared `final` here
@@ -118,16 +118,16 @@ error[K0512]: final `d` might already be assigned
    |
    = note: an earlier path may have assigned it
 
-error[K0510]: final `e` is used before it is assigned
-  --> definite-assignment.kl:43:11
+error[X0510]: final `e` is used before it is assigned
+  --> definite-assignment.xn:43:11
    |
 42 |       final e:int
    |             - declared here without a value
 43 |       e = e + 1
    |           ^
 
-error[K0515]: final field `never` is never assigned
-  --> definite-assignment.kl:50:17
+error[X0515]: final field `never` is never assigned
+  --> definite-assignment.xn:50:17
    |
 50 |   private final never:int
    |                 ^^^^^

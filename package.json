@@ -1,15 +1,15 @@
 {
-  "name": "klass",
+  "name": "xenonscript",
   "module": "src/compiler.ts",
   "type": "module",
   "private": true,
   "bin": {
-    "klass": "src/cli.ts"
+    "xenon": "src/cli.ts"
   },
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
-    "klass": "bun src/cli.ts"
+    "xenon": "bun src/cli.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

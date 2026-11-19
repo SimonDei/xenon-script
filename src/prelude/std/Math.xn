@@ -1,0 +1,77 @@
+// Standard library: JavaScript's `Math` object. A namespace (hidden constructor, static members).
+//
+// Typing: every result is `Float` (it can be NaN or leave the `int` range), including `floor`,
+// `round`, `ceil` and `trunc`: wrap them in `int(…)` when you know the value fits. Only results
+// that are always whole 32-bit numbers (`clz32`, `imul`) are `int`.
+// Not declared (too new to rely on): `f16round`, `sumPrecise`; use `(Math as *)`.
+package xenon {
+  public native class Math {
+    private function Math()
+
+    static const E:Float
+    static const LN2:Float
+    static const LN10:Float
+    static const LOG2E:Float
+    static const LOG10E:Float
+    static const PI:Float
+    static const SQRT2:Float
+    /** √½ */
+    static const SQRT1_2:Float
+
+    static function abs(x:Float):Float
+    /** −1, 0 or 1 for the sign of `x` (NaN stays NaN). */
+    static function sign(x:Float):Float
+    /** Rounds down: `floor(-1.5)` is -2. */
+    static function floor(x:Float):Float
+    /** Rounds up: `ceil(-1.5)` is -1. */
+    static function ceil(x:Float):Float
+    /** Rounds to the nearest integer, halves toward +∞: `round(-1.5)` is -1, `round(2.5)` is 3. */
+    static function round(x:Float):Float
+    /** Drops the fraction: `trunc(-1.5)` is -1. */
+    static function trunc(x:Float):Float
+    /** Nearest 32-bit float. */
+    static function fround(x:Float):Float
+
+    /** Largest argument; `-Infinity` without arguments, NaN if any argument is NaN. */
+    static function max(...values:Array<Float>):Float
+    /** Smallest argument; `Infinity` without arguments, NaN if any argument is NaN. */
+    static function min(...values:Array<Float>):Float
+    /** √(a² + b² + …) */
+    static function hypot(...values:Array<Float>):Float
+    static function pow(base:Float, exponent:Float):Float
+    static function sqrt(x:Float):Float
+    static function cbrt(x:Float):Float
+    /** eˣ */
+    static function exp(x:Float):Float
+    /** eˣ − 1, accurate near 0. */
+    static function expm1(x:Float):Float
+    /** Natural logarithm. */
+    static function log(x:Float):Float
+    static function log2(x:Float):Float
+    static function log10(x:Float):Float
+    /** ln(1 + x), accurate near 0. */
+    static function log1p(x:Float):Float
+
+    static function sin(x:Float):Float
+    static function cos(x:Float):Float
+    static function tan(x:Float):Float
+    static function asin(x:Float):Float
+    static function acos(x:Float):Float
+    static function atan(x:Float):Float
+    /** Angle of the point (x, y): note the parameter order, `y` first. */
+    static function atan2(y:Float, x:Float):Float
+    static function sinh(x:Float):Float
+    static function cosh(x:Float):Float
+    static function tanh(x:Float):Float
+    static function asinh(x:Float):Float
+    static function acosh(x:Float):Float
+    static function atanh(x:Float):Float
+
+    /** A random number from 0 (included) up to 1 (excluded). */
+    static function random():Float
+    /** Leading zero bits of `x` as a 32-bit unsigned number (0–32). */
+    static function clz32(x:Float):int
+    /** 32-bit integer multiplication, wrapping around on overflow. */
+    static function imul(a:int, b:int):int
+  }
+}

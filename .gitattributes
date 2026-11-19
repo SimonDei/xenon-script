@@ -3,8 +3,8 @@
 # so a CRLF checkout (Windows with core.autocrlf) would break the tests.
 * text=auto eol=lf
 
-# Klass sources: diff as code; GitHub has no Klass grammar, ActionScript is the closest.
-*.kl text eol=lf diff=java linguist-language=ActionScript
+# Xenon sources: diff as code; GitHub has no Xenon grammar, ActionScript is the closest.
+*.xn text eol=lf diff=java linguist-language=ActionScript
 
 # Shell scripts must stay LF even when edited on Windows.
 *.sh text eol=lf

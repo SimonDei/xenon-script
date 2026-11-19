@@ -1,16 +1,16 @@
-error[K0441]: typedef `geom.Hidden` is internal to package `geom`
- --> typedefs/Main.kl:3:10
+error[X0441]: typedef `geom.Hidden` is internal to package `geom`
+ --> typedefs/Main.xn:3:10
   |
 3 |   import geom.Hidden
   |          ^^^^^^^^^^^ not visible here
   |
- ::: typedefs/geom/Hidden.kl:2:11
+ ::: typedefs/geom/Hidden.xn:2:11
   |
 2 |   typedef Hidden = String
   |           ------ declared without `public`
 
-error[K0791]: `yy` is not a member of `Point`
- --> typedefs/Main.kl:7:29
+error[X0791]: `yy` is not a member of `Point`
+ --> typedefs/Main.xn:7:29
   |
 7 |       var p:Point = { x: 1, yy: 2, id: 1 }
   |                             ^^ unknown member
@@ -20,14 +20,14 @@ help: did you mean `y`?
 7 |       var p:Point = { x: 1, y: 2, id: 1 }
   |                             ~
 
-error[K0792]: missing `id` for `Point`
- --> typedefs/Main.kl:8:21
+error[X0792]: missing `id` for `Point`
+ --> typedefs/Main.xn:8:21
   |
 8 |       var q:Point = { x: 'one', y: 2 }
   |                     ^^^^^^^^^^^^^^^^^^ this member is required
 
-error[K0308]: mismatched types
- --> typedefs/Main.kl:8:26
+error[X0308]: mismatched types
+ --> typedefs/Main.xn:8:26
   |
 8 |       var q:Point = { x: 'one', y: 2 }
   |                          ^^^^^ expected `Float`, found `String`
@@ -37,54 +37,54 @@ help: convert the value with `Float()`
 8 |       var q:Point = { x: Float('one'), y: 2 }
   |                          ++++++     +
 
-error[K0793]: `id` is read-only in `Point`
- --> typedefs/Main.kl:9:9
+error[X0793]: `id` is read-only in `Point`
+ --> typedefs/Main.xn:9:9
   |
 9 |       p.id = 5
   |         ^^
   |
   = note: it is declared `final` in the shape
 
-error[K0426]: no member `z` on `Point`
-  --> typedefs/Main.kl:10:15
+error[X0426]: no member `z` on `Point`
+  --> typedefs/Main.xn:10:15
    |
 10 |       trace(p.z)
    |               ^ unknown member
 
-error[K0308]: mismatched types
-  --> typedefs/Main.kl:11:23
+error[X0308]: mismatched types
+  --> typedefs/Main.xn:11:23
    |
 11 |       var r:Reducer = (a:int, b:String):int => a
    |             -------   ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Reducer`, found `(a:int, b:String) -> int`
    |             |
    |             expected because of this type
 
-error[K0308]: mismatched types
-  --> typedefs/Main.kl:12:23
+error[X0308]: mismatched types
+  --> typedefs/Main.xn:12:23
    |
 12 |       var s:Reducer = (a, b) => 'text'
    |             -------   ^^^^^^^^^^^^^^^^ expected `Reducer`, found `(a:int, b:int) -> String`
    |             |
    |             expected because of this type
 
-error[K0308]: mismatched types
-  --> typedefs/Main.kl:13:23
+error[X0308]: mismatched types
+  --> typedefs/Main.xn:13:23
    |
 13 |       var t:Reducer = this.notReducer
    |             -------   ^^^^^^^^^^^^^^^ expected `Reducer`, found `(x:String) -> int`
    |             |
    |             expected because of this type
 
-error[K0794]: `Point` is a structural type and can't be tested at runtime
-  --> typedefs/Main.kl:14:16
+error[X0794]: `Point` is a structural type and can't be tested at runtime
+  --> typedefs/Main.xn:14:16
    |
 14 |       if (p is Point) trace('?')
    |                ^^^^^
    |
    = note: typedef shapes and function types are erased when compiling
 
-error[K0308]: mismatched types
-  --> typedefs/Main.kl:15:21
+error[X0308]: mismatched types
+  --> typedefs/Main.xn:15:21
    |
 15 |       var u:Point = new Vec()
    |             -----   ^^^^^^^^^ expected `Point`, found `Vec`
@@ -94,16 +94,16 @@ error[K0308]: mismatched types
    = note: `Vec` has no public member `y`
    = note: `Vec` has no public member `id`
 
-error[K0790]: typedef `Loop` refers to itself
-  --> typedefs/Main.kl:24:16
+error[X0790]: typedef `Loop` refers to itself
+  --> typedefs/Main.xn:24:16
    |
 24 | typedef Loop = Loop
    |                ^^^^
    |
    = note: a typedef can refer to itself only inside a shape member, e.g. `{ value:int, ?next:Node }`
 
-error[K0790]: typedef `A` refers to itself
-  --> typedefs/Main.kl:25:13
+error[X0790]: typedef `A` refers to itself
+  --> typedefs/Main.xn:25:13
    |
 25 | typedef A = B
    |             ^

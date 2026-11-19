@@ -1,5 +1,5 @@
-error[K0308]: mismatched types
- --> std-string.kl:4:23
+error[X0308]: mismatched types
+ --> std-string.xn:4:23
   |
 4 |     var size:String = s.length                      // length is an int
   |              ------   ^^^^^^^^ expected `String`, found `int`
@@ -11,19 +11,19 @@ help: convert the value with `String()`
 4 |     var size:String = String(s.length)                      // length is an int
   |                       +++++++        +
 
-error[K0504]: `length` has a getter but no setter
-  --> std-string.kl:5:7
+error[X0504]: `length` has a getter but no setter
+  --> std-string.xn:5:7
    |
  5 |     s.length = 3
    |       ^^^^^^
    |
-  ::: <klass prelude>/klass/String.kl:24:18
+  ::: <xenon prelude>/xenon/String.xn:24:18
    |
 24 |     function get length():int
    |                  ------ getter declared here
 
-error[K0426]: no member `lenght` on `String`
- --> std-string.kl:6:13
+error[X0426]: no member `lenght` on `String`
+ --> std-string.xn:6:13
   |
 6 |     trace(s.lenght, s.toUppercase(), s.contains('e'), s.trimLeft(), s.substr(1, 2))
   |             ^^^^^^ unknown member
@@ -33,8 +33,8 @@ help: a member with a similar name exists: `length`
 6 |     trace(s.length, s.toUppercase(), s.contains('e'), s.trimLeft(), s.substr(1, 2))
   |             ~~~~~~
 
-error[K0426]: no member `toUppercase` on `String`
- --> std-string.kl:6:23
+error[X0426]: no member `toUppercase` on `String`
+ --> std-string.xn:6:23
   |
 6 |     trace(s.lenght, s.toUppercase(), s.contains('e'), s.trimLeft(), s.substr(1, 2))
   |                       ^^^^^^^^^^^ unknown member
@@ -44,32 +44,32 @@ help: a member with a similar name exists: `toUpperCase`
 6 |     trace(s.lenght, s.toUpperCase(), s.contains('e'), s.trimLeft(), s.substr(1, 2))
   |                       ~~~~~~~~~~~
 
-error[K0426]: no member `contains` on `String`
- --> std-string.kl:6:40
+error[X0426]: no member `contains` on `String`
+ --> std-string.xn:6:40
   |
 6 |     trace(s.lenght, s.toUppercase(), s.contains('e'), s.trimLeft(), s.substr(1, 2))
   |                                        ^^^^^^^^ unknown member
   |
 help: if this JavaScript API exists, use it dynamically: `(s as *).contains`
 
-error[K0426]: no member `trimLeft` on `String`
- --> std-string.kl:6:57
+error[X0426]: no member `trimLeft` on `String`
+ --> std-string.xn:6:57
   |
 6 |     trace(s.lenght, s.toUppercase(), s.contains('e'), s.trimLeft(), s.substr(1, 2))
   |                                                         ^^^^^^^^ unknown member
   |
 help: if this JavaScript API exists, use it dynamically: `(s as *).trimLeft`
 
-error[K0426]: no member `substr` on `String`
- --> std-string.kl:6:71
+error[X0426]: no member `substr` on `String`
+ --> std-string.xn:6:71
   |
 6 |     trace(s.lenght, s.toUppercase(), s.contains('e'), s.trimLeft(), s.substr(1, 2))
   |                                                                       ^^^^^^ unknown member
   |
 help: if this JavaScript API exists, use it dynamically: `(s as *).substr`
 
-error[K0308]: mismatched types
- --> std-string.kl:7:20
+error[X0308]: mismatched types
+ --> std-string.xn:7:20
   |
 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
   |                    ^^^ expected `int`, found `String`
@@ -79,8 +79,8 @@ help: convert the value with `int()`
 7 |     trace(s.charAt(int('1')), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
   |                    ++++   +
 
-error[K0308]: mismatched types
- --> std-string.kl:7:35
+error[X0308]: mismatched types
+ --> std-string.xn:7:35
   |
 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
   |                                   ^^^ expected `int`, found `String`
@@ -90,8 +90,8 @@ help: convert the value with `int()`
 7 |     trace(s.charAt('1'), s.repeat(int('2')), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
   |                                   ++++   +
 
-error[K0308]: mismatched types
- --> std-string.kl:7:51
+error[X0308]: mismatched types
+ --> std-string.xn:7:51
   |
 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
   |                                                   ^ expected `String`, found `int`
@@ -101,8 +101,8 @@ help: convert the value with `String()`
 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(String(1)), s.slice('a'), s.padStart(5, 0))
   |                                                   +++++++ +
 
-error[K0604]: no overload of `slice` accepts (String)
- --> std-string.kl:7:55
+error[X0604]: no overload of `slice` accepts (String)
+ --> std-string.xn:7:55
   |
 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
   |                                                       ^^^^^^^ no matching overload
@@ -110,8 +110,8 @@ error[K0604]: no overload of `slice` accepts (String)
   = note: `slice(start:int):String`
   = note: `slice(start:int, end:int):String`
 
-error[K0308]: mismatched types
- --> std-string.kl:7:83
+error[X0308]: mismatched types
+ --> std-string.xn:7:83
   |
 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
   |                                                                                   ^ expected `String`, found `int`
@@ -121,8 +121,8 @@ help: convert the value with `String()`
 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, String(0)))
   |                                                                                   +++++++ +
 
-error[K0604]: no overload of `replace` accepts (int, String)
- --> std-string.kl:8:11
+error[X0604]: no overload of `replace` accepts (int, String)
+ --> std-string.xn:8:11
   |
 8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
   |           ^^^^^^^^^ no matching overload
@@ -132,8 +132,8 @@ error[K0604]: no overload of `replace` accepts (int, String)
   = note: `replace(pattern:String, replacer:Function):String`
   = note: `replace(pattern:RegExp, replacer:Function):String`
 
-error[K0604]: no overload of `replace` accepts (String, int)
- --> std-string.kl:8:30
+error[X0604]: no overload of `replace` accepts (String, int)
+ --> std-string.xn:8:30
   |
 8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
   |                              ^^^^^^^^^ no matching overload
@@ -143,8 +143,8 @@ error[K0604]: no overload of `replace` accepts (String, int)
   = note: `replace(pattern:String, replacer:Function):String`
   = note: `replace(pattern:RegExp, replacer:Function):String`
 
-error[K0604]: no overload of `split` accepts (int)
- --> std-string.kl:8:49
+error[X0604]: no overload of `split` accepts (int)
+ --> std-string.xn:8:49
   |
 8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
   |                                                 ^^^^^^^ no matching overload
@@ -154,8 +154,8 @@ error[K0604]: no overload of `split` accepts (int)
   = note: `split(separator:RegExp):Array<String>`
   = note: `split(separator:RegExp, limit:int):Array<String>`
 
-error[K0604]: no overload of `match` accepts (int)
- --> std-string.kl:8:61
+error[X0604]: no overload of `match` accepts (int)
+ --> std-string.xn:8:61
   |
 8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
   |                                                             ^^^^^^^ no matching overload
@@ -163,14 +163,14 @@ error[K0604]: no overload of `match` accepts (int)
   = note: `match(pattern:RegExp):Array<String>`
   = note: `match(pattern:String):Array<String>`
 
-error[K0601]: this call takes 1 argument but 0 were given
- --> std-string.kl:8:73
+error[X0601]: this call takes 1 argument but 0 were given
+ --> std-string.xn:8:73
   |
 8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
   |                                                                         ^^^^^^ missing `index:int`
 
-error[K0415]: `String` can't be instantiated with `new`
- --> std-string.kl:9:15
+error[X0415]: `String` can't be instantiated with `new`
+ --> std-string.xn:9:15
   |
 9 |     trace(new String('x'), String.raw, s.push('!'), s[0.5], s['a'])
   |               ^^^^^^
@@ -181,30 +181,30 @@ help: to convert a value, call `String(x)` without `new`
 9 -     trace(new String('x'), String.raw, s.push('!'), s[0.5], s['a'])
 9 +     trace(String('x'), String.raw, s.push('!'), s[0.5], s['a'])
 
-error[K0426]: no static member `raw` on `String`
- --> std-string.kl:9:35
+error[X0426]: no static member `raw` on `String`
+ --> std-string.xn:9:35
   |
 9 |     trace(new String('x'), String.raw, s.push('!'), s[0.5], s['a'])
   |                                   ^^^ unknown member
   |
 help: if this JavaScript API exists, use it dynamically: `(String as *).raw`
 
-error[K0426]: no member `push` on `String`
- --> std-string.kl:9:42
+error[X0426]: no member `push` on `String`
+ --> std-string.xn:9:42
   |
 9 |     trace(new String('x'), String.raw, s.push('!'), s[0.5], s['a'])
   |                                          ^^^^ unknown member
   |
 help: if this JavaScript API exists, use it dynamically: `(s as *).push`
 
-error[K0308]: mismatched types
- --> std-string.kl:9:63
+error[X0308]: mismatched types
+ --> std-string.xn:9:63
   |
 9 |     trace(new String('x'), String.raw, s.push('!'), s[0.5], s['a'])
   |                                                               ^^^ a `String` index is an `int`, found `String`
 
-error[K0308]: mismatched types
-  --> std-string.kl:10:19
+error[X0308]: mismatched types
+  --> std-string.xn:10:19
    |
 10 |     var pos:int = s.indexOf('l') + 'x'
    |             ---   ^^^^^^^^^^^^^^^^^^^^ expected `int`, found `String`
@@ -216,8 +216,8 @@ help: convert the value with `int()`
 10 |     var pos:int = int(s.indexOf('l') + 'x')
    |                   ++++                    +
 
-error[K0308]: mismatched types
-  --> std-string.kl:11:23
+error[X0308]: mismatched types
+  --> std-string.xn:11:23
    |
 11 |     var code:String = s.charCodeAt(0)
    |              ------   ^^^^^^^^^^^^^^^ expected `String`, found `int`
@@ -229,8 +229,8 @@ help: convert the value with `String()`
 11 |     var code:String = String(s.charCodeAt(0))
    |                       +++++++               +
 
-error[K0308]: mismatched types
-  --> std-string.kl:12:28
+error[X0308]: mismatched types
+  --> std-string.xn:12:28
    |
 12 |     var parts:Array<int> = s.split(',')
    |               ----------   ^^^^^^^^^^^^ expected `Array<int>`, found `Array<String>`

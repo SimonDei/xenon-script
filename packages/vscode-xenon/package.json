@@ -1,0 +1,28 @@
+{
+  "name": "vscode-xenon",
+  "displayName": "XenonScript",
+  "description": "Syntax highlighting for the XenonScript language (.xn)",
+  "version": "0.1.0",
+  "publisher": "xenon",
+  "license": "MIT",
+  "private": true,
+  "engines": { "vscode": "^1.75.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "xenon",
+        "aliases": ["Xenon", "xenon"],
+        "extensions": [".xn"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "xenon",
+        "scopeName": "source.xenon",
+        "path": "./syntaxes/xenon.tmLanguage.json"
+      }
+    ]
+  }
+}

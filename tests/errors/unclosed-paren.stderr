@@ -1,5 +1,5 @@
-error[K0101]: expected `)`, found `}`
- --> unclosed-paren.kl:5:5
+error[X0101]: expected `)`, found `}`
+ --> unclosed-paren.xn:5:5
   |
 4 |       trace(1, 2
   |            - unclosed `(` opened here

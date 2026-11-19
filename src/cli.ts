@@ -5,17 +5,17 @@ import { ENTRY_FILE } from "./codegen.ts";
 import { explain } from "./codes.ts";
 import { watchProject } from "./watch.ts";
 
-const USAGE = `klass — compiler for the Klass language
+const USAGE = `xenon — compiler for the Xenon language
 
 Usage:
-  klass build   [options]          compile the project
-  klass check   [options]          type-check only, no output
-  klass run     [options] [-- args] build, then run with Bun
-  klass watch   [options] [-- args] rebuild on every change (--run: restart the program)
-  klass explain <code>             explain an error code, e.g. klass explain K0308
+  xenon build   [options]          compile the project
+  xenon check   [options]          type-check only, no output
+  xenon run     [options] [-- args] build, then run with Bun
+  xenon watch   [options] [-- args] rebuild on every change (--run: restart the program)
+  xenon explain <code>             explain an error code, e.g. xenon explain X0308
 
 Options:
-  --project <file>   project file (default: klass.json if present)
+  --project <file>   project file (default: xenon.json if present)
   --src <dir>        source root (default: src)
   --out <dir>        output directory (default: out)
   --main <name>      main class, e.g. Main or com.app.Main (default: Main)
@@ -57,7 +57,7 @@ async function loadConfig(args: string[]): Promise<{
     }
   }
 
-  const projectPath = resolve((flags.get("project") as string | undefined) ?? "klass.json");
+  const projectPath = resolve((flags.get("project") as string | undefined) ?? "xenon.json");
   const projectFile = Bun.file(projectPath);
   let project: Partial<Config> = {};
   if (await projectFile.exists()) {
@@ -98,7 +98,7 @@ async function main(argv: string[]): Promise<number> {
     const code = argv[1];
     const text = code ? explain(code) : undefined;
     if (!text) {
-      process.stderr.write(code ? `error: unknown error code \`${code}\`\n` : "error: `klass explain` needs an error code, e.g. K0308\n");
+      process.stderr.write(code ? `error: unknown error code \`${code}\`\n` : "error: `xenon explain` needs an error code, e.g. X0308\n");
       return 2;
     }
     process.stdout.write(text);

@@ -1,5 +1,5 @@
-error[K0319]: this case can never match
- --> switch.kl:7:14
+error[X0319]: this case can never match
+ --> switch.xn:7:14
   |
 5 |       switch (n) {
   |               - the switch value is `int`
@@ -7,8 +7,8 @@ error[K0319]: this case can never match
 7 |         case 'two': trace('b')
   |              ^^^^^ `String`
 
-error[K0343]: duplicate `case`
- --> switch.kl:8:14
+error[X0343]: duplicate `case`
+ --> switch.xn:8:14
   |
 6 |         case 1: trace('a')
   |              - first used here
@@ -16,8 +16,8 @@ error[K0343]: duplicate `case`
 8 |         case 1: trace('c')
   |              ^
 
-error[K0344]: a `switch` can only have one `default`
-  --> switch.kl:10:9
+error[X0344]: a `switch` can only have one `default`
+  --> switch.xn:10:9
    |
  9 |         default: trace('d')
    |         ------------------- first `default` here

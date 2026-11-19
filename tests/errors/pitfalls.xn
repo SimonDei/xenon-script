@@ -1,0 +1,29 @@
+package {
+  public class Main {
+    private var done:Boolean = false
+
+    public function Main() {
+      var x:int = 1
+      if (done = true) trace('always')
+      while (x = 2) {}
+      trace(x)
+    }
+
+    private function total():int {
+      return
+        1 + 2
+    }
+
+    private function untyped():* {
+      return
+        42
+    }
+
+    private function noisy():void {
+      /* xenon-allow X0840 */ trace(undefined)
+      // xenon-allow X0841
+      trace(1 === 1)
+      trace(undefined)
+    }
+  }
+}

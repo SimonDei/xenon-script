@@ -1,4 +1,4 @@
-Klass Quest v1.2 100 50 25 -50
+Xenon Quest v1.2 100 50 25 -50
 16.666666666666668 true 16.6
 0 dead
 25 low

@@ -1,5 +1,5 @@
-[[1,2],[3,4],[5]] Klass 6
-true .kl
+[[1,2],[3,4],[5]] Xenon 6
+true .xn
 1 {"ok":true,"list":[1,2]} 9
 Circle
 Shape box

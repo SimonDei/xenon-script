@@ -24,8 +24,8 @@ export type TypeNode =
 
 /* ---------------------------- files ---------------------------- */
 
-export interface KlassImport {
-  kind: "KlassImport";
+export interface XenonImport {
+  kind: "XenonImport";
   path: Ident[];
   wildcard: boolean;
   span: Span;
@@ -40,7 +40,7 @@ export interface JsImport {
   span: Span;
 }
 
-export type Import = KlassImport | JsImport;
+export type Import = XenonImport | JsImport;
 
 export interface Modifiers {
   visibility?: { value: "public" | "private" | "protected" | "internal"; span: Span };
@@ -130,7 +130,7 @@ export interface TypedefDecl {
 
 export type TypeDecl = ClassDecl | TypedefDecl;
 
-export interface KlassFile {
+export interface XenonFile {
   file: SourceFile;
   /** Dotted package name; `[]` for the top-level package. */
   packageName: Ident[];

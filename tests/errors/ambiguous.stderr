@@ -1,5 +1,5 @@
-error[K0433]: `Item` is ambiguous
- --> ambiguous/Main.kl:7:16
+error[X0433]: `Item` is ambiguous
+ --> ambiguous/Main.xn:7:16
   |
 7 |       var item:Item = null
   |                ^^^^ imported by more than one wildcard import
@@ -7,8 +7,8 @@ error[K0433]: `Item` is ambiguous
   = note: it could be `x.Item` or `y.Item`
 help: add an explicit import, e.g. `import x.Item;`
 
-error[K0420]: cannot find type `Shark`
- --> ambiguous/Main.kl:9:17
+error[X0420]: cannot find type `Shark`
+ --> ambiguous/Main.xn:9:17
   |
 9 |       var shark:Shark = null
   |                 ^^^^^ not found

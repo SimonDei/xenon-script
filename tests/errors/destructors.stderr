@@ -1,19 +1,19 @@
-error[K0802]: `int` can't be used with `using`
- --> destructors.kl:4:15
+error[X0802]: `int` can't be used with `using`
+ --> destructors.xn:4:15
   |
 4 |       using n:int = 5
   |               ^^^ not disposable
 
-error[K0802]: `Plain` can't be used with `using`
- --> destructors.kl:5:15
+error[X0802]: `Plain` can't be used with `using`
+ --> destructors.xn:5:15
   |
 5 |       using p:Plain = new Plain()
   |               ^^^^^ not disposable
   |
 help: give `Plain` a destructor: `~Plain() { … }`
 
-error[K0807]: `Sock` has an async destructor and needs `await using`
- --> destructors.kl:6:15
+error[X0807]: `Sock` has an async destructor and needs `await using`
+ --> destructors.xn:6:15
   |
 6 |       using s:Sock = new Sock()
   |               ^^^^
@@ -23,8 +23,8 @@ help: add `await`
 6 |       await using s:Sock = new Sock()
   |       ++++++
 
-warning[K0801]: `leak` holds a `Res` that is never disposed
- --> destructors.kl:7:11
+warning[X0801]: `leak` holds a `Res` that is never disposed
+ --> destructors.xn:7:11
   |
 7 |       var leak:Res = new Res()
   |           ^^^^ created here, never disposed
@@ -35,8 +35,8 @@ help: declare it with `using`
 7 |       using leak:Res = new Res()
   |       ~~~~~
 
-error[K0760]: `await using` is only allowed inside `async` functions
-  --> destructors.kl:11:7
+error[X0760]: `await using` is only allowed inside `async` functions
+  --> destructors.xn:11:7
    |
 11 |       await using r:Res = new Res()
    |       ^^^^^
@@ -46,36 +46,36 @@ help: make `Main` async
  3 |     public async function Main() {
    |            ++++++
 
-error[K0804]: destructors are `public` or `protected`
-  --> destructors.kl:30:3
+error[X0804]: destructors are `public` or `protected`
+  --> destructors.xn:30:3
    |
 30 |   private ~Bad(x:int):void {}
    |   ^^^^^^^
    |
    = note: `dispose()` gets the same visibility
 
-error[K0804]: destructors have no parameters
-  --> destructors.kl:30:16
+error[X0804]: destructors have no parameters
+  --> destructors.xn:30:16
    |
 30 |   private ~Bad(x:int):void {}
    |                ^^^^^
 
-error[K0804]: destructors have no return type
-  --> destructors.kl:30:23
+error[X0804]: destructors have no return type
+  --> destructors.xn:30:23
    |
 30 |   private ~Bad(x:int):void {}
    |                       ^^^^
 
-error[K0800]: class `Bad` has more than one destructor
-  --> destructors.kl:31:11
+error[X0800]: class `Bad` has more than one destructor
+  --> destructors.xn:31:11
    |
 30 |   private ~Bad(x:int):void {}
    |            --- first destructor here
 31 |   public ~Other() {}
    |           ^^^^^
 
-error[K0805]: a class with a destructor already has `dispose()`
-  --> destructors.kl:32:19
+error[X0805]: a class with a destructor already has `dispose()`
+  --> destructors.xn:32:19
    |
 30 |   private ~Bad(x:int):void {}
    |            --- the destructor provides `dispose()`
@@ -83,8 +83,8 @@ error[K0805]: a class with a destructor already has `dispose()`
 32 |   public function dispose():void {}
    |                   ^^^^^^^
 
-error[K0806]: `SyncChild`'s destructor must be async like its parent's
-  --> destructors.kl:36:11
+error[X0806]: `SyncChild`'s destructor must be async like its parent's
+  --> destructors.xn:36:11
    |
 26 |   public async ~Sock() {}
    |                 ---- `async ~Sock` declared here
@@ -94,8 +94,8 @@ error[K0806]: `SyncChild`'s destructor must be async like its parent's
    |
    = note: the parent destructor runs right after this one
 
-error[K0808]: implement `IDisposable` by declaring a destructor
-  --> destructors.kl:39:25
+error[X0808]: implement `IDisposable` by declaring a destructor
+  --> destructors.xn:39:25
    |
 39 | class Manual implements IDisposable {
    |                         ^^^^^^^^^^^

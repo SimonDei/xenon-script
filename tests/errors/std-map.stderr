@@ -1,10 +1,10 @@
-error[K0308]: mismatched types
-  --> std-map.kl:4:21
+error[X0308]: mismatched types
+  --> std-map.xn:4:21
    |
  4 |     ages.set('ann', 'thirty')
    |                     ^^^^^^^^ expected `int`, found `String`
    |
-  ::: <klass prelude>/klass/Map.kl:27:31
+  ::: <xenon prelude>/xenon/Map.xn:27:31
    |
 27 |     function set(key:K, value:V):Map<K, V>
    |                               - parameter declared here
@@ -14,13 +14,13 @@ help: convert the value with `int()`
  4 |     ages.set('ann', int('thirty'))
    |                     ++++        +
 
-error[K0308]: mismatched types
-  --> std-map.kl:5:14
+error[X0308]: mismatched types
+  --> std-map.xn:5:14
    |
  5 |     ages.set(7, 30)
    |              ^ expected `String`, found `int`
    |
-  ::: <klass prelude>/klass/Map.kl:27:22
+  ::: <xenon prelude>/xenon/Map.xn:27:22
    |
 27 |     function set(key:K, value:V):Map<K, V>
    |                      - parameter declared here
@@ -30,8 +30,8 @@ help: convert the value with `String()`
  5 |     ages.set(String(7), 30)
    |              +++++++ +
 
-error[K0308]: mismatched types
- --> std-map.kl:6:23
+error[X0308]: mismatched types
+ --> std-map.xn:6:23
   |
 6 |     var name:String = ages.get('ann')
   |              ------   ^^^^^^^^^^^^^^^ expected `String`, found `int`
@@ -43,48 +43,48 @@ help: convert the value with `String()`
 6 |     var name:String = String(ages.get('ann'))
   |                       +++++++               +
 
-error[K0308]: mismatched types
- --> std-map.kl:7:37
+error[X0308]: mismatched types
+ --> std-map.xn:7:37
   |
 7 |     var wrong:Map<String, String> = ages
   |               -------------------   ^^^^ expected `Map<String, String>`, found `Map<String, int>`
   |               |
   |               expected because of this type
 
-error[K0426]: no member `toFixed` on `String`
- --> std-map.kl:9:17
+error[X0426]: no member `toFixed` on `String`
+ --> std-map.xn:9:17
   |
 9 |       trace(key.toFixed(2), value.toUpperCase())
   |                 ^^^^^^^ unknown member
   |
 help: if this JavaScript API exists, use it dynamically: `(key as *).toFixed`
 
-error[K0426]: no member `toUpperCase` on `int`
- --> std-map.kl:9:35
+error[X0426]: no member `toUpperCase` on `int`
+ --> std-map.xn:9:35
   |
 9 |       trace(key.toFixed(2), value.toUpperCase())
   |                                   ^^^^^^^^^^^ unknown member
   |
 help: if this JavaScript API exists, use it dynamically: `(value as *).toUpperCase`
 
-error[K0426]: no member `contains` on `Map`
-  --> std-map.kl:11:16
+error[X0426]: no member `contains` on `Map`
+  --> std-map.xn:11:16
    |
 11 |     trace(ages.contains('ann'), ages.length, new Map(5), ages.keys().toArray().join(1))
    |                ^^^^^^^^ unknown member
    |
 help: if this JavaScript API exists, use it dynamically: `(ages as *).contains`
 
-error[K0426]: no member `length` on `Map`
-  --> std-map.kl:11:38
+error[X0426]: no member `length` on `Map`
+  --> std-map.xn:11:38
    |
 11 |     trace(ages.contains('ann'), ages.length, new Map(5), ages.keys().toArray().join(1))
    |                                      ^^^^^^ unknown member
    |
 help: if this JavaScript API exists, use it dynamically: `(ages as *).length`
 
-error[K0604]: no overload of `new Map` accepts (int)
-  --> std-map.kl:11:50
+error[X0604]: no overload of `new Map` accepts (int)
+  --> std-map.xn:11:50
    |
 11 |     trace(ages.contains('ann'), ages.length, new Map(5), ages.keys().toArray().join(1))
    |                                                  ^^^ no matching overload
@@ -93,8 +93,8 @@ error[K0604]: no overload of `new Map` accepts (int)
    = note: `new Map(pairs:Array<Array<*>>)`
    = note: `new Map(other:Map<K, V>)`
 
-error[K0308]: mismatched types
-  --> std-map.kl:11:85
+error[X0308]: mismatched types
+  --> std-map.xn:11:85
    |
 11 |     trace(ages.contains('ann'), ages.length, new Map(5), ages.keys().toArray().join(1))
    |                                                                                     ^ expected `String`, found `int`
@@ -104,19 +104,19 @@ help: convert the value with `String()`
 11 |     trace(ages.contains('ann'), ages.length, new Map(5), ages.keys().toArray().join(String(1)))
    |                                                                                     +++++++ +
 
-error[K0504]: `size` has a getter but no setter
-  --> std-map.kl:12:10
+error[X0504]: `size` has a getter but no setter
+  --> std-map.xn:12:10
    |
 12 |     ages.size = 3
    |          ^^^^
    |
-  ::: <klass prelude>/klass/Map.kl:23:18
+  ::: <xenon prelude>/xenon/Map.xn:23:18
    |
 23 |     function get size():int
    |                  ---- getter declared here
 
-error[K0422]: `Map` needs 2 type arguments
-  --> std-map.kl:14:14
+error[X0422]: `Map` needs 2 type arguments
+  --> std-map.xn:14:14
    |
 14 |     var bare:Map = new Map()                      // type arguments can only be left out in `new`, `is` and `as`
    |              ^^^ missing type arguments

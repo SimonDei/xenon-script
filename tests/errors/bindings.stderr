@@ -1,13 +1,13 @@
-error[K0320]: `int` can never be null; use a normal condition
- --> bindings.kl:6:17
+error[X0320]: `int` can never be null; use a normal condition
+ --> bindings.xn:6:17
   |
 6 |       if (var n:int = count()) trace(n)
   |                 ^^^
   |
   = note: `if (var x:T = …)` runs its block only when the value is not null
 
-error[K0310]: condition must be a `Boolean`
- --> bindings.kl:7:30
+error[X0310]: condition must be a `Boolean`
+ --> bindings.xn:7:30
   |
 7 |       if (var m:Main = this, m.parent) trace(m)
   |                              ^^^^^^^^ expected `Boolean`, found `Main`
@@ -17,8 +17,8 @@ help: check for null explicitly
 7 |       if (var m:Main = this, m.parent != null) trace(m)
   |                                      ++++++++
 
-error[K0321]: the value bound to `node` refers to another `node`
- --> bindings.kl:9:30
+error[X0321]: the value bound to `node` refers to another `node`
+ --> bindings.xn:9:30
   |
 9 |       while (var node:Main = node.parent) trace(node)
   |                  ----        ^^^^^^^^^^^
@@ -27,8 +27,8 @@ error[K0321]: the value bound to `node` refers to another `node`
   |
 help: give the binding a different name
 
-error[K0107]: use `var` for a binding in a condition
-  --> bindings.kl:10:11
+error[X0107]: use `var` for a binding in a condition
+  --> bindings.xn:10:11
    |
 10 |       if (const c:Main = this) trace(c)
    |           ^^^^^

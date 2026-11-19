@@ -1,5 +1,5 @@
-error[K0322]: `=` assigns; it can't be used as a condition
- --> pitfalls.kl:7:16
+error[X0322]: `=` assigns; it can't be used as a condition
+ --> pitfalls.xn:7:16
   |
 7 |       if (done = true) trace('always')
   |                ^ assignment
@@ -10,8 +10,8 @@ help: compare with `==`
 7 |       if (done == true) trace('always')
   |                ~~
 
-error[K0322]: `=` assigns; it can't be used as a condition
- --> pitfalls.kl:8:16
+error[X0322]: `=` assigns; it can't be used as a condition
+ --> pitfalls.xn:8:16
   |
 8 |       while (x = 2) {}
   |                ^ assignment
@@ -22,8 +22,8 @@ help: compare with `==`
 8 |       while (x == 2) {}
   |                ~~
 
-error[K0313]: `total` must return a `int`
-  --> pitfalls.kl:13:7
+error[X0313]: `total` must return a `int`
+  --> pitfalls.xn:13:7
    |
 12 |     private function total():int {
    |                              --- return type declared here
@@ -34,22 +34,22 @@ error[K0313]: `total` must return a `int`
    |
    = note: a line break after `return` ends the statement; put the value on the same line
 
-warning[K0860]: unreachable code
-  --> pitfalls.kl:14:9
+warning[X0860]: unreachable code
+  --> pitfalls.xn:14:9
    |
 14 |         1 + 2
    |         ^^^^^ this is never executed
 
-warning[K0860]: unreachable code
-  --> pitfalls.kl:19:9
+warning[X0860]: unreachable code
+  --> pitfalls.xn:19:9
    |
 19 |         42
    |         ^^ this is never executed
    |
    = note: a line break after `return` ends the statement; to return this value, put it on the same line as `return`
 
-warning[K0840]: `undefined` is only supported for JavaScript compatibility
-  --> pitfalls.kl:26:13
+warning[X0840]: `undefined` is only supported for JavaScript compatibility
+  --> pitfalls.xn:26:13
    |
 26 |       trace(undefined)
    |             ^^^^^^^^^ use `null` instead

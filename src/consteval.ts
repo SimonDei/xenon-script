@@ -25,7 +25,7 @@ const notConst = (e: A.Expr, reason = "not a compile-time constant"): Fold => ({
 
 /**
  * Evaluates a constant expression with exact JavaScript semantics (the type checker has already
- * made sure the operators are applied to sensible types). Klass `==` is strict.
+ * made sure the operators are applied to sensible types). Xenon `==` is strict.
  */
 export function fold(e: A.Expr, lookup: ConstLookup): Fold {
   switch (e.kind) {

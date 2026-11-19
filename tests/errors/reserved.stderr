@@ -1,13 +1,13 @@
-error[K0028]: `Exception` is the name of a built-in class
- --> reserved/Exception.kl:2:16
+error[X0028]: `Exception` is the name of a built-in class
+ --> reserved/Exception.xn:2:16
   |
 2 |   public class Exception {}
   |                ^^^^^^^^^
   |
   = note: built-in classes like `Exception` are available in every file; pick another name
 
-error[K0027]: the package name `klass` is reserved for the built-in prelude
- --> reserved/klass/Thing.kl:1:1
+error[X0027]: the package name `xenon` is reserved for the built-in prelude
+ --> reserved/xenon/Thing.xn:1:1
   |
-1 | package klass {
+1 | package xenon {
   | ^^^^^^^^^^^^^

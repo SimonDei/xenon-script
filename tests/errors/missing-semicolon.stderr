@@ -1,5 +1,5 @@
-error[K0102]: expected `;` or a line break, found keyword `var`
- --> missing-semicolon.kl:4:21
+error[X0102]: expected `;` or a line break, found keyword `var`
+ --> missing-semicolon.xn:4:21
   |
 4 |       var a:int = 1 var b:int = 2
   |                     ^^^ unexpected token

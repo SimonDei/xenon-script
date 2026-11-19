@@ -1,4 +1,4 @@
-/** `klass watch --run` end to end: edits, errors, fixes, added and deleted files. */
+/** `xenon watch --run` end to end: edits, errors, fixes, added and deleted files. */
 import { afterAll, expect, test } from "bun:test";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -35,7 +35,7 @@ function collector(stream: ReadableStream<Uint8Array>) {
 test("watch rebuilds, restarts, stops on errors and removes stale outputs", async () => {
   await rm(dir, { recursive: true, force: true });
   await mkdir(join(dir, "src"), { recursive: true });
-  await Bun.write(join(dir, "src", "Main.kl"), main("trace('v1')"));
+  await Bun.write(join(dir, "src", "Main.xn"), main("trace('v1')"));
 
   const proc = Bun.spawn(["bun", cli, "watch", "--run", "--no-clear", "--color", "never", "--src", "src", "--out", "out"], {
     cwd: dir, stdout: "pipe", stderr: "pipe",
@@ -46,21 +46,21 @@ test("watch rebuilds, restarts, stops on errors and removes stale outputs", asyn
     let e = await err.waitFor(/built 3 of 3 outputs from 1 file .*watching for changes/);
     let o = await out.waitFor(/v1\n/);
 
-    await Bun.write(join(dir, "src", "Main.kl"), main("trace('v2')"));
+    await Bun.write(join(dir, "src", "Main.xn"), main("trace('v2')"));
     e = await err.waitFor(/built 1 of 3 outputs/, e);
     o = await out.waitFor(/v2\n/, o);
 
-    await Bun.write(join(dir, "src", "Main.kl"), main("trace(missing)"));
+    await Bun.write(join(dir, "src", "Main.xn"), main("trace(missing)"));
     e = await err.waitFor(/cannot find `missing`[\s\S]*✗ 1 error — watching for changes/, e);
 
-    await Bun.write(join(dir, "src", "Helper.kl"), "package {\n  public class Helper {\n    public static function hi():String { return 'hi' }\n  }\n}\n");
-    await Bun.write(join(dir, "src", "Main.kl"), main("trace(Helper.hi())"));
+    await Bun.write(join(dir, "src", "Helper.xn"), "package {\n  public class Helper {\n    public static function hi():String { return 'hi' }\n  }\n}\n");
+    await Bun.write(join(dir, "src", "Main.xn"), main("trace(Helper.hi())"));
     e = await err.waitFor(/✓ built .* from 2 files/, e);
     o = await out.waitFor(/hi\n/, o);
     expect(await Bun.file(join(dir, "out", "Helper.js")).exists()).toBe(true);
 
-    await Bun.write(join(dir, "src", "Main.kl"), main("trace('v3')"));
-    await rm(join(dir, "src", "Helper.kl"));
+    await Bun.write(join(dir, "src", "Main.xn"), main("trace('v3')"));
+    await rm(join(dir, "src", "Helper.xn"));
     e = await err.waitFor(/removed 1 stale/, e);
     o = await out.waitFor(/v3\n/, o);
     expect(await Bun.file(join(dir, "out", "Helper.js")).exists()).toBe(false);

@@ -115,7 +115,7 @@ class Writer {
 }
 
 /** Entry module. Contains a `-` so it can never collide with a class module (Bun treats `main.js`/`Main.js` as one module). */
-export const ENTRY_FILE = "klass-main.js";
+export const ENTRY_FILE = "xenon-main.js";
 
 export interface OutputFile {
   path: string;
@@ -123,7 +123,7 @@ export interface OutputFile {
 }
 
 /** Generates one ES module per public class (file-private classes go into the same module). */
-export function generate(files: A.KlassFile[], check: CheckResult, mainClass: ClassInfo): OutputFile[] {
+export function generate(files: A.XenonFile[], check: CheckResult, mainClass: ClassInfo): OutputFile[] {
   const out: OutputFile[] = [];
   // One ES module per source file: its package-level classes are exported, file-private ones are not.
   for (const file of files) {
@@ -153,7 +153,7 @@ class ModuleGen {
 
   constructor(
     private module: string,
-    private file: A.KlassFile,
+    private file: A.XenonFile,
     private check: CheckResult,
   ) {}
 
@@ -339,14 +339,14 @@ class ModuleGen {
 
   /** `if (new.target === Shape) throw new StateException('Shape is abstract');` */
   private abstractGuard(decl: A.ClassDecl): string {
-    const exc = this.classRef(this.check.classes.get("klass.StateException")!);
+    const exc = this.classRef(this.check.classes.get("xenon.StateException")!);
     const name = decl.name.name;
     return `if (new.target === ${name}) throw new ${exc}(${jsString(`${name} is abstract`)});`;
   }
 
   /** Abstract members still exist at runtime, for plain-JS subclasses that forget them. */
   private abstractStub(decl: A.ClassDecl, m: A.Method) {
-    const exc = this.classRef(this.check.classes.get("klass.NotImplementedException")!);
+    const exc = this.classRef(this.check.classes.get("xenon.NotImplementedException")!);
     const throwLine = `throw new ${exc}(${jsString(`${decl.name.name}.${m.name.name}`)});`;
     const head = m.accessor === "set" ? `set ${m.name.name}(value)` : m.accessor === "get" ? `get ${m.name.name}()` : `${m.modifiers.async ? "async " : ""}${methodName(m.name.name)}(${this.params(m.params)})`;
     this.w.line(`${head} {`);
@@ -362,7 +362,7 @@ class ModuleGen {
     ].join("");
     const name = m.isConstructor ? "constructor" : methodName(m.name.name);
     this.w.line(`${prefix}${name}(${this.params(m.params)}) {`);
-    // Derived constructors must call super() before using `this`; Klass inserts it when omitted.
+    // Derived constructors must call super() before using `this`; Xenon inserts it when omitted.
     const first = m.body!.body[0];
     const explicitSuper = first?.kind === "ExprStmt" && first.expr.kind === "Call" && first.expr.callee.kind === "Super";
     const prologue = [guard, m.isConstructor && hasParent && !explicitSuper ? "super();" : undefined].filter((x) => x).join("\n");
@@ -556,7 +556,7 @@ class ModuleGen {
         this.w.indent();
         for (const c of s.cases) {
           const label = c.test ? `case ${this.expr(c.test).code}:` : "default:";
-          // Each case has its own scope in Klass; JS needs braces when a case declares variables.
+          // Each case has its own scope in Xenon; JS needs braces when a case declares variables.
           const braces = c.body.some((x) => x.kind === "VarDecl" || x.kind === "UsingDecl" || x.kind === "DestructDecl" || x.kind === "FuncDecl");
           this.w.line(braces ? `${label} {` : label);
           this.w.indent();
@@ -619,7 +619,7 @@ class ModuleGen {
 
   /** Reference to the prelude's `Exception` class (imported on demand). */
   private exceptionRef(): string {
-    return this.classRef(this.check.classes.get("klass.Exception")!);
+    return this.classRef(this.check.classes.get("xenon.Exception")!);
   }
 
   /**
@@ -637,7 +637,7 @@ class ModuleGen {
       const typeOf = (c: A.CatchClause) => (c.type ? this.check.typeResolutions.get(c.type) : undefined);
       const isCatchAll = (c: A.CatchClause) => {
         const info = typeOf(c);
-        return !info || info.qname === "klass.Exception";
+        return !info || info.qname === "xenon.Exception";
       };
       const only = s.catches[0]!;
       if (s.catches.length === 1 && isCatchAll(only)) {
@@ -753,21 +753,21 @@ class ModuleGen {
     const key = (k: string) => `Symbol.for(${jsString(k)})`;
     if (e.kind === "Ident") {
       const self = this.receiver();
-      return { code: `${self}[${key(`klass.bound.${e.name}`)}] ??= ${self}.${e.name}.bind(${self})`, prec: P.assign };
+      return { code: `${self}[${key(`xenon.bound.${e.name}`)}] ??= ${self}.${e.name}.bind(${self})`, prec: P.assign };
     }
     if (e.kind !== "Member") throw new Error("codegen: unexpected method closure");
     const name = e.name.name;
     if (e.object.kind === "Super") {
       // The parent's version, cached separately from an override with the same name.
       const parent = (this.check.exprTypes.get(e.object) as { info?: ClassInfo }).info?.decl.name.name ?? "super";
-      return { code: `this[${key(`klass.bound.${parent}.${name}`)}] ??= super.${name}.bind(this)`, prec: P.assign };
+      return { code: `this[${key(`xenon.bound.${parent}.${name}`)}] ??= super.${name}.bind(this)`, prec: P.assign };
     }
     // A primitive can't hold the cache property (strict mode throws), and has no identity anyway.
     if (this.check.exprTypes.get(e.object)?.kind === "prim") {
       return this.reuse(e.object, (first, again) => ({ code: `${first}.${name}.bind(${again})`, prec: P.call }));
     }
     return this.reuse(e.object, (first, again) => ({
-      code: `${first}[${key(`klass.bound.${name}`)}] ??= ${again}.${name}.bind(${again})`,
+      code: `${first}[${key(`xenon.bound.${name}`)}] ??= ${again}.${name}.bind(${again})`,
       prec: P.assign,
     }));
   }

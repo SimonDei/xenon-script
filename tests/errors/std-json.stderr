@@ -1,5 +1,5 @@
-error[K0604]: no overload of `stringify` accepts (*, int)
- --> std-json.kl:5:13
+error[X0604]: no overload of `stringify` accepts (*, int)
+ --> std-json.xn:5:13
   |
 5 |       trace(JSON.stringify(data, 2))                  // JS habit: indent without a replacer
   |             ^^^^^^^^^^^^^^ no matching overload
@@ -9,8 +9,8 @@ error[K0604]: no overload of `stringify` accepts (*, int)
   = note: `stringify(value:*, keys:Array<String>, space:int = 0):String`
   = note: `stringify(value:*, keys:Array<String>, space:String):String`
 
-error[K0604]: no overload of `parse` accepts (int)
- --> std-json.kl:6:13
+error[X0604]: no overload of `parse` accepts (int)
+ --> std-json.xn:6:13
   |
 6 |       trace(JSON.parse(42), JSON.stringfy(data))
   |             ^^^^^^^^^^ no matching overload
@@ -18,8 +18,8 @@ error[K0604]: no overload of `parse` accepts (int)
   = note: `parse(text:String):*`
   = note: `parse(text:String, reviver:(key:String, value:*) -> *):*`
 
-error[K0426]: no static member `stringfy` on `JSON`
- --> std-json.kl:6:34
+error[X0426]: no static member `stringfy` on `JSON`
+ --> std-json.xn:6:34
   |
 6 |       trace(JSON.parse(42), JSON.stringfy(data))
   |                                  ^^^^^^^^ unknown member
@@ -29,16 +29,16 @@ help: a member with a similar name exists: `stringify`
 6 |       trace(JSON.parse(42), JSON.stringify(data))
   |                                  ~~~~~~~~~
 
-error[K0415]: `JSON` can't be instantiated with `new`
- --> std-json.kl:7:25
+error[X0415]: `JSON` can't be instantiated with `new`
+ --> std-json.xn:7:25
   |
 7 |       var codec:* = new JSON()
   |                         ^^^^
   |
   = note: `JSON` only has static members, e.g. `JSON.parse(…)`
 
-error[K0308]: mismatched types
- --> std-json.kl:8:19
+error[X0308]: mismatched types
+ --> std-json.xn:8:19
   |
 8 |       var n:int = JSON.stringify(data)
   |             ---   ^^^^^^^^^^^^^^^^^^^^ expected `int`, found `String`

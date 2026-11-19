@@ -1,0 +1,55 @@
+package {
+  import _ from 'lodash'
+  import { readFileSync } from 'node:fs'
+  import * as path from 'node:path'
+  import shapes.*
+
+  public class Main {
+    private static var pending:* = new Circle(1)
+
+    public function Main() {
+      // npm package (typed `*`)
+      trace(JSON.stringify(_.chunk([1, 2, 3, 4, 5], 2)), _.capitalize('xenon'), _.sum([1, 2, 3]))
+
+      // node built-ins
+      var me:String = readFileSync(path.join(import_dir(), 'Main.xn'), 'utf8')
+      trace(me.length > 100, path.extname('Main.xn'))
+
+      // JS globals
+      var seen:Map<String, int> = new Map()
+      seen.set('a', 1)
+      trace(seen.get('a'), JSON.stringify({ ok: true, list: [1, 2] }), Math.max(3, 9))
+
+      // is / as with Xenon classes, JS classes and primitives
+      var things:Array = [new Circle(2), new Shape('box'), 'text', 42, 4.5, -3, true, null, seen, [1], ~/x/]
+      for (var t:* of things) trace(describe(t))
+
+      var c:Circle = pending as Circle
+      trace(c != null, (pending as Shape) == null, int(c.area() * 100))
+      if (var circle:Circle = things[0] as Circle) trace('first is a circle with r =', circle.r)
+
+      // dynamic objects
+      var config:Object = { debug: true, level: 3 }
+      delete config.debug
+      trace(JSON.stringify(config), Object.keys(config).length)
+    }
+
+    private function describe(x:*):String {
+      if (x is Circle) return 'Circle'
+      if (x is Shape) return 'Shape ' + (x as Shape).name
+      if (x is String) return 'String'
+      if (x is uint) return 'uint'
+      if (x is int) return 'int'
+      if (x is Float) return 'Float'
+      if (x is Boolean) return 'Boolean'
+      if (x is Map) return 'Map'
+      if (x is Array) return 'Array'
+      if (x is RegExp) return 'RegExp'
+      return 'null'
+    }
+
+    private static function import_dir():String {
+      return path.dirname(Bun.main).replace(~/\.test-out$|out$/, 'src')
+    }
+  }
+}

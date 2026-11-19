@@ -1,5 +1,5 @@
-error[K0410]: instance member `count` can't be used in a static context
- --> static-context.kl:8:13
+error[X0410]: instance member `count` can't be used in a static context
+ --> static-context.xn:8:13
   |
 3 |     private var count:int = 0
   |                 ----- declared as an instance member here

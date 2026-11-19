@@ -12,7 +12,7 @@ import { parseFile } from "../src/parser.ts";
 import { SourceFile, spanText } from "../src/source.ts";
 
 const stdDir = join(import.meta.dir, "..", "src", "prelude", "std");
-const stdFiles = (await Array.fromAsync(new Bun.Glob("*.kl").scan({ cwd: stdDir }))).sort();
+const stdFiles = (await Array.fromAsync(new Bun.Glob("*.xn").scan({ cwd: stdDir }))).sort();
 
 /** Sample values for running members of primitive classes. */
 const SAMPLES: Record<string, unknown[]> = {
@@ -48,7 +48,7 @@ test("every std file is part of the prelude", () => {
 
 for (const file of stdFiles) {
   test(`std/${file} matches the runtime`, async () => {
-    const source = new SourceFile(`klass/${file}`, await Bun.file(join(stdDir, file)).text(), true);
+    const source = new SourceFile(`xenon/${file}`, await Bun.file(join(stdDir, file)).text(), true);
     const diags = new DiagnosticBag();
     const ast = parseFile(source, diags);
     expect(diags.items).toEqual([]);

@@ -1,17 +1,17 @@
-error[K0524]: inline constant `A` depends on itself
- --> inline.kl:3:33
+error[X0524]: inline constant `A` depends on itself
+ --> inline.xn:3:33
   |
 3 |     private static inline final A:int = B + 1
   |                                 ^       - this reference leads back to it
 
-error[K0524]: inline constant `B` depends on itself
- --> inline.kl:4:33
+error[X0524]: inline constant `B` depends on itself
+ --> inline.xn:4:33
   |
 4 |     private static inline final B:int = A
   |                                 ^       - this reference leads back to it
 
-error[K0523]: inline initializer is not a compile-time constant
- --> inline.kl:5:41
+error[X0523]: inline initializer is not a compile-time constant
+ --> inline.xn:5:41
   |
 5 |     private static inline final C:int = now()
   |                                 -       ^^^^^ function calls are not compile-time constants
@@ -20,8 +20,8 @@ error[K0523]: inline initializer is not a compile-time constant
   |
   = note: allowed: literals, other inline constants, operators and `int()`/`uint()`/`Float()`/`String()`/`Boolean()`
 
-error[K0525]: the value of `D` doesn't fit `int`
- --> inline.kl:6:33
+error[X0525]: the value of `D` doesn't fit `int`
+ --> inline.xn:6:33
   |
 6 |     private static inline final D:int = 7 / 2
   |                                 ^ --- declared type
@@ -33,8 +33,8 @@ help: convert the value with `int()`
 6 |     private static inline final D:int = int(7 / 2)
   |                                         ++++     +
 
-error[K0525]: the value of `E` doesn't fit `uint`
- --> inline.kl:7:33
+error[X0525]: the value of `E` doesn't fit `uint`
+ --> inline.xn:7:33
   |
 7 |     private static inline final E:uint = -1
   |                                 ^ ---- declared type
@@ -46,16 +46,16 @@ help: convert the value with `uint()`
 7 |     private static inline final E:uint = uint(-1)
   |                                          +++++  +
 
-error[K0521]: an `inline` field must be `final` or `const`
- --> inline.kl:8:31
+error[X0521]: an `inline` field must be `final` or `const`
+ --> inline.xn:8:31
   |
 8 |     private static inline var F:int = 1
   |                               ^ declared with `var`
   |
   = note: an inline constant's value can never change
 
-error[K0520]: an `inline` field must be `static`
- --> inline.kl:9:13
+error[X0520]: an `inline` field must be `static`
+ --> inline.xn:9:13
   |
 9 |     private inline final G:int = 1
   |             ^^^^^^
@@ -65,14 +65,14 @@ help: add `static`
 9 |     private static inline final G:int = 1
   |             +++++++
 
-error[K0522]: inline constant `H` needs a value
-  --> inline.kl:10:33
+error[X0522]: inline constant `H` needs a value
+  --> inline.xn:10:33
    |
 10 |     private static inline final H:String
    |                                 ^
 
-error[K0523]: inline initializer is not a compile-time constant
-  --> inline.kl:13:41
+error[X0523]: inline initializer is not a compile-time constant
+  --> inline.xn:13:41
    |
 13 |     private static inline final J:int = plain * 2
    |                                 -       ^^^^^ `plain` is not an inline constant
@@ -81,14 +81,14 @@ error[K0523]: inline initializer is not a compile-time constant
    |
    = note: allowed: literals, other inline constants, operators and `int()`/`uint()`/`Float()`/`String()`/`Boolean()`
 
-error[K0521]: an `inline` constant must be `final` or `const`
-  --> inline.kl:16:18
+error[X0521]: an `inline` constant must be `final` or `const`
+  --> inline.xn:16:18
    |
 16 |       inline var x:int = 1
    |                  ^ declared with `var`
 
-error[K0523]: inline initializer is not a compile-time constant
-  --> inline.kl:17:30
+error[X0523]: inline initializer is not a compile-time constant
+  --> inline.xn:17:30
    |
 17 |       inline const y:Array = []
    |                    -         ^^ array and object literals are not compile-time constants
@@ -97,8 +97,8 @@ error[K0523]: inline initializer is not a compile-time constant
    |
    = note: allowed: literals, other inline constants, operators and `int()`/`uint()`/`Float()`/`String()`/`Boolean()`
 
-error[K0520]: `inline` is only allowed on constants
-  --> inline.kl:22:12
+error[X0520]: `inline` is only allowed on constants
+  --> inline.xn:22:12
    |
 22 |     public inline function f():void {}
    |            ^^^^^^

@@ -1,0 +1,26 @@
+// Standard library: JavaScript's `JSON` object. It's a namespace with static methods only,
+// so the constructor is hidden.
+//
+// Parsed values are `*`: give them a type with `as` (a typedef shape, `Array<…>`, …).
+// Not declared (not in every engine yet): `JSON.rawJSON`, `JSON.isRawJSON`; use `(JSON as *)`.
+package xenon {
+  public native class JSON {
+    private function JSON()
+
+    /** Parses JSON text; throws a `SyntaxError` (caught as `Exception`) for invalid input. */
+    static function parse(text:String):*
+    /** `reviver` is called for every key/value, innermost first; its result replaces the value. */
+    static function parse(text:String, reviver:(key:String, value:*) -> *):*
+
+    /**
+     * JSON text for `value`, or `null` for values JSON can't represent (functions, `undefined`).
+     * `replacer` transforms values; `space` indents by that many spaces (at most 10).
+     */
+    static function stringify(value:*, replacer:(key:String, value:*) -> * = null, space:int = 0):String
+    /** Indents with the string `space` (at most 10 characters), e.g. `'\t'`. */
+    static function stringify(value:*, replacer:(key:String, value:*) -> *, space:String):String
+    /** Only the listed property names are included. */
+    static function stringify(value:*, keys:Array<String>, space:int = 0):String
+    static function stringify(value:*, keys:Array<String>, space:String):String
+  }
+}

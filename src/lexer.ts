@@ -110,7 +110,7 @@ class Lexer {
           this.pos++;
         }
         if (this.pos >= this.text.length) {
-          this.diags.error("K0363", "unterminated block comment", this.sp(start, start + 2), "comment starts here");
+          this.diags.error("X0363", "unterminated block comment", this.sp(start, start + 2), "comment starts here");
         } else {
           this.pos += 2;
         }
@@ -150,7 +150,7 @@ class Lexer {
     }
 
     this.pos++;
-    this.diags.error("K0364", `unexpected character \`${c}\``, this.sp(start));
+    this.diags.error("X0364", `unexpected character \`${c}\``, this.sp(start));
     return this.next();
   }
 
@@ -161,7 +161,7 @@ class Lexer {
       const valid = radix === "x" ? isHex : radix === "b" ? (c: string) => c === "0" || c === "1" : (c: string) => c >= "0" && c <= "7";
       const digitsStart = this.pos;
       while (valid(this.peek()) || this.peek() === "_") this.pos++;
-      if (this.pos === digitsStart) this.diags.error("K0365", "missing digits after number prefix", this.sp(start));
+      if (this.pos === digitsStart) this.diags.error("X0365", "missing digits after number prefix", this.sp(start));
     } else {
       this.digits();
       // Fraction, but not a range operator: `0..10` is `0` `..` `10`.
@@ -177,7 +177,7 @@ class Lexer {
     if (isIdentStart(this.peek())) {
       const badStart = this.pos;
       while (isIdentPart(this.peek())) this.pos++;
-      this.diags.error("K0365", "invalid number literal", this.sp(start), "identifier characters directly after a number")
+      this.diags.error("X0365", "invalid number literal", this.sp(start), "identifier characters directly after a number")
         .secondary(this.sp(badStart));
     }
     return { kind: "number", value: this.text.slice(start, this.pos), span: this.sp(start), nl };
@@ -231,12 +231,12 @@ class Lexer {
         this.pos--;
         return "";
     }
-    this.diags.error("K0361", `unknown escape sequence \`\\${c}\``, this.sp(escStart, this.pos));
+    this.diags.error("X0361", `unknown escape sequence \`\\${c}\``, this.sp(escStart, this.pos));
     return c;
   }
 
   private unterminated(start: number) {
-    this.diags.error("K0362", "unterminated string", this.sp(start, start + 1), "string starts here")
+    this.diags.error("X0362", "unterminated string", this.sp(start, start + 1), "string starts here")
       .note("strings can't span lines; use `\\n` for a line break");
   }
 
@@ -285,7 +285,7 @@ class Lexer {
         for (;;) {
           const t = this.next();
           if (t.kind === "eof") {
-            this.diags.error("K0366", "unclosed `{` in template string", this.sp(exprStart, exprStart + 1), "interpolation starts here");
+            this.diags.error("X0366", "unclosed `{` in template string", this.sp(exprStart, exprStart + 1), "interpolation starts here");
             tokens.push(t);
             break;
           }
@@ -297,7 +297,7 @@ class Lexer {
           tokens.push(t);
         }
         const exprSpan = this.sp(exprStart);
-        if (tokens.length === 0) this.diags.error("K0367", "empty interpolation in template string", exprSpan);
+        if (tokens.length === 0) this.diags.error("X0367", "empty interpolation in template string", exprSpan);
         tokens.push({ kind: "eof", value: "", span: this.sp(this.pos - 1, this.pos - 1), nl: false });
         parts.push({ kind: "expr", tokens, span: exprSpan });
         textStart = this.pos;
@@ -309,7 +309,7 @@ class Lexer {
     return { kind: "template", value: "", parts, span: this.sp(start), nl };
   }
 
-  /** `"…"` and `` `…` `` are not Klass strings: report with a fix-it, then recover. */
+  /** `"…"` and `` `…` `` are not Xenon strings: report with a fix-it, then recover. */
   private foreignString(start: number, nl: boolean): Token {
     const quote = this.peek();
     this.pos++;
@@ -332,12 +332,12 @@ class Lexer {
     const s = this.sp(start);
     if (quote === '"') {
       const fixed = "'" + raw.replace(/(?<!\\)'/g, "\\'").replace(/\\"/g, '"') + "'";
-      this.diags.error("K0360", "strings use single quotes in Klass", s, "double-quoted string")
+      this.diags.error("X0360", "strings use single quotes in Xenon", s, "double-quoted string")
         .help("use single quotes", [{ span: s, text: fixed }]);
       return { kind: "string", value, span: s, nl };
     }
     const fixed = "$'" + raw.replace(/(?<!\\)'/g, "\\'").replace(/\$\{/g, "{") + "'";
-    this.diags.error("K0360", "template strings are written `$'…{expr}…'` in Klass", s, "backtick string")
+    this.diags.error("X0360", "template strings are written `$'…{expr}…'` in Xenon", s, "backtick string")
       .help("use a `$'…'` template string", [{ span: s, text: fixed }]);
     return { kind: "string", value, span: s, nl };
   }
@@ -364,7 +364,7 @@ class Lexer {
     }
     const pattern = this.text.slice(patternStart, this.pos);
     if (!closed) {
-      this.diags.error("K0352", "unterminated regular expression", this.sp(start, start + 2), "regex starts here");
+      this.diags.error("X0352", "unterminated regular expression", this.sp(start, start + 2), "regex starts here");
       return { kind: "regex", value: pattern, pattern, flags: "", span: this.sp(start), nl };
     }
     this.pos++; // closing /
@@ -378,10 +378,10 @@ class Lexer {
       const f = flags[i]!;
       const fs = this.sp(flagsStart + i, flagsStart + i + 1);
       if (!REGEX_FLAGS.has(f)) {
-        this.diags.error("K0350", `unknown regular expression flag \`${f}\``, fs).note("valid flags are d g i m s u v y");
+        this.diags.error("X0350", `unknown regular expression flag \`${f}\``, fs).note("valid flags are d g i m s u v y");
         flagsOk = false;
       } else if (seen.has(f)) {
-        this.diags.error("K0350", `duplicate regular expression flag \`${f}\``, fs);
+        this.diags.error("X0350", `duplicate regular expression flag \`${f}\``, fs);
         flagsOk = false;
       }
       seen.add(f);
@@ -391,7 +391,7 @@ class Lexer {
         new RegExp(pattern, flags);
       } catch (e) {
         const msg = e instanceof Error ? e.message.replace(/^Invalid regular expression: /, "") : String(e);
-        this.diags.error("K0351", "invalid regular expression", this.sp(patternStart, patternStart + pattern.length), msg);
+        this.diags.error("X0351", "invalid regular expression", this.sp(patternStart, patternStart + pattern.length), msg);
       }
     }
     return { kind: "regex", value: `/${pattern}/${flags}`, pattern, flags, span: this.sp(start), nl };

@@ -1,21 +1,21 @@
-error[K0415]: `Iterator` can't be instantiated with `new`
- --> std-iterator.kl:4:32
+error[X0415]: `Iterator` can't be instantiated with `new`
+ --> std-iterator.xn:4:32
   |
 4 |     var it:Iterator<int> = new Iterator()
   |                                ^^^^^^^^
   |
   = note: `Iterator` only has static members, e.g. `Iterator.from(…)`
 
-error[K0308]: mismatched types
- --> std-iterator.kl:5:36
+error[X0308]: mismatched types
+ --> std-iterator.xn:5:36
   |
 5 |     var strings:Iterator<String> = ids.values()
   |                 ----------------   ^^^^^^^^^^^^ expected `Iterator<String>`, found `Iterator<int>`
   |                 |
   |                 expected because of this type
 
-error[K0308]: mismatched types
- --> std-iterator.kl:7:23
+error[X0308]: mismatched types
+ --> std-iterator.xn:7:23
   |
 7 |     var text:String = step.value
   |              ------   ^^^^^^^^^^ expected `String`, found `int`
@@ -27,29 +27,29 @@ help: convert the value with `String()`
 7 |     var text:String = String(step.value)
   |                       +++++++          +
 
-error[K0308]: mismatched types
- --> std-iterator.kl:8:16
+error[X0308]: mismatched types
+ --> std-iterator.xn:8:16
   |
 8 |     for (var s:String of ids.values()) trace(s)
   |              - ^^^^^^ the elements are `int`
   |              |
   |              `s` declared as `String`
 
-error[K0308]: mismatched types
- --> std-iterator.kl:9:33
+error[X0308]: mismatched types
+ --> std-iterator.xn:9:33
   |
 9 |     var doubled:Array<String> = ids.values().map((n:int, i:int):int => n * 2).toArray()
   |                 -------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Array<String>`, found `Array<int>`
   |                 |
   |                 expected because of this type
 
-error[K0308]: mismatched types
-  --> std-iterator.kl:10:29
+error[X0308]: mismatched types
+  --> std-iterator.xn:10:29
    |
 10 |     trace(ids.values().take('2'), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
    |                             ^^^ expected `int`, found `String`
    |
-  ::: <klass prelude>/klass/Iterator.kl:31:25
+  ::: <xenon prelude>/xenon/Iterator.xn:31:25
    |
 31 |     function take(limit:int):Iterator<T>
    |                         --- parameter declared here
@@ -59,27 +59,27 @@ help: convert the value with `int()`
 10 |     trace(ids.values().take(int('2')), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
    |                             ++++   +
 
-error[K0426]: no member `length` on `Iterator`
-  --> std-iterator.kl:10:48
+error[X0426]: no member `length` on `Iterator`
+  --> std-iterator.xn:10:48
    |
 10 |     trace(ids.values().take('2'), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
    |                                                ^^^^^^ unknown member
    |
 help: if this JavaScript API exists, use it dynamically: `(ids.values() as *).length`
 
-error[K0308]: mismatched types
-  --> std-iterator.kl:10:76
+error[X0308]: mismatched types
+  --> std-iterator.xn:10:76
    |
 10 |     trace(ids.values().take('2'), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
    |                                                                            ^^^^^^^^^^^^^^^^ expected `(value:int, index:int) -> Boolean`, found `(n:int) -> int`
    |
-  ::: <klass prelude>/klass/Iterator.kl:29:26
+  ::: <xenon prelude>/xenon/Iterator.xn:29:26
    |
 29 |     function filter(test:(value:T, index:int) -> Boolean):Iterator<T>
    |                          ------------------------------- parameter declared here
 
-error[K0604]: no overload of `from` accepts (int)
-  --> std-iterator.kl:11:11
+error[X0604]: no overload of `from` accepts (int)
+  --> std-iterator.xn:11:11
    |
 11 |     trace(Iterator.from(5), ids.values().next().missing)
    |           ^^^^^^^^^^^^^ no matching overload
@@ -88,8 +88,8 @@ error[K0604]: no overload of `from` accepts (int)
    = note: `from(source:Set<T>):Iterator<T>`
    = note: `from(source:Iterator<T>):Iterator<T>`
 
-error[K0426]: no member `missing` on `IteratorResult<int>`
-  --> std-iterator.kl:11:49
+error[X0426]: no member `missing` on `IteratorResult<int>`
+  --> std-iterator.xn:11:49
    |
 11 |     trace(Iterator.from(5), ids.values().next().missing)
    |                                                 ^^^^^^^ unknown member

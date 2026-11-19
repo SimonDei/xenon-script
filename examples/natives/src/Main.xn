@@ -1,0 +1,38 @@
+package {
+  public class Main {
+    public function Main() {
+      // overloaded native constructor and static (`Date` is declared in the standard library)
+      var epoch:Date = new Date(0)
+      var parsed:Date = new Date('2024-02-29T12:00:00Z')
+      trace(epoch.getUTCFullYear(), parsed.getUTCMonth() + 1, Date.now() > 0)
+
+      // primitives get their members from native classes (`Float` and `String` are in the standard library)
+      var price:Float = 3.14159
+      var count:int = 42
+      trace(price.toFixed(2), count.toFixed(1), Float.MAX_SAFE_INTEGER > 1e15)
+
+      var csv:String = 'a,b;c'
+      var byComma:Array<String> = csv.split(',')             // split(String)
+      var byAny:Array<String> = csv.split(~/[,;]/)            // split(RegExp)
+      trace(byComma.length, byAny.length, csv.toUpperCase().padStart(7, '*'))
+
+      // a generic native class from the standard library, and a Xenon class extending it
+      var ages:Map<String, int> = new Map<String, int>()
+      ages.set('ann', 31).set('bob', 27)
+      var annNextYear:int = ages.get('ann') + 1
+      trace(ages.size, annNextYear, ages.has('cid'))
+
+      var reg:Registry = new Registry()
+      reg.add('x')
+      reg.add('y')
+      trace(reg.size, reg.get('y'), reg.has('x'))
+
+      // an API the declaration doesn't list: use it dynamically
+      trace((csv as *).at(-1))
+    }
+  }
+}
+
+class Registry extends Map<String, int> {
+  public function add(key:String):void { set(key, size) }
+}

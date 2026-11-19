@@ -1,12 +1,12 @@
-/** Plain JavaScript can import, use and subclass compiled Klass classes. */
+/** Plain JavaScript can import, use and subclass compiled Xenon classes. */
 import { expect, test } from "bun:test";
 import { mkdir, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { compileProject } from "../src/compiler.ts";
 
-test("JS consumes compiled Klass classes", async () => {
+test("JS consumes compiled Xenon classes", async () => {
   const srcRoot = join(import.meta.dir, "..", "examples", "zoo", "src");
-  const paths = await Array.fromAsync(new Bun.Glob("**/*.kl").scan({ cwd: srcRoot }));
+  const paths = await Array.fromAsync(new Bun.Glob("**/*.xn").scan({ cwd: srcRoot }));
   const sources = await Promise.all(paths.map(async (p) => ({ path: p, text: await Bun.file(join(srcRoot, p)).text() })));
   const result = compileProject(sources, { main: "Main" });
   expect(result.diagnostics.hasErrors).toBe(false);

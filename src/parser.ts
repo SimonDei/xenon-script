@@ -26,7 +26,7 @@ const BINARY_PREC: Record<string, number> = {
   "**": 12,
 };
 
-export function parseFile(file: SourceFile, diags: DiagnosticBag): A.KlassFile {
+export function parseFile(file: SourceFile, diags: DiagnosticBag): A.XenonFile {
   const tokens = lex(file, diags);
   return new Parser(tokens, file, diags).parseFile();
 }
@@ -92,7 +92,7 @@ export class Parser {
   }
 
   private fail(message: string, at: Span = this.tok.span, label?: string): never {
-    this.diags.error("K0100", message, at, label);
+    this.diags.error("X0100", message, at, label);
     throw new ParseError(message);
   }
 
@@ -109,7 +109,7 @@ export class Parser {
   private expectClose(close: string, open: Token): Token {
     if (this.is(close)) return this.advance();
     const found = this.describe(this.tok);
-    const d = this.diags.error("K0101", `expected \`${close}\`, found ${found}`, this.tok.span, `expected \`${close}\``);
+    const d = this.diags.error("X0101", `expected \`${close}\`, found ${found}`, this.tok.span, `expected \`${close}\``);
     d.secondary(open.span, `unclosed \`${open.value}\` opened here`);
     throw new ParseError("unclosed");
   }
@@ -137,22 +137,22 @@ export class Parser {
     if (this.doBody > 0 && this.is("while")) return;
     const prev = this.tokens[this.i - 1];
     const at = prev ? span(this.file, prev.span.end, prev.span.end) : this.tok.span;
-    this.diags.error("K0102", `expected \`;\` or a line break, found ${this.describe(this.tok)}`, this.tok.span, "unexpected token")
+    this.diags.error("X0102", `expected \`;\` or a line break, found ${this.describe(this.tok)}`, this.tok.span, "unexpected token")
       .help("end the statement here", [{ span: at, text: ";" }]);
     throw new ParseError("terminator");
   }
 
   /* ------------------------------ files ------------------------------ */
 
-  parseFile(): A.KlassFile {
-    const result: A.KlassFile = { file: this.file, packageName: [], imports: [], decls: [], privateDecls: [] };
+  parseFile(): A.XenonFile {
+    const result: A.XenonFile = { file: this.file, packageName: [], imports: [], decls: [], privateDecls: [] };
     if (!this.is("package")) {
       const dir = this.file.path.includes("/") ? this.file.path.slice(0, this.file.path.lastIndexOf("/")) : "";
       if (dir === "") return this.parseRootFile(result);
       // Files in folders must say their package (only the top-level package may be left out).
       const pkg = dir.split("/").join(".");
       const text = this.file.text;
-      this.diags.error("K0010", "expected a `package` block", this.tok.span, `this file is in the folder \`${dir}/\``)
+      this.diags.error("X0010", "expected a `package` block", this.tok.span, `this file is in the folder \`${dir}/\``)
         .note("only files directly in the source root may leave out the package block")
         .help(`wrap the file in its package`, [
           { span: span(this.file, 0, 0), text: `package ${pkg} {\n` },
@@ -206,8 +206,8 @@ export class Parser {
    * then sit at the top level. The declaration named after the file is the file's (package-level)
    * declaration; any others are file-private, as if they followed a package block.
    */
-  private parseRootFile(result: A.KlassFile): A.KlassFile {
-    const fileName = this.file.path.replace(/^.*\//, "").replace(/\.kl$/, "");
+  private parseRootFile(result: A.XenonFile): A.XenonFile {
+    const fileName = this.file.path.replace(/^.*\//, "").replace(/\.xn$/, "");
     while (this.tok.kind !== "eof") {
       const start = this.i;
       try {
@@ -274,7 +274,7 @@ export class Parser {
       }
       return this.finishJsImport(imp, start);
     }
-    // Klass form: import com.zoo.Dog; / import com.zoo.*;
+    // Xenon form: import com.zoo.Dog; / import com.zoo.*;
     const path: A.Ident[] = [this.ident("a package path or a JS module")];
     let wildcard = false;
     while (this.eat(".")) {
@@ -285,7 +285,7 @@ export class Parser {
       path.push(this.ident());
     }
     this.endStatement();
-    return { kind: "KlassImport", path, wildcard, span: this.sp(start) };
+    return { kind: "XenonImport", path, wildcard, span: this.sp(start) };
   }
 
   private finishJsImport(imp: A.JsImport, start: number): A.JsImport {
@@ -306,7 +306,7 @@ export class Parser {
       const t = this.advance();
       const v = t.value as keyof A.Modifiers;
       if (t.value === "native" && this.is("(")) {
-        // `native('JsName')`: the JS name differs from the Klass name.
+        // `native('JsName')`: the JS name differs from the Xenon name.
         const open = this.advance();
         const nameTok = this.advance();
         if (nameTok.kind !== "string") {
@@ -318,11 +318,11 @@ export class Parser {
       }
       if (VISIBILITY.has(t.value)) {
         if (mods.visibility) {
-          this.diags.error("K0103", "multiple visibility modifiers", t.span).secondary(mods.visibility.span, "first visibility modifier");
+          this.diags.error("X0103", "multiple visibility modifiers", t.span).secondary(mods.visibility.span, "first visibility modifier");
         }
         mods.visibility = { value: t.value as "public", span: t.span };
       } else {
-        if (mods[v]) this.diags.error("K0104", `duplicate modifier \`${t.value}\``, t.span);
+        if (mods[v]) this.diags.error("X0104", `duplicate modifier \`${t.value}\``, t.span);
         (mods as Record<string, Span>)[v] = t.span;
       }
     }
@@ -825,7 +825,7 @@ export class Parser {
 
   private rangeOutsideLoop() {
     if (this.is("..") || this.is("..=")) {
-      this.diags.error("K0333", "ranges are only supported in `for (… of …)` loops", this.tok.span)
+      this.diags.error("X0333", "ranges are only supported in `for (… of …)` loops", this.tok.span)
         .help("for example `for (var i:int of 0..10) { … }`");
       throw new ParseError("range");
     }
@@ -959,7 +959,7 @@ export class Parser {
       if (this.startsBinding()) {
         const kw = this.advance();
         if (kw.value !== "var") {
-          this.diags.error("K0107", `use \`var\` for a binding in a condition`, kw.span)
+          this.diags.error("X0107", `use \`var\` for a binding in a condition`, kw.span)
             .help("replace it with `var`", [{ span: kw.span, text: "var" }]);
         }
         const name = this.ident("a variable name");
@@ -992,7 +992,7 @@ export class Parser {
   private parseFor(): A.Stmt {
     const start = this.advance().span.start; // for
     if (this.isIdent("each") && this.is("(", this.peekTok())) {
-      this.diags.error("K0106", "`for each` is written `for (var v:T of coll)` in Klass", cover(this.tokens[this.i - 1]!.span, this.tok.span))
+      this.diags.error("X0106", "`for each` is written `for (var v:T of coll)` in Xenon", cover(this.tokens[this.i - 1]!.span, this.tok.span))
         .help("use `of`: `for (var v:T of collection)`");
       throw new ParseError("for each");
     }
@@ -1105,7 +1105,7 @@ export class Parser {
     if (this.tok.kind === "punct" && ASSIGN_OPS.has(this.tok.value)) {
       const opTok = this.advance();
       if (!["Ident", "Member", "Index"].includes(left.kind)) {
-        this.diags.error("K0105", "invalid assignment target", left.span, "can't assign to this expression");
+        this.diags.error("X0105", "invalid assignment target", left.span, "can't assign to this expression");
       }
       const value = this.parseAssign();
       return { kind: "Assign", op: opTok.value, target: left, value, opSpan: opTok.span, span: this.sp(start) };

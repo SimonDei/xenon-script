@@ -1,9 +1,0 @@
-package game {
-  public class Config {
-    public static inline final MAX_HP:int = 100
-    public static inline const TITLE:String = $'Klass Quest v{MAJOR}.{MINOR}'
-    private static inline final MAJOR:int = 1
-    private static inline final MINOR:int = MAJOR + 1
-    public static inline final STEP:int = 25
-  }
-}

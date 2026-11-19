@@ -1,43 +1,43 @@
-error[K0315]: cannot apply `-` to `String` and `int`
- --> operators.kl:7:15
+error[X0315]: cannot apply `-` to `String` and `int`
+ --> operators.xn:7:15
   |
 7 |       trace(s - n, b * 2, -s, !n)
   |             - ^ - `int`
   |             |
   |             `String`
 
-error[K0315]: cannot apply `*` to `Boolean` and `int`
- --> operators.kl:7:22
+error[X0315]: cannot apply `*` to `Boolean` and `int`
+ --> operators.xn:7:22
   |
 7 |       trace(s - n, b * 2, -s, !n)
   |                    - ^ - `int`
   |                    |
   |                    `Boolean`
 
-error[K0315]: cannot apply unary `-` to `String`
- --> operators.kl:7:27
+error[X0315]: cannot apply unary `-` to `String`
+ --> operators.xn:7:27
   |
 7 |       trace(s - n, b * 2, -s, !n)
   |                           ^- this is `String`
 
-error[K0315]: `!` needs a `Boolean`
- --> operators.kl:7:31
+error[X0315]: `!` needs a `Boolean`
+ --> operators.xn:7:31
   |
 7 |       trace(s - n, b * 2, -s, !n)
   |                               ^- this is `int`
 
-error[K0309]: this comparison is always false
- --> operators.kl:8:15
+error[X0309]: this comparison is always false
+ --> operators.xn:8:15
   |
 8 |       trace(n == 'one', s != null, n == null)
   |             - ^^ ----- `String`
   |             |
   |             `int`
   |
-  = note: `==` never converts between types in Klass
+  = note: `==` never converts between types in Xenon
 
-error[K0309]: this comparison is always false
- --> operators.kl:8:38
+error[X0309]: this comparison is always false
+ --> operators.xn:8:38
   |
 8 |       trace(n == 'one', s != null, n == null)
   |                                    - ^^ ---- `null`
@@ -46,8 +46,8 @@ error[K0309]: this comparison is always false
   |
   = note: `int` can never be null
 
-error[K0370]: `+` is not defined for `Main`
- --> operators.kl:9:18
+error[X0370]: `+` is not defined for `Main`
+ --> operators.xn:9:18
   |
 9 |       trace(this + this)
   |             ---- ^

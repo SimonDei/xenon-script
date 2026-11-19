@@ -1,5 +1,5 @@
-error[K0425]: cannot find `parseInt` in this scope
- --> globals.kl:3:19
+error[X0425]: cannot find `parseInt` in this scope
+ --> globals.xn:3:19
   |
 3 |     var n:Float = parseInt('42')
   |                   ^^^^^^^^ not found in this scope
@@ -9,8 +9,8 @@ help: use `Float.parseInt`
 3 |     var n:Float = Float.parseInt('42')
   |                   ~~~~~~~~~~~~~~
 
-error[K0425]: cannot find `parseFloat` in this scope
- --> globals.kl:4:19
+error[X0425]: cannot find `parseFloat` in this scope
+ --> globals.xn:4:19
   |
 4 |     var f:Float = parseFloat('3.5')
   |                   ^^^^^^^^^^ not found in this scope
@@ -20,8 +20,8 @@ help: use `Float.parseFloat`
 4 |     var f:Float = Float.parseFloat('3.5')
   |                   ~~~~~~~~~~~~~~~~
 
-error[K0425]: cannot find `isNaN` in this scope
- --> globals.kl:5:11
+error[X0425]: cannot find `isNaN` in this scope
+ --> globals.xn:5:11
   |
 5 |     trace(isNaN('abc'), isFinite(n), n == NaN, f < Infinity)
   |           ^^^^^ not found in this scope
@@ -32,8 +32,8 @@ help: use `Float.isNaN`
 5 |     trace(Float.isNaN('abc'), isFinite(n), n == NaN, f < Infinity)
   |           ~~~~~~~~~~~
 
-error[K0425]: cannot find `isFinite` in this scope
- --> globals.kl:5:25
+error[X0425]: cannot find `isFinite` in this scope
+ --> globals.xn:5:25
   |
 5 |     trace(isNaN('abc'), isFinite(n), n == NaN, f < Infinity)
   |                         ^^^^^^^^ not found in this scope
@@ -44,8 +44,8 @@ help: use `Float.isFinite`
 5 |     trace(isNaN('abc'), Float.isFinite(n), n == NaN, f < Infinity)
   |                         ~~~~~~~~~~~~~~
 
-error[K0425]: cannot find `NaN` in this scope
- --> globals.kl:5:43
+error[X0425]: cannot find `NaN` in this scope
+ --> globals.xn:5:43
   |
 5 |     trace(isNaN('abc'), isFinite(n), n == NaN, f < Infinity)
   |                                           ^^^ not found in this scope
@@ -56,8 +56,8 @@ help: use `Float.NaN`
 5 |     trace(isNaN('abc'), isFinite(n), n == Float.NaN, f < Infinity)
   |                                           ~~~~~~~~~
 
-error[K0425]: cannot find `Infinity` in this scope
- --> globals.kl:5:52
+error[X0425]: cannot find `Infinity` in this scope
+ --> globals.xn:5:52
   |
 5 |     trace(isNaN('abc'), isFinite(n), n == NaN, f < Infinity)
   |                                                    ^^^^^^^^ not found in this scope

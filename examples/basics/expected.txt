@@ -8,6 +8,6 @@ false true true
 3 4294967295 3.5
 512 9 4
 a	b it's braces {ok}
-true file.kl
+true file.xn
 3 1 fallback
 42

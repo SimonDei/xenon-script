@@ -9,13 +9,13 @@ const out = join(import.meta.dir, ".prelude-out");
 let K: any;
 
 beforeAll(async () => {
-  const result = compileProject([{ path: "Main.kl", text: "package { public class Main {} }" }], { main: "Main" });
+  const result = compileProject([{ path: "Main.xn", text: "package { public class Main {} }" }], { main: "Main" });
   expect(result.diagnostics.items).toEqual([]);
   for (const o of result.outputs) {
     await mkdir(dirname(join(out, o.path)), { recursive: true });
     await Bun.write(join(out, o.path), o.text);
   }
-  K = await import(join(out, "klass", "Prelude.js"));
+  K = await import(join(out, "xenon", "Prelude.js"));
 });
 
 afterAll(() => rm(out, { recursive: true, force: true }));

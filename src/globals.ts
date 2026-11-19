@@ -1,5 +1,5 @@
 /**
- * JavaScript globals usable from Klass code, all typed `*` (A0/A7): the ones the standard library
+ * JavaScript globals usable from Xenon code, all typed `*` (A0/A7): the ones the standard library
  * (src/prelude/std) doesn't declare yet. `Error` and its subclasses are deliberately absent (A6c),
  * and so are the global number functions and values (`GLOBAL_HINTS`): `parseInt`, `isNaN`, … coerce
  * their argument, the `Float` statics don't.

@@ -5,7 +5,7 @@ import { SourceFile } from "../src/source.ts";
 
 function tokens(text: string) {
   const diags = new DiagnosticBag();
-  const toks = lex(new SourceFile("t.kl", text), diags);
+  const toks = lex(new SourceFile("t.xn", text), diags);
   return { toks: toks.slice(0, -1), diags };
 }
 
@@ -52,14 +52,14 @@ test("regex literals need ~, plain / is division", () => {
 });
 
 test("regex flag and pattern validation", () => {
-  expect(tokens("~/a/gq").diags.items.map((d) => d.code)).toEqual(["K0350"]);
-  expect(tokens("~/a/gg").diags.items.map((d) => d.code)).toEqual(["K0350"]);
-  expect(tokens("~/(a/").diags.items.map((d) => d.code)).toEqual(["K0351"]);
+  expect(tokens("~/a/gq").diags.items.map((d) => d.code)).toEqual(["X0350"]);
+  expect(tokens("~/a/gg").diags.items.map((d) => d.code)).toEqual(["X0350"]);
+  expect(tokens("~/(a/").diags.items.map((d) => d.code)).toEqual(["X0351"]);
 });
 
 test("double quotes and backticks are rejected with fix-its", () => {
   const { diags } = tokens('"hi" `n=${n}`');
-  expect(diags.items.map((d) => d.code)).toEqual(["K0360", "K0360"]);
+  expect(diags.items.map((d) => d.code)).toEqual(["X0360", "X0360"]);
   expect(diags.items[0]!.help[0]!.edits![0]!.text).toBe("'hi'");
   expect(diags.items[1]!.help[0]!.edits![0]!.text).toBe("$'n={n}'");
 });
@@ -75,6 +75,6 @@ test("?. followed by a digit is a ternary", () => {
 
 test("unterminated string reports at the opening quote", () => {
   const { diags } = tokens("x = 'abc\ny");
-  expect(diags.items[0]!.code).toBe("K0362");
+  expect(diags.items[0]!.code).toBe("X0362");
   expect(diags.items[0]!.labels[0]!.span.start).toBe(4);
 });

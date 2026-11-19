@@ -11,9 +11,9 @@ const examples = (await Array.fromAsync(new Bun.Glob("*/expected.txt").scan({ cw
 for (const name of examples) {
   test(`example: ${name}`, async () => {
     const srcRoot = join(root, name, "src");
-    const paths = await Array.fromAsync(new Bun.Glob("**/*.kl").scan({ cwd: srcRoot }));
+    const paths = await Array.fromAsync(new Bun.Glob("**/*.xn").scan({ cwd: srcRoot }));
     const sources = await Promise.all(paths.map(async (p) => ({ path: p, text: await Bun.file(join(srcRoot, p)).text() })));
-    const config = Bun.file(join(root, name, "klass.json"));
+    const config = Bun.file(join(root, name, "xenon.json"));
     const main = (await config.exists()) ? ((await config.json()).main ?? "Main") : "Main";
 
     const result = compileProject(sources, { main });

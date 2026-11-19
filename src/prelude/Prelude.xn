@@ -1,0 +1,65 @@
+// The Xenon prelude: built-in classes and interfaces, auto-imported into every file.
+// This is the only Xenon code allowed to see JavaScript's `Error` classes.
+// Everything lives in one file (one JS module) because `Exception.from` creates the
+// subclasses while they extend `Exception`: separate modules would form an import cycle.
+package xenon {
+  /** Capitalized alias of the dynamic type `*`. */
+  public typedef Any = *
+
+  /** Capitalized alias of `void`; like `void`, only allowed as a return type. */
+  public typedef Void = void
+
+  /** Implemented automatically by every class with a destructor `~Name()`. */
+  public interface IDisposable {
+    function dispose():void
+  }
+
+  /** Implemented automatically by every class with an async destructor `async ~Name()`. */
+  public interface IAsyncDisposable {
+    function dispose():Promise<void>
+  }
+
+  public class Exception extends Error {
+    /** The underlying error or thrown value, if any. */
+    public final cause:*
+
+    public function Exception(message:String = '', cause:* = null) {
+      super(message)
+      this.cause = cause
+      this.name = this.constructor.name
+    }
+
+    /** Normalizes anything thrown (by Xenon or JavaScript) into an `Exception`. */
+    public static function from(value:*):Exception {
+      if (value is Exception) return value as Exception
+      var e:Exception
+      if (value is TypeError) e = new TypeException(value.message, value)
+      else if (value is RangeError) e = new RangeException(value.message, value)
+      else if (value is Error) e = new Exception(value.message, value)
+      else return new Exception('Non-error value thrown: ' + String(value), value)
+      e.stack = value.stack
+      return e
+    }
+
+    override public function toString():String {
+      var text:String = String(this.name) + ': ' + String(this.message)
+      if (cause != null && !(cause is Error)) text += ' (caused by ' + String(cause) + ')'
+      return text
+    }
+  }
+
+  /** An argument has an invalid value. */
+  public class ArgumentException extends Exception {}
+
+  /** A value has the wrong type (also used for JavaScript `TypeError`s). */
+  public class TypeException extends Exception {}
+
+  /** A value or index is out of range (also used for JavaScript `RangeError`s). */
+  public class RangeException extends Exception {}
+
+  /** The object is in the wrong state for this call. */
+  public class StateException extends Exception {}
+
+  /** The called member has no implementation (abstract stubs). */
+  public class NotImplementedException extends Exception {}
+}

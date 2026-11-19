@@ -1,5 +1,5 @@
-error[K0360]: strings use single quotes in Klass
- --> foreign-strings.kl:5:13
+error[X0360]: strings use single quotes in Xenon
+ --> foreign-strings.xn:5:13
   |
 5 |       trace("it's", `n = ${n}`)
   |             ^^^^^^ double-quoted string
@@ -9,8 +9,8 @@ help: use single quotes
 5 |       trace('it\'s', `n = ${n}`)
   |             ~~~~~~~
 
-error[K0360]: template strings are written `$'…{expr}…'` in Klass
- --> foreign-strings.kl:5:21
+error[X0360]: template strings are written `$'…{expr}…'` in Xenon
+ --> foreign-strings.xn:5:21
   |
 5 |       trace("it's", `n = ${n}`)
   |                     ^^^^^^^^^^ backtick string

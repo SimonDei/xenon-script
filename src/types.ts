@@ -44,7 +44,7 @@ export type Type =
   | { kind: "null" }
   | { kind: "any" } // `*`
   | { kind: "builtin"; name: BuiltinName; args: Type[] }
-  | { kind: "class"; info: ClassInfo; args?: Type[] } // instance of a Klass class (`args` for generic classes)
+  | { kind: "class"; info: ClassInfo; args?: Type[] } // instance of a Xenon class (`args` for generic classes)
   | { kind: "typeParam"; param: TypeParamInfo }
   | { kind: "classRef"; info: ClassInfo } // the class itself (`Dog` in `Dog.create()`)
   | MethodType

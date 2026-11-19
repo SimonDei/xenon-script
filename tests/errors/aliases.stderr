@@ -1,11 +1,11 @@
-error[K0421]: `Void` is only allowed as a return type
- --> aliases.kl:4:13
+error[X0421]: `Void` is only allowed as a return type
+ --> aliases.xn:4:13
   |
 4 |       var v:Void = null
   |             ^^^^
 
-error[K0420]: cannot find type `Itn`
- --> aliases.kl:5:13
+error[X0420]: cannot find type `Itn`
+ --> aliases.xn:5:13
   |
 5 |       var x:Itn = 1
   |             ^^^ not found
@@ -15,28 +15,28 @@ help: a type with a similar name exists: `Int`
 5 |       var x:Int = 1
   |             ~~~
 
-error[K0423]: `Int` doesn't take type arguments
- --> aliases.kl:6:13
+error[X0423]: `Int` doesn't take type arguments
+ --> aliases.xn:6:13
   |
 6 |       var y:Int<String> = 2
   |             ^^^^^^^^^^^
 
-error[K0425]: cannot find `Any` in this scope
- --> aliases.kl:7:65
+error[X0425]: cannot find `Any` in this scope
+ --> aliases.xn:7:65
   |
 7 |       var fine:() -> Void = ():Void => trace(Bool(x), Int(1.5), Any)
   |                                                                 ^^^ not found in this scope
 
-error[K0028]: `Int` is the name of a built-in type
-  --> aliases.kl:13:7
+error[X0028]: `Int` is the name of a built-in type
+  --> aliases.xn:13:7
    |
 13 | class Int {}
    |       ^^^
    |
    = note: the prelude declares `Int` for every file; pick another name
 
-error[K0028]: `Bool` is the name of a built-in type
-  --> aliases.kl:14:9
+error[X0028]: `Bool` is the name of a built-in type
+  --> aliases.xn:14:9
    |
 14 | typedef Bool = int
    |         ^^^^

@@ -1,0 +1,111 @@
+// Standard library: members of the primitive `String` (JavaScript `String.prototype`).
+//
+// Strings are immutable: every method returns a new string. Positions count UTF-16 code units, as in
+// JavaScript (`'😀'.length` is 2). `s[i]` is the one-character string at `i` (an `int` index).
+// Conversions are written `String(x)`, never `new String(x)` (the constructor would make a wrapper
+// object), so the constructor is hidden.
+//
+// Typing: positions and counts are `int`; `charCodeAt`/`codePointAt` give NaN/`undefined` out of range
+// (check the index first); `match` returns `null` without a match, `at` an `undefined` character out
+// of range. A `Function` replacer receives `(match, ...groups, offset, whole)`; the extras of a regex
+// match (`index`, `groups`) are untyped, see `RegExp`.
+// Not declared: the deprecated HTML methods (`anchor`, `big`, …), `substr`, `trimLeft`/`trimRight`
+// (use `trimStart`/`trimEnd`) and `String.raw`.
+package xenon {
+  public native class String {
+    private function String()
+
+    /** `String.fromCharCode(72, 105)` is `'Hi'`; each code is a UTF-16 unit (0–65535). */
+    static function fromCharCode(...codes:Array<int>):String
+    /** `String.fromCodePoint(128512)` is `'😀'`; each point is 0–1114111. */
+    static function fromCodePoint(...points:Array<int>):String
+
+    /** Number of UTF-16 code units. */
+    function get length():int
+
+    // ---- characters ----
+    function charAt(index:int = 0):String
+    /** Like `s[index]`, but negative indexes count from the end: `'abc'.at(-1)` is `'c'`. */
+    function at(index:int):String
+    /** The UTF-16 code unit at `index` (0–65535); NaN if out of range. */
+    function charCodeAt(index:int):int
+    /** The full code point at `index` (surrogate pairs combined); `undefined` if out of range. */
+    function codePointAt(index:int):int
+
+    // ---- searching ----
+    function indexOf(search:String, from:int = 0):int
+    /** Last position of `search`, or -1. */
+    function lastIndexOf(search:String):int
+    function lastIndexOf(search:String, from:int):int
+    function includes(search:String, from:int = 0):Boolean
+    function startsWith(search:String, from:int = 0):Boolean
+    function endsWith(search:String):Boolean
+    /** Only the first `length` characters are considered. */
+    function endsWith(search:String, length:int):Boolean
+    /** Position of the first regex match, or -1. */
+    function search(pattern:RegExp):int
+    function search(pattern:String):int
+
+    // ---- regular expressions ----
+    /** The match (see `RegExp.exec`), or `null`. With the `g` flag: all matched texts, or `null`. */
+    function match(pattern:RegExp):Array<String>
+    /** A string pattern is compiled to a regex first. */
+    function match(pattern:String):Array<String>
+    /** Every match with its groups; the regex must have the `g` flag (else a `TypeError`). */
+    function matchAll(pattern:RegExp):Iterator<Array<String>>
+
+    // ---- extracting ----
+    function slice(start:int):String
+    /** From `start` up to (not including) `end`; negative values count from the end. */
+    function slice(start:int, end:int):String
+    function substring(start:int):String
+    /** Like `slice`, but swaps the arguments if `start > end` and clamps negatives to 0. */
+    function substring(start:int, end:int):String
+    function split(separator:String):Array<String>
+    /** At most `limit` pieces. */
+    function split(separator:String, limit:int):Array<String>
+    function split(separator:RegExp):Array<String>
+    function split(separator:RegExp, limit:int):Array<String>
+
+    // ---- changing ----
+    /** Replaces the first occurrence; `$&`, `$1`, … in `replacement` insert the match and groups. */
+    function replace(pattern:String, replacement:String):String
+    function replace(pattern:RegExp, replacement:String):String
+    /** `replacer` is called as `(match, ...groups, offset, whole)` and returns the new text. */
+    function replace(pattern:String, replacer:Function):String
+    function replace(pattern:RegExp, replacer:Function):String
+    /** Replaces every occurrence; a regex must have the `g` flag (else a `TypeError`). */
+    function replaceAll(pattern:String, replacement:String):String
+    function replaceAll(pattern:RegExp, replacement:String):String
+    function replaceAll(pattern:String, replacer:Function):String
+    function replaceAll(pattern:RegExp, replacer:Function):String
+    function concat(...parts:Array<String>):String
+    function repeat(count:int):String
+    function padStart(length:int, fill:String = ' '):String
+    function padEnd(length:int, fill:String = ' '):String
+    function trim():String
+    function trimStart():String
+    function trimEnd():String
+    function toUpperCase():String
+    function toLowerCase():String
+    function toLocaleUpperCase():String
+    function toLocaleUpperCase(locale:String):String
+    function toLocaleLowerCase():String
+    function toLocaleLowerCase(locale:String):String
+    /** Unicode normalization form: `'NFC'`, `'NFD'`, `'NFKC'` or `'NFKD'`. */
+    function normalize(form:String = 'NFC'):String
+
+    // ---- comparing and converting ----
+    /** Negative, 0 or positive: `a.localeCompare(b)` orders by the default locale's rules. */
+    function localeCompare(other:String):int
+    function localeCompare(other:String, locale:String):int
+    /** `options` are `Intl.Collator` options, e.g. `{ numeric: true }`. */
+    function localeCompare(other:String, locale:String, options:*):int
+    /** Does the string have no lone surrogates? */
+    function isWellFormed():Boolean
+    /** Lone surrogates replaced by U+FFFD. */
+    function toWellFormed():String
+    function toString():String
+    function valueOf():String
+  }
+}

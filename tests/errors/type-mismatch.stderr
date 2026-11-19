@@ -1,5 +1,5 @@
-error[K0308]: mismatched types
- --> type-mismatch.kl:6:13
+error[X0308]: mismatched types
+ --> type-mismatch.xn:6:13
   |
 3 |     private var age:int = 0
   |                     --- `age` declared as `int` here
@@ -12,8 +12,8 @@ help: convert the value with `int()`
 6 |       age = int('three')
   |             ++++       +
 
-error[K0308]: mismatched types
- --> type-mismatch.kl:7:22
+error[X0308]: mismatched types
+ --> type-mismatch.xn:7:22
   |
 7 |       var half:int = age / 2
   |                ---   ^^^^^^^ expected `int`, found `Float`
@@ -25,8 +25,8 @@ help: convert the value with `int()`
 7 |       var half:int = int(age / 2)
   |                      ++++       +
 
-error[K0308]: mismatched types
- --> type-mismatch.kl:9:23
+error[X0308]: mismatched types
+ --> type-mismatch.xn:9:23
   |
 9 |       var count:int = ratio
   |                 ---   ^^^^^ expected `int`, found `Float`
@@ -38,8 +38,8 @@ help: convert the value with `int()`
 9 |       var count:int = int(ratio)
   |                       ++++     +
 
-error[K0308]: mismatched types
-  --> type-mismatch.kl:11:22
+error[X0308]: mismatched types
+  --> type-mismatch.xn:11:22
    |
 11 |       var neg:uint = -1
    |               ----   ^^ expected `uint`, found `int`
@@ -51,8 +51,8 @@ help: convert the value with `uint()`
 11 |       var neg:uint = uint(-1)
    |                      +++++  +
 
-error[K0308]: mismatched types
-  --> type-mismatch.kl:12:25
+error[X0308]: mismatched types
+  --> type-mismatch.xn:12:25
    |
 12 |       var name:String = 42
    |                ------   ^^ expected `String`, found `int`
@@ -64,8 +64,8 @@ help: convert the value with `String()`
 12 |       var name:String = String(42)
    |                         +++++++  +
 
-error[K0308]: mismatched types
-  --> type-mismatch.kl:13:26
+error[X0308]: mismatched types
+  --> type-mismatch.xn:13:26
    |
 13 |       var flag:Boolean = null
    |                -------   ^^^^ expected `Boolean`, found `null`

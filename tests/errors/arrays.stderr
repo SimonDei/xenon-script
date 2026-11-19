@@ -1,5 +1,5 @@
-error[K0424]: `Vector` is called `Array<T>` in Klass
- --> arrays.kl:3:13
+error[X0424]: `Vector` is called `Array<T>` in Xenon
+ --> arrays.xn:3:13
   |
 3 |     var old:Vector<int> = [1, 2]
   |             ^^^^^^ unknown type
@@ -9,14 +9,14 @@ help: use `Array<T>`: a typed array (a bare `Array` is `Array<*>`)
 3 |     var old:Array<int> = [1, 2]
   |             ~~~~~
 
-error[K0422]: `Array` takes 1 type argument, the element type
- --> arrays.kl:4:14
+error[X0422]: `Array` takes 1 type argument, the element type
+ --> arrays.xn:4:14
   |
 4 |     var pair:Array<int, String> = []
   |              ^^^^^^^^^^^^^^^^^^ 2 given
 
-error[K0308]: mismatched types
- --> arrays.kl:5:34
+error[X0308]: mismatched types
+ --> arrays.xn:5:34
   |
 5 |     var ints:Array<int> = [1, 2, 'three']
   |              ----------          ^^^^^^^ expected `int`, found `String`
@@ -28,30 +28,30 @@ help: convert the value with `int()`
 5 |     var ints:Array<int> = [1, 2, int('three')]
   |                                  ++++       +
 
-error[K0308]: mismatched types
- --> arrays.kl:8:31
+error[X0308]: mismatched types
+ --> arrays.xn:8:31
   |
 8 |     var words:Array<String> = ints
   |               -------------   ^^^^ expected `Array<String>`, found `Array<int>`
   |               |
   |               expected because of this type
 
-error[K0308]: mismatched types
- --> arrays.kl:9:40
+error[X0308]: mismatched types
+ --> arrays.xn:9:40
   |
 9 |     trace(old, pair, back, words, ints['0'], anything is Array, anything is Array<int>)
   |                                        ^^^ an `Array` index is an `int`, found `String`
 
-warning[K0397]: this test is always true unless the value is null
- --> arrays.kl:9:55
+warning[X0397]: this test is always true unless the value is null
+ --> arrays.xn:9:55
   |
 9 |     trace(old, pair, back, words, ints['0'], anything is Array, anything is Array<int>)
   |                                              -------- ^^^^^^^^
   |                                              |
   |                                              already `Array`
 
-error[K0394]: `Array<int>` can't be checked at runtime
- --> arrays.kl:9:77
+error[X0394]: `Array<int>` can't be checked at runtime
+ --> arrays.xn:9:77
   |
 9 |     trace(old, pair, back, words, ints['0'], anything is Array, anything is Array<int>)
   |                                                                             ^^^^^^^^^^

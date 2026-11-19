@@ -9,7 +9,7 @@ test("every emitted diagnostic code is in the catalog", async () => {
   const used = new Set<string>();
   for (const f of files) {
     if (f === "codes.ts") continue;
-    for (const m of (await Bun.file(join(srcDir, f)).text()).matchAll(/"(K\d{4})"/g)) used.add(m[1]!);
+    for (const m of (await Bun.file(join(srcDir, f)).text()).matchAll(/"(X\d{4})"/g)) used.add(m[1]!);
   }
   const missing = [...used].filter((c) => !CODES[c]).sort();
   expect(missing).toEqual([]);
@@ -19,9 +19,9 @@ test("every emitted diagnostic code is in the catalog", async () => {
 });
 
 test("explain renders title, text and example", () => {
-  const text = explain("k0308")!;
-  expect(text).toStartWith("K0308: mismatched types\n");
+  const text = explain("x0308")!;
+  expect(text).toStartWith("X0308: mismatched types\n");
   expect(text).toContain("Example:");
   expect(text).toContain("int(total / 2)");
-  expect(explain("K9999")).toBeUndefined();
+  expect(explain("X9999")).toBeUndefined();
 });

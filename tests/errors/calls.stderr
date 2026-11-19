@@ -1,5 +1,5 @@
-error[K0601]: this call takes 1 argument but 2 were given
-  --> calls.kl:4:20
+error[X0601]: this call takes 1 argument but 2 were given
+  --> calls.xn:4:20
    |
  4 |       greet('Ann', 3)
    |                    ^ unexpected argument
@@ -7,8 +7,8 @@ error[K0601]: this call takes 1 argument but 2 were given
 11 |     private function greet(who:String):String {
    |                      ----- `greet` defined here
 
-error[K0601]: this call takes 1 argument but 0 were given
-  --> calls.kl:5:7
+error[X0601]: this call takes 1 argument but 0 were given
+  --> calls.xn:5:7
    |
  5 |       greet()
    |       ^^^^^^^ missing `who:String`
@@ -16,8 +16,8 @@ error[K0601]: this call takes 1 argument but 0 were given
 11 |     private function greet(who:String):String {
    |                      ----- `greet` defined here
 
-error[K0308]: mismatched types
- --> calls.kl:6:19
+error[X0308]: mismatched types
+ --> calls.xn:6:19
   |
 6 |       var n:int = greet('Bob')
   |             ---   ^^^^^^^^^^^^ expected `int`, found `String`
@@ -29,8 +29,8 @@ help: convert the value with `int()`
 6 |       var n:int = int(greet('Bob'))
   |                   ++++            +
 
-error[K0308]: mismatched types
-  --> calls.kl:7:35
+error[X0308]: mismatched types
+  --> calls.xn:7:35
    |
  7 |       var total:Float = sum(1, 2, 'three')
    |                                   ^^^^^^^ expected `Float`, found `String`
@@ -43,8 +43,8 @@ help: convert the value with `Float()`
  7 |       var total:Float = sum(1, 2, Float('three'))
    |                                   ++++++       +
 
-error[K0311]: this expression has no value
- --> calls.kl:8:13
+error[X0311]: this expression has no value
+ --> calls.xn:8:13
   |
 8 |       trace(nothing())
   |             ^^^^^^^^^ returns `void`

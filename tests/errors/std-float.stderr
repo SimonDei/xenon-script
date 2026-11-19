@@ -1,16 +1,16 @@
-error[K0425]: cannot find `Number` in this scope
- --> std-float.kl:6:13
+error[X0425]: cannot find `Number` in this scope
+ --> std-float.xn:6:13
   |
 6 |       trace(Number.isInteger(price), new Float(3), price.toFixd(2))
   |             ^^^^^^ not found in this scope
   |
-help: JavaScript's `Number` is called `Float` in Klass
+help: JavaScript's `Number` is called `Float` in Xenon
   |
 6 |       trace(Float.isInteger(price), new Float(3), price.toFixd(2))
   |             ~~~~~
 
-error[K0415]: `Float` can't be instantiated with `new`
- --> std-float.kl:6:42
+error[X0415]: `Float` can't be instantiated with `new`
+ --> std-float.xn:6:42
   |
 6 |       trace(Number.isInteger(price), new Float(3), price.toFixd(2))
   |                                          ^^^^^
@@ -21,8 +21,8 @@ help: to convert a value, call `Float(x)` without `new`
 6 -       trace(Number.isInteger(price), new Float(3), price.toFixd(2))
 6 +       trace(Number.isInteger(price), Float(3), price.toFixd(2))
 
-error[K0426]: no member `toFixd` on `Float`
- --> std-float.kl:6:58
+error[X0426]: no member `toFixd` on `Float`
+ --> std-float.xn:6:58
   |
 6 |       trace(Number.isInteger(price), new Float(3), price.toFixd(2))
   |                                                          ^^^^^^ unknown member
@@ -32,8 +32,8 @@ help: a member with a similar name exists: `toFixed`
 6 |       trace(Number.isInteger(price), new Float(3), price.toFixed(2))
   |                                                          ~~~~~~~
 
-error[K0308]: mismatched types
- --> std-float.kl:7:21
+error[X0308]: mismatched types
+ --> std-float.xn:7:21
   |
 7 |       var big:int = Float.MAX_SAFE_INTEGER
   |               ---   ^^^^^^^^^^^^^^^^^^^^^^ expected `int`, found `Float`
@@ -45,8 +45,8 @@ help: convert the value with `int()`
 7 |       var big:int = int(Float.MAX_SAFE_INTEGER)
   |                     ++++                      +
 
-error[K0308]: mismatched types
- --> std-float.kl:8:24
+error[X0308]: mismatched types
+ --> std-float.xn:8:24
   |
 8 |       var parsed:int = Float.parseInt('7')
   |                  ---   ^^^^^^^^^^^^^^^^^^^ expected `int`, found `Float`
@@ -58,8 +58,8 @@ help: convert the value with `int()`
 8 |       var parsed:int = int(Float.parseInt('7'))
   |                        ++++                   +
 
-error[K0308]: mismatched types
- --> std-float.kl:9:24
+error[X0308]: mismatched types
+ --> std-float.xn:9:24
   |
 9 |       trace(n.toString('16'), price.toPrecision(2.5), big, parsed)
   |                        ^^^^ expected `int`, found `String`
@@ -69,8 +69,8 @@ help: convert the value with `int()`
 9 |       trace(n.toString(int('16')), price.toPrecision(2.5), big, parsed)
   |                        ++++    +
 
-error[K0604]: no overload of `toPrecision` accepts (Float)
- --> std-float.kl:9:31
+error[X0604]: no overload of `toPrecision` accepts (Float)
+ --> std-float.xn:9:31
   |
 9 |       trace(n.toString('16'), price.toPrecision(2.5), big, parsed)
   |                               ^^^^^^^^^^^^^^^^^ no matching overload
@@ -78,24 +78,24 @@ error[K0604]: no overload of `toPrecision` accepts (Float)
   = note: `toPrecision():String`
   = note: `toPrecision(precision:int):String`
 
-error[K0501]: cannot assign to constant `NaN`
-  --> std-float.kl:10:13
+error[X0501]: cannot assign to constant `NaN`
+  --> std-float.xn:10:13
    |
 10 |       Float.NaN = 0
    |             ^^^
    |
-  ::: <klass prelude>/klass/Float.kl:43:18
+  ::: <xenon prelude>/xenon/Float.xn:43:18
    |
 43 |     static const NaN:Float
    |                  --- declared `const` here
 
-error[K0420]: cannot find type `Number`
-  --> std-float.kl:11:13
+error[X0420]: cannot find type `Number`
+  --> std-float.xn:11:13
    |
 11 |       var j:Number = 1
    |             ^^^^^^ not found
    |
-help: Klass calls floating-point numbers `Float`
+help: Xenon calls floating-point numbers `Float`
    |
 11 |       var j:Float = 1
    |             ~~~~~

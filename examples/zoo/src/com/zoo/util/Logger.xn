@@ -1,0 +1,14 @@
+package com.zoo.util {
+  import { format } from 'node:util'
+
+  public class Logger {
+    public static function log(...parts:Array):void {
+      trace(Formatter.prefix() + format(...parts))
+    }
+  }
+}
+
+// file-private helper: only visible inside Logger.xn
+class Formatter {
+  public static function prefix():String { return '[zoo] ' }
+}

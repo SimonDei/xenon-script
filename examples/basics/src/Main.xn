@@ -1,0 +1,44 @@
+package {
+  import { basename } from 'node:path'
+
+  public class Main {
+    private var count:int
+    private var ratio:Float
+    private var ready:Boolean
+    public static const GREETING:String = 'Hello'
+
+    public function Main() {
+      trace(count, ratio, ready)
+      count += 2
+      count++
+      trace($'count is {count}, doubled {count * 2}')
+      trace(Main.GREETING + ', ' + name('world'))
+
+      var i:int = 0
+      while (i < 3) {
+        if (i == 0) trace('zero')
+        else if (i == 1) trace('one')
+        else trace('many')
+        i++
+      }
+
+      var loose:* = '1'
+      trace(loose == 1, loose != 1, null == null)
+      trace(int(7 / 2), uint(-1), Float('2.5') + 1)
+      trace(2 ** 3 ** 2, (1 + 2) * 3, -(-4))
+      trace('a\tb', 'it\'s', $'braces \{ok\}')
+      trace(~/^b\w+/i.test('Basics'), basename('/x/y/file.xn'))
+      var o:* = { count, ready: true, 'odd key': 1 }
+      trace(o.count, o['odd key'], o?.missing?.deep ?? 'fallback')
+      trace(Main.twice(21))
+    }
+
+    private function name(who:String):String {
+      return who.toUpperCase()
+    }
+
+    public static function twice(n:int):int {
+      return n * 2
+    }
+  }
+}

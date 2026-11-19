@@ -1,5 +1,5 @@
-error[K0106]: `for each` is written `for (var v:T of coll)` in Klass
- --> for-each.kl:4:7
+error[X0106]: `for each` is written `for (var v:T of coll)` in Xenon
+ --> for-each.xn:4:7
   |
 4 |       for each (var v:* in []) {}
   |       ^^^^^^^^
