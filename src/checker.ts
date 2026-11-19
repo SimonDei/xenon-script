@@ -148,7 +148,7 @@ export interface CheckResult {
   typeChecks: Map<A.Expr, RuntimeCheck>;
   /** Instance methods used as values (not called): codegen binds them to their object, cached per instance. */
   methodClosures: Set<A.Expr>;
-  /** `a + b` / `a -= b` & co. that call `a['operator+'](b)` (the operator is the node's). */
+  /** `a + b` / `a -= b` & co. that call `a['operator+'](b)`, and `a == b` / `a != b` that call `operator==` (the operator is the node's). */
   operatorCalls: Set<A.Expr>;
   /** `x.getEnumerator` resolving to `IEnumerable`'s declaration (x may be built-in): compiled to `Enumerable.enumerate(x)`. */
   enumerateCalls: Set<A.Expr>;
@@ -1430,10 +1430,16 @@ class Env {
       if (m.kind === "Method" && m.name.name.startsWith("operator") && m.name.name !== "operator") {
         const sym = m.name.name.slice("operator".length);
         const op = `\`operator${sym}\``;
-        if (!OVERLOADABLE.has(sym)) {
+        if (sym === "!=") {
+          this.diags.error("X0371", "`!=` can't be overloaded on its own", m.name.span, op)
+            .note("`a != b` is `!(a == b)`: declare `operator==` instead");
+        } else if (!OVERLOADABLE.has(sym) && sym !== "==") {
           this.diags.error("X0371", `\`${sym}\` can't be overloaded`, m.name.span, op)
-            .note("the operators that can be overloaded are `+`, `-`, `*` and `/`");
+            .note("the operators that can be overloaded are `+`, `-`, `*`, `/` and `==` (which `!=` uses)");
         } else {
+          if (sym === "==" && m.returnType && !(m.returnType.kind === "TypeName" && ["Boolean", "Bool"].includes(m.returnType.name.at(-1)!.name))) {
+            this.diags.error("X0372", "`operator==` must return a `Boolean`", m.returnType.span);
+          }
           if (m.modifiers.static) this.diags.error("X0373", `${op} must be an instance method`, m.modifiers.static);
           if (m.accessor) this.diags.error("X0372", `${op} must be a method, not an accessor`, m.name.span);
           if (m.params.length !== 1 || m.params[0]!.rest || m.params[0]!.init) {
@@ -4299,6 +4305,11 @@ class BodyChecker {
       } else types.push(this.valueExpr(side, scope));
     }
     const [l, r] = types as [Type, Type];
+    // `a == b` with `operator==` on `a`'s class (`!=` negates it); `== null` stays a null check.
+    if (e.left.kind !== "Null" && e.right.kind !== "Null" && r.kind !== "null") {
+      const left = nonNull(l);
+      if (left.kind === "class" && this.operatorCall(e, "==", left, nonNull(r), e.left, e.right, e.opSpan)) return T.Boolean;
+    }
     if (!comparable(l, r)) {
       const d = this.diags.error("X0309", `this comparison is always ${e.op.startsWith("!") ? "true" : "false"}`, e.opSpan)
         .secondary(e.left.span, `\`${typeToString(l)}\``)

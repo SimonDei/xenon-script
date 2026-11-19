@@ -1491,7 +1491,20 @@ class ModuleGen {
     return { code: `${target} = ${call(read)}`, prec: P.assign };
   }
 
+  /**
+   * `a == b` with `operator==`: the same object, or neither null and `a['operator=='](b)`; each
+   * operand evaluated once, left first. `!=` negates it.
+   */
+  private equalityCall(e: A.Expr & { kind: "Binary" }): Code {
+    const code = this.reuse(e.left, (l1, l) => this.reuse(e.right, (r1, r) => ({
+      code: `${l1} === ${r1} || ${l} != null && ${r} != null && ${l}['operator=='](${r})`,
+      prec: P.or,
+    })));
+    return e.op.startsWith("!") ? { code: `!(${code.code})`, prec: P.unary } : code;
+  }
+
   private binary(e: A.Expr & { kind: "Binary" }): Code {
+    if (this.check.operatorCalls.has(e) && ["==", "!=", "===", "!=="].includes(e.op)) return this.equalityCall(e);
     if (this.check.operatorCalls.has(e)) {
       return { code: `${this.wrap(this.expr(e.left), P.call)}[${jsString(`operator${e.op}`)}](${this.wrap(this.expr(e.right), P.assign)})`, prec: P.call };
     }

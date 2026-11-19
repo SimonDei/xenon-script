@@ -35,6 +35,11 @@ package {
       d *= 10
       d /= 4
       trace(String(d))
+
+      // `==` compares by value with `operator==`, `!=` is its negation; null never reaches it
+      var same:Vec2 = new Vec2(1, 2)
+      var none:Vec2 = null
+      trace(a == same, a != same, a == d, none == a, none == null, Object.is(a, same))
     }
 
     private function next(v:Array<Vec2>):Array<Vec2> {
@@ -62,6 +67,7 @@ class Vec2 implements IAddable {
   public function operator-(other:Vec2):Vec2 const => new Vec2(x - other.x, y - other.y)
   public function operator*(factor:Float):Vec2 const => new Vec2(x * factor, y * factor)
   public function operator/(divisor:Float):Vec2 const => new Vec2(x / divisor, y / divisor)
+  public function operator==(other:Vec2):Boolean const => x == other.x && y == other.y
 
   override public function toString():String { return $'({x}, {y})' }
 }

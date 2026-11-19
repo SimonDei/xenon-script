@@ -79,7 +79,7 @@ error[X0603]: `operator+` is private to `Hidden`
 13 |       trace(h + h)
    |               ^ private member
 ...
-27 |   private function operator+(o:Hidden):Hidden { return o }
+33 |   private function operator+(o:Hidden):Hidden { return o }
    |                    --------- declared `private` here
 
 error[X0371]: `%` can't be overloaded
@@ -88,7 +88,7 @@ error[X0371]: `%` can't be overloaded
 20 |   public function operator%(other:Vec):Vec { return this }      // only + - * / can be overloaded
    |                   ^^^^^^^^^ `operator%`
    |
-   = note: the operators that can be overloaded are `+`, `-`, `*` and `/`
+   = note: the operators that can be overloaded are `+`, `-`, `*`, `/` and `==` (which `!=` uses)
 
 error[X0373]: `operator+` must be an instance method
   --> operator-overload.xn:21:10
@@ -105,22 +105,45 @@ error[X0201]: `operator+` is declared more than once in `Vec`
 21 |   public static function operator+(a:Vec):Vec { return a }
    |                          ^^^^^^^^^ duplicate declaration
 
-error[X0372]: `operator+` takes exactly one (required) parameter: the right operand
-  --> operator-overload.xn:31:19
+error[X0372]: `operator==` must return a `Boolean`
+  --> operator-overload.xn:27:42
    |
-31 |   public function operator+(a:Bad, b:Bad):void {}
+27 |   public function operator==(other:Pair):int { return 1 }        // must return a Boolean
+   |                                          ^^^
+
+error[X0371]: `!=` can't be overloaded on its own
+  --> operator-overload.xn:28:19
+   |
+28 |   public function operator!=(other:Pair):Boolean { return true } // `!=` comes from `operator==`
+   |                   ^^^^^^^^^^ `operator!=`
+   |
+   = note: `a != b` is `!(a == b)`: declare `operator==` instead
+
+error[X0308]: mismatched types
+  --> operator-overload.xn:29:55
+   |
+27 |   public function operator==(other:Pair):int { return 1 }        // must return a Boolean
+   |                                    ---- `operator==` parameter declared here
+...
+29 |   public function check(p:Pair):Boolean { return p == 'pair' }    // the right operand must fit
+   |                                                       ^^^^^^ expected `Pair`, found `String`
+
+error[X0372]: `operator+` takes exactly one (required) parameter: the right operand
+  --> operator-overload.xn:37:19
+   |
+37 |   public function operator+(a:Bad, b:Bad):void {}
    |                   ^^^^^^^^^
 
 error[X0372]: `operator+` must return a value
-  --> operator-overload.xn:31:43
+  --> operator-overload.xn:37:43
    |
-31 |   public function operator+(a:Bad, b:Bad):void {}
+37 |   public function operator+(a:Bad, b:Bad):void {}
    |                                           ^^^^
 
 error[X0902]: cannot use non-const method `operator+` in const method `sum`
-  --> operator-overload.xn:36:52
+  --> operator-overload.xn:42:52
    |
-35 |   public function operator+(o:Strict):Strict { return o }
+41 |   public function operator+(o:Strict):Strict { return o }
    |                   --------- `operator+` is not `const`
-36 |   public function sum():Strict const { return this + this }
+42 |   public function sum():Strict const { return this + this }
    |                                                    ^

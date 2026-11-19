@@ -23,6 +23,12 @@ class Vec {
 
 class Dog {}
 
+class Pair {
+  public function operator==(other:Pair):int { return 1 }        // must return a Boolean
+  public function operator!=(other:Pair):Boolean { return true } // `!=` comes from `operator==`
+  public function check(p:Pair):Boolean { return p == 'pair' }    // the right operand must fit
+}
+
 class Hidden {
   private function operator+(o:Hidden):Hidden { return o }
 }
