@@ -32,6 +32,7 @@ export const CODES: Record<string, CodeInfo> = {
   X0028: c("built-in class name", "Names like `Exception` or `IDisposable` are built-in classes available everywhere; pick another name."),
   X0029: c("function outside a class", "Functions belong to classes: write a `static` method. (Only the standard library declares JavaScript's global functions, such as `setTimeout`, at package level.)",
     "function twice(x:int):int { return x * 2 }", "class Numbers { public static function twice(x:int):int { return x * 2 } }"),
+  X0030: c("JavaScript file in the way of an output", "JavaScript files in the source folder (`.js`, `.mjs`, `.cjs`, `.json`, `.d.ts`) are copied to the output folder as they are. One of them has the path a compiled `.xn` file's module gets (`Main.js` next to `Main.xn`): rename or move one of the two."),
 
   // ---- syntax ----
   X0100: c("syntax error", "The parser expected something else at this point. The label says what was expected."),

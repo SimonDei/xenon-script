@@ -19,7 +19,7 @@
  * member by member, so code that compiled against untyped imports keeps compiling.
  */
 import type tsModule from "typescript";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type * as A from "./ast.ts";
 import { KEYWORDS } from "./lexer.ts";
 
@@ -51,7 +51,9 @@ export type JsBinding =
   /** A class, or a module namespace (its exports are the class's statics). */
   | { kind: "class"; qname: string }
   /** A function or value: a static of the generated holder class. */
-  | { kind: "member"; qname: string; member: string };
+  | { kind: "member"; qname: string; member: string }
+  /** A type exported by a namespace import, named `Ns.Type` (a structural shape). */
+  | { kind: "typedef"; qname: string };
 
 export interface JsDeclarations {
   /** Generated `.xn` files (paths below `GENERATED_DIR`). */
@@ -83,7 +85,10 @@ export function jsDeclarations(files: A.XenonFile[], root: string, reserved: Set
   for (const file of files) {
     for (const imp of file.imports) {
       if (imp.kind !== "JsImport") continue;
-      const spec = JSON.stringify(imp.module);
+      // A relative import names a file next to the importing one (`../lib/xlsx.js`): TypeScript
+      // gets its absolute path, finding `xlsx.d.ts` beside it.
+      const relative = imp.module.startsWith("./") || imp.module.startsWith("../");
+      const spec = JSON.stringify(relative ? join(root, dirname(file.file.path), imp.module) : imp.module);
       const add = (local: string, kind: "default" | "namespace" | "named", clause: (p: string) => string) => {
         const probe = `__xenon${probes.length}`;
         probes.push({ file, local, kind, probe });
@@ -169,8 +174,19 @@ function generate(probes: { file: A.XenonFile; local: string; kind: string; prob
       }
       const callable = type.getCallSignatures().length > 0;
       if (p.kind === "namespace" || (!callable && type.getConstructSignatures().length === 0 && checker.getPropertiesOfType(type).length > 0 && type.flags & ts.TypeFlags.Object)) {
+        // The module's exported types, nameable as `Ns.Type`: classes reached through the
+        // namespace at run time too (`new Ns.Cell(…)`), so that is their JavaScript name.
+        const types = sym.flags & ts.SymbolFlags.Module ? checker.getExportsOfModule(sym).flatMap((exp) => {
+          const target = exp.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exp) : exp;
+          return IDENT.test(exp.name) && target.flags & (ts.SymbolFlags.Class | ts.SymbolFlags.Interface | ts.SymbolFlags.TypeAlias) ? [[exp.name, target] as const] : [];
+        }) : [];
+        for (const [name, target] of types) gen.jsNames.set(target, `${p.local}.${name}`);
         gen.namespaceDecl(type, p.local, sym);
         bindings.set(p.local, { kind: "class", qname: `${path}#${p.local}` });
+        for (const [name, target] of types) {
+          const declared = gen.typeExport(target);
+          if (declared) bindings.set(`${p.local}.${name}`, { kind: declared.kind, qname: `${path}#${declared.name}` });
+        }
         continue;
       }
       const decl = gen.member(sym, type, p.local, true, "  ");
@@ -205,6 +221,8 @@ class DeclWriter {
   private names: Set<string>;
   private typeNames = new Map<tsModule.Type, string>();
   private classNames = new Map<tsModule.Symbol, string>();
+  /** JavaScript names of classes reachable through a namespace import (`Sheet.Cell`). */
+  readonly jsNames = new Map<tsModule.Symbol, string>();
 
   constructor(
     private ts: TS,
@@ -297,8 +315,16 @@ class DeclWriter {
     const known = this.classNames.get(sym);
     if (known) return known;
     const name = this.unique(sym.name);
-    this.classDecl(sym, name, sym.name);
+    this.classDecl(sym, name, this.jsNames.get(sym) ?? sym.name);
     return name;
+  }
+
+  /** A module's exported type, declared to be named as `Ns.Type`: a native class or a typedef shape. */
+  typeExport(sym: tsModule.Symbol): { kind: "class" | "typedef"; name: string } | undefined {
+    if (this.full() || this.isLib(sym)) return undefined;
+    if (this.isClassLike(sym)) return { kind: "class", name: this.classRefOf(sym) };
+    const text = this.type(this.checker.getDeclaredTypeOfSymbol(sym), false);
+    return [...this.typeNames.values()].includes(text) ? { kind: "typedef", name: text } : undefined;
   }
 
   /** One member: methods with all their signatures, read-only properties as getters (statics as `const`). */

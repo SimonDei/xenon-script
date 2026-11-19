@@ -1,0 +1,19 @@
+// A JavaScript library with its `.d.ts` kept in the source folder (like `xlsx.js` + `xlsx.d.ts`):
+// imported by a relative path, typed from the `.d.ts`, copied to the output folder by the build.
+package {
+  import * as Sheet from './lib/sheet.js'
+  import reports.Totals
+
+  public class Main {
+    public function Main() {
+      var wb:Sheet.Book = Sheet.book()
+      Sheet.addSheet(wb, 'prices', [['apple', 3], ['pear', 5]])
+      trace(wb.names.join(), Sheet.toCsv(wb, 'prices').length)
+      trace(Totals.sum(wb, 'prices'))
+      // The namespace's types: `Sheet.Book` above (an interface), `Sheet.Cell` (a class).
+      var cell:Sheet.Cell = new Sheet.Cell('pear')
+      var any:* = cell
+      trace(cell.kind, any is Sheet.Cell, cell.value)
+    }
+  }
+}

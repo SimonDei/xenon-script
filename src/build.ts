@@ -34,6 +34,21 @@ export function compileOptions(config: Config, root: string): CompileOptions {
   return { main: config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target, typeRoot: resolve(root, config.src) };
 }
 
+/**
+ * JavaScript files in the source folder, copied to the output as they are; their `.d.ts` files too
+ * (not needed at run time, but they type the `--target ts` output).
+ */
+const ASSETS = "**/*.{js,mjs,cjs,json,d.ts,d.mts,d.cts}";
+
+/** Reads the JavaScript files below the source root (not inside `node_modules`). */
+export async function readAssets(srcRoot: string): Promise<SourceInput[]> {
+  const paths = (await Array.fromAsync(new Bun.Glob(ASSETS).scan({ cwd: srcRoot })))
+    .map((p) => p.split("\\").join("/"))
+    .filter((p) => !p.split("/").includes("node_modules"))
+    .sort();
+  return Promise.all(paths.map(async (p) => ({ path: p, text: await Bun.file(join(srcRoot, p)).text() })));
+}
+
 /** Reads every `.xn` file below the source root (paths use `/`). */
 export async function readSources(srcRoot: string): Promise<SourceInput[]> {
   const glob = new Bun.Glob("**/*.xn");
@@ -76,7 +91,7 @@ export async function build(config: Config, root: string, emit: boolean): Promis
   const srcRoot = resolve(root, config.src);
   const started = performance.now();
   const sources = await readSources(srcRoot);
-  const result = compileProject(sources, compileOptions(config, root));
+  const result = compileProject(sources, { ...compileOptions(config, root), assets: emit ? await readAssets(srcRoot) : [] });
   const ok = report(result, config, srcRoot);
   if (!ok) return false;
   if (emit) await syncOutputs(result, resolve(root, config.out));

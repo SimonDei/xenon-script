@@ -87,3 +87,40 @@ test("the declarations of many modules compile cleanly", () => {
   expect(result.declarationErrors.map((d) => `${d.code} ${d.message}`)).toEqual([]);
   expect(result.diagnostics.items.filter((d) => d.severity === "error")).toEqual([]);
 }, 30_000);
+
+/** A JavaScript library with its `.d.ts` in the source folder (like `xlsx.js` + `xlsx.d.ts`). */
+const LIB_DTS = `export interface Book { names: string[] }
+export declare function book(): Book;
+export declare class Cell { constructor(value: number); readonly value: number; }
+`;
+
+test("relative imports are typed from the importing file's folder; namespaces' types are `Ns.Type`", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const src = join(import.meta.dir, ".dts-local", "src");
+  await rm(join(src, ".."), { recursive: true, force: true });
+  await mkdir(join(src, "lib"), { recursive: true });
+  await Bun.write(join(src, "lib", "sheet.d.ts"), LIB_DTS);
+  await Bun.write(join(src, "lib", "sheet.js"), "export const book = () => ({ names: [] }); export class Cell { constructor(v) { this.value = v; } }\n");
+  try {
+    const sources = [
+      { path: "Main.xn", text: main("import * as Sheet from './lib/sheet.js'\nimport app.Report", "    var b:Sheet.Book = Sheet.book()\n    var c:Sheet.Cell = new Sheet.Cell(1)\n    var n:String = c.value\n    trace(b.names.length, n, Report.count(), Sheet.nope)") },
+      { path: "app/Report.xn", text: "package app {\n  import { book } from '../lib/sheet.js'\n  public class Report {\n    public static function count():String { return book().names.length }\n  }\n}\n" },
+    ];
+    const result = compileProject(sources, { main: "Main", typeRoot: src, assets: [{ path: "lib/sheet.js", text: "// js" }] });
+    const errors = result.diagnostics.sorted().filter((d) => d.severity === "error").map((d) => `${d.code} ${d.labels[0]!.span.file.path}:${d.labels[0]!.span.file.position(d.labels[0]!.span.start).line}`);
+    // `c.value` is a Float; `Sheet.nope` doesn't exist; in app/Report.xn `'../lib/sheet.js'` is typed too.
+    expect(errors).toEqual(["X0308 Main.xn:8", "X0426 Main.xn:9", "X0308 app/Report.xn:4"]);
+    expect(result.declarationErrors).toEqual([]);
+  } finally {
+    await rm(join(src, ".."), { recursive: true, force: true });
+  }
+});
+
+test("JavaScript files of the source folder are copied, unless a module has their path (X0030)", () => {
+  const code = main("import { book } from './lib/sheet.js'", "    trace(book())");
+  const copied = compileProject([{ path: "Main.xn", text: code }], { main: "Main", assets: [{ path: "lib/sheet.js", text: "export const book = () => 1;\n" }] });
+  expect(copied.outputs.find((o) => o.path === "lib/sheet.js")?.text).toBe("export const book = () => 1;\n");
+  const clash = compileProject([{ path: "Main.xn", text: code }], { main: "Main", assets: [{ path: "Main.js", text: "// old build output?\n" }] });
+  expect(clash.diagnostics.items.map((d) => [d.code, d.message])).toEqual([["X0030", "`Main.js` in the source folder has the path of this file's output"]]);
+  expect(clash.outputs).toEqual([]);
+});

@@ -45,6 +45,12 @@ and `path.nope` is unknown. Namespaces become classes of statics, exported class
 (`new`, `is`, subclassing), interfaces with methods native classes, other object types typedef
 shapes; whatever has no Xenon equivalent (most unions, intersections, tuples, type parameters) is
 `*` member by member, and a package without types stays `*` altogether. See `examples/declarations`.
+
+A JavaScript library can also live in the source folder with its `.d.ts` (say `src/lib/xlsx.js` and
+`src/lib/xlsx.d.ts`): `import * as XLSX from './lib/xlsx.js'` (relative to the importing file) is typed
+from the `.d.ts`, its exported types are named `XLSX.WorkBook`, and the build copies the folder's
+`.js`/`.mjs`/`.cjs`/`.json`/`.d.ts` files to the output, so the import works at run time. See
+`examples/vendor`.
 Iteration is C#-style: `IEnumerable<T>` (`getEnumerator()`) and `IEnumerator<T>` (`moveNext()`,
 `current`). Arrays, strings, `Set`, `Map` and `Iterator` are enumerable, and a class implementing
 `IEnumerable<T>` works with `for … of` (also from JavaScript); see `examples/enumerable`.

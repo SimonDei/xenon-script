@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdir, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { ENTRY_FILE } from "../src/codegen.ts";
+import { readAssets } from "../src/build.ts";
 import { compileProject } from "../src/compiler.ts";
 import { renderAll } from "../src/diagnostics.ts";
 
@@ -16,8 +17,9 @@ for (const name of examples) {
     const config = Bun.file(join(root, name, "xenon.json"));
     const main = (await config.exists()) ? ((await config.json()).main ?? "Main") : "Main";
 
-    // As `xenon build` compiles: JavaScript imports typed from their `.d.ts` files.
-    const result = compileProject(sources, { main, typeRoot: srcRoot });
+    // As `xenon build` compiles: JavaScript imports typed from their `.d.ts` files, JavaScript
+    // files of the source folder copied along.
+    const result = compileProject(sources, { main, typeRoot: srcRoot, assets: await readAssets(srcRoot) });
     const errors = result.diagnostics.items.filter((d) => d.severity === "error");
     expect(renderAll(errors, { color: false })).toBe("");
     expect(renderAll(result.declarationErrors, { color: false })).toBe("");

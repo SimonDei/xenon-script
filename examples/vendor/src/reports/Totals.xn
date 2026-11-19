@@ -1,0 +1,13 @@
+package reports {
+  // From a subfolder: the relative path starts at this file.
+  import { Cell, toCsv } from '../lib/sheet.js'
+
+  public class Totals {
+    public static function sum(wb:*, sheet:String):String {
+      var total:Float = 0
+      for (var line:String of toCsv(wb, sheet).split('\n')) total += Float(line.split(',')[1])
+      var cell:Cell = new Cell(total)
+      return cell.kind + ' ' + cell.value
+    }
+  }
+}

@@ -1,0 +1,3 @@
+prices 14
+number 8
+string true pear

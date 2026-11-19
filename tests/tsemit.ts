@@ -1,14 +1,14 @@
 /** Compiles an example to TypeScript in memory and type-checks the result with the TypeScript API. */
 import ts from "typescript";
 import { join } from "node:path";
-import { readSources } from "../src/build.ts";
+import { readAssets, readSources } from "../src/build.ts";
 import { compileProject } from "../src/compiler.ts";
 import type { OutputFile } from "../src/codegen.ts";
 import { TS_OPTIONS } from "../src/service.ts";
 
 
 export async function compileExampleToTs(dir: string): Promise<OutputFile[]> {
-  const result = compileProject(await readSources(join(dir, "src")), { main: "Main", target: "ts", typeRoot: join(dir, "src") });
+  const result = compileProject(await readSources(join(dir, "src")), { main: "Main", target: "ts", typeRoot: join(dir, "src"), assets: await readAssets(join(dir, "src")) });
   const errors = result.diagnostics.items.filter((d) => d.severity === "error");
   if (errors.length > 0) throw new Error(`${dir}: ${errors.map((d) => d.message).join("; ")}`);
   return result.outputs;
@@ -31,7 +31,7 @@ export function tsDiagnostics(outputs: OutputFile[], root: string): readonly ts.
     if (!libCache.has(f)) libCache.set(f, getSourceFile.call(host, f, lang, ...rest));
     return libCache.get(f);
   };
-  return ts.getPreEmitDiagnostics(ts.createProgram([...files.keys()], TS_OPTIONS, host));
+  return ts.getPreEmitDiagnostics(ts.createProgram([...files.keys()].filter((f) => f.endsWith(".ts")), TS_OPTIONS, host));
 }
 
 /** TypeScript's diagnostics for the outputs, as `path:line:col: message` lines. */

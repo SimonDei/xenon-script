@@ -391,8 +391,18 @@ class Env {
           scope.importOf.set(n.name, imp);
           origin.set(n.name, { kind: "import", span: n.span });
           // Typed from a `.d.ts`: a class (or module namespace) is a native class under this name.
-          const typed = this.jsBindings?.get(file.file.path)?.get(n.name);
+          const bindings = this.jsBindings?.get(file.file.path);
+          const typed = bindings?.get(n.name);
           const info = typed && this.classes.get(typed.qname);
+          // A namespace's exported types, named `Ns.Type` (a native class or a typedef).
+          for (const [key, b] of bindings ?? []) {
+            if (!key.startsWith(`${n.name}.`)) continue;
+            const cls = b.kind === "class" ? this.classes.get(b.qname) : undefined;
+            const td = b.kind === "typedef" ? this.typedefs.get(b.qname) : undefined;
+            if (cls) scope.classes.set(key, cls);
+            if (td) scope.typedefs.set(key, td);
+            if (cls || td) scope.importOf.set(key, imp);
+          }
           if (typed?.kind === "class" && info) {
             scope.classes.set(n.name, info);
             continue;
@@ -741,7 +751,9 @@ class Env {
     }
     const names = node.name.map((n) => n.name);
     const whole = cover(node.name[0]!.span, node.name.at(-1)!.span);
-    if (names.length > 1) {
+    // `Sheet.Book`: a type exported by a JavaScript namespace import (see `fileScope`).
+    const exported = names.length > 1 && (scope.classes.has(names.join(".")) || scope.typedefs.has(names.join(".")));
+    if (names.length > 1 && !exported) {
       const info = this.classes.get(names.join("."));
       if (info && !info.filePrivate) {
         if (!classAccessible(info, scope.file.packageName.map((n) => n.name).join("."))) this.classAccessError(info, whole);
@@ -750,7 +762,7 @@ class Env {
       this.diags.error("X0420", `cannot find type \`${names.join(".")}\``, whole, "not found");
       return T.error;
     }
-    const name = names[0]!;
+    const name = exported ? names.join(".") : names[0]!;
     const param = tparams?.get(name);
     if (param) {
       if (node.args.length > 0) this.diags.error("X0423", `type parameter \`${name}\` doesn't take type arguments`, node.span);

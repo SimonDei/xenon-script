@@ -1,6 +1,6 @@
 import { type FSWatcher, watch } from "node:fs";
 import { join, resolve } from "node:path";
-import { compileOptions, type Config, isMap, readSources, report, runCommand, syncOutputs } from "./build.ts";
+import { compileOptions, type Config, isMap, readAssets, readSources, report, runCommand, syncOutputs } from "./build.ts";
 import { compileProject, type SourceInput } from "./compiler.ts";
 
 export interface WatchOptions {
@@ -67,7 +67,8 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
       }
       changed.clear();
       const sources: SourceInput[] = [...cache].sort(([a], [b]) => a.localeCompare(b)).map(([path, text]) => ({ path, text }));
-      const result = compileProject(sources, compileOptions(config, root));
+      // JavaScript files next to the sources are copied along (re-read every time: few and small).
+      const result = compileProject(sources, { ...compileOptions(config, root), assets: await readAssets(srcRoot) });
 
       if (opts.clear) process.stderr.write("\x1b[2J\x1b[3J\x1b[H");
       const ok = report(result, config, srcRoot);

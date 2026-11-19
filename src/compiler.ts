@@ -67,10 +67,17 @@ export interface CompileOptions {
   /** `ts`: typed TypeScript modules with token mappings instead of JavaScript (see `generate`). */
   target?: "js" | "ts";
   /**
-   * Type JavaScript imports from their `.d.ts` files, resolved from this directory (its
-   * `node_modules`, and those above it). Without it, JavaScript imports are `*`.
+   * The source root on disk: JavaScript imports are typed from their `.d.ts` files, packages
+   * resolved from its `node_modules` (and those above it), relative imports from the importing
+   * file's folder. Without it, JavaScript imports are `*`.
    */
   typeRoot?: string;
+  /**
+   * JavaScript files of the source folder (`.js`, `.mjs`, `.cjs`, `.json`, and `.d.ts` files; paths
+   * relative to the source root): copied to the outputs as they are, so relative imports of them
+   * work at run time.
+   */
+  assets?: SourceInput[];
   /**
    * Editor mode (with `target: "ts"`): generate even when there are errors, file by file (a file
    * the generator can't handle is left out), so the language server always has virtual files.
@@ -130,7 +137,20 @@ export function compileProject(sources: SourceInput[], options: CompileOptions):
   const done = { diagnostics: diags, files: userFiles, asts, check: result, declarationErrors };
   if (options.tolerant) return { ...done, outputs: generate(asts, result, mainInfo, { target: options.target, tolerant: true }) };
   if (diags.hasErrors || !mainInfo) return { ...done, outputs: [] };
-  return { ...done, outputs: generate(asts, result, mainInfo, { sourceMaps: options.sourceMaps, target: options.target }) };
+  const outputs = generate(asts, result, mainInfo, { sourceMaps: options.sourceMaps, target: options.target });
+  // JavaScript files of the source folder are copied, unless a compiled module has their path.
+  const taken = new Map(outputs.map((o) => [o.path.toLowerCase(), o]));
+  for (const asset of options.assets ?? []) {
+    const module = taken.get(asset.path.toLowerCase());
+    if (!module) {
+      outputs.push({ path: asset.path, text: asset.text });
+      continue;
+    }
+    const decl = module.source && asts.find((a) => a.file === module.source)?.decls[0];
+    diags.error("X0030", `\`${asset.path}\` in the source folder has the path of this file's output`, decl?.name.span, "compiles to the same path")
+      .help(`rename or move \`${asset.path}\` (it would be copied to the output folder as it is)`);
+  }
+  return { ...done, outputs: diags.hasErrors ? [] : outputs };
 }
 
 function collectClasses(asts: A.XenonFile[], diags: DiagnosticBag, typedefs: Map<string, TypedefInfo>): Map<string, ClassInfo> {
