@@ -17,7 +17,7 @@ import { generatedOffsetAt, type Mapping, type OutputFile, sourceOffsetAt } from
 import { compileProject, type CompileResult, PRELUDE, type SourceInput } from "./compiler.ts";
 import { KEYWORDS } from "./lexer.ts";
 import { SourceFile, type Span, spanText } from "./source.ts";
-import { isSubclass, memberTypeIn, type MethodType, stdClassOf, supertypes, type Type, typeToString } from "./types.ts";
+import { isSubclass, memberTypeIn, type MethodType, type ShapeMember, type ShapeType, stdClassOf, supertypes, type Type, typeToString } from "./types.ts";
 
 /** Options of the virtual TypeScript project. Xenon references may be `null`: no strict null checks. */
 export const TS_OPTIONS: ts.CompilerOptions = {
@@ -188,6 +188,19 @@ function classText(info: ClassInfo): string {
   const ext = info.parent ? ` extends ${info.parent.decl.name.name}` : "";
   const impl = info.interfaces.length ? ` ${d.isInterface ? "extends" : "implements"} ${info.interfaces.map((i) => i.decl.name.name).join(", ")}` : "";
   return `${what} ${info.qname.replace(/^.*#/, "")}${tps}${ext}${impl}`;
+}
+
+/** A member of a shape, with its declaration in the typedef (for doc comments and go to definition). */
+function shapeMember(shape: ShapeType, name: string): { member: ShapeMember; node?: A.ShapeMemberNode } | undefined {
+  const member = shape.members.get(name);
+  if (!member) return undefined;
+  const target = shape.typedef?.decl.type;
+  return { member, node: target?.kind === "ShapeType" ? target.members.find((n) => n.name.name === name) : undefined };
+}
+
+/** `?to:String`, `final id:int`: as written in a shape. */
+function shapeMemberText(m: ShapeMember): string {
+  return `${m.readonly ? "final " : ""}${m.optional ? "?" : ""}${m.name}:${typeToString(m.type())}`;
 }
 
 function memberKind(m: MemberSig): CompletionKind {
@@ -433,7 +446,16 @@ export class XenonProject {
     // A name inside a larger node: `obj.name`, a declaration's name, a type name.
     if (!node.kind && parent) {
       if (parent.kind === "Member" && parent.name === node) {
-        const m = this.memberOf(a, check.exprTypes.get(parent.object as A.Expr), (node as A.Ident).name);
+        const objType = check.exprTypes.get(parent.object as A.Expr);
+        const shape = objType?.kind === "nullable" ? objType.inner : objType;
+        if (shape?.kind === "shape") {
+          // A shape's member: described as declared, with its typedef's doc comment (go to definition: the member).
+          const s = shapeMember(shape, (node as A.Ident).name);
+          if (!s) return undefined;
+          const owner = shape.typedef ? `${shape.typedef.decl.name.name}.` : "";
+          return { text: `${owner}${shapeMemberText(s.member)}`, doc: s.node && docComment(s.node.span.file, s.node.span.start), span: node.span, decl: s.node?.name.span };
+        }
+        const m = this.memberOf(a, objType, (node as A.Ident).name);
         return m && ofMember(m, node.span);
       }
       if ((parent.kind === "Field" || parent.kind === "Method") && parent.name === node) {
@@ -831,6 +853,9 @@ export class XenonProject {
     const member = nodesAt(ast, nameStart).findLast((n) => n.kind === "Member" && (n.name as A.Ident).span.start === nameStart) as (A.Expr & { kind: "Member" }) | undefined;
     if (!member) return [];
     const t = a.result.check.exprTypes.get(member.object);
+    // A shape (`typedef Mail = { to:String, … }`, `{ x:Float }`): its members, with their doc comments.
+    const shape = t?.kind === "nullable" ? t.inner : t;
+    if (shape?.kind === "shape") return this.shapeCompletions(shape);
     if (t && t.kind !== "any" && t.kind !== "error") {
       const enclosing = this.enclosingClass(a, ast, nameStart);
       return this.membersOf(a, t).filter((m) => this.visible(m, enclosing)).map((m) => ({
@@ -851,6 +876,13 @@ export class XenonProject {
     } finally {
       if (patched !== text) this.cached = undefined; // restore the real virtual file on the next analysis
     }
+  }
+
+  private shapeCompletions(shape: ShapeType): CompletionItem[] {
+    return [...shape.members.keys()].map((name) => {
+      const { member, node } = shapeMember(shape, name)!;
+      return { label: name, kind: "field" as CompletionKind, detail: shapeMemberText(member), documentation: node && docComment(node.span.file, node.span.start) };
+    });
   }
 
   private visible(m: MemberSig, from: ClassInfo | undefined): boolean {

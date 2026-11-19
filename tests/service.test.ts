@@ -235,3 +235,36 @@ test("quick fixes come from the checker's suggestions", () => {
   const d = p.diagnostics().get("Main.xn")!.find((x) => x.code === "X0841")!;
   expect(d.fixes.map((f) => [f.title, f.edits.flatMap((e) => e.edits.map((x) => x.newText))])).toEqual([["use ==", ["=="]]]);
 });
+
+test("shapes: completion, hover and definition of a typedef's members", () => {
+  const text = `typedef Mail = {
+  /** Who receives it. */
+  to:String,
+  ?subject:String,
+  final id:int
+}
+
+public class Main {
+  public function Main() {}
+  public function send(mail:Mail, maybe:Mail?):void {
+    trace(mail.to, maybe?.subject)
+  }
+}
+`;
+  const p = project({ "Main.xn": text });
+  // After the dot, also inside an unfinished call (`f(mail.)`).
+  const at = offset(text, "trace(mail.") + "trace(mail.".length;
+  const unfinished = text.replace("trace(mail.to, maybe?.subject)", "trace(mail.)");
+  p.set("Main.xn", unfinished);
+  const items = p.completions("Main.xn", offset(unfinished, "trace(mail.") + "trace(mail.".length);
+  expect(items.map((i) => [i.label, i.detail, i.documentation])).toEqual([
+    ["to", "to:String", "Who receives it."],
+    ["subject", "?subject:String", undefined],
+    ["id", "final id:int", undefined],
+  ]);
+  p.set("Main.xn", text);
+  expect(p.completions("Main.xn", offset(text, "maybe?.") + "maybe?.".length).map((i) => i.label)).toEqual(["to", "subject", "id"]);
+  expect(p.hover("Main.xn", at)).toMatchObject({ contents: "```xenon\nMail.to:String\n```\n\nWho receives it." });
+  const [def] = p.definition("Main.xn", at);
+  expect(def).toMatchObject({ range: { start: { line: 2, character: 2 } } });
+});
