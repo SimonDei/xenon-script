@@ -46,13 +46,17 @@ help: convert the value with `uint()`
 7 |     private static inline final E:uint = uint(-1)
   |                                          +++++  +
 
-error[X0521]: an `inline` field must be `final` or `const`
+error[X0521]: an `inline` field must be `final`
  --> inline.xn:8:31
   |
 8 |     private static inline var F:int = 1
   |                               ^ declared with `var`
   |
   = note: an inline constant's value can never change
+help: declare it `inline final`
+  |
+8 |     private static inline final F:int = 1
+  |                           ~~~~~
 
 error[X0520]: an `inline` field must be `static`
  --> inline.xn:9:13
@@ -81,11 +85,17 @@ error[X0523]: inline initializer is not a compile-time constant
    |
    = note: allowed: literals, other inline constants, operators and `int()`/`uint()`/`Float()`/`String()`/`Boolean()`
 
-error[X0521]: an `inline` constant must be `final` or `const`
+error[X0521]: an `inline` constant must be `final`
   --> inline.xn:16:18
    |
 16 |       inline var x:int = 1
    |                  ^ declared with `var`
+   |
+   = note: an inline constant's value can never change
+help: declare it `inline final`
+   |
+16 |       inline final x:int = 1
+   |              ~~~~~
 
 error[X0523]: inline initializer is not a compile-time constant
   --> inline.xn:17:30

@@ -166,6 +166,16 @@ export interface CheckResult {
   classes: Map<string, ClassInfo>;
 }
 
+/** X0521's note and fix: `inline var` becomes `inline final` (the `var` right before the name). */
+function inlineVar(d: DiagnosticBuilder, name: A.Ident) {
+  d.note("an inline constant's value can never change");
+  const text = name.span.file.text;
+  const kw = text.lastIndexOf("var", name.span.start);
+  if (kw >= 0 && text.slice(kw + 3, name.span.start).trim() === "") {
+    d.help("declare it `inline final`", [{ span: span(name.span.file, kw, kw + 3), text: "final" }]);
+  }
+}
+
 const TS_UNDICI_CLASSES = new Set(["Response", "FormData"]);
 
 /**
@@ -1498,10 +1508,7 @@ class Env {
           this.diags.error("X0520", "an `inline` field must be `static`", m.modifiers.inline)
             .help("add `static`", [{ span: span(m.modifiers.inline.file, m.modifiers.inline.start, m.modifiers.inline.start), text: "static " }]);
         }
-        if (m.decl === "var") {
-          this.diags.error("X0521", "an `inline` field must be `final` or `const`", m.name.span, "declared with `var`")
-            .note("an inline constant's value can never change");
-        }
+        if (m.decl === "var") inlineVar(this.diags.error("X0521", "an `inline` field must be `final`", m.name.span, "declared with `var`"), m.name);
         if (!m.init) this.diags.error("X0522", `inline constant \`${m.name.name}\` needs a value`, m.name.span);
       }
       if (m.kind === "Field") {
@@ -2378,7 +2385,7 @@ class BodyChecker {
       const f = this.constValue(s.init);
       if (this.reportFold(f, s.name, type, s.type.span, s.init)) local.inline = (f as { value: ConstValue }).value;
     } else {
-      if (s.inline && s.decl === "var") this.diags.error("X0521", "an `inline` constant must be `final` or `const`", s.name.span, "declared with `var`");
+      if (s.inline && s.decl === "var") inlineVar(this.diags.error("X0521", "an `inline` constant must be `final`", s.name.span, "declared with `var`"), s.name);
       if (s.inline && !s.init) this.diags.error("X0522", `inline constant \`${s.name.name}\` needs a value`, s.name.span);
       if (s.init) this.checkAssign(s.init, type, { span: s.type.span, label: "expected because of this type" }, scope);
     }

@@ -13,7 +13,7 @@ import { basename } from 'node:path'
 typedef User = { name:String, ?email:String }
 
 public class Main {
-  public static const GREETING:String = 'Hello'
+  public static inline final GREETING:String = 'Hello'
 
   public function Main() {
     var users:Array<User> = [{ name: 'Ann', email: 'ann@example.com' }, { name: 'Bob' }]
@@ -22,7 +22,7 @@ public class Main {
     }
     var best:int? = [3, 8, 5].find((n:int):Boolean => n > 4)   // `T?`: may be null
     trace(best ?? 0, basename('/src/Main.xn'))
-    Main.size('https://example.com').then(bytes => trace(bytes, 'bytes'))
+    size('https://example.com').then(bytes => trace(bytes, 'bytes'))
   }
 
   private static async function size(url:String):Promise<int> {
