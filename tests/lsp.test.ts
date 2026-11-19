@@ -1,29 +1,39 @@
-/** `xenon lsp`: a session over stdio, the way an editor drives it. */
-import { afterAll, expect, test } from "bun:test";
+/** `xenon lsp` and the server bundled into the VS Code extension: a session over stdio, the way an editor drives it. */
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from "vscode-jsonrpc/node";
+import { buildServer } from "../packages/vscode-xenon/scripts/build.ts";
 
 const dir = join(import.meta.dir, ".lsp-project");
-afterAll(() => rm(dir, { recursive: true, force: true }));
+const bundled = join(import.meta.dir, ".lsp-bundle");
+beforeAll(() => buildServer(bundled), 30_000);
+afterAll(() => Promise.all([rm(dir, { recursive: true, force: true }), rm(bundled, { recursive: true, force: true })]));
 
-const MAIN = `public class Main {
+const SERVERS: [string, string[]][] = [
+  ["xenon lsp", [join(import.meta.dir, "..", "src", "cli.ts"), "lsp", "--stdio"]],
+  ["the extension's bundled server", [join(bundled, "server.js"), "--stdio"]],
+];
+
+// `path` is typed by TypeScript (`@types/node`); `.toUpperCase()` on its result needs TypeScript's `lib.esnext.d.ts`.
+const MAIN = `import * as path from 'node:path'
+public class Main {
   public function Main() {
     var greeting:String = 'hi'
-    trace(greeting.toUpperCase())
+    trace(greeting.toUpperCase(), path.basename('a/b').toUpperCase())
   }
 }
 `;
 
-test("diagnostics, hover, definition and completion over stdio", async () => {
+test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio", async (_name, args) => {
   await rm(dir, { recursive: true, force: true });
   await mkdir(join(dir, "app"), { recursive: true });
   await Bun.write(join(dir, "xenon.json"), JSON.stringify({ src: "app" }));
   await Bun.write(join(dir, "app", "Main.xn"), MAIN);
 
-  const server = spawn("bun", [join(import.meta.dir, "..", "src", "cli.ts"), "lsp", "--stdio"], { cwd: dir });
+  const server = spawn("bun", args, { cwd: dir });
   const rpc = createMessageConnection(new StreamMessageReader(server.stdout), new StreamMessageWriter(server.stdin));
   const published: { uri: string; diagnostics: { message: string; range: unknown }[] }[] = [];
   const waiting: (() => void)[] = [];
@@ -48,21 +58,27 @@ test("diagnostics, hover, definition and completion over stdio", async () => {
 
     const uri = pathToFileURL(join(dir, "app", "Main.xn")).href;
     // An unsaved edit with an error: the editor's text counts, not the disk's.
-    const broken = MAIN.replace("toUpperCase()", "toUpperCase(1)");
+    const broken = MAIN.replace("greeting.toUpperCase()", "greeting.toUpperCase(1)");
     rpc.sendNotification("textDocument/didOpen", { textDocument: { uri, languageId: "xenon", version: 1, text: broken } });
     const errors = await diagnosticsFor(uri, (d) => d.length > 0);
     expect(errors.map((d) => d.message.split("\n")[0])).toEqual(["this call takes 0 arguments but 1 was given"]);
 
-    rpc.sendNotification("textDocument/didChange", { textDocument: { uri, version: 2 }, contentChanges: [{ text: MAIN }] });
+    // TypeScript's error on a JavaScript import, mapped to the Xenon source.
+    const typed = MAIN.replace("var greeting:String = 'hi'", "var greeting:String = 'hi'\n    var n:int = path.basename('x')");
+    rpc.sendNotification("textDocument/didChange", { textDocument: { uri, version: 2 }, contentChanges: [{ text: typed }] });
+    const tsErrors = (await diagnosticsFor(uri, (d) => d.some((x) => x.message.includes("not assignable")))) as { message: string; range: unknown; source?: string }[];
+    expect(tsErrors.filter((d) => d.source === "typescript").map((d) => [d.source, d.range])).toEqual([["typescript", { start: { line: 4, character: 8 }, end: { line: 4, character: 9 } }]]);
+
+    rpc.sendNotification("textDocument/didChange", { textDocument: { uri, version: 3 }, contentChanges: [{ text: MAIN }] });
     expect(await diagnosticsFor(uri, (d) => d.length === 0)).toEqual([]);
 
-    const hover = await rpc.sendRequest("textDocument/hover", { textDocument: { uri }, position: { line: 3, character: 22 } });
+    const hover = await rpc.sendRequest("textDocument/hover", { textDocument: { uri }, position: { line: 4, character: 22 } });
     expect(hover).toMatchObject({ contents: { kind: "markdown", value: expect.stringContaining("function String.toUpperCase():String") } });
 
-    const def = await rpc.sendRequest("textDocument/definition", { textDocument: { uri }, position: { line: 3, character: 12 } });
-    expect(def).toEqual([{ uri, range: { start: { line: 2, character: 8 }, end: { line: 2, character: 16 } } }]);
+    const def = await rpc.sendRequest("textDocument/definition", { textDocument: { uri }, position: { line: 4, character: 12 } });
+    expect(def).toEqual([{ uri, range: { start: { line: 3, character: 8 }, end: { line: 3, character: 16 } } }]);
 
-    const items = (await rpc.sendRequest("textDocument/completion", { textDocument: { uri }, position: { line: 3, character: 19 } })) as { label: string }[];
+    const items = (await rpc.sendRequest("textDocument/completion", { textDocument: { uri }, position: { line: 4, character: 19 } })) as { label: string }[];
     expect(items.map((i) => i.label)).toContain("toUpperCase");
 
     await rpc.sendRequest("shutdown");

@@ -1,19 +1,33 @@
 {
   "name": "vscode-xenon",
   "displayName": "XenonScript",
-  "description": "Syntax highlighting for the XenonScript language (.xn)",
-  "version": "0.1.0",
+  "description": "XenonScript (.xn): syntax highlighting, diagnostics, hover, go to definition and completion",
+  "version": "0.2.0",
   "publisher": "xenon",
   "license": "MIT",
   "private": true,
-  "engines": { "vscode": "^1.75.0" },
-  "categories": ["Programming Languages"],
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:xenon",
+    "workspaceContains:**/xenon.json"
+  ],
   "contributes": {
     "languages": [
       {
         "id": "xenon",
-        "aliases": ["Xenon", "xenon"],
-        "extensions": [".xn"],
+        "aliases": [
+          "Xenon",
+          "xenon"
+        ],
+        "extensions": [
+          ".xn"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -23,6 +37,36 @@
         "scopeName": "source.xenon",
         "path": "./syntaxes/xenon.tmLanguage.json"
       }
-    ]
+    ],
+    "commands": [
+      {
+        "command": "xenon.restartServer",
+        "title": "Restart Language Server",
+        "category": "XenonScript"
+      }
+    ],
+    "configuration": {
+      "title": "XenonScript",
+      "properties": {
+        "xenon.bunPath": {
+          "type": "string",
+          "default": "bun",
+          "description": "The Bun executable that runs the language server."
+        },
+        "xenon.server.path": {
+          "type": "string",
+          "default": "",
+          "description": "A compiler's `src/cli.ts` to run as the language server (`bun <path> lsp`) instead of the bundled one, e.g. a checkout of the compiler."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "bun scripts/build.ts",
+    "package": "bun scripts/build.ts && bunx @vscode/vsce@3.6.2 package --no-dependencies --skip-license --allow-missing-repository --out xenon.vsix"
+  },
+  "devDependencies": {
+    "@types/vscode": "1.82.0",
+    "vscode-languageclient": "9.0.1"
   }
 }

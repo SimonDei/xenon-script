@@ -15,6 +15,7 @@ tests/.watch-project/
 tests/.sourcemap-project/
 tests/.tsemit-project/
 tests/.lsp-project/
+tests/.lsp-bundle/
 tests/.build-project/
 
 # code coverage

@@ -296,7 +296,7 @@ export class XenonProject {
         source: "xenon",
         related: d.labels.filter((l) => l !== primary && l.message).map((l) => ({ location: this.location(l.span), message: l.message! })),
       });
-      xenonSpans.set(path, [...(xenonSpans.get(path) ?? []), primary.span]);
+      if (d.severity === "error") xenonSpans.set(path, [...(xenonSpans.get(path) ?? []), primary.span]);
     }
     for (const [path, o] of a.outputs) {
       if (o.source!.prelude || !out.has(path)) continue;
@@ -306,7 +306,7 @@ export class XenonProject {
         if (d.start === undefined || d.category !== ts.DiagnosticCategory.Error) continue;
         const range = this.mapBack(o, d.start, d.length ?? 0);
         if (!range) continue; // generated glue, not the user's code
-        // Xenon already reported something here: its message is the better one.
+        // Xenon already reported an error here: its message is the better one.
         if (xenonSpans.get(path)?.some((s) => s.start < range.end && range.start < s.end)) continue;
         out.get(path)!.push({
           range: rangeOf(o.source!, range.start, range.end),

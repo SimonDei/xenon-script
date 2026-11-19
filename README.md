@@ -69,7 +69,8 @@ between each `.xn` file and its `.ts` module.
 Xenon types and doc comments, go to definition (also into the standard library and `.d.ts` files),
 and completion. Xenon's checker answers for Xenon code; TypeScript runs over the virtual `.ts`
 files and adds the types of JavaScript and npm imports (and errors in their use) where Xenon only
-knows `*`.
+knows `*`. The VS Code extension in `packages/vscode-xenon` bundles it (with syntax highlighting):
+`cd packages/vscode-xenon && bun install && bun run package && code --install-extension xenon.vsix`.
 
 Project layout: `src/` (compiler), `examples/<name>/src` + `expected.txt` (golden end-to-end tests),
 `tests/errors/*.xn` + `*.stderr` (rendered diagnostics snapshots).
