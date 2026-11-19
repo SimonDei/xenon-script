@@ -20,6 +20,10 @@ export type TypeNode =
   | { kind: "AnyType"; span: Span } // *
   | { kind: "VoidType"; span: Span }
   | { kind: "NullableType"; inner: TypeNode; span: Span } // int?
+  | { kind: "UnionType"; types: TypeNode[]; span: Span } // int | String, 'utf8' | 'ascii' | null
+  | { kind: "NullType"; span: Span } // `null`, as a member of a union
+  /** `true`, `'buffer'`, `1`, `-1`, `0.5` (a value as a type); `float`: a number written with a fraction or exponent. */
+  | { kind: "LiteralType"; value: boolean | string | number; float?: boolean; span: Span }
   | { kind: "ShapeType"; members: ShapeMemberNode[]; span: Span } // { x:Float, ?label:String }
   | { kind: "FunctionType"; params: { name?: Ident; type: TypeNode; rest: boolean; span: Span }[]; ret: TypeNode; span: Span }; // (a:int) -> int
 

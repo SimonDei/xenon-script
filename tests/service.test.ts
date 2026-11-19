@@ -51,9 +51,12 @@ test("diagnostics: Xenon's (JavaScript imports typed from their `.d.ts`), plus T
   const diags = p.diagnostics();
   expect(diags.get("zoo/Animal.xn")).toEqual([]);
   const main = diags.get("Main.xn")!;
-  // `readFileSync`'s `path` is `*` to Xenon (a union in TypeScript): TypeScript's errors on `true`
-  // (and on `n`, as TypeScript then falls back to the last overload, returning `string | Buffer`).
-  expect(main.map((d) => [d.source, d.code, d.range.start.character])).toEqual([["typescript", "TS2322", 8], ["typescript", "TS2769", 32]]);
+  // `readFileSync`'s `path` is a union (`Float | PathLike`): Xenon itself finds no overload taking `true`.
+  expect(main.map((d) => [d.source, d.code, d.range.start.character])).toEqual([["xenon", "X0604", 19]]);
+
+  // Where Xenon only knows `*` (`once`'s `eventName` is a `string | symbol`; symbols have no Xenon type), TypeScript's error.
+  p.set("Main.xn", `import { once, EventEmitter } from 'node:events'\n${MAIN}`.replace("var n:String = readFileSync(true, 'utf8')", "var n:* = once(new EventEmitter(), true)"));
+  expect(p.diagnostics().get("Main.xn")!.filter((d) => d.source === "typescript").map((d) => d.code)).toEqual(["TS2769"]);
 
   // Typed from the `.d.ts`, Xenon itself sees that the result is a `String`; TypeScript stays quiet on that line.
   p.set("Main.xn", MAIN.replace("var n:String = readFileSync(true, 'utf8')", "var n:int = readFileSync('Main.xn', 'utf8')"));
@@ -62,8 +65,8 @@ test("diagnostics: Xenon's (JavaScript imports typed from their `.d.ts`), plus T
   // A Xenon error: reported once, with its notes and help, and TypeScript stays quiet about the same spot.
   p.set("Main.xn", MAIN.replace("a.speak(2)", "a.speak('2')"));
   const broken = p.diagnostics().get("Main.xn")!;
-  expect(broken.map((d) => [d.source, d.code])).toEqual([["xenon", "X0308"], ["typescript", "TS2322"], ["typescript", "TS2769"]]);
-  expect(broken[0]!.range.start).toEqual({ line: 9, character: 18 }); // the argument `'2'`
+  expect(broken.map((d) => [d.source, d.code])).toEqual([["xenon", "X0604"], ["xenon", "X0308"]]);
+  expect(broken[1]!.range.start).toEqual({ line: 9, character: 18 }); // the argument `'2'`
 });
 
 test("hover shows Xenon types and documentation, also for JavaScript imports (from their `.d.ts`)", () => {

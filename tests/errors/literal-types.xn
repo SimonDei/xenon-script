@@ -1,0 +1,56 @@
+// Literal types: `true`, `false`, string and number literals as types, the one value each (as in TypeScript).
+typedef ListOptions = { ?encoding:String, ?withFileTypes:false }
+typedef EntryOptions = { ?encoding:String, withFileTypes:true }
+typedef Raw = { encoding:'buffer' }
+typedef Version = { version:2, ?level:-1 }
+
+public class Main {
+  public function Main() {
+    var yes:true = true
+    var no:false = true                        // only `false`
+    var mode:'buffer' = 'buffer'
+    var other:'buffer' = 'utf8'                // only 'buffer'
+    var flag:Boolean = yes                     // a literal is a value of its base type
+    var back:true = flag                       // a `Boolean` may be `false`
+    var count:'buffer' = 3                     // no conversion fix-it: one value fits
+
+    // Numbers: `1` is an `int` literal, `0.5` a `Float` one; they compare by value.
+    var one:1 = 1
+    var two:1 = 2                              // only 1
+    var neg:-1 = -1
+    var half:0.5 = 0.5
+    var whole:1.0 = one                        // the `int` literal 1 fits the `Float` literal 1.0
+    var asInt:int = one                        // a number literal fits every numeric type its value fits
+    var asUint:uint = neg                      // -1 isn't a `uint`
+    var asFloat:Float = half
+    var notInt:int = half                      // 0.5 isn't an `int`
+    var sum:int = one + asInt                  // arithmetic on a literal gives its base type
+    var plain:1 = asInt                        // an `int` may be anything
+    var v:Version = { version: 2, level: -1 }
+    var old:Version = { version: 1 }
+
+    var opts:EntryOptions = { withFileTypes: true }
+    var bad:ListOptions = { withFileTypes: true }
+
+    // Overloads are chosen by literal members, as TypeScript chooses them.
+    var dir:Dir = new Dir()
+    var names:Array<String> = dir.read({})
+    var entries:Array<int> = dir.read({ withFileTypes: true })
+    var bytes:String = dir.read({ encoding: 'buffer' })   // `Raw`: first, and 'buffer' fits
+    var named:int = dir.read({ encoding: 'utf8' })       // not `Raw`: 'utf8' isn't 'buffer'
+    var level:String = dir.level(1)                        // `level(n:1)`
+    var other2:String = dir.level(2)                       // `level(n:int)`
+
+    trace(yes is true, mode as 'buffer', one is 1)   // no runtime test for a literal type
+    trace(no, other, back, count, opts, bad, names, entries, bytes, named, two, whole, asUint, asFloat, notInt, sum, plain, v, old, level, other2)
+  }
+}
+
+native class Dir {
+  function Dir()
+  function read(options:Raw):Array<Float>
+  function read(options:ListOptions):Array<String>
+  function read(options:EntryOptions):Array<Boolean>
+  function level(n:1):Boolean
+  function level(n:int):int
+}

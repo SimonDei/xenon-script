@@ -1,0 +1,175 @@
+error[X0308]: mismatched types
+  --> literal-types.xn:10:20
+   |
+10 |     var no:false = true                        // only `false`
+   |            -----   ^^^^ expected `false`, found `true`
+   |            |
+   |            expected because of this type
+   |
+   = note: `false` is a literal type: it takes only the value false
+
+error[X0308]: mismatched types
+  --> literal-types.xn:12:26
+   |
+12 |     var other:'buffer' = 'utf8'                // only 'buffer'
+   |               --------   ^^^^^^ expected `'buffer'`, found `'utf8'`
+   |               |
+   |               expected because of this type
+   |
+   = note: `'buffer'` is a literal type: it takes only the value 'buffer'
+
+error[X0308]: mismatched types
+  --> literal-types.xn:14:21
+   |
+14 |     var back:true = flag                       // a `Boolean` may be `false`
+   |              ----   ^^^^ expected `true`, found `Boolean`
+   |              |
+   |              expected because of this type
+   |
+   = note: `true` is a literal type: it takes only the value true
+
+error[X0308]: mismatched types
+  --> literal-types.xn:15:26
+   |
+15 |     var count:'buffer' = 3                     // no conversion fix-it: one value fits
+   |               --------   ^ expected `'buffer'`, found `3`
+   |               |
+   |               expected because of this type
+   |
+   = note: `'buffer'` is a literal type: it takes only the value 'buffer'
+
+error[X0308]: mismatched types
+  --> literal-types.xn:19:17
+   |
+19 |     var two:1 = 2                              // only 1
+   |             -   ^ expected `1`, found `2`
+   |             |
+   |             expected because of this type
+   |
+   = note: `1` is a literal type: it takes only the value 1
+
+error[X0308]: mismatched types
+  --> literal-types.xn:24:23
+   |
+24 |     var asUint:uint = neg                      // -1 isn't a `uint`
+   |                ----   ^^^ expected `uint`, found `-1`
+   |                |
+   |                expected because of this type
+   |
+help: convert the value with `uint()`
+   |
+24 |     var asUint:uint = uint(neg)                      // -1 isn't a `uint`
+   |                       +++++   +
+
+error[X0308]: mismatched types
+  --> literal-types.xn:26:22
+   |
+26 |     var notInt:int = half                      // 0.5 isn't an `int`
+   |                ---   ^^^^ expected `int`, found `0.5`
+   |                |
+   |                expected because of this type
+   |
+help: convert the value with `int()`
+   |
+26 |     var notInt:int = int(half)                      // 0.5 isn't an `int`
+   |                      ++++    +
+
+error[X0308]: mismatched types
+  --> literal-types.xn:28:19
+   |
+28 |     var plain:1 = asInt                        // an `int` may be anything
+   |               -   ^^^^^ expected `1`, found `int`
+   |               |
+   |               expected because of this type
+   |
+   = note: `1` is a literal type: it takes only the value 1
+
+error[X0308]: mismatched types
+  --> literal-types.xn:30:34
+   |
+30 |     var old:Version = { version: 1 }
+   |                                  ^ expected `2`, found `1`
+   |
+   = note: `2` is a literal type: it takes only the value 2
+
+error[X0308]: mismatched types
+  --> literal-types.xn:33:44
+   |
+33 |     var bad:ListOptions = { withFileTypes: true }
+   |                                            ^^^^ expected `false?`, found `true`
+   |
+   = note: `false` is a literal type: it takes only the value false
+
+error[X0308]: mismatched types
+  --> literal-types.xn:38:30
+   |
+38 |     var entries:Array<int> = dir.read({ withFileTypes: true })
+   |                 ----------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Array<int>`, found `Array<Boolean>`
+   |                 |
+   |                 expected because of this type
+
+error[X0308]: mismatched types
+  --> literal-types.xn:39:24
+   |
+39 |     var bytes:String = dir.read({ encoding: 'buffer' })   // `Raw`: first, and 'buffer' fits
+   |               ------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found `Array<Float>`
+   |               |
+   |               expected because of this type
+
+error[X0308]: mismatched types
+  --> literal-types.xn:40:21
+   |
+40 |     var named:int = dir.read({ encoding: 'utf8' })       // not `Raw`: 'utf8' isn't 'buffer'
+   |               ---   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `int`, found `Array<String>`
+   |               |
+   |               expected because of this type
+
+error[X0308]: mismatched types
+  --> literal-types.xn:41:24
+   |
+41 |     var level:String = dir.level(1)                        // `level(n:1)`
+   |               ------   ^^^^^^^^^^^^ expected `String`, found `Boolean`
+   |               |
+   |               expected because of this type
+   |
+help: convert the value with `String()`
+   |
+41 |     var level:String = String(dir.level(1))                        // `level(n:1)`
+   |                        +++++++            +
+
+error[X0308]: mismatched types
+  --> literal-types.xn:42:25
+   |
+42 |     var other2:String = dir.level(2)                       // `level(n:int)`
+   |                ------   ^^^^^^^^^^^^ expected `String`, found `int`
+   |                |
+   |                expected because of this type
+   |
+help: convert the value with `String()`
+   |
+42 |     var other2:String = String(dir.level(2))                       // `level(n:int)`
+   |                         +++++++            +
+
+error[X0394]: `true` can't be checked at runtime
+  --> literal-types.xn:44:18
+   |
+44 |     trace(yes is true, mode as 'buffer', one is 1)   // no runtime test for a literal type
+   |                  ^^^^ a literal type
+   |
+help: compare the value instead: `yes == true`
+
+error[X0394]: `'buffer'` can't be checked at runtime
+  --> literal-types.xn:44:32
+   |
+44 |     trace(yes is true, mode as 'buffer', one is 1)   // no runtime test for a literal type
+   |                                ^^^^^^^^ a literal type
+   |
+help: compare the value instead: `mode == 'buffer'`
+
+error[X0394]: `1` can't be checked at runtime
+  --> literal-types.xn:44:49
+   |
+44 |     trace(yes is true, mode as 'buffer', one is 1)   // no runtime test for a literal type
+   |                                                 ^ a literal type
+   |
+help: compare the value instead: `one == 1`

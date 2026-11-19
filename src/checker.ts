@@ -10,7 +10,7 @@ import {
   arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, arrayOf, elementOf, isDynamic, isNullable, isNumeric, isPrim, nonNull, nullableOf,
   bind, eraseParams, memberTypeIn, stdClassOf, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
   supertypeArgs, T, type Type, type TypeParamInfo, typeToString, unify,
-  requiredParams,
+  requiredParams, literalType, literalOf, widen, unionOf, membersOf, valueFits, type UnionType,
 } from "./types.ts";
 
 /** A class known to the project. */
@@ -279,30 +279,36 @@ interface Local {
   typeSpan?: Span;
 }
 
-/** Null-check facts of a condition: locals known non-null when it is true / when it is false. */
+/** A local known to have a narrower type: non-null (`x != null`), or a union member (`x is String`, `x == 'utf8'`). */
+interface Fact {
+  local: Local;
+  type: Type;
+}
+
+/** Facts of a condition: what is known about locals when it is true / when it is false. */
 interface Facts {
-  whenTrue: Local[];
-  whenFalse: Local[];
+  whenTrue: Fact[];
+  whenFalse: Fact[];
 }
 const NO_FACTS: Facts = { whenTrue: [], whenFalse: [] };
 
 class Scope {
   private locals = new Map<string, Local>();
-  /** Locals narrowed to their non-null type in this scope (`if (x != null) { … }`); `undefined` cancels an outer one. */
-  private narrowed?: Map<Local, true | undefined>;
+  /** Locals narrowed in this scope (`if (x != null) { … }`, `if (x is String) { … }`); `undefined` cancels an outer one. */
+  private narrowed?: Map<Local, Type | undefined>;
   /** A function expression's scope: narrowing of outer variables doesn't reach in (the function may run later). */
   boundary = false;
   constructor(readonly parent?: Scope) {}
 
-  /** A child scope in which these locals are known to be non-null. */
-  withFacts(locals: Local[]): Scope {
-    if (locals.length === 0) return this;
+  /** A child scope in which these facts hold (later ones win: they were found knowing the earlier). */
+  withFacts(facts: Fact[]): Scope {
+    if (facts.length === 0) return this;
     const s = new Scope(this);
-    for (const l of locals) s.narrow(l);
+    for (const f of facts) s.narrow(f);
     return s;
   }
-  narrow(local: Local) {
-    if (local.type.kind === "nullable") (this.narrowed ??= new Map()).set(local, true);
+  narrow(fact: Fact) {
+    (this.narrowed ??= new Map()).set(fact.local, fact.type);
   }
   /** The variable was assigned a value that may be null: drop narrowing up to where it was declared. */
   unnarrow(local: Local) {
@@ -316,9 +322,9 @@ class Scope {
     let crossed = false;
     for (let s: Scope | undefined = this; s; s = s.parent) {
       if (s.narrowed?.has(local)) {
-        const on = s.narrowed.get(local) === true;
-        if (on && crossed && local.kind !== "final" && local.kind !== "const") return { type: local.type, blocked: true };
-        return { type: on ? nonNull(local.type) : local.type, blocked: false };
+        const narrowed = s.narrowed.get(local);
+        if (narrowed && crossed && local.kind !== "final" && local.kind !== "const") return { type: local.type, blocked: true };
+        return { type: narrowed ?? local.type, blocked: false };
       }
       if (s.owns(local)) break;
       if (s.boundary) crossed = true;
@@ -505,6 +511,12 @@ class Env {
           }
           if (typed?.kind === "class" && info) {
             scope.classes.set(n.name, info);
+            continue;
+          }
+          // An imported TypeScript interface or type alias that is a shape (no value at run time).
+          const shape = typed?.kind === "typedef" ? this.typedefs.get(typed.qname) : undefined;
+          if (shape) {
+            scope.typedefs.set(n.name, shape);
             continue;
           }
           scope.jsImports.add(n.name);
@@ -779,6 +791,8 @@ class Env {
     let t = this.resolveType(td.decl.type, this.scopes.get(td.file)!, td.file.file.prelude, paramScope(td.params));
     if (td.state !== "busy") return td.state; // a cycle was reported while resolving
     if (t.kind === "shape" || t.kind === "method") t = { ...t, alias: td.decl.name.name, typedef: td };
+    else if (t.kind === "union") t = { ...t, alias: td.decl.name.name };
+    else if (t.kind === "nullable" && t.inner.kind === "union") t = { kind: "nullable", inner: { ...t.inner, alias: td.decl.name.name } };
     td.state = t;
     return t;
   }
@@ -817,6 +831,24 @@ class Env {
 
   private resolveTypeNode(node: A.TypeNode, scope: FileScope, allowVoid: boolean, tparams: TypeParamScope | undefined, allowRaw: boolean): Type {
     if (node.kind === "AnyType") return T.any;
+    if (node.kind === "LiteralType") return literalType(node.value, node.float);
+    if (node.kind === "NullType") {
+      this.diags.error("X0798", "`null` is a type only in a union", node.span, "`null` alone")
+        .help("a type that may be null is written `T?` or `T | null`");
+      return T.error;
+    }
+    if (node.kind === "UnionType") {
+      const types = node.types.map((n) => {
+        if (n.kind !== "NullType") return this.resolveType(n, scope, false, tparams);
+        this.result.typeNodeTypes.set(n, T.null);
+        return T.null;
+      });
+      if (types.every((t) => t.kind === "null")) {
+        this.diags.error("X0798", "`null` is a type only in a union", node.span, "only `null`");
+        return T.error;
+      }
+      return unionOf(types);
+    }
     // `int?` and `Null<int>`: the type plus `null` (types that already include `null` stay as they are).
     if (node.kind === "NullableType") return nullableOf(this.resolveType(node.inner, scope, false, tparams));
     if (node.kind === "ShapeType") {
@@ -907,6 +939,7 @@ class Env {
       if (td.params.length === 0) return target;
       const args = node.args.map((a) => this.resolveType(a, scope, false, tparams));
       const t = subst(target, bind(td.params, args));
+      if (t.kind === "union") return { ...t, alias: td.decl.name.name, aliasArgs: args };
       return t.kind === "shape" || t.kind === "method" ? { ...t, alias: td.decl.name.name, aliasArgs: args, typedef: td } : t;
     }
     if (this.isJsImport(scope, name)) return T.any; // JS classes are dynamic until .d.ts support
@@ -2787,7 +2820,7 @@ class BodyChecker {
       const initType = s.init ? this.expr(s.init, scope) : undefined;
       const at = span(s.name.span.file, s.name.span.end, s.name.span.end);
       const describable = initType && !isDynamic(initType) && !["null", "void", "method", "classRef"].includes(initType.kind) && !fromDeclarations(initType);
-      if (describable) d.help("add the type of the initializer", [{ span: at, text: `:${typeToString(initType)}` }]);
+      if (describable) d.help("add the type of the initializer", [{ span: at, text: `:${typeToString(widen(initType))}` }]);
       else d.help("add a type, or `:*` to make it explicitly dynamic", [{ span: at, text: ":*" }]);
       const untypedLocal: Local = { type: T.any, kind: s.decl, nameSpan: s.name.span };
       this.declared.push({ local: untypedLocal, name: s.name });
@@ -3139,8 +3172,16 @@ class BodyChecker {
     const pre = this.preTyped.get(e);
     if (pre) {
       this.preTyped.delete(e);
-      if (!assignable(pre, expected)) this.mismatch(e, pre, expected, origin);
+      if (!assignable(pre, expected) && !this.constantFits(e, expected)) this.mismatch(e, this.shownType(e, pre, expected), expected, origin);
       return;
+    }
+    // A literal against a union: checked against the member of its kind (`{…}` against the shape).
+    if ((e.kind === "Object" || e.kind === "Function" || e.kind === "Array") && nonNull(expected).kind === "union") {
+      const member = this.unionMemberFor(e, nonNull(expected) as UnionType);
+      if (member) {
+        this.checkAssign(e, member, origin, scope);
+        return;
+      }
     }
     // Generic calls and `new` can infer type arguments from the expected type.
     if (e.kind === "Call" || e.kind === "New") this.expected = expected;
@@ -3168,11 +3209,39 @@ class BodyChecker {
       return;
     }
     const actual = this.valueExpr(e, scope);
-    if (assignable(actual, expected)) return;
-    // A compile-time constant is accepted when its value fits: `var u:uint = 5`, `var h:int = MAX / 2`.
+    if (assignable(actual, expected) || this.constantFits(e, expected)) return;
+    this.mismatch(e, this.shownType(e, actual, expected), expected, origin);
+  }
+
+  /**
+   * The member of a union an object, function or array literal is checked against: the first shape
+   * it may fit (else the only shape), the function type, the array type.
+   */
+  private unionMemberFor(e: A.Expr, u: UnionType): Type | undefined {
+    if (e.kind === "Object") {
+      const shapes = u.types.filter((m): m is ShapeType => m.kind === "shape");
+      return shapes.find((m) => this.objectMayFit(e, m)) ?? (shapes.length === 1 ? shapes[0] : undefined);
+    }
+    if (e.kind === "Function") return u.types.find((m) => m.kind === "method");
+    return u.types.find((m) => elementOf(m) || this.env.arrayElementFor(m));
+  }
+
+  /**
+   * A compile-time constant is accepted when its value fits: `var u:uint = 5`, `var h:int = MAX / 2`,
+   * and a literal type takes a constant with its value (`withFileTypes:true` takes `true`).
+   */
+  private constantFits(e: A.Expr, expected: Type): boolean {
     const c = this.constValue(e);
-    if (c.ok && isNumeric(expected) && typeof c.value === "number" && fits(c.value, expected)) return;
-    this.mismatch(e, actual, expected, origin);
+    if (!c.ok) return false;
+    if (isNumeric(expected) && typeof c.value === "number" && fits(c.value, expected)) return true;
+    return valueFits(c.value, expected);
+  }
+
+  /** `expected \`false\`, found \`true\``: a constant against a literal type shows its value. */
+  private shownType(e: A.Expr, actual: Type, expected: Type): Type {
+    if (!membersOf(expected).some((m) => literalOf(m) !== undefined)) return actual;
+    const c = this.constValue(e);
+    return c.ok && (typeof c.value === "boolean" || typeof c.value === "string" || typeof c.value === "number") ? literalType(c.value) : actual;
   }
 
   /**
@@ -3206,7 +3275,10 @@ class BodyChecker {
       { span: span(e.span.file, e.span.end, e.span.end), text: ")" },
     ];
     const value = nonNull(actual); // conversions also take `null` (`String(n)` of an `int?`)
-    if ((isPrim(expected, "int") || isPrim(expected, "uint")) && (isNumeric(value) || isPrim(value, "String")) && !sameType(value, expected)) {
+    if (literalOf(expected) !== undefined) {
+      // One value fits: no conversion helps.
+      d.note(`\`${typeToString(nonNull(expected))}\` is a literal type: it takes only the value ${typeToString(nonNull(expected))}`);
+    } else if ((isPrim(expected, "int") || isPrim(expected, "uint")) && (isNumeric(value) || isPrim(value, "String")) && !sameType(value, expected)) {
       const fn = isPrim(expected, "int") ? "int" : "uint";
       d.help(`convert the value with \`${fn}()\``, wrap(fn));
     } else if (isPrim(expected, "Float") && isPrim(value, "String")) {
@@ -3218,7 +3290,7 @@ class BodyChecker {
       if (fallback) d.help(`the value may be null: give a default with \`??\``, nullishFix(e, fallback));
       else d.note("the value may be null");
     } else if (actual.kind === "null" && !isNullable(expected)) {
-      d.note(`\`${typeToString(expected)}\` can never be null; \`${typeToString(expected)}?\` can`);
+      d.note(`\`${typeToString(expected)}\` can never be null; \`${typeToString(expected)}${expected.kind === "union" && !expected.alias ? " | null" : "?"}\` can`);
     } else if (expected.kind === "shape" && (actual.kind === "shape" || actual.kind === "class")) {
       for (const note of shapeMismatch(actual, expected)) d.note(note);
     }
@@ -3492,6 +3564,8 @@ class BodyChecker {
       }
       case "nullable": // (unwrapped by `member`)
         return this.memberOn(e, this.mayBeNull(e.object, obj));
+      case "union":
+        return this.unionMember(e, obj);
       case "method":
         return this.functionMemberUse(e, obj);
       case "any":
@@ -3571,6 +3645,65 @@ class BodyChecker {
         }
         return seen;
       }
+    }
+  }
+
+  /**
+   * `x.name` on a union: every member must have it. Its type is the members' (one type, or their
+   * union for values); methods must be callable alike: one signature every other one fits (`toString`
+   * of an `int | String`), giving the union of their results.
+   */
+  private unionMember(e: A.Expr & { kind: "Member" }, obj: UnionType): Type {
+    const name = e.name.name;
+    const missing = obj.types.filter((m) => !this.hasMember(m, name));
+    if (missing.length > 0) {
+      const d = this.diags.error("X0426", `no member \`${name}\` on \`${typeToString(obj)}\``, e.name.span, "not on every member of the union");
+      d.note(`${missing.map((m) => `\`${typeToString(m)}\``).join(", ")} ${missing.length === 1 ? "has" : "have"} no \`${name}\``);
+      const has = obj.types.find((m) => !missing.includes(m));
+      if (has) d.help(`narrow it first: inside \`if (${spanText(e.object.span)} is ${testable(has)}) { … }\` it is a \`${typeToString(has)}\``);
+      return T.error;
+    }
+    const types = obj.types.map((m) => this.memberOn(e, m));
+    if (types.some((t) => t.kind === "error")) return T.error;
+    const first = types[0]!;
+    if (types.every((t) => sameType(t, first))) return first;
+    if (types.every((t) => t.kind === "method")) {
+      const sigs = types as MethodType[];
+      // A call valid for `common` is valid for every member's method (they all fit it).
+      const common = sigs.find((c) => sigs.every((m) => assignable(m, c)));
+      if (common) return { kind: "method", params: common.params, ret: unionOf(sigs.map((m) => m.ret)) };
+    }
+    if (types.some((t) => t.kind === "method" || t.kind === "classRef")) {
+      const d = this.diags.error("X0428", `\`${name}\` differs between the members of \`${typeToString(obj)}\``, e.name.span, "no common signature");
+      obj.types.forEach((m, i) => d.note(`on \`${typeToString(m)}\`: \`${typeToString(types[i]!)}\``));
+      d.help(`narrow it first: \`if (${spanText(e.object.span)} is ${testable(obj.types[0]!)}) { … }\``);
+      return T.error;
+    }
+    return unionOf(types);
+  }
+
+  /** Does a value of type `t` have an instance member `name` (without reporting anything)? */
+  private hasMember(t: Type, name: string): boolean {
+    switch (t.kind) {
+      case "any": case "error": return true;
+      case "prim": {
+        const cls = this.env.primClass(t.name);
+        const m = cls && findMember(cls, name);
+        return !!m && !m.isStatic;
+      }
+      case "builtin":
+        if (t.name === "Array" && this.env.arrayClass) return this.hasMember({ kind: "class", info: this.env.arrayClass, args: t.args }, name);
+        if (t.name === "Function") return !!this.env.functionMember(name);
+        return t.name === "Object" || !!this.env.rootMember(name);
+      case "method": return !!this.env.functionMember(name);
+      case "shape": return t.members.has(name) || !!this.env.rootMember(name);
+      case "class": {
+        if (hasJsAncestor(t.info)) return true;
+        const m = findMember(t.info, name) ?? this.env.rootMember(name);
+        return !!m && !m.isStatic;
+      }
+      case "union": return t.types.every((m) => this.hasMember(m, name));
+      default: return false;
     }
   }
 
@@ -4142,7 +4275,9 @@ class BodyChecker {
       this.preTyped.set(a, t);
       return t;
     });
-    const matches = (c: { type: MethodType }): boolean => {
+    // `strict`: object literals must fit a shape structurally (see `objectMayFit`). When none
+    // does, the first overload taking a shape is chosen, and checking reports what's wrong with it.
+    const matches = (c: { type: MethodType }, strict: boolean): boolean => {
       const sig = c.type;
       const erase = (t: Type) => (sig.typeParams?.length ? eraseParams(t, sig.typeParams) : t);
       const rest = sig.params.find((p) => p.rest);
@@ -4154,9 +4289,13 @@ class BodyChecker {
         const pattern = p.rest ? (p.type.kind === "builtin" && p.type.args.length === 1 ? p.type.args[0]! : T.any) : p.type;
         const pt = erase(pattern);
         if (isDynamic(pt) || a.kind === "Spread") return true;
-        if (a.kind === "Function") return pt.kind === "method" || (pt.kind === "builtin" && (pt.name === "Function" || pt.name === "Object"));
-        if (a.kind === "Array") return pt.kind === "builtin" && (pt.name === "Array" || pt.name === "Object");
-        if (a.kind === "Object") return pt.kind === "shape" || (pt.kind === "builtin" && pt.name === "Object");
+        // A literal fits a union when it fits a member.
+        const each = (pt: Type) => membersOf(pt).some((m) => {
+          if (a.kind === "Function") return m.kind === "method" || (m.kind === "builtin" && (m.name === "Function" || m.name === "Object"));
+          if (a.kind === "Array") return m.kind === "builtin" && (m.name === "Array" || m.name === "Object");
+          return m.kind === "shape" ? !strict || this.objectMayFit(a as A.Expr & { kind: "Object" }, m) : m.kind === "builtin" && m.name === "Object";
+        });
+        if (a.kind === "Function" || a.kind === "Array" || a.kind === "Object") return each(pt);
         const t = types[i]!;
         if (assignable(t, pt)) return true;
         // Generic parameters: bind them from this argument first, so `Array<Array<V>>` accepts an
@@ -4167,10 +4306,11 @@ class BodyChecker {
           if (bound.size > 0 && assignable(t, erase(subst(pattern, bound)))) return true;
         }
         const c = this.constValue(a);
-        return c.ok && isNumeric(pt) && typeof c.value === "number" && fits(c.value, pt);
+        return c.ok && valueFits(c.value, pt);
       });
     };
-    const fitting = cands.filter(matches);
+    let fitting = cands.filter((c) => matches(c, true));
+    if (fitting.length === 0) fitting = cands.filter((c) => matches(c, false));
     const found = fitting.length > 1 ? this.byCallbackResults(fitting, args, scope) : fitting[0];
     if (found) return found;
     const given = args.map((a, i) => (types[i] ? typeToString(types[i]!) : a.kind === "Function" ? "function" : a.kind === "Array" ? "array literal" : a.kind === "Object" ? "object literal" : "…"));
@@ -4179,6 +4319,37 @@ class BodyChecker {
     for (const a of args) if (literal(a)) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
     for (const a of args) this.preTyped.delete(a);
     return undefined;
+  }
+
+  /**
+   * Could an object literal fit a shape (for choosing an overload, before it is checked)? Its keys
+   * must be members and the required members given (unless it spreads), and constant values must
+   * fit: a literal member takes only its value, so `{ withFileTypes: true }` picks the overload
+   * whose shape says `withFileTypes:true` over the one saying `?withFileTypes:false`. Other values
+   * aren't checked here.
+   */
+  private objectMayFit(e: A.Expr & { kind: "Object" }, shape: ShapeType): boolean {
+    const given = new Set<string>();
+    const spread = e.props.some((p) => p.kind === "SpreadProp");
+    for (const p of e.props) {
+      if (p.kind === "SpreadProp") continue;
+      const key = p.kind === "Shorthand" ? p.name.name : "name" in p.key ? p.key.name : p.key.kind === "StringKey" ? p.key.value : undefined;
+      if (key === undefined) continue; // computed
+      given.add(key);
+      const member = shape.members.get(key);
+      if (!member) return false; // an unknown key (excess members are errors in a literal)
+      if (p.kind !== "Prop") continue;
+      const c = this.constValue(p.value);
+      if (!c.ok) continue;
+      const want = nonNull(member.type());
+      if (c.value === null) {
+        if (!member.optional && !isNullable(member.type())) return false;
+        continue;
+      }
+      // Primitive, literal and union members (`encoding:'buffer'`, `level:0 | 1`) by the value.
+      if (membersOf(want).every((m) => m.kind === "prim") && !valueFits(c.value, want, true)) return false;
+    }
+    return spread || [...shape.members.values()].every((m) => m.optional || given.has(m.name));
   }
 
   /**
@@ -4551,6 +4722,18 @@ class BodyChecker {
       }
       return target;
     }
+    if (literalOf(target) !== undefined) {
+      // `x is true` would test only for a `Boolean` (and `as` would let `false` through).
+      this.diags.error("X0394", `\`${typeToString(target)}\` can't be checked at runtime`, t.span, "a literal type")
+        .help(`compare the value instead: \`${spanText(e.expr.span)} == ${typeToString(target)}\``);
+      return e.op === "is" ? T.Boolean : T.error;
+    }
+    if (target.kind === "union") {
+      const d = this.diags.error("X0394", `\`${typeToString(target)}\` can't be checked at runtime`, t.span, "a union type");
+      const tests = target.types.map((m) => `${spanText(e.expr.span)} is ${testable(m)}`);
+      if (target.types.every((m) => runtimeCheck(m))) d.help(`test its members: \`${tests.join(" || ")}\``);
+      return e.op === "is" ? T.Boolean : T.error;
+    }
     const check = runtimeCheck(target);
     if (target.kind === "error") return e.op === "is" ? T.Boolean : T.error;
     if (!check) {
@@ -4853,24 +5036,74 @@ class BodyChecker {
     return targetType;
   }
 
-  /** After `x = value` / `x ??= 0`: a non-null value narrows a nullable local, anything else ends its narrowing. */
+  /**
+   * After `x = value` / `x ??= 0`: a nullable or union local is narrowed to what the value can be
+   * (a non-null value: non-null; a `String` into an `int | String`: `String`); anything else ends
+   * its narrowing.
+   */
   private assigned(target: A.Expr, value: Type | undefined, scope: Scope) {
     if (target.kind !== "Ident") return;
     const local = scope.get(target.name);
-    if (!local || local.type.kind !== "nullable") return;
+    if (!local || (local.type.kind !== "nullable" && local.type.kind !== "union")) return;
     scope.unnarrow(local);
-    if (value && value.kind !== "nullable" && value.kind !== "null" && !isDynamic(value)) scope.narrow(local);
+    if (!value || isDynamic(value) || value.kind === "nullable" || value.kind === "null") return;
+    const kept = membersOf(local.type).filter((m) => membersOf(value).some((v) => assignable(v, m)));
+    scope.narrow({ local, type: kept.length > 0 ? unionOf(kept) : nonNull(local.type) });
   }
 
-  /** Locals a condition proves non-null when true / false: `x != null`, `!`, `&&`, `||`. */
+  /** A local's type at this point (narrowed by checks so far). */
+  private currentType(local: Local, scope: Scope): Type {
+    return scope.typeOf(local).type;
+  }
+
+  /**
+   * What a condition proves about locals when true / false: `x != null` (non-null), `x is T` and
+   * `x == 'utf8'` (union members), through `!`, `&&` and `||`.
+   */
   private facts(e: A.Expr, scope: Scope): Facts {
     switch (e.kind) {
+      case "TypeOp": {
+        if (e.op !== "is" || e.expr.kind !== "Ident") return NO_FACTS;
+        const local = scope.get(e.expr.name);
+        const target = this.env.result.typeNodeTypes.get(e.type);
+        if (!local || !target || isDynamic(target)) return NO_FACTS;
+        const cur = this.currentType(local, scope);
+        if (nonNull(cur).kind !== "union") return NO_FACTS;
+        // `x is String` on an `int | String`: `String` when true, `int` (and `null`) when false.
+        const members = membersOf(cur);
+        const yes = members.flatMap((m) => (assignable(m, target) ? [m] : assignable(target, m) ? [target] : []));
+        const no = members.filter((m) => !assignable(m, target));
+        const otherwise = no.length > 0 ? unionOf(no) : undefined;
+        return {
+          whenTrue: yes.length > 0 ? [{ local, type: unionOf(yes) }] : [],
+          whenFalse: otherwise ? [{ local, type: cur.kind === "nullable" ? nullableOf(otherwise) : otherwise }] : [],
+        };
+      }
       case "Binary": {
         if (["==", "!=", "===", "!=="].includes(e.op)) {
+          const negated = e.op.startsWith("!");
           const side = e.right.kind === "Null" ? e.left : e.left.kind === "Null" ? e.right : undefined;
           const local = side?.kind === "Ident" ? scope.get(side.name) : undefined;
-          if (!local || local.type.kind !== "nullable") return NO_FACTS;
-          return e.op.startsWith("!") ? { whenTrue: [local], whenFalse: [] } : { whenTrue: [], whenFalse: [local] };
+          if (local) {
+            const cur = this.currentType(local, scope);
+            if (cur.kind !== "nullable") return NO_FACTS;
+            const fact = { local, type: nonNull(cur) };
+            return negated ? { whenTrue: [fact], whenFalse: [] } : { whenTrue: [], whenFalse: [fact] };
+          }
+          // `mode == 'utf8'` on a `'utf8' | 'ascii'`: `'utf8'` when true, `'ascii'` when false.
+          const [ident, other] = e.left.kind === "Ident" ? [e.left, e.right] : e.right.kind === "Ident" ? [e.right, e.left] : [];
+          const lit = ident && scope.get(ident.name);
+          if (!lit || !other) return NO_FACTS;
+          const cur = this.currentType(lit, scope);
+          const c = this.constValue(other);
+          if (!c.ok || nonNull(cur).kind !== "union" || !(typeof c.value === "string" || typeof c.value === "number" || typeof c.value === "boolean")) return NO_FACTS;
+          const members = membersOf(cur);
+          const equal = members.filter((m) => literalOf(m) === c.value);
+          if (equal.length === 0) return NO_FACTS;
+          const rest = members.filter((m) => !equal.includes(m));
+          const isIt: Fact = { local: lit, type: equal[0]! };
+          const isNot: Fact[] = rest.length > 0 ? [{ local: lit, type: cur.kind === "nullable" ? nullableOf(unionOf(rest)) : unionOf(rest) }] : [];
+          return negated ? { whenTrue: isNot, whenFalse: [isIt] } : { whenTrue: [isIt], whenFalse: isNot };
         }
         if (e.op === "&&") {
           const l = this.facts(e.left, scope);
@@ -4987,6 +5220,13 @@ function involvesInterface(a: Type, b: Type): boolean {
 }
 
 /** The runtime test for a Xenon type, or undefined if it can't be tested. */
+/** How `is` names a type: without type arguments, which are erased (`Array` for `Array<int>`). */
+function testable(t: Type): string {
+  if (t.kind === "builtin") return t.name;
+  if (t.kind === "class") return t.info.decl.name.name;
+  return typeToString(t);
+}
+
 function runtimeCheck(t: Type): RuntimeCheck | undefined {
   switch (t.kind) {
     case "class":

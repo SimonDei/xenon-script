@@ -66,13 +66,13 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
 
     // JavaScript imports are typed from their `.d.ts` (TypeScript's `lib` files needed, also bundled):
     // Xenon's own error for `path.basename`'s `String`, TypeScript's where Xenon only knows `*`
-    // (`readFileSync`'s `path` parameter).
-    const typed = `import { readFileSync } from 'node:fs'\n${MAIN}`.replace("var greeting:String = 'hi'", "var greeting:String = 'hi'\n    var n:int = path.basename('x')\n    var s:String = readFileSync(true, 'utf8')");
+    // (`once`'s `eventName`, a `string | symbol`: symbols have no Xenon type).
+    const typed = `import { once, EventEmitter } from 'node:events'\n${MAIN}`.replace("var greeting:String = 'hi'", "var greeting:String = 'hi'\n    var n:int = path.basename('x')\n    var s:* = once(new EventEmitter(), true)");
     rpc.sendNotification("textDocument/didChange", { textDocument: { uri, version: 2 }, contentChanges: [{ text: typed }] });
     const found = (await diagnosticsFor(uri, (d) => d.some((x) => (x as { code?: string }).code === "TS2769"))) as { message: string; range: { start: unknown }; source?: string; code?: string }[];
     expect(found.filter((d) => d.code === "X0308" || d.code === "TS2769").map((d) => [d.source, d.code, d.range.start])).toEqual([
       ["xenon", "X0308", { line: 5, character: 16 }],
-      ["typescript", "TS2769", { line: 6, character: 32 }],
+      ["typescript", "TS2769", { line: 6, character: 14 }],
     ]);
 
     rpc.sendNotification("textDocument/didChange", { textDocument: { uri, version: 3 }, contentChanges: [{ text: MAIN }] });

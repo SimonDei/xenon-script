@@ -1,0 +1,57 @@
+// Union types: `A | B` holds a value of either type; `null` makes it nullable.
+typedef Encoding = 'utf8' | 'ascii'
+typedef Id = int | String
+typedef Options = { ?encoding:Encoding, ?level:0 | 1 | 2 }
+
+public class Main {
+  public function Main() {
+    var a:Id = 1
+    var b:Id = 'x'
+    var c:Id = true                            // neither an `int` nor a `String`
+    var n:int | Boolean | null = null          // `null` makes the union nullable
+    var m:int | Boolean = null                 // not without it
+    var s:String = a                           // an `int` isn't a `String`
+    var all:int | String | Boolean = a         // a union fits a wider one
+
+    var e:Encoding = 'utf8'
+    var bad:Encoding = 'latin1'                // only 'utf8' or 'ascii'
+    var text:String = e                        // each literal is a `String`
+    var o:Options = { encoding: 'ascii', level: 3 }
+
+    // Members: only those every member type has, alike.
+    var len:int = b.length                     // `int` has no `length`
+    var str:String = a.toString()              // one call serves `int` and `String`
+    var arr:Array<int> | String = 'abc'
+    var count:int = arr.length                 // both have `length:int`
+    var at:int = arr.indexOf('b')              // `indexOf` takes a `String` on one, an `int` on the other
+
+    // Narrowing: `is`, `==` against a literal, `!= null`.
+    if (a is String) {
+      var up:String = a.toUpperCase()
+      var wrong:int = a                        // a `String` here
+      trace(up, wrong)
+    } else {
+      var twice:int = a * 2                    // an `int` here
+      trace(twice)
+    }
+    if (e == 'utf8') {
+      var u:'utf8' = e
+      trace(u)
+    } else {
+      var asc:'ascii' = e
+      var notUtf:'utf8' = e                    // 'ascii' here
+      trace(asc, notUtf)
+    }
+    if (n != null) {
+      var known:int | Boolean = n
+      trace(known)
+    }
+    a = 'y'                                    // assigning narrows too
+    var after:String = a.toUpperCase()
+
+    trace(a is Id, a as Id)                    // no runtime test for a union
+    trace(c, m, s, all, bad, text, o, len, str, count, at, after)
+    var nothing:null = null                    // `null` is a type only in a union
+    trace(nothing)
+  }
+}

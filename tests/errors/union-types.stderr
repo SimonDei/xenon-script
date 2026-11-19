@@ -1,0 +1,105 @@
+error[X0308]: mismatched types
+  --> union-types.xn:10:16
+   |
+10 |     var c:Id = true                            // neither an `int` nor a `String`
+   |           --   ^^^^ expected `Id`, found `Boolean`
+   |           |
+   |           expected because of this type
+
+error[X0308]: mismatched types
+  --> union-types.xn:12:27
+   |
+12 |     var m:int | Boolean = null                 // not without it
+   |           -------------   ^^^^ expected `int | Boolean`, found `null`
+   |           |
+   |           expected because of this type
+   |
+   = note: `int | Boolean` can never be null; `int | Boolean | null` can
+
+error[X0308]: mismatched types
+  --> union-types.xn:13:20
+   |
+13 |     var s:String = a                           // an `int` isn't a `String`
+   |           ------   ^ expected `String`, found `Id`
+   |           |
+   |           expected because of this type
+
+error[X0308]: mismatched types
+  --> union-types.xn:17:24
+   |
+17 |     var bad:Encoding = 'latin1'                // only 'utf8' or 'ascii'
+   |             --------   ^^^^^^^^ expected `Encoding`, found `'latin1'`
+   |             |
+   |             expected because of this type
+
+error[X0308]: mismatched types
+  --> union-types.xn:19:49
+   |
+19 |     var o:Options = { encoding: 'ascii', level: 3 }
+   |                                                 ^ expected `0 | 1 | 2 | null`, found `3`
+
+error[X0426]: no member `length` on `Id`
+  --> union-types.xn:22:21
+   |
+22 |     var len:int = b.length                     // `int` has no `length`
+   |                     ^^^^^^ not on every member of the union
+   |
+   = note: `int` has no `length`
+help: narrow it first: inside `if (b is String) { … }` it is a `String`
+
+error[X0428]: `indexOf` differs between the members of `Array<int> | String`
+  --> union-types.xn:26:22
+   |
+26 |     var at:int = arr.indexOf('b')              // `indexOf` takes a `String` on one, an `int` on the other
+   |                      ^^^^^^^ no common signature
+   |
+   = note: on `Array<int>`: `(item:int, from:int?) -> int`
+   = note: on `String`: `(search:String, from:int?) -> int`
+help: narrow it first: `if (arr is Array) { … }`
+
+error[X0308]: mismatched types
+  --> union-types.xn:31:23
+   |
+31 |       var wrong:int = a                        // a `String` here
+   |                 ---   ^ expected `int`, found `String`
+   |                 |
+   |                 expected because of this type
+   |
+help: convert the value with `int()`
+   |
+31 |       var wrong:int = int(a)                        // a `String` here
+   |                       ++++ +
+
+error[X0308]: mismatched types
+  --> union-types.xn:42:27
+   |
+42 |       var notUtf:'utf8' = e                    // 'ascii' here
+   |                  ------   ^ expected `'utf8'`, found `'ascii'`
+   |                  |
+   |                  expected because of this type
+   |
+   = note: `'utf8'` is a literal type: it takes only the value 'utf8'
+
+error[X0394]: `Id` can't be checked at runtime
+  --> union-types.xn:52:16
+   |
+52 |     trace(a is Id, a as Id)                    // no runtime test for a union
+   |                ^^ a union type
+   |
+help: test its members: `a is int || a is String`
+
+error[X0394]: `Id` can't be checked at runtime
+  --> union-types.xn:52:25
+   |
+52 |     trace(a is Id, a as Id)                    // no runtime test for a union
+   |                         ^^ a union type
+   |
+help: test its members: `a is int || a is String`
+
+error[X0798]: `null` is a type only in a union
+  --> union-types.xn:54:17
+   |
+54 |     var nothing:null = null                    // `null` is a type only in a union
+   |                 ^^^^ `null` alone
+   |
+help: a type that may be null is written `T?` or `T | null`

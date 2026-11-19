@@ -399,9 +399,11 @@ class ModuleGen {
   private tsType(t: Type, top = false): string {
     switch (t.kind) {
       case "prim":
+        if (t.literal !== undefined) return JSON.stringify(t.literal); // `true`, `"buffer"`
         return t.name === "String" ? "string" : t.name === "Boolean" ? "boolean" : "number";
       case "void": return "void";
       case "null": return "null";
+      case "union": return t.types.map((m) => (m.kind === "method" ? `(${this.tsType(m)})` : this.tsType(m))).join(" | ");
       case "any": case "error": return "any";
       case "builtin":
         switch (t.name) {

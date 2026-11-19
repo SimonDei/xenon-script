@@ -644,6 +644,11 @@ export class XenonProject {
   private membersOf(a: Analysis, t: Type | undefined): MemberSig[] {
     if (!t) return [];
     if (t.kind === "nullable") return this.membersOf(a, t.inner);
+    // A union: the members every member type has (what `x.` may use without narrowing).
+    if (t.kind === "union") {
+      const [first, ...rest] = t.types.map((m) => this.membersOf(a, m));
+      return (first ?? []).filter((m) => rest.every((r) => r.some((x) => x.name === m.name)));
+    }
     if (t.kind === "prim" || t.kind === "builtin") {
       const std = stdClassOf.fn?.(t);
       return std && std !== t ? this.membersOf(a, std) : [];

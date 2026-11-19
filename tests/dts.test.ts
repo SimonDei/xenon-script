@@ -193,3 +193,111 @@ test("JavaScript files of the source folder are copied, unless a module has thei
   expect(clash.diagnostics.items.map((d) => [d.code, d.message])).toEqual([["X0030", "`Main.js` in the source folder has the path of this file's output"]]);
   expect(clash.outputs).toEqual([]);
 });
+
+test("an imported interface or type alias names its type (`import { ChildProcessWithoutNullStreams }`)", () => {
+  const { errors, result } = compile(main(
+    "import { spawn, ChildProcessWithoutNullStreams, SpawnOptions } from 'node:child_process'",
+    `    var p:ChildProcessWithoutNullStreams = spawn('ls', ['-l'])
+    var o:SpawnOptions = { cwd: '/', detached: true }
+    var n:int = p
+    var m:int = o.detached
+    trace(p.pid, p.nope, n, m)`,
+  ));
+  expect(errors).toEqual([
+    "X0308 7:17 mismatched types",
+    "X0308 8:17 mismatched types",
+    "X0426 9:20 no member `nope` on `ChildProcessWithoutNullStreams`",
+  ]);
+  // Named as imported, not `ChildProcessWithoutNullStreams2` (which `spawn` would otherwise declare).
+  const found = result.diagnostics.items.filter((d) => d.code === "X0308").map((d) => d.labels.find((l) => l.primary)!.message);
+  expect(found).toEqual(["expected `int`, found `ChildProcessWithoutNullStreams`", "expected `int`, found `Boolean?`"]);
+});
+
+test("a callback with parameters fits a rest-parameter function type (`stream.on('data', (chunk:String) => …)`)", () => {
+  const { errors } = compile(main(
+    "import { spawn } from 'node:child_process'",
+    `    var out:String = ''
+    spawn('ls').stdout.on('data', (chunk:String) => { out += chunk })
+    var f:(...args:Array<int>) -> void = (a:int, b:int) => trace(a + b)
+    var g:(...args:Array<int>) -> void = (s:String) => trace(s)
+    var h:(...args:Array<int>) -> void = (...xs:Array<int>) => trace(xs)
+    trace(out, f, g, h)`,
+  ));
+  expect(errors).toEqual(["X0308 8:42 mismatched types"]);
+});
+
+test("an imported class is the one other signatures return (`import { opendirSync, Dirent }`: one `Dirent`)", () => {
+  const { errors, result } = compile(main(
+    "import { opendirSync, Dirent } from 'node:fs'",
+    `    var d:Dirent = opendirSync('.').readSync()
+    var n:int = d
+    trace(d.name, n)`,
+  ));
+  expect(errors).toEqual(["X0308 6:17 mismatched types"]);
+  const found = result.diagnostics.items.find((d) => d.code === "X0308")!.labels.find((l) => l.primary)!.message;
+  expect(found).toBe("expected `int`, found `Dirent`");
+});
+
+test("overloads are chosen by literal types, as TypeScript chooses them (`readdir(dir, { withFileTypes: true })`)", () => {
+  const { errors, result } = compile(main(
+    "import fs from 'node:fs/promises'\nimport { Dirent } from 'node:fs'",
+    `    fs.readdir('.', { withFileTypes: true }).then((entries:Array<Dirent>) => trace(entries[0].isFile()))
+    fs.readdir('.').then((names:Array<String>) => trace(names))
+    fs.readdir('.', { encoding: 'utf8' }).then((names:Array<String>) => trace(names))
+    var n:int = fs.readdir('.', { withFileTypes: true })`,
+  ));
+  expect(errors).toEqual(["X0308 9:17 mismatched types"]);
+  const found = result.diagnostics.items.find((d) => d.code === "X0308")!.labels.find((l) => l.primary)!.message;
+  expect(found).toBe("expected `int`, found `Promise<Array<Dirent>>`");
+});
+
+test("number literal types from a `.d.ts` choose overloads (`{ version: 2 }`); enums and unions of numbers stay `Float`", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const src = join(import.meta.dir, ".dts-numbers", "src");
+  await rm(join(src, ".."), { recursive: true, force: true });
+  await mkdir(join(src, "lib"), { recursive: true });
+  await Bun.write(join(src, "lib", "proto.d.ts"), `export declare enum Level { Low, High }
+export declare function open(options: { version: 1 }): string;
+export declare function open(options: { version: 2; level?: 0 | 1 | Level }): number;
+export declare function scale(factor?: 0.5): number;
+`);
+  await Bun.write(join(src, "lib", "proto.js"), "export const open = (o) => o.version === 1 ? 'v1' : 2; export const scale = (f) => f;\n");
+  try {
+    const text = main("import { open, scale } from './lib/proto.js'", `    var a:String = open({ version: 1 })
+    var b:Float = open({ version: 2, level: 7 })
+    var c:String = open({ version: 2 })
+    var d:Float = scale(0.5) + scale()
+    trace(a, b, c, d, scale(2))`);
+    const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: src, assets: [{ path: "lib/proto.js", text: "// js" }] });
+    const errors = result.diagnostics.sorted().filter((d) => d.severity === "error").map((d) => `${d.code} ${d.labels.find((l) => l.primary)!.message}`);
+    expect(errors).toEqual([
+      "X0308 expected `String`, found `Float`",
+      "X0308 expected `0.5`, found `2`",
+    ]);
+    expect(result.declarationErrors).toEqual([]);
+  } finally {
+    await rm(join(src, ".."), { recursive: true, force: true });
+  }
+});
+
+test("TypeScript unions are Xenon unions: named ones are typedefs (`BufferEncoding`), literals choose overloads (`readdir(dir, 'buffer')`)", () => {
+  const { result } = compile(main(
+    "import fs from 'node:fs/promises'\nimport { readFileSync } from 'node:fs'",
+    `    fs.readdir('.', 'buffer').then((raw:Array<String>) => trace(raw))
+    fs.readdir('.', 'utf8').then((names:Array<String>) => trace(names))
+    var text:String = readFileSync('x', 'latin1')
+    var bad:String = readFileSync('x', 'latin2')
+    var n:int = readFileSync(true)`,
+  ));
+  const errors = result.diagnostics.items.filter((d) => d.severity === "error");
+  expect(errors.map((d) => `${d.code} ${d.message}`)).toEqual([
+    "X0308 mismatched types",
+    "X0604 no overload of `readFileSync` accepts (String, String)",
+    "X0604 no overload of `readFileSync` accepts (Boolean)",
+  ]);
+  // `'buffer'` chose the overload resolving to buffers (`'utf8'` the one with strings).
+  expect(errors[0]!.labels.find((l) => l.primary)!.message).toContain("Buffer");
+  const notes = errors[1]!.notes.join("\n");
+  expect(notes).toContain("options:BufferEncoding | ReadFileSyncOptionsWithStringEncoding");
+  expect(notes).toContain("path:Float | PathLike");
+});

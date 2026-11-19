@@ -117,7 +117,7 @@ export const CODES: Record<string, CodeInfo> = {
   X0392: c("no keys to iterate", "`for (… in …)` needs an object."),
   X0393: c("`as` with a non-nullable type", "`as` gives `null` for other types, which `int`/`Float`/`Boolean` can't hold. Cast to the nullable type (`x as int?`), convert with `int(x)`, or test with `x is int`.",
     "var n:int = value as int", "var n:int = value as int? ?? 0"),
-  X0394: c("type can't be tested at runtime", "`is`/`as` need a runtime check; `Array<T>` element types and `*` have none (`is Array` works)."),
+  X0394: c("type can't be tested at runtime", "`is`/`as` need a runtime check; `Array<T>` element types, `*`, literal types (compare with `==`) and unions (test each member) have none (`is Array` works)."),
   X0395: c("`is T?`", "`null` never passes an `is` test, so `x is int?` is the same as `x is int`.",
     "if (value is int?) {}", "if (value is int) {}"),
   X0396: c("impossible type test", "The value's static type can never be the tested type."),
@@ -139,6 +139,8 @@ export const CODES: Record<string, CodeInfo> = {
   X0425: c("name not found", "No variable, member, class or import with this name is in scope. Some JavaScript globals are hidden on purpose and come with a hint: `Number` is `Float`, `Error` is `Exception`, and `parseInt`, `parseFloat`, `isNaN`, `isFinite`, `NaN` and `Infinity` are `Float.parseInt`, … (the global versions convert their argument)."),
   X0426: c("member not found", "The type has no member with this name."),
   X0427: c("member of null", "`null` has no members."),
+  X0428: c("member differs across a union", "A member of a union type is usable when every member type has it alike: the same type, or methods one call can serve (one signature the others all fit). Otherwise test which member the value is first: inside `if (x is T) { … }` it is a `T`.",
+    "var v:int | Array<int> = 1\ntrace(v.toString(2))", "if (v is int) trace(v.toString(2))"),
   X0430: c("package not found", "No classes exist in this package."),
   X0431: c("import not found", "No class or typedef has this qualified name."),
   X0432: c("name imported twice", "Two imports provide the same simple name; use a qualified name for one of them."),
@@ -252,6 +254,8 @@ export const CODES: Record<string, CodeInfo> = {
   X0796: c("duplicate type parameter", "A type parameter list names the same parameter twice."),
   X0797: c("type argument can't be inferred", "Type arguments of generic calls and `new` are inferred from the arguments (or the expected type). When nothing determines one, pass an argument that does, assign the result to a typed variable, or write the arguments for `new`.",
     "var b:* = new Box()", "var b:Box<int> = new Box()"),
+  X0798: c("`null` as a type", "`null` is a type only as a member of a union: `int | Boolean | null`. A single type that may be null is written `T?`.",
+    "var x:null = null", "var x:int? = null"),
 
   // ---- destructors ----
   X0800: c("invalid destructor placement", "A class has at most one destructor; interfaces have none."),

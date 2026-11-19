@@ -41,8 +41,16 @@ export interface ShapeType {
   typedef?: TypedefInfo;
 }
 
+export interface UnionType {
+  kind: "union";
+  types: Type[];
+  alias?: string;
+  aliasArgs?: Type[];
+}
+
 export type Type =
-  | { kind: "prim"; name: PrimName }
+  /** `literal`: a literal type, the one value of its base type (`true`, `'buffer'`, `1`, `0.5`). */
+  | { kind: "prim"; name: PrimName; literal?: LiteralValue }
   | { kind: "void" }
   | { kind: "null" }
   | { kind: "any" } // `*`
@@ -54,6 +62,12 @@ export type Type =
   | ShapeType
   /** `int?` / `Null<int>`: a value type or type parameter that may also be `null`. Build with `nullableOf`. */
   | { kind: "nullable"; inner: Type }
+  /**
+   * `int | String`: a value of one of these types. Build with `unionOf`: at least two members,
+   * none a union, `*`, `null` or nullable (`int | null` is `int?`, `int | Boolean | null` the
+   * nullable union), none fitting another (`'a' | String` is `String`). `alias`: a typedef's name.
+   */
+  | UnionType
   | { kind: "error" }; // result of an expression that already produced an error
 
 export const T = {
@@ -99,8 +113,96 @@ export function isNumeric(t: Type): boolean {
   return t.kind === "prim" && (t.name === "int" || t.name === "uint" || t.name === "Float");
 }
 
+/** The value of a literal type. */
+export type LiteralValue = boolean | string | number;
+
+/**
+ * A literal type: `true`, `false`, a string (`'buffer'`) or a number. A number's base type is
+ * `int` for an integer in its range (`1`, `-1`), `uint` above it, else `Float` (`0.5`, or `1.0`:
+ * `float` when written with a fraction or exponent).
+ */
+export function literalType(value: LiteralValue, float = false): Type {
+  if (typeof value === "boolean") return { kind: "prim", name: "Boolean", literal: value };
+  if (typeof value === "string") return { kind: "prim", name: "String", literal: value };
+  return { kind: "prim", name: float || !Number.isInteger(value) ? "Float" : value >= -0x80000000 && value <= 0x7fffffff ? "int" : value >= 0 && value <= 0xffffffff ? "uint" : "Float", literal: value };
+}
+
+/** Does the number `v` fit the numeric type `name` (`int` range, `uint` sign)? */
+function numberFits(v: number, name: PrimName): boolean {
+  if (name === "int") return Number.isInteger(v) && v >= -0x80000000 && v <= 0x7fffffff;
+  if (name === "uint") return Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
+  return name === "Float";
+}
+
+/** The value of a literal type (looking through `?`), if it is one. */
+export function literalOf(t: Type): LiteralValue | undefined {
+  const inner = nonNull(t);
+  return inner.kind === "prim" ? inner.literal : undefined;
+}
+
+/** A literal type's base (`Boolean` for `true`); other types as they are. */
+export function widen(t: Type): Type {
+  if (t.kind === "prim" && t.literal !== undefined) return { kind: "prim", name: t.name };
+  if (t.kind === "nullable") return nullableOf(widen(t.inner));
+  if (t.kind === "union") return unionOf(t.types.map(widen)); // `1 | 2` is an `int`
+  return t;
+}
+
 export function isPrim(t: Type, name: PrimName): boolean {
   return t.kind === "prim" && t.name === name;
+}
+
+/**
+ * The union of these types, normalized: nested unions flattened, `*` swallows everything, `null`
+ * (and nullable members) make the result nullable, members fitting another member are dropped
+ * (`'utf8' | String` is `String`, `Dog | Animal` is `Animal`), one member left is just that type.
+ */
+export function unionOf(types: Type[]): Type {
+  let nullable = false;
+  const flat: Type[] = [];
+  const add = (t: Type) => {
+    if (t.kind === "union") t.types.forEach(add);
+    else if (t.kind === "null") nullable = true;
+    else if (t.kind === "nullable") {
+      nullable = true;
+      add(t.inner);
+    } else flat.push(t);
+  };
+  types.forEach(add);
+  if (flat.some((t) => t.kind === "any" || t.kind === "error")) return flat.find((t) => t.kind === "error") ?? T.any;
+  // Keep a member unless another (kept or later) member takes all its values; equal members once.
+  const kept: Type[] = [];
+  flat.forEach((t, i) => {
+    const covered = flat.some((u, j) => j !== i && assignable(t, u) && !(assignable(u, t) && j > i));
+    if (!covered) kept.push(t);
+  });
+  if (kept.length === 0) return nullable ? T.null : T.any;
+  // `true | false` is `Boolean`.
+  const t = kept.findIndex((m) => m.kind === "prim" && m.literal === true);
+  const f = kept.findIndex((m) => m.kind === "prim" && m.literal === false);
+  if (t >= 0 && f >= 0) return unionOf([...kept.filter((_, i) => i !== t && i !== f), T.Boolean, ...(nullable ? [T.null] : [])]);
+  const result: Type = kept.length === 1 ? kept[0]! : { kind: "union", types: kept };
+  return nullable ? nullableOf(result) : result;
+}
+
+/** The members of a union (a type itself otherwise), `null` left out. */
+export function membersOf(t: Type): Type[] {
+  const inner = nonNull(t);
+  return inner.kind === "union" ? inner.types : [inner];
+}
+
+/**
+ * Does the constant `v` fit `t` by its value: numbers by range, literal types by equality, a union
+ * when it fits a member. `plain`: strings and booleans also fit `String`/`Boolean` (otherwise only
+ * where the static type already decides, so an enum's string value doesn't pass for a `String`).
+ */
+export function valueFits(v: unknown, t: Type, plain = false): boolean {
+  if (t.kind === "nullable") return v === null || valueFits(v, t.inner, plain);
+  if (t.kind === "union") return t.types.some((m) => valueFits(v, m, plain));
+  if (t.kind !== "prim") return false;
+  if (t.literal !== undefined) return v === t.literal;
+  if (typeof v === "number") return isNumeric(t) && numberFits(v, t.name);
+  return plain && ((typeof v === "string" && t.name === "String") || (typeof v === "boolean" && t.name === "Boolean"));
 }
 
 /** `*` and error types switch checking off. */
@@ -111,6 +213,7 @@ export function isDynamic(t: Type): boolean {
 /** Types whose values can be `null`. */
 export function isNullable(t: Type): boolean {
   if (t.kind === "prim") return t.name === "String";
+  if (t.kind === "union") return t.types.some(isNullable);
   return t.kind !== "void";
 }
 
@@ -119,7 +222,7 @@ export function isNullable(t: Type): boolean {
  * type parameters (which may stand for one); other types already include `null` and stay as they are.
  */
 export function nullableOf(t: Type): Type {
-  if ((t.kind === "prim" && t.name !== "String") || t.kind === "typeParam") return { kind: "nullable", inner: t };
+  if ((t.kind === "prim" && t.name !== "String") || t.kind === "typeParam" || (t.kind === "union" && !isNullable(t))) return { kind: "nullable", inner: t };
   return t;
 }
 
@@ -130,7 +233,7 @@ export function nonNull(t: Type): Type {
 
 export function typeToString(t: Type): string {
   switch (t.kind) {
-    case "prim": return t.name;
+    case "prim": return t.literal === undefined ? t.name : typeof t.literal !== "string" ? literalNumberText(t) : `'${t.literal.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
     case "void": return "void";
     case "null": return "null";
     case "any": return "*";
@@ -138,7 +241,9 @@ export function typeToString(t: Type): string {
     case "builtin": return t.args.length && !t.args.every(isDynamic) ? `${t.name}<${t.args.map(typeToString).join(", ")}>` : t.name;
     case "class": return t.args?.length ? `${t.info.decl.name.name}<${t.args.map(typeToString).join(", ")}>` : t.info.decl.name.name;
     case "typeParam": return t.param.name;
-    case "nullable": return `${typeToString(t.inner)}?`;
+    // `int | Boolean | null`, as written (`(int | Boolean)?` isn't Xenon).
+    case "nullable": return t.inner.kind === "union" && !t.inner.alias ? `${typeToString(t.inner)} | null` : `${typeToString(t.inner)}?`;
+    case "union": return t.alias ? aliasText(t) : t.types.map((m) => (m.kind === "method" && !m.alias ? `(${typeToString(m)})` : typeToString(m))).join(" | ");
     case "classRef": return `Class<${t.info.decl.name.name}>`;
     case "method": {
       if (t.alias) return aliasText(t);
@@ -153,6 +258,12 @@ export function typeToString(t: Type): string {
   }
 }
 
+/** `true`, `1`, `-1`, `0.5`; a `Float` with an integer value keeps its fraction (`1.0`). */
+function literalNumberText(t: { name: PrimName; literal?: LiteralValue }): string {
+  const text = String(t.literal);
+  return typeof t.literal === "number" && t.name === "Float" && Number.isInteger(t.literal) && !/e/i.test(text) ? `${text}.0` : text;
+}
+
 /** `Reducer`, or `Callback<int>` for a generic typedef. */
 function aliasText(t: { alias?: string; aliasArgs?: Type[] }): string {
   return t.aliasArgs?.length ? `${t.alias}<${t.aliasArgs.map(typeToString).join(", ")}>` : t.alias!;
@@ -161,7 +272,7 @@ function aliasText(t: { alias?: string; aliasArgs?: Type[] }): string {
 export function sameType(a: Type, b: Type): boolean {
   if (a.kind !== b.kind) return false;
   switch (a.kind) {
-    case "prim": return a.name === (b as typeof a).name;
+    case "prim": return a.name === (b as typeof a).name && a.literal === (b as typeof a).literal;
     case "class": {
       const bb = b as typeof a;
       if (a.info !== bb.info) return false;
@@ -178,6 +289,7 @@ export function sameType(a: Type, b: Type): boolean {
     }
     case "method":
     case "shape":
+    case "union":
       return a === b || (assignable(a, b) && assignable(b, a));
     default: return true;
   }
@@ -227,6 +339,10 @@ const comparing = new Map<Type, Set<Type>>();
 export function assignable(from: Type, to: Type): boolean {
   if (from === to) return true;
   if (isDynamic(from) || isDynamic(to)) return true;
+  // A union fits where each of its members fits; a value fits a union when it fits a member.
+  if (from.kind === "union") return from.types.every((m) => assignable(m, to));
+  if (from.kind === "nullable" && from.inner.kind === "union") return from.inner.types.every((m) => assignable(nullableOf(m), to));
+  if (to.kind === "union") return from.kind === "null" ? isNullable(to) : to.types.some((m) => assignable(from, m));
   // `int?` takes `null`, `int` and `int?`; an `int?` fits only where `null` fits too.
   if (to.kind === "nullable") return from.kind === "null" || assignable(nonNull(from), to.inner);
   if (from.kind === "nullable") return isNullable(to) && to.kind !== "typeParam" && assignable(from.inner, to);
@@ -249,6 +365,11 @@ export function assignable(from: Type, to: Type): boolean {
   if (to.kind === "builtin" && to.name === "Object") return true; // everything (but void) is an Object
   if (to.kind === "prim") {
     if (from.kind !== "prim") return false;
+    // A literal type takes only its value; a literal fits its base type (`true` is a `Boolean`).
+    // Numbers compare by value: the `int` literal `1` fits the `Float` literal `1.0`.
+    if (to.literal !== undefined) return from.literal === to.literal && (from.name === to.name || (isNumeric(from) && isNumeric(to)));
+    // A number literal fits every numeric type its value fits: `1` is an `int`, a `uint` and a `Float`.
+    if (typeof from.literal === "number" && isNumeric(to)) return numberFits(from.literal, to.name);
     if (from.name === to.name) return true;
     // Widening only: int/uint → Float. Everything else needs a cast.
     return to.name === "Float" && (from.name === "int" || from.name === "uint");
@@ -300,6 +421,10 @@ export function subst(t: Type, map: Map<TypeParamInfo, Type>): Type {
   switch (t.kind) {
     case "typeParam": return map.get(t.param) ?? t;
     case "nullable": return nullableOf(subst(t.inner, map)); // `V?` with `V = Dog` is just `Dog`
+    case "union": {
+      const u = unionOf(t.types.map((m) => subst(m, map)));
+      return u.kind === "union" && t.alias ? { ...u, alias: t.alias, aliasArgs: t.aliasArgs?.map((a) => subst(a, map)) } : u;
+    }
     case "class": return t.args?.length ? { ...t, args: t.args.map((a) => subst(a, map)) } : t;
     case "builtin": return t.args.length ? { ...t, args: t.args.map((a) => subst(a, map)) } : t;
     case "method":
@@ -365,6 +490,13 @@ export function unify(pattern: Type, actual: Type, vars: Set<TypeParamInfo>, out
     case "nullable":
       unify(pattern.inner, nonNull(actual), vars, out);
       return;
+    case "union": {
+      // `T | null`-like patterns: the one member with type parameters takes what the others don't.
+      const open = pattern.types.filter((m) => mentions(m, vars));
+      const rest = membersOf(actual).filter((a) => !pattern.types.some((m) => !mentions(m, vars) && assignable(a, m)));
+      if (open.length === 1 && rest.length > 0) unify(open[0]!, unionOf(rest), vars, out);
+      return;
+    }
     case "class": {
       const cls = actual.kind === "class" ? actual : stdClassOf.fn?.(actual); // `Iterable<T>` from an `Array<int>`
       if (cls?.kind !== "class" || !pattern.args?.length) return;
@@ -395,6 +527,7 @@ export function mentions(t: Type, params: Set<TypeParamInfo>): boolean {
   switch (t.kind) {
     case "typeParam": return params.has(t.param);
     case "nullable": return mentions(t.inner, params);
+    case "union": return t.types.some((m) => mentions(m, params));
     case "class": return !!t.args?.some((a) => mentions(a, params));
     case "builtin": return t.args.some((a) => mentions(a, params));
     case "method": return t.params.some((p) => mentions(p.type, params)) || mentions(t.ret, params);
@@ -441,7 +574,10 @@ function fitsFunction(from: Type, to: MethodType): boolean {
     const mine = from.params[i]!;
     const theirs = to.params[i] ?? to.params.find((p) => p.rest);
     if (!theirs) break;
-    if (!assignable(theirs.type, mine.type)) return false;
+    // A parameter against a rest parameter receives one of its elements (`(chunk:String)` fits
+    // `(...args:Array<*>)`); a rest parameter against a rest parameter, the array.
+    const given = theirs.rest && !mine.rest ? (elementOf(theirs.type) ?? T.any) : theirs.type;
+    if (!assignable(given, mine.type)) return false;
   }
   return to.ret.kind === "void" || assignable(from.ret, to.ret);
 }
@@ -457,6 +593,9 @@ export function numberLiteralType(raw: string, value: number): Type {
 
 /** Result type of an arithmetic operator on two numeric types. */
 export function arithmeticResult(a: Type, b: Type): Type {
+  // Literal types compute as their base type: `1 + n` of a literal `1` and an `int` is an `int`.
+  a = widen(a);
+  b = widen(b);
   if (isPrim(a, "Float") || isPrim(b, "Float")) return T.Float;
   if (sameType(a, b)) return a;
   return T.Float; // int mixed with uint

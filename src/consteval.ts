@@ -227,6 +227,7 @@ export function fits(v: ConstValue, t: Type): boolean {
     case "error":
       return true;
     case "prim":
+      if (t.literal !== undefined) return v === t.literal;
       switch (t.name) {
         case "int": return typeof v === "number" && Number.isInteger(v) && v >= -0x80000000 && v <= 0x7fffffff;
         case "uint": return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
@@ -237,6 +238,10 @@ export function fits(v: ConstValue, t: Type): boolean {
       return false;
     case "builtin":
       return t.name === "Object" ? true : v === null;
+    case "nullable":
+      return v === null || fits(v, t.inner);
+    case "union":
+      return t.types.some((m) => fits(v, m)) || (v === null && isNullable(t));
     default:
       return v === null && isNullable(t);
   }

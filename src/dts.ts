@@ -63,6 +63,33 @@ export interface JsDeclarations {
   bindings: Map<string, Map<string, JsBinding>>;
 }
 
+/** A union of more literals of one kind than this is their base type (`String` for event names). */
+const MAX_LITERALS = 30;
+
+/** Types that need `?` or `| null` to hold `null`: numbers, booleans, their literals, unions of them. */
+const VALUE_TYPES = /^(Float|Boolean|true|false|-?\d[\w.+-]*|[^{(<]* \| [^{(<]*)$/;
+
+/** A string as a Xenon literal type: `'buffer'`. */
+function quote(value: string): string {
+  return `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\n/g, "\\n").replace(/\r/g, "\\r")}'`;
+}
+
+/** A number literal type as written: `1`, `-1`, `0.5`, `1e+21`. */
+const NUMBER = /^-?\d[\d.]*(e[+-]?\d+)?$/;
+
+/** A number as a Xenon literal type (TypeScript's number literals are all `number`: a whole one is an `int` literal). */
+function numberText(value: number): string {
+  return Number.isFinite(value) ? String(value) : "Float";
+}
+
+/** An optional parameter's default: `Float` 0, a literal itself, `false` for `Boolean`, else `null`. */
+function defaultFor(type: string): string {
+  if (type === "Float") return "0";
+  if (type === "Boolean") return "false";
+  if (type === "true" || type === "false" || NUMBER.test(type)) return type; // a literal: its value
+  return "null";
+}
+
 /** The package (and directory) of generated declarations. */
 export const GENERATED_DIR = "__js";
 
@@ -187,17 +214,29 @@ function generate(probes: { file: A.XenonFile; local: string; kind: string; prob
     const statics: string[] = [];
     const bindings = new Map<string, JsBinding>();
     const path = `${GENERATED_DIR}/${holder}.xn`;
-    for (const p of list) {
+    const symbolOf = (p: (typeof list)[number]) => {
       const node = locals.get(p.probe);
-      if (!node || reserved.has(p.local)) continue;
+      if (!node || reserved.has(p.local)) return undefined;
       let sym = checker.getSymbolAtLocation(node);
       if (sym && sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
-      if (!sym || !sym.declarations?.length) continue; // no types for this module
-      if (sym.flags & ts.SymbolFlags.Class) {
-        gen.classDecl(sym, p.local, p.local);
-        bindings.set(p.local, { kind: "class", qname: `${path}#${p.local}` });
-        continue;
-      }
+      return sym?.declarations?.length ? { node, sym } : undefined; // none: no types for this module
+    };
+    // Imported classes and types first (`import { Dirent }`, `import { ChildProcessWithoutNullStreams }`):
+    // declared under the local name before a function's signature (`readdir`'s) declares them, so
+    // both name one class rather than two (`Dirent` and `Dirent2`, which wouldn't be assignable).
+    const isClass = (sym: tsModule.Symbol) => !!(sym.flags & ts.SymbolFlags.Class);
+    const typeOnly = (sym: tsModule.Symbol) => !!(sym.flags & (ts.SymbolFlags.Interface | ts.SymbolFlags.TypeAlias)) && !(sym.flags & ts.SymbolFlags.Value);
+    for (const p of list) {
+      const found = symbolOf(p);
+      if (!found || !(isClass(found.sym) || typeOnly(found.sym))) continue;
+      // A class is a value too: its JavaScript name is the local binding.
+      const declared = isClass(found.sym) ? gen.importedClass(found.sym, p.local) : gen.importedType(found.sym, p.local);
+      if (declared) bindings.set(p.local, { kind: declared.kind, qname: `${path}#${declared.name}` });
+    }
+    for (const p of list) {
+      const found = symbolOf(p);
+      if (!found || isClass(found.sym) || typeOnly(found.sym)) continue;
+      const { node, sym } = found;
       const type = checker.getTypeOfSymbolAtLocation(sym, node);
       if (type.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) continue;
       // A constructor held in a variable (`declare var URL: typeof _URL`, `BufferConstructor`): the class it makes.
@@ -354,6 +393,31 @@ class DeclWriter {
     return name;
   }
 
+  /** A class imported by name: declared under its local name, which is also its JavaScript one. */
+  importedClass(sym: tsModule.Symbol, local: string): { kind: "class"; name: string } {
+    const known = this.classNames.get(sym);
+    if (known) return { kind: "class", name: known };
+    this.classDecl(sym, local, local);
+    return { kind: "class", name: local };
+  }
+
+  /** A type imported by name: declared under its local name (unless already declared). */
+  importedType(sym: tsModule.Symbol, local: string): { kind: "class" | "typedef"; name: string } | undefined {
+    if (this.full() || this.isLib(sym)) return undefined;
+    if (this.isClassLike(sym)) {
+      const known = this.classNames.get(sym);
+      if (known) return { kind: "class", name: known };
+      this.classDecl(sym, local, this.jsNames.get(sym) ?? sym.name);
+      return { kind: "class", name: local };
+    }
+    // A shape is named after its TypeScript name: the local one is reserved, so let it take that.
+    const own = sym.name === local;
+    if (own) this.names.delete(local);
+    const declared = this.typeExport(sym);
+    if (own) this.names.add(local);
+    return declared;
+  }
+
   /** A module's exported type, declared to be named as `Ns.Type`: a native class or a typedef shape. */
   typeExport(sym: tsModule.Symbol): { kind: "class" | "typedef"; name: string } | undefined {
     if (this.full() || this.isLib(sym)) return undefined;
@@ -386,6 +450,60 @@ class DeclWriter {
       (ts.isVariableDeclaration(d) && ts.getCombinedNodeFlags(d) & ts.NodeFlags.Const));
   }
 
+  /**
+   * A union: `String | Buffer | URL`, `Shape | BufferEncoding | null`. A named one (`BufferEncoding`)
+   * becomes a typedef of that name, and is kept as one member where TypeScript wrote it into a
+   * larger union. `true | false` is `Boolean`; more than `MAX_LITERALS` literals of one kind are
+   * their base type (an event name list); a function member is `Function` (a function type can't
+   * be a union member in Xenon: `() -> void | String` reads as a function returning a union).
+   */
+  private unionType(t: tsModule.UnionType, ret: boolean): string {
+    const F = this.ts.TypeFlags;
+    const nullish = t.types.some((x) => x.flags & (F.Null | F.Undefined | F.Void));
+    // As written, where TypeScript kept it (`Options | BufferEncoding | null`, not 14 members).
+    const written = (t as tsModule.UnionType & { origin?: tsModule.Type }).origin;
+    const source = written?.isUnion() ? written.types : t.types;
+    const parts = source.filter((x) => !(x.flags & (F.Null | F.Undefined | F.Void)));
+    if (parts.length === 0) return ret ? "void" : "*";
+    if (parts.length === 1) {
+      const only = this.type(parts[0]!, false);
+      return nullish && VALUE_TYPES.test(only) ? (only.includes(" ") ? `${only} | null` : `${only}?`) : only;
+    }
+    if (t.aliasSymbol && !written?.isUnion()) {
+      const known = this.typeNames.get(t);
+      if (known) return known + (nullish ? " | null" : "");
+    }
+    const texts: string[] = [];
+    for (const kind of [F.StringLiteral, F.NumberLiteral]) {
+      const lits = parts.filter((x) => x.flags & kind && !(x.flags & F.EnumLiteral));
+      if (lits.length > MAX_LITERALS) texts.push(kind === F.StringLiteral ? "String" : "Float");
+    }
+    const bools = parts.filter((x) => x.flags & F.BooleanLiteral);
+    if (bools.length === 2) texts.push("Boolean");
+    for (const x of parts) {
+      if (x.flags & F.BooleanLiteral && bools.length === 2) continue;
+      if (texts.includes("String") && x.flags & F.StringLiteral) continue;
+      if (texts.includes("Float") && x.flags & F.NumberLiteral && !(x.flags & F.EnumLiteral)) continue;
+      const text = x.getCallSignatures().length > 0 && this.checker.getPropertiesOfType(x).length === 0 ? "Function" : this.type(x, false);
+      if (text === "*") return "*";
+      if (!texts.includes(text)) texts.push(text);
+    }
+    let text = texts.join(" | ");
+    // A named union is a typedef: `BufferEncoding` in hovers, declared once.
+    if (t.aliasSymbol && texts.length > 1 && !written?.isUnion() && !this.full()) {
+      const name = this.unique(t.aliasSymbol.name);
+      this.typeNames.set(t, name);
+      this.decls.push(`${this.aliasDoc(t.aliasSymbol)}typedef ${name} = ${text}`);
+      text = name;
+    }
+    return nullish ? `${text} | null` : text;
+  }
+
+  /** A type alias's JSDoc as a comment. */
+  private aliasDoc(sym: tsModule.Symbol): string {
+    return this.doc(sym, "");
+  }
+
   /** `name:T, opt:T = null, ...rest:Array<T>` */
   private params(sig: tsModule.Signature): string {
     const ts = this.ts;
@@ -399,7 +517,7 @@ class DeclWriter {
       }
       const text = this.type(t, false);
       const optional = !!decl && ts.isParameter(decl) && (!!decl.questionToken || !!decl.initializer);
-      return optional ? `${name}:${text} = ${text === "Float" ? "0" : text === "Boolean" ? "false" : "null"}` : `${name}:${text}`;
+      return optional ? `${name}:${text} = ${defaultFor(text)}` : `${name}:${text}`;
     }).join(", ");
   }
 
@@ -418,21 +536,22 @@ class DeclWriter {
     const F = this.ts.TypeFlags;
     if (t.flags & (F.Any | F.Unknown)) return "*";
     if (t.flags & (F.Void | F.Undefined | F.Never)) return ret ? "void" : "*";
+    // Literal types: what TypeScript chooses overloads by (`withFileTypes: true`, `encoding: 'buffer'`).
+    if (t.flags & F.BooleanLiteral) return (t as tsModule.Type & { intrinsicName: string }).intrinsicName === "true" ? "true" : "false";
+    if (t.flags & F.StringLiteral) return quote((t as tsModule.StringLiteralType).value);
+    // A number literal (`mode: 1`), not an enum member (named by TypeScript, its value an accident).
+    if (t.flags & F.NumberLiteral && !(t.flags & F.EnumLiteral)) return numberText((t as tsModule.NumberLiteralType).value);
     if (t.flags & F.StringLike) return "String";
     if (t.flags & F.NumberLike) return "Float";
     if (t.flags & F.BooleanLike) return "Boolean";
-    if (t.isUnion()) {
-      const parts = t.types.filter((x) => !(x.flags & (F.Null | F.Undefined | F.Void)));
-      if (parts.length === 0) return ret ? "void" : "*";
-      // Several object types: no Xenon equivalent (and generating each would be wasted).
-      if (parts.length > 1 && parts.some((x) => x.flags & F.Object)) return "*";
-      const texts = new Set(parts.map((x) => this.type(x, false)));
-      if (texts.size !== 1) return "*";
-      const only = [...texts][0]!;
-      return parts.length < t.types.length && (only === "Float" || only === "Boolean") ? `${only}?` : only;
-    }
+    if (t.isUnion()) return this.unionType(t, ret);
     if (t.flags & F.Object) return this.objectType(t as tsModule.ObjectType);
-    return "*"; // type parameters, intersections, enums, symbols, bigints, …
+    // An intersection of object types (`ObjectEncodingOptions & { withFileTypes: true }`): one shape
+    // with the members of all (not of classes: those are nominal).
+    if (t.isIntersection() && t.types.every((x) => x.flags & F.Object && !(x.getSymbol() && this.isClassLike(x.getSymbol()!)) && x.getCallSignatures().length === 0)) {
+      return this.shape(t as unknown as tsModule.ObjectType, undefined);
+    }
+    return "*"; // type parameters, other intersections, enums, symbols, bigints, …
   }
 
   private objectType(t: tsModule.ObjectType): string {
@@ -469,7 +588,7 @@ class DeclWriter {
 
   /** `(a:T, ...rest:Array<U>) -> R` (optional parameters become required: function types have none). */
   private functionType(sig: tsModule.Signature): string {
-    const params = this.params(sig).replace(/ = (0|false|null)(?=,|$)/g, "");
+    const params = this.params(sig).replace(/ = (-?\d[\d.]*(?:e[+-]?\d+)?|false|true|null)(?=,|$)/g, "");
     return `(${params}) -> ${this.type(sig.getReturnType(), true)}`;
   }
 

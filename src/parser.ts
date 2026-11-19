@@ -24,7 +24,7 @@ function exprBodyStatement(expr: A.Expr, returnType: A.TypeNode | undefined, acc
  * Tokens after which a `?` that follows a type is the nullable suffix (`int?`), not a conditional:
  * they end a type, or can't start an expression (`x as int? ?? 0`, `x as int? == null`).
  */
-const TYPE_FOLLOW = new Set(["=", ")", ",", ">", ">>", ">>>", "]", "{", "}", ";", "->", "const", "=>", "??", "==", "!=", "===", "!==", "&&", "||", ":"]);
+const TYPE_FOLLOW = new Set(["=", ")", ",", ">", ">>", ">>>", "]", "{", "}", ";", "->", "const", "=>", "??", "==", "!=", "===", "!==", "&&", "||", ":", "|"]);
 const ASSIGN_OPS = new Set(["=", "+=", "-=", "*=", "/=", "%=", "**=", "<<=", ">>=", ">>>=", "&=", "|=", "^=", "&&=", "||=", "??="]);
 
 /** Binary operator precedence (higher binds tighter). */
@@ -572,7 +572,20 @@ export class Parser {
 
   /* ------------------------------ types ------------------------------ */
 
-  parseType(): A.TypeNode {
+  /**
+   * A type; `A | B | null` is a union unless `union` is false (after `is`/`as` and `new`, where a
+   * `|` is the bitwise operator: `x as int | 1`).
+   */
+  parseType(union = true): A.TypeNode {
+    const start = this.tok.span.start;
+    const first = this.parseNullableType();
+    if (!union || !this.is("|")) return first;
+    const types = [first];
+    while (this.eat("|")) types.push(this.parseNullableType());
+    return { kind: "UnionType", types, span: this.sp(start) };
+  }
+
+  private parseNullableType(): A.TypeNode {
     const start = this.tok.span.start;
     const t = this.parseTypeAtom();
     // `int?`: only when the `?` ends the type, so `x is int ? a : b` stays a conditional.
@@ -592,6 +605,17 @@ export class Parser {
     if (this.is("{")) return this.parseShapeType();
     if (this.is("(")) return this.parseFunctionType();
     if (this.eat("void")) return { kind: "VoidType", span: this.sp(start) };
+    if (this.eat("null")) return { kind: "NullType", span: this.sp(start) };
+    // Literal types (`withFileTypes:true`, `encoding:'buffer'`): the one value, as in TypeScript.
+    if (this.tok.kind === "string") return { kind: "LiteralType", value: this.advance().value, span: this.sp(start) };
+    if (this.is("true") || this.is("false")) return { kind: "LiteralType", value: this.advance().value === "true", span: this.sp(start) };
+    if (this.tok.kind === "number" || (this.is("-") && this.peekTok().kind === "number" && !this.peekTok().nl)) {
+      const negative = !!this.eat("-");
+      const raw = this.advance().value;
+      const value = Number(raw.replaceAll("_", ""));
+      const float = !/^0[xXbBoO]/.test(raw) && /[.eE]/.test(raw);
+      return { kind: "LiteralType", value: negative ? -value : value, float, span: this.sp(start) };
+    }
     const name: A.Ident[] = [this.ident("a type")];
     while (this.is(".") && this.peekTok().kind === "ident") {
       this.advance();
@@ -1200,7 +1224,7 @@ export class Parser {
       if (prec < minPrec) return left;
       const opTok = this.advance();
       if (op === "is" || op === "as") {
-        const type = this.parseType();
+        const type = this.parseType(false);
         left = { kind: "TypeOp", op, expr: left, type, span: this.sp(start) };
         continue;
       }
@@ -1352,7 +1376,7 @@ export class Parser {
           case "undefined": this.advance(); return { kind: "Undefined", span: t.span };
           case "new": {
             this.advance();
-            const callee = this.parseType();
+            const callee = this.parseType(false);
             const args = this.is("(") && !this.tok.nl ? this.parseArgs() : [];
             return { kind: "New", callee, args, span: this.sp(start) };
           }
