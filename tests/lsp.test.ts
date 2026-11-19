@@ -116,3 +116,53 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
     server.kill();
   }
 }, 20_000);
+
+const repo = join(import.meta.dir, "..");
+
+test("files find their project: xenon.json, else the nearest src/ that isn't a JavaScript project's", async () => {
+  const { locateProject } = await import("../src/lsp.ts");
+  expect(locateProject(join(repo, "examples", "zoo", "src", "com", "zoo", "Animal.xn"))).toEqual({ srcRoot: join(repo, "examples", "zoo", "src"), main: "Main" });
+  // The compiler's own sources hold its prelude: not a Xenon project, and neither are the error snapshots.
+  expect(locateProject(join(repo, "src", "prelude", "Prelude.xn"))).toBeUndefined();
+  expect(locateProject(join(repo, "tests", "errors", "accessors.xn"))).toBeUndefined();
+  await mkdir(join(dir, "app"), { recursive: true });
+  await Bun.write(join(dir, "xenon.json"), JSON.stringify({ src: "app", main: "app.Main" }));
+  expect(locateProject(join(dir, "app", "x", "Y.xn"))).toEqual({ srcRoot: join(dir, "app"), main: "app.Main" });
+});
+
+test("a workspace with several projects (the compiler repository): each example on its own, no prelude errors", async () => {
+  const server = spawn("bun", [join(repo, "src", "cli.ts"), "lsp", "--stdio"], { cwd: repo });
+  const rpc = createMessageConnection(new StreamMessageReader(server.stdout), new StreamMessageWriter(server.stdin));
+  const published = new Map<string, number>();
+  let notify = () => {};
+  rpc.onNotification("textDocument/publishDiagnostics", (p: { uri: string; diagnostics: unknown[] }) => {
+    published.set(p.uri, p.diagnostics.length);
+    notify();
+  });
+  rpc.listen();
+  try {
+    await rpc.sendRequest("initialize", { processId: null, rootUri: pathToFileURL(repo).href, capabilities: {} });
+    rpc.sendNotification("initialized", {});
+    const open = async (path: string) => {
+      const uri = pathToFileURL(join(repo, path)).href;
+      rpc.sendNotification("textDocument/didOpen", { textDocument: { uri, languageId: "xenon", version: 1, text: await Bun.file(join(repo, path)).text() } });
+      return uri;
+    };
+    await open("src/prelude/Prelude.xn");
+    await open("tests/errors/accessors.xn");
+    const zoo = await open("examples/zoo/src/Main.xn");
+    // A broken example: its error shows up, in that example only.
+    const broken = pathToFileURL(join(repo, "examples/hello/src/Main.xn")).href;
+    rpc.sendNotification("textDocument/didOpen", { textDocument: { uri: broken, languageId: "xenon", version: 1, text: "public class Main {\n  public function Main() { trace(nope) }\n}\n" } });
+    while (published.get(broken) !== 1) await new Promise<void>((r) => (notify = r));
+    expect([...published.keys()].map((u) => u.slice(pathToFileURL(repo).href.length + 1))).toEqual(["examples/hello/src/Main.xn"]);
+    // Hover works in each project.
+    const hover = await rpc.sendRequest("textDocument/hover", { textDocument: { uri: zoo }, position: { line: 5, character: 16 } });
+    expect(hover).toMatchObject({ contents: { value: "```xenon\nclass Main\n```" } });
+    await rpc.sendRequest("shutdown");
+    rpc.sendNotification("exit");
+  } finally {
+    rpc.dispose();
+    server.kill();
+  }
+}, 20_000);
