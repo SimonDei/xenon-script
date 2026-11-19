@@ -181,11 +181,6 @@ function isConstexpr(m: MemberSig): boolean {
   return m.kind === "method" && m.decl.kind === "Method" && !!m.decl.modifiers.constexpr && !!m.decl.body;
 }
 
-/** Can no subclass replace this method? `private` or `final` methods, and methods of `final` classes. */
-function cannotOverride(m: MemberSig): boolean {
-  return visibilityOf(m.decl) === "private" || !!m.decl.modifiers.final || !!m.owner.decl.modifiers.final;
-}
-
 /** The value a field gets without an initializer: `0`, `NaN`, `false` or `null`. */
 function defaultValueOf(type: A.TypeNode | undefined): ConstValue {
   const name = type?.kind === "TypeName" && type.name.length === 1 ? type.name[0]!.name : undefined;
@@ -1378,6 +1373,14 @@ class Env {
           .secondary(finalMod, "declared `final` here");
         continue;
       }
+      // A `constexpr` method is implicitly `final`: its calls may already be computed at compile time.
+      const constexprMod = parentHalf?.modifiers.constexpr;
+      if (constexprMod) {
+        this.diags.error("X0723", `\`${parentName}.${name}\` is \`constexpr\` and can't be overridden`, m.name.span)
+          .secondary(constexprMod, "declared `constexpr` here")
+          .note("a `constexpr` method is implicitly `final`: calls of it may be computed at compile time, so no subclass can replace it");
+        continue;
+      }
       this.checkSignature(m, info, inherited);
     }
   }
@@ -1662,8 +1665,8 @@ class Env {
    * Compile-time evaluation of a call, a `new` or an operator on an object, with these argument
    * values (`self`: the receiver object). `ctx` is where names are resolved and `this` (inside a
    * `constexpr` method or constructor). Pure `Math` functions; static `constexpr` functions;
-   * `constexpr` methods of objects built at compile time (looked up on the object's own class,
-   * so overrides count); `constexpr` constructors; `constexpr` operator methods. At most 1000
+   * `constexpr` methods of objects built at compile time (looked up on the object's own class);
+   * `constexpr` constructors; `constexpr` operator methods. At most 1000
    * calls deep, 100000 calls and 1000000 steps. Undefined if the code isn't `constexpr`.
    */
   constCall(e: A.Expr, args: ConstValue[], ctx: { owner: ClassInfo; scope: FileScope; self?: ConstObject }, depth = 0, self?: ConstObject): Fold | undefined {
@@ -1700,11 +1703,12 @@ class Env {
       if (callee.kind === "Member" && callee.object.kind !== "This") return undefined;
     }
     // `fact(10)` / `this.fact(10)` in the class's own code, where `this` is a runtime object: a
-    // `constexpr` method nothing can override runs without one (if it uses `this`, it isn't folded).
+    // `constexpr` method (implicitly `final`, so no subclass runs other code) runs without one; if
+    // it uses `this`, it isn't folded.
     const own = callee.kind === "Ident" ? callee.name : callee.kind === "Member" && callee.object.kind === "This" ? callee.name.name : undefined;
     if (own !== undefined && !receiver) {
       const m = findMember(ctx.owner, own);
-      if (m && isConstexpr(m) && !m.isStatic && cannotOverride(m)) return this.invoke(m, args, undefined, e.span, depth);
+      if (m && isConstexpr(m) && !m.isStatic) return this.invoke(m, args, undefined, e.span, depth);
       if (callee.kind === "Member") return undefined;
     }
     const m = this.constexprTarget(callee, ctx.owner, ctx.scope);

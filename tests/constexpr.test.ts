@@ -3,12 +3,12 @@ import { expect, test } from "bun:test";
 import { compileProject } from "../src/compiler.ts";
 
 const compile = (text: string) => {
-  const result = compileProject([{ path: "Main.xn", text }], { main: "Main", sourceMaps: false });
+  const result = compileProject([{ path: "Main.xn", text }], { main: "Main" });
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
   return result.outputs.find((o) => o.path === "Main.js")!.text;
 };
 
-test("a constexpr method of the own object is folded only when no subclass can override it", () => {
+test("a constexpr method of the own object is folded (constexpr methods are implicitly final)", () => {
   const js = compile(`public class Main {
   private constexpr function fact(n:int):int {
     if (n <= 1) return 1
@@ -24,6 +24,6 @@ test("a constexpr method of the own object is folded only when no subclass can o
   }
 }
 `);
-  // private and final: folded; public (a subclass may override it) and one reading a field: calls.
-  expect(js).toContain("console.log(3628800, 6, 42, this.open(1), this.usesThis(1));");
+  // folded whatever the visibility; one reading a field of the runtime object stays a call.
+  expect(js).toContain("console.log(3628800, 6, 42, 2, this.usesThis(1));");
 });

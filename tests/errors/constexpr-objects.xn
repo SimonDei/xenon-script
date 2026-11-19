@@ -20,3 +20,11 @@ public class Main {
     trace(NORM, ORIGIN)
   }
 }
+
+class Base {
+  public constexpr function size():int => 1
+}
+
+class Derived extends Base {
+  override public function size():int { return 2 }                        // a constexpr method is implicitly final
+}

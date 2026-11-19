@@ -28,3 +28,14 @@ error[X0523]: an inline constant can't hold an object
    |                              `ORIGIN` is declared `inline`
    |
    = note: an inline constant is pasted into the code: it must be a number, `String` or `Boolean`; use `static final` for an object
+
+error[X0723]: `Base.size` is `constexpr` and can't be overridden
+  --> constexpr-objects.xn:29:28
+   |
+25 |   public constexpr function size():int => 1
+   |          --------- declared `constexpr` here
+...
+29 |   override public function size():int { return 2 }                        // a constexpr method is implicitly final
+   |                            ^^^^
+   |
+   = note: a `constexpr` method is implicitly `final`: calls of it may be computed at compile time, so no subclass can replace it
