@@ -4773,6 +4773,12 @@ class BodyChecker {
       dynamicArgs();
       return type;
     }
+    if (type.kind === "class" && type.info.decl.modifiers.static) {
+      this.diags.error("X0415", `static class \`${type.info.decl.name.name}\` can't be instantiated`, t.span)
+        .secondary(type.info.decl.modifiers.static, "declared `static` here");
+      dynamicArgs();
+      return type;
+    }
     if (type.kind === "class" && type.info.decl.isInterface) {
       this.diags.error("X0786", `\`${type.info.decl.name.name}\` is an interface and can't be instantiated`, t.span)
         .help("create an instance of a class that implements it");

@@ -2,6 +2,7 @@
 import { expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { compileProject } from "../src/compiler.ts";
 import { XenonProject, isTypePosition } from "../src/service.ts";
 
 const ANIMAL = `package zoo {
@@ -130,6 +131,21 @@ test("completion: members after a dot, scope names elsewhere", () => {
   const scope = labels(insert(""));
   expect(scope.slice(0, 3)).toEqual(["a", "scores", "n"]); // locals declared before the cursor
   expect(scope).toEqual(expect.arrayContaining(["Animal", "Main", "Exception", "Map", "setTimeout", "readFileSync", "path", "document", "trace", "while"]));
+});
+
+test("a static class cannot be instantiated", () => {
+  const result = compileProject([
+    { path: "State.xn", text: "public static final class State {}\n" },
+    { path: "Main.xn", text: `public class Main {
+  public function Main() {
+    var state:State = new State()
+  }
+}
+` },
+  ], { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([
+    ["X0415", "static class `State` can't be instantiated"],
+  ]);
 });
 
 const DOG = `package zoo {
