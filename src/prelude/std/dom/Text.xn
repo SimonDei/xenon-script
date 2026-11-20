@@ -1,12 +1,8 @@
 // Browser: a DOM text node.
 package xenon {
-  public native class Text extends Node {
+  public native class Text extends CharacterData {
     private function Text()
 
-    /** The text stored in this node; setting it replaces the contents. */
-    function get data():String
-    function set data(value:String):void
-    function get length():int
     /** All adjacent text nodes joined in document order. */
     function get wholeText():String
     function splitText(offset:int):Text

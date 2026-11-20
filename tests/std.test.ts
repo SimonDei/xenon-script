@@ -35,6 +35,7 @@ const SAMPLES: Record<string, unknown[]> = {
   RegExp: [/ab+/gi, new RegExp('x', 'dy')],
   Iterator: [[1, 2, 3].values(), new Set([4, 5]).values(), new Map([[1, 2]]).keys()],
   CSSStyleProperties: [dom.document.createElement("div").style],
+  CharacterData: [dom.document.createTextNode("text")],
 };
 
 /**

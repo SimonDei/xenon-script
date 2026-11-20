@@ -56,7 +56,7 @@ package xenon {
     /** An element with a namespace: `createElementNS(W, 'w:r')` for a Word run. */
     function createElementNS(ns:String?, qualifiedName:String):Element
     function createElementNS(ns:String?, qualifiedName:String, options:{ ?is:String }):Element
-    function createTextNode(data:String):Node
+    function createTextNode(data:String):Text
     function createComment(data:String):Node
     /** A lightweight container: appending it moves its children, not itself. */
     function createDocumentFragment():Node

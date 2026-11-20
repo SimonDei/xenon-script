@@ -1,0 +1,22 @@
+// Browser: the abstract DOM base for nodes that contain character data.
+package xenon {
+  public abstract native class CharacterData extends Node {
+    private function CharacterData()
+
+    function get data():String
+    function set data(value:String):void
+    function get length():int
+    function get nextElementSibling():Element?
+    function get previousElementSibling():Element?
+
+    function after(...nodes:Array<*>):void
+    function appendData(data:String):void
+    function before(...nodes:Array<*>):void
+    function deleteData(offset:int, count:int):void
+    function insertData(offset:int, data:String):void
+    function remove():void
+    function replaceData(offset:int, count:int, data:String):void
+    function replaceWith(...nodes:Array<*>):void
+    function substringData(offset:int, count:int):String
+  }
+}

@@ -127,6 +127,20 @@ test("document is typed and creates a TreeWalker", () => {
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
 });
 
+test("Text inherits CharacterData text mutation", () => {
+  const result = compileProject([{ path: "Main.xn", text: `public class Main {
+  public static function change(document:Document):String {
+    var text:Text = document.createTextNode('hello')
+    var data:CharacterData = text
+    data.replaceData(0, 5, 'world')
+    data.appendData('!')
+    return data.substringData(0, data.length)
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
+});
+
 test("a stable value keeps a guard's narrowing inside a callback", () => {
   const safe = compileProject([{ path: "Main.xn", text: `public class Main {
   public static function has(data:Object?, key:String):Boolean {
