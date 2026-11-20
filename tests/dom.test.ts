@@ -86,6 +86,20 @@ test("a stable value keeps a guard's narrowing inside a callback", () => {
   expect(changedLater.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.code)).toEqual(["X0398"]);
 });
 
+test("a matching optional member narrows its receiver", () => {
+  const result = compileProject([{ path: "Main.xn", text: `typedef Frame = { key:String, count:int }
+public class Main {
+  public static function increment(current:Frame?, key:String):Frame? {
+    if (current?.key == key) {
+      current.count++
+    }
+    return current
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
+});
+
 
 test("a DOM result that may be missing is T? with null safety; the DOM's names are free for own classes", () => {
   const nullSafe = compileProject([{ path: "Main.xn", text: `public class Main {
