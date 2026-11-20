@@ -306,6 +306,36 @@ export = Zipish;
   }
 });
 
+test("a namespace merged with a class import (JSZip.JSZipObject): its types are Ns.Type, also in messages", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const project = join(import.meta.dir, ".dts-merged");
+  const pkg = join(project, "node_modules", "zipish");
+  await rm(project, { recursive: true, force: true });
+  await mkdir(pkg, { recursive: true });
+  await Bun.write(join(pkg, "package.json"), JSON.stringify({ name: "zipish", types: "index.d.ts" }));
+  await Bun.write(join(pkg, "index.d.ts"), `declare namespace Zipish {
+  interface Entry { name: string; async(type: "string"): Promise<string>; }
+}
+interface Zipish {
+  file(path: string): Zipish.Entry | null;
+  new(): this;
+}
+declare var Zipish: Zipish;
+export = Zipish;
+`);
+  try {
+    const text = "import Zipish from 'zipish'\n\npublic class Main {\n  public function Main() {\n    var zip:Zipish = new Zipish()\n    var ok:Zipish.Entry = zip.file('a')\n    var plain:Entry = zip.file('a')\n    var wrong:int = zip.file('a')\n    trace(ok.name, plain, wrong)\n  }\n}\n";
+    const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: join(project, "src") });
+    const errors = result.diagnostics.sorted().filter((d) => d.severity === "error");
+    expect(errors.map((d) => [d.code, d.labels.find((l) => l.primary)!.message, d.help.map((h) => h.message)])).toEqual([
+      ["X0420", "not found", ["it belongs to the import `Zipish`: `Zipish.Entry`"]],
+      ["X0308", "expected `int`, found `Zipish.Entry`", []],
+    ]);
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
 test("JavaScript files of the source folder are copied, unless a module has their path (X0030)", () => {
   const code = main("import { book } from './lib/sheet.js'", "    trace(book())");
   const copied = compileProject([{ path: "Main.xn", text: code }], { main: "Main", assets: [{ path: "lib/sheet.js", text: "export const book = () => 1;\n" }] });

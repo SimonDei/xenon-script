@@ -227,6 +227,11 @@ function generate(probes: { file: A.XenonFile; local: string; kind: string; prob
       if (sym && sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
       return sym?.declarations?.length ? { node, sym } : undefined; // none: no types for this module
     };
+    /** The types a namespace (or a namespace merged with a value) exports: `JSZip.JSZipObject`. */
+    const namespaceTypes = (sym: tsModule.Symbol) => sym.flags & ts.SymbolFlags.Module ? checker.getExportsOfModule(sym).flatMap((exp) => {
+      const target = exp.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exp) : exp;
+      return IDENT.test(exp.name) && target.flags & (ts.SymbolFlags.Class | ts.SymbolFlags.Interface | ts.SymbolFlags.TypeAlias) ? [[exp.name, target] as const] : [];
+    }) : [];
     // Imported classes and types first (`import { Dirent }`, `import { ChildProcessWithoutNullStreams }`):
     // declared under the local name before a function's signature (`readdir`'s) declares them, so
     // both name one class rather than two (`Dirent` and `Dirent2`, which wouldn't be assignable).
@@ -248,19 +253,23 @@ function generate(probes: { file: A.XenonFile; local: string; kind: string; prob
       // A constructor held in a variable (`declare var URL: typeof _URL`, `BufferConstructor`): the class it makes.
       const made = type.getConstructSignatures()[0]?.getReturnType().getSymbol();
       if (made && made.flags & (ts.SymbolFlags.Class | ts.SymbolFlags.Interface) && !(p.kind === "namespace")) {
+        // A namespace merged with it (`declare namespace JSZip { interface JSZipObject … }`): its types are `JSZip.JSZipObject`.
+        const types = namespaceTypes(sym);
+        for (const [name, target] of types) gen.jsNames.set(target, `${p.local}.${name}`);
         gen.classDecl(made, p.local, p.local, type);
         const selfInstance = type.getSymbol() === made;
         bindings.set(p.local, { kind: "class", qname: `${path}#${p.local}`, ...(selfInstance ? { selfInstance } : {}) });
+        for (const [name, target] of types) {
+          const declared = gen.typeExport(target);
+          if (declared) bindings.set(`${p.local}.${name}`, { kind: declared.kind, qname: `${path}#${declared.name}` });
+        }
         continue;
       }
       const callable = type.getCallSignatures().length > 0;
       if (p.kind === "namespace" || (!callable && type.getConstructSignatures().length === 0 && checker.getPropertiesOfType(type).length > 0 && type.flags & ts.TypeFlags.Object)) {
         // The module's exported types, nameable as `Ns.Type`: classes reached through the
         // namespace at run time too (`new Ns.Cell(…)`), so that is their JavaScript name.
-        const types = sym.flags & ts.SymbolFlags.Module ? checker.getExportsOfModule(sym).flatMap((exp) => {
-          const target = exp.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(exp) : exp;
-          return IDENT.test(exp.name) && target.flags & (ts.SymbolFlags.Class | ts.SymbolFlags.Interface | ts.SymbolFlags.TypeAlias) ? [[exp.name, target] as const] : [];
-        }) : [];
+        const types = namespaceTypes(sym);
         for (const [name, target] of types) gen.jsNames.set(target, `${p.local}.${name}`);
         gen.namespaceDecl(type, p.local, sym);
         bindings.set(p.local, { kind: "class", qname: `${path}#${p.local}` });

@@ -15,6 +15,8 @@ import {
 
 /** A class known to the project. */
 export interface ClassInfo {
+  /** How messages and hovers name it when that isn't `decl.name`: a namespace's type, `JSZip.JSZipObject`. */
+  displayName?: string;
   /** A JavaScript class whose constructor value is an instance too (JSZip): instance members work through the class name. */
   selfInstance?: boolean;
   decl: A.ClassDecl;
@@ -62,6 +64,8 @@ export function jsNameOf(info: ClassInfo): string {
 
 /** A `typedef` known to the project. Its target is resolved lazily (and cached in `state`). */
 export interface TypedefInfo {
+  /** How messages and hovers name it when that isn't `decl.name`: a namespace's type, `JSZip.JSZipObject`. */
+  displayName?: string;
   decl: A.TypedefDecl;
   file: A.XenonFile;
   pkg: string;
@@ -522,6 +526,9 @@ class Env {
             const td = b.kind === "typedef" ? this.typedefs.get(b.qname) : undefined;
             if (cls) scope.classes.set(key, cls);
             if (td) scope.typedefs.set(key, td);
+            // Generated for this file alone: shown under the name it's written with.
+            if (cls) cls.displayName ??= key;
+            if (td) td.displayName ??= key;
             if (cls || td) scope.importOf.set(key, imp);
           }
           if (typed?.kind === "class" && info) {
@@ -797,9 +804,10 @@ class Env {
     // Only the prelude may alias `void` (`typedef Void = void`); uses are checked in `resolveType`.
     let t = this.resolveType(td.decl.type, this.scopes.get(td.file)!, td.file.file.prelude, paramScope(td.params));
     if (td.state !== "busy") return td.state; // a cycle was reported while resolving
-    if (t.kind === "shape" || t.kind === "method") t = { ...t, alias: td.decl.name.name, typedef: td };
-    else if (t.kind === "union") t = { ...t, alias: td.decl.name.name };
-    else if (t.kind === "nullable" && t.inner.kind === "union") t = { kind: "nullable", inner: { ...t.inner, alias: td.decl.name.name } };
+    const shown = td.displayName ?? td.decl.name.name;
+    if (t.kind === "shape" || t.kind === "method") t = { ...t, alias: shown, typedef: td };
+    else if (t.kind === "union") t = { ...t, alias: shown };
+    else if (t.kind === "nullable" && t.inner.kind === "union") t = { kind: "nullable", inner: { ...t.inner, alias: shown } };
     td.state = t;
     return t;
   }
@@ -959,8 +967,9 @@ class Env {
       if (td.params.length === 0) return target;
       const args = node.args.map((a) => this.resolveType(a, scope, false, tparams));
       const t = subst(target, bind(td.params, args));
-      if (t.kind === "union") return { ...t, alias: td.decl.name.name, aliasArgs: args };
-      return t.kind === "shape" || t.kind === "method" ? { ...t, alias: td.decl.name.name, aliasArgs: args, typedef: td } : t;
+      const shown = td.displayName ?? td.decl.name.name;
+      if (t.kind === "union") return { ...t, alias: shown, aliasArgs: args };
+      return t.kind === "shape" || t.kind === "method" ? { ...t, alias: shown, aliasArgs: args, typedef: td } : t;
     }
     if (this.isJsImport(scope, name)) return T.any; // JS classes are dynamic until .d.ts support
     const d = this.diags.error("X0420", `cannot find type \`${name}\``, whole, "not found");
@@ -972,8 +981,11 @@ class Env {
     else if (name in ERROR_HINTS) {
       d.help(`use \`${ERROR_HINTS[name]}\` (JavaScript error classes are hidden in Xenon)`, [{ span: whole, text: ERROR_HINTS[name]! }]);
     } else {
+      // `JSZipObject` for a type of an imported namespace: it's named `JSZip.JSZipObject`.
+      const qualified = [...scope.classes.keys(), ...scope.typedefs.keys()].find((k) => k.endsWith(`.${name}`));
       const s = suggest(name, [...Object.keys(BUILTIN_TYPES), ...scope.classes.keys(), ...scope.typedefs.keys()]);
-      if (s) d.help(`a type with a similar name exists: \`${s}\``, [{ span: whole, text: s }]);
+      if (qualified) d.help(`it belongs to the import \`${qualified.slice(0, -name.length - 1)}\`: \`${qualified}\``, [{ span: whole, text: qualified }]);
+      else if (s) d.help(`a type with a similar name exists: \`${s}\``, [{ span: whole, text: s }]);
       else this.missingImportHint(d, name);
     }
     return T.error;

@@ -269,12 +269,15 @@ export function typeToString(t: Type): string {
     case "any": return "*";
     case "error": return "{error}";
     case "builtin": return t.args.length && (t.name === "Tuple" || !t.args.every(isDynamic)) ? `${t.name}<${t.args.map(typeToString).join(", ")}>` : t.name;
-    case "class": return t.args?.length ? `${t.info.decl.name.name}<${t.args.map(typeToString).join(", ")}>` : t.info.decl.name.name;
+    case "class": {
+      const name = t.info.displayName ?? t.info.decl.name.name;
+      return t.args?.length ? `${name}<${t.args.map(typeToString).join(", ")}>` : name;
+    }
     case "typeParam": return t.param.name;
     // `int | Boolean | null`, as written (`(int | Boolean)?` isn't Xenon).
     case "nullable": return t.inner.kind === "union" && !t.inner.alias ? `${typeToString(t.inner)} | null` : `${typeToString(t.inner)}?`;
     case "union": return t.alias ? aliasText(t) : t.types.map((m) => (m.kind === "method" && !m.alias ? `(${typeToString(m)})` : typeToString(m))).join(" | ");
-    case "classRef": return `Class<${t.info.decl.name.name}>`;
+    case "classRef": return `Class<${t.info.displayName ?? t.info.decl.name.name}>`;
     case "method": {
       if (t.alias) return aliasText(t);
       const ps = t.params.map((p) => `${p.rest ? "..." : ""}${p.name ? p.name + ":" : ""}${typeToString(p.type)}${p.optional ? "?" : ""}`);
