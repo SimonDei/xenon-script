@@ -158,6 +158,17 @@ test("class hover shows declaration modifiers", () => {
     .toContain("static final class State");
 });
 
+test("method hover shows static final and abstract modifiers", () => {
+  const main = `public abstract class Base {
+  public static final function version():int => 1
+  public abstract function load():void
+}
+`;
+  const p = project({ "Main.xn": main });
+  expect(p.hover("Main.xn", offset(main, "version", 1))!.contents).toContain("static final function Base.version():int");
+  expect(p.hover("Main.xn", offset(main, "load", 1))!.contents).toContain("abstract function Base.load():void");
+});
+
 test("a static class cannot be used as a field type", () => {
   const result = compileProject([
     { path: "State.xn", text: "public static final class State {}\n" },
