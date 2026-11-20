@@ -24,7 +24,8 @@ export const TS_OPTIONS: ts.CompilerOptions = {
   target: ts.ScriptTarget.ESNext,
   module: ts.ModuleKind.ESNext,
   moduleResolution: ts.ModuleResolutionKind.Bundler,
-  lib: ["lib.esnext.d.ts"],
+  // The DOM too: `Element` & co. (std/dom) are the browser's classes.
+  lib: ["lib.esnext.d.ts", "lib.dom.d.ts", "lib.dom.iterable.d.ts"],
   strict: false,
   noEmit: true,
   skipLibCheck: true,

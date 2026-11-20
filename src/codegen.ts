@@ -335,7 +335,8 @@ function resolveTokens(entries: { text: string; origin?: LineOrigin }[], tokens:
 }
 
 /** TypeScript names of the standard library's native classes, where they differ. */
-const TS_NATIVE: Record<string, string> = { Iterator: "IteratorObject" };
+/** Native classes TypeScript names differently: its generic `NodeList` is `NodeListOf<T>`. */
+const TS_NATIVE: Record<string, string> = { Iterator: "IteratorObject", NodeList: "NodeListOf" };
 
 /**
  * Built-in enumerables (`Array<T> implements IEnumerable<T>` in the standard library) get

@@ -120,3 +120,25 @@ test("EventTarget: Node extends it; own classes can extend it; listeners get an 
     await window.happyDOM.close();
   }
 });
+
+test("DOM code's TypeScript output type-checks (TypeScript's DOM library)", async () => {
+  const { typeCheck } = await import("./tsemit.ts");
+  const { join } = await import("node:path");
+  const code = `public class Main {
+  public function Main() {}
+  public static function texts(root:Element):Array<String> {
+    var out:Array<String> = []
+    for (var p:Element of root.getElementsByTagName('w:p')) out.push(p.textContent ?? '')
+    var all:NodeList<Element> = root.querySelectorAll('w\\\\:br')
+    for (var br:Element of all) out.push(br.getAttribute('w:type') ?? '')
+    var first:Node? = root.firstChild
+    if (first != null && first.nodeType == Node.TEXT_NODE) out.push(first.nodeValue ?? '')
+    root.addEventListener('click', (e:Event):Void => e.preventDefault())
+    return out
+  }
+}
+`;
+  const result = compileProject([{ path: "Main.xn", text: code }], { main: "Main", target: "ts" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  expect(typeCheck(result.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
+});
