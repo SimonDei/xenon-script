@@ -33,6 +33,11 @@ package xenon {
   native function fetch(url:String):Promise<Response>
   native function fetch(url:String, options:RequestInit):Promise<Response>
 
+  // ---- browser layout ----
+  /** The resolved style values for `element`; read-only in normal browser use. */
+  native function getComputedStyle(element:Element):CSSStyleProperties
+  native function getComputedStyle(element:Element, pseudoElement:String?):CSSStyleProperties
+
   /**
    * The options of `fetch`: `fetch(url, { method: 'POST', body: JSON.stringify(data) })`.
    * Values whose JS types aren't declared yet are `*`: `headers` (an object, `Headers` or pairs),

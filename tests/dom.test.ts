@@ -90,6 +90,16 @@ test("HTMLElement.style exposes CSSStyleProperties and CSSStyleDeclaration metho
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
 });
 
+test("getComputedStyle returns CSSStyleProperties", () => {
+  const result = compileProject([{ path: "Main.xn", text: `public class Main {
+  public static function margin(element:Element):String {
+    return getComputedStyle(element, null).marginTop
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
+});
+
 test("HTMLElement exposes MDN properties and interaction methods", () => {
   const result = compileProject([{ path: "Main.xn", text: `public class Main {
   public static function use(doc:Document):Void {

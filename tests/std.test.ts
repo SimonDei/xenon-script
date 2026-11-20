@@ -175,7 +175,7 @@ for (const file of stdFiles) {
       fnArity.set(jsName, Math.max(fnArity.get(jsName) ?? 0, fn.params.some((p) => p.rest) ? Infinity : fn.params.length));
     }
     for (const [jsName, declared] of fnArity) {
-      const fn = (globalThis as Record<string, unknown>)[jsName];
+      const fn = (jsName === "getComputedStyle" ? (dom as unknown as Record<string, unknown>) : (globalThis as Record<string, unknown>))[jsName];
       if (typeof fn !== "function") problems.push(`${jsName}: no such global function`);
       else if (fn.length > declared) problems.push(`${jsName}: runtime takes ${fn.length} parameters, declared ${declared}`);
     }
