@@ -1,0 +1,46 @@
+// Standard library: `Event`, what an `EventTarget` passes to its listeners. Available in Bun and in
+// browsers. Create one to dispatch it yourself: `target.dispatchEvent(new Event('saved'))`.
+//
+// Typing: `target` and `currentTarget` are `EventTarget?` (`null` before and after dispatch); use
+// `as Element` & co. for the DOM. Not declared: the deprecated `initEvent`, `srcElement`,
+// `returnValue` and `cancelBubble`.
+package xenon {
+  /** `new Event(type, init)`: `bubbles` lets it rise through the DOM; `cancelable` allows `preventDefault()`. */
+  public typedef EventInit = { ?bubbles:Boolean, ?cancelable:Boolean, ?composed:Boolean }
+
+  public native class Event {
+    function Event(type:String)
+    function Event(type:String, init:EventInit)
+
+    // ---- phases (`event.eventPhase`) ----
+    static inline const NONE:int = 0
+    static inline const CAPTURING_PHASE:int = 1
+    static inline const AT_TARGET:int = 2
+    static inline const BUBBLING_PHASE:int = 3
+
+    /** The event's name: `'click'`, `'saved'`. */
+    function get type():String
+    /** Where the event was dispatched (`null` when it isn't being dispatched). */
+    function get target():EventTarget?
+    /** The target whose listener is running now (for a bubbling event, an ancestor of `target`). */
+    function get currentTarget():EventTarget?
+    /** One of `NONE`, `CAPTURING_PHASE`, `AT_TARGET`, `BUBBLING_PHASE`. */
+    function get eventPhase():int
+    function get bubbles():Boolean
+    function get cancelable():Boolean
+    function get composed():Boolean
+    /** Has a listener called `preventDefault()` (on a cancelable event)? */
+    function get defaultPrevented():Boolean
+    /** When the event was created, in milliseconds (as `performance.now()`). */
+    function get timeStamp():Float
+    /** The targets the event passes through, from `target` outwards. */
+    function composedPath():Array<EventTarget>
+
+    /** Cancels the default action (a link's navigation, a form's submit), if the event is cancelable. */
+    function preventDefault():void
+    /** Stops the event from reaching further targets (listeners on this one still run). */
+    function stopPropagation():void
+    /** Like `stopPropagation()`, and also skips the remaining listeners on this target. */
+    function stopImmediatePropagation():void
+  }
+}

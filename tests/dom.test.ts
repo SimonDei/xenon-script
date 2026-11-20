@@ -58,3 +58,65 @@ test("a DOM result that may be missing is T? with null safety; the DOM's names a
   ], { main: "Main" });
   expect(own.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
 });
+
+test("EventTarget: Node extends it; own classes can extend it; listeners get an Event", async () => {
+  const sources = [
+    { path: "Main.xn", text: `public class Main {
+  public function Main() {
+    var store:Store = new Store()
+    var seen:Array<String> = []
+    store.addEventListener('saved', (e:Event):Void => { seen.push(e.type + ':' + (e.target == store)) })
+    store.addEventListener('saved', (e:Event):Void => { seen.push('once') }, { once: true })
+    store.addEventListener('delete', (e:Event):Void => { e.preventDefault() })
+    store.save()
+    store.save()
+    trace(seen.join(','), store.dispatchEvent(new Event('delete', { cancelable: true })))
+  }
+
+  /** Listens on a DOM node: \`Node\` is an \`EventTarget\`. */
+  public static function count(node:Node, type:String):Array<int> {
+    var n:Array<int> = [0]
+    node.addEventListener(type, (e:Event):Void => { n[0] = n[0] + e.eventPhase })
+    return n
+  }
+}
+` },
+    { path: "Store.xn", text: `public class Store extends EventTarget {
+  public function Store() { super() }
+  public function save():void { dispatchEvent(new Event('saved')) }
+}
+` },
+  ];
+  const result = compileProject(sources, { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  // Run in Bun, which has EventTarget and Event.
+  const { mkdir, rm } = await import("node:fs/promises");
+  const { dirname, join } = await import("node:path");
+  const out = join(import.meta.dir, ".events-out");
+  await rm(out, { recursive: true, force: true });
+  try {
+    for (const o of result.outputs) {
+      await mkdir(dirname(join(out, o.path)), { recursive: true });
+      await Bun.write(join(out, o.path), o.text);
+    }
+    await Bun.write(join(out, "run.mjs"), "import { Main } from './Main.js';\nnew Main();\n");
+    const proc = Bun.spawn(["bun", join(out, "run.mjs")], { stdout: "pipe", stderr: "pipe" });
+    const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+    expect(stderr).toBe("");
+    expect(stdout).toBe("saved:true,once,saved:true false\n");
+  } finally {
+    await rm(out, { recursive: true, force: true });
+  }
+  // A DOM node in happy-dom: the listener runs at the target (phase 2).
+  const window = new Window();
+  try {
+    const js = result.outputs.find((o) => o.path === "Main.js")!.text;
+    const Main = new Function("Store", `${js.replace(/^import .*$/gm, "").replace(/^export /m, "").replace(/\/\/# sourceMappingURL.*$/m, "")}; return Main;`)(class {});
+    const el = window.document.createElement("div");
+    const n = Main.count(el, "ping");
+    el.dispatchEvent(new window.Event("ping"));
+    expect(n).toEqual([2]);
+  } finally {
+    await window.happyDOM.close();
+  }
+});

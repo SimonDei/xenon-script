@@ -4,9 +4,10 @@
 //
 // Typing: links that may be missing are `T?` (`parentNode`, `firstChild`, …); `nodeValue` and
 // `textContent` are `String?` (`null` for a document). `childNodes` is a live `NodeList<Node>`.
-// Not declared yet: `EventTarget` (`addEventListener`), `Document`, `Text`, `Attr`.
+// Events come from `EventTarget` (`node.addEventListener('click', e => …)`).
+// Not declared yet: `Document`, `Text`, `Attr`.
 package xenon {
-  public native class Node {
+  public native class Node extends EventTarget {
     private function Node()
 
     // ---- node types (`node.nodeType == Node.ELEMENT_NODE`) ----
