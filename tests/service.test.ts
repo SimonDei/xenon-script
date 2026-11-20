@@ -183,6 +183,20 @@ test("a static class cannot be used as a field type", () => {
   ]);
 });
 
+test("a static class requires only static members", () => {
+  const result = compileProject([{ path: "State.xn", text: `public static class State {
+  public var count:int = 0
+  public function getNumber():int => 10
+  public function State() {}
+}
+` }], { main: "State" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([
+    ["X0415", "field `count` in static class `State` must be `static`"],
+    ["X0415", "method `getNumber` in static class `State` must be `static`"],
+    ["X0415", "static class `State` can't declare a constructor"],
+  ]);
+});
+
 const DOG = `package zoo {
   public class Dog extends Animal {
     public function Dog() { super('dog') }

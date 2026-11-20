@@ -1572,6 +1572,17 @@ class Env {
         if (isNative(info)) this.checkNativeMember(m);
         continue;
       }
+      if (decl.modifiers.static && m.kind === "Method" && (m.isConstructor || m.isDestructor)) {
+        this.diags.error("X0415", `static class \`${decl.name.name}\` can't declare a ${m.isConstructor ? "constructor" : "destructor"}`, m.name.span)
+          .secondary(decl.modifiers.static, "declared as a static class here");
+        continue;
+      }
+      if (decl.modifiers.static && !m.modifiers.static) {
+        const kind = m.kind === "Field" ? "field" : m.accessor ? "accessor" : "method";
+        const d = this.diags.error("X0415", `${kind} \`${m.name.name}\` in static class \`${decl.name.name}\` must be \`static\``, m.name.span)
+          .secondary(decl.modifiers.static, "declared as a static class here");
+        d.help("make the member static", [{ span: span(m.span.file, m.span.start, m.span.start), text: "static " }]);
+      }
       if (m.kind === "Method" && m.isDestructor) {
         this.collectDestructor(info, m);
         continue;
