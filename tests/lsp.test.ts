@@ -148,6 +148,14 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
 
 const repo = join(import.meta.dir, "..");
 
+test("the extension enables automatic suggestions for Xenon code", async () => {
+  const manifest = await Bun.file(join(repo, "packages", "vscode-xenon", "package.json")).json();
+  expect(manifest.contributes.configurationDefaults["[xenon]"]).toMatchObject({
+    "editor.quickSuggestions": { other: "on", comments: "off", strings: "off" },
+    "editor.suggestOnTriggerCharacters": true,
+  });
+});
+
 test("files find their project: xenon.json, else the nearest src/ that isn't a JavaScript project's", async () => {
   const { locateProject } = await import("../src/lsp.ts");
   expect(locateProject(join(repo, "examples", "zoo", "src", "com", "zoo", "Animal.xn"))).toEqual({ srcRoot: join(repo, "examples", "zoo", "src"), main: "Main" });

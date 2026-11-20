@@ -66,7 +66,13 @@
     },
     "configurationDefaults": {
       "[xenon]": {
-        "editor.semanticHighlighting.enabled": true
+        "editor.semanticHighlighting.enabled": true,
+        "editor.quickSuggestions": {
+          "other": "on",
+          "comments": "off",
+          "strings": "off"
+        },
+        "editor.suggestOnTriggerCharacters": true
       }
     }
   },
