@@ -75,6 +75,30 @@ test("Element.style is dynamic for CSS property assignment", () => {
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
 });
 
+test("HTMLElement exposes MDN properties and interaction methods", () => {
+  const result = compileProject([{ path: "Main.xn", text: `public class Main {
+  public static function use(doc:Document):Void {
+    var element:HTMLElement = doc.createElement('div')
+    element.accessKey = 'x'
+    element.autocapitalize = 'words'
+    element.autofocus = true
+    element.contentEditable = 'true'
+    element.dataset.previewId = 'frame'
+    element.dir = 'ltr'
+    element.hidden = 'until-found'
+    element.inert = true
+    element.innerText = 'preview'
+    element.popover = 'manual'
+    element.tabIndex = 0
+    element.focus({ preventScroll: true })
+    element.showPopover({ source: element })
+    trace(element.offsetParent, element.togglePopover(false))
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
+});
+
 test("a stable value keeps a guard's narrowing inside a callback", () => {
   const safe = compileProject([{ path: "Main.xn", text: `public class Main {
   public static function has(data:Object?, key:String):Boolean {

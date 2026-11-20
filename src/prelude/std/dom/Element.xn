@@ -5,7 +5,8 @@
 // Typing: a missing attribute is `null` (`getAttribute` returns `String?`); lookups that may find
 // nothing are `T?` (`querySelector`, `closest`). `getElementsByTagName` & co. return a live
 // `HTMLCollection`; `querySelectorAll` a static `NodeList<Element>`. Both work with `for … of` and
-// `Array.from`. Not declared yet: `classList` and `style` (`*`), geometry and scrolling, events.
+// `Array.from`. CSS classes and inline style remain dynamic; HTML-specific APIs live on
+// `HTMLElement`.
 package xenon {
   public native class Element extends Node {
     private function Element()

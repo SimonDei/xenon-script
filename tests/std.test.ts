@@ -48,6 +48,28 @@ const HAPPY_DOM_GAPS = new Set([
   "Node.prototype.lookupNamespaceURI",
   "Node.prototype.isDefaultNamespace",
   "Element.prototype.style", // `style` lives on HTMLElement/SVGElement, while Xenon's DOM uses Element.
+  "HTMLElement.prototype.accessKeyLabel",
+  "HTMLElement.prototype.anchorElement",
+  "HTMLElement.prototype.attributeStyleMap",
+  "HTMLElement.prototype.autocapitalize",
+  "HTMLElement.prototype.autocorrect",
+  "HTMLElement.prototype.autofocus",
+  "HTMLElement.prototype.containerTiming",
+  "HTMLElement.prototype.containerTimingIgnore",
+  "HTMLElement.prototype.draggable",
+  "HTMLElement.prototype.editContext",
+  "HTMLElement.prototype.enterKeyHint",
+  "HTMLElement.prototype.inputMode",
+  "HTMLElement.prototype.nonce",
+  "HTMLElement.prototype.spellcheck",
+  "HTMLElement.prototype.translate",
+  "HTMLElement.prototype.virtualKeyboardPolicy",
+  "HTMLElement.prototype.writingSuggestions",
+  "HTMLElement.prototype.offsetParent",
+  "HTMLElement.prototype.attachInternals",
+  "HTMLElement.prototype.hidePopover",
+  "HTMLElement.prototype.showPopover",
+  "HTMLElement.prototype.togglePopover",
 ]);
 
 /** Does a runtime value match a declared (primitive) type name? Unknown types aren't checked. */

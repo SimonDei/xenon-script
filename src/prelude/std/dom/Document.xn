@@ -45,9 +45,9 @@ package xenon {
     function querySelectorAll(selectors:String):NodeList<Element>
 
     // ---- making nodes (they belong to this document; insert them with `append` & co.) ----
-    function createElement(localName:String):Element
+    function createElement(localName:String):HTMLElement
     /** `is`: the name of a customized built-in element (custom elements). */
-    function createElement(localName:String, options:{ ?is:String }):Element
+    function createElement(localName:String, options:{ ?is:String }):HTMLElement
     /** An element with a namespace: `createElementNS(W, 'w:r')` for a Word run. */
     function createElementNS(ns:String?, qualifiedName:String):Element
     function createElementNS(ns:String?, qualifiedName:String, options:{ ?is:String }):Element
