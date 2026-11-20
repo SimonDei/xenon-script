@@ -129,3 +129,35 @@ export function assignedNames(node: object): Set<string> {
   walk(node);
   return out;
 }
+
+/** Writes by identifier, including whether they occur inside a nested function. */
+export function assignmentWrites(node: object): Map<string, { at: number; deferred: boolean }[]> {
+  const out = new Map<string, { at: number; deferred: boolean }[]>();
+  const target = (t: A.Expr | A.Pattern | null | undefined, at: number, deferred: boolean) => {
+    if (!t) return;
+    if (t.kind === "Ident") {
+      const writes = out.get(t.name) ?? [];
+      writes.push({ at, deferred });
+      out.set(t.name, writes);
+    } else if (t.kind === "Target") target(t.expr, at, deferred);
+    else if (t.kind === "ArrayPattern") {
+      t.elements.forEach((e) => target(e, at, deferred));
+      target(t.rest, at, deferred);
+    } else if (t.kind === "ObjectPattern") {
+      for (const p of t.props) target(p.value, at, deferred);
+      target(t.rest, at, deferred);
+    }
+  };
+  const walk = (v: unknown, deferred = false) => {
+    if (!v || typeof v !== "object") return;
+    if (Array.isArray(v)) return v.forEach((item) => walk(item, deferred));
+    const n = v as { kind?: string; target?: A.Expr; arg?: A.Expr; pattern?: A.Pattern; span?: { start: number } };
+    const insideFunction = deferred || n.kind === "Function";
+    if (n.kind === "Assign") target(n.target, n.span?.start ?? -1, insideFunction);
+    if (n.kind === "Update") target(n.arg, n.span?.start ?? -1, insideFunction);
+    if (n.kind === "DestructAssign") target(n.pattern, n.span?.start ?? -1, insideFunction);
+    for (const [k, child] of Object.entries(n)) if (k !== "span" && k !== "file") walk(child, insideFunction);
+  };
+  walk(node);
+  return out;
+}

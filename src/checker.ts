@@ -2,7 +2,7 @@ import type * as A from "./ast.ts";
 import type { DiagnosticBag, DiagnosticBuilder, Edit } from "./diagnostics.ts";
 import type { JsBinding } from "./dts.ts";
 import { type Budget, type ConstLookup, ConstObject, type ConstValue, fits, type Fold, fold, isPrimitive, callNative, run } from "./consteval.ts";
-import { assignedNames, breaksOut, completes, mentions } from "./flow.ts";
+import { assignedNames, assignmentWrites, breaksOut, completes, mentions } from "./flow.ts";
 import { GLOBAL_HINTS, JS_GLOBALS } from "./globals.ts";
 import { cover, type SourceFile, type Span, span, spanText } from "./source.ts";
 import { suggest } from "./suggest.ts";
@@ -286,6 +286,8 @@ type DAState = "no" | "yes" | "maybe";
 
 interface Local {
   type: Type;
+  writes?: { at: number; deferred: boolean }[];
+  captureUnstable?: boolean;
   /** Read at least once (for the unused-variable warning). */
   used?: boolean;
   /** Folded value of an `inline` local constant. */
@@ -312,9 +314,13 @@ class Scope {
   private locals = new Map<string, Local>();
   /** Locals narrowed in this scope (`if (x != null) { … }`, `if (x is String) { … }`); `undefined` cancels an outer one. */
   private narrowed?: Map<Local, Type | undefined>;
-  /** A function expression's scope: narrowing of outer variables doesn't reach in (the function may run later). */
-  boundary = false;
-  constructor(readonly parent?: Scope) {}
+  /** A function expression's scope: later writes outside it invalidate narrowing carried across it. */
+  boundaryAt?: number;
+  constructor(
+    readonly parent?: Scope,
+    private functionWrites: Map<string, { at: number; deferred: boolean }[]> =
+      parent?.functionWrites ?? new Map<string, { at: number; deferred: boolean }[]>(),
+  ) {}
 
   /** A child scope in which these facts hold (later ones win: they were found knowing the earlier). */
   withFacts(facts: Fact[]): Scope {
@@ -335,19 +341,24 @@ class Scope {
   }
   /** The local's type here: narrowed to non-null if a check says so. `blocked`: a check exists outside a function boundary. */
   typeOf(local: Local): { type: Type; blocked: boolean } {
-    let crossed = false;
+    let crossedAt: number | undefined;
     for (let s: Scope | undefined = this; s; s = s.parent) {
       if (s.narrowed?.has(local)) {
         const narrowed = s.narrowed.get(local);
-        if (narrowed && crossed && local.kind !== "final" && local.kind !== "const") return { type: local.type, blocked: true };
+        const changed = local.captureUnstable || local.writes?.some((write) =>
+          write.deferred || (crossedAt !== undefined && write.at > crossedAt));
+        if (narrowed && crossedAt !== undefined && local.kind !== "final" && local.kind !== "const" && changed) {
+          return { type: local.type, blocked: true };
+        }
         return { type: narrowed ?? local.type, blocked: false };
       }
       if (s.owns(local)) break;
-      if (s.boundary) crossed = true;
+      if (s.boundaryAt !== undefined) crossedAt = crossedAt === undefined ? s.boundaryAt : Math.min(crossedAt, s.boundaryAt);
     }
     return { type: local.type, blocked: false };
   }
   declare(name: string, local: Local) {
+    local.writes = this.functionWrites.get(name);
     this.locals.set(name, local);
   }
   private owns(local: Local): boolean {
@@ -2329,12 +2340,12 @@ class BodyChecker {
       if (m.kind === "StaticBlock") {
         this.method = undefined;
         this.da = staticDA;
-        this.block(m.body, new Scope());
+        this.block(m.body, new Scope(undefined, assignmentWrites(m.body)));
         staticDA = this.da;
         continue;
       }
       this.da = new Map();
-      const scope = new Scope();
+      const scope = new Scope(undefined, m.kind === "Method" && m.body ? assignmentWrites(m.body) : undefined);
       this.fieldInit = m.kind === "Field";
       if (m.kind === "Field") {
         this.method = undefined;
@@ -3089,7 +3100,7 @@ class BodyChecker {
         .help(isDynamic(element) ? "add a type" : "add the element type", [{ span: span(v.name.span.file, v.name.span.end, v.name.span.end), text: `:${isDynamic(element) ? "*" : typeToString(element)}` }]);
       type = T.any;
     }
-    scope.declare(v.name.name, { type, kind, nameSpan: v.name.span, typeSpan: v.type?.span });
+    scope.declare(v.name.name, { type, kind, nameSpan: v.name.span, typeSpan: v.type?.span, captureUnstable: true });
   }
 
   private forStmt(s: A.Stmt & { kind: "For" }, outer: Scope) {
@@ -4279,8 +4290,8 @@ class BodyChecker {
     const savedParams = this.tparams;
     if (sig.typeParams?.length) this.tparams = new Map([...savedParams, ...sig.typeParams.map((p) => [p.name, p] as const)]);
     try {
-      const inner = new Scope(scope);
-      inner.boundary = true; // null checks outside don't hold when the function runs later
+      const inner = new Scope(scope, assignmentWrites(f.body));
+      inner.boundaryAt = f.span.start;
       if (f.name && !this.fnSigs.has(f)) inner.declare(f.name.name, { type: sig, kind: "const", nameSpan: f.name.span }); // named function expression
       f.params.forEach((p, i) => {
         const pt = sig.params[i]!.type;
@@ -5102,7 +5113,7 @@ class BodyChecker {
         if (dyn) return T.any;
         // `n ?? 0` with `n:int?` is an `int`; `n ?? other` with `other:int?` stays `int?`.
         if (assignable(r, nonNull(l))) return l.kind === "null" ? r : r.kind === "nullable" ? l : nonNull(l);
-        if (assignable(l, r)) return r;
+        if (assignable(nonNull(l), r)) return r;
         return fail(`the two sides of \`??\` have incompatible types \`${typeToString(l)}\` and \`${typeToString(r)}\``);
       case "in":
         return T.Boolean;

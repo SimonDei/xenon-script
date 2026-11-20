@@ -42,6 +42,40 @@ test("DOM code type-checks and runs against a DOM", async () => {
   }
 });
 
+test("an empty array can be a DOM fallback through IEnumerable", () => {
+  const result = compileProject([{ path: "Main.xn", text: `public class Main {
+  public function Main() {}
+  public static function children(parent:Node?):Array<Node> {
+    return Array.from(parent?.childNodes ?? ([] : IEnumerable<Node>))
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
+});
+
+test("a stable value keeps a guard's narrowing inside a callback", () => {
+  const safe = compileProject([{ path: "Main.xn", text: `public class Main {
+  public static function has(data:Object?, key:String):Boolean {
+    if (data == null || typeof data != 'object') return false
+    return [key].some(item => item in data)
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(safe.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.code)).toEqual([]);
+
+  const changedLater = compileProject([{ path: "Main.xn", text: `public class Main {
+  public static function has(data:Object?, key:String):Boolean {
+    if (data == null) return false
+    var read:() -> Boolean = () => key in data
+    data = null
+    return read()
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(changedLater.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.code)).toEqual(["X0398"]);
+});
+
+
 test("a DOM result that may be missing is T? with null safety; the DOM's names are free for own classes", () => {
   const nullSafe = compileProject([{ path: "Main.xn", text: `public class Main {
   public function Main() {}

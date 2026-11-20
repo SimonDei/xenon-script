@@ -14,7 +14,7 @@ public class Main {
     var c:int? = 3
     if (c != null) {
       var f:() -> int = ():int => c + 1               // the closure may run after `c` changes
-      trace(f())
+      c = maybe(); trace(f())
     }
     var loop:int? = 1
     if (loop != null) {
