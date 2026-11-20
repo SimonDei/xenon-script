@@ -5045,14 +5045,31 @@ class BodyChecker {
       case "<": case ">": case "<=": case ">=":
         if (!dyn && !(isNumeric(l) && isNumeric(r)) && !(isPrim(l, "String") && isPrim(r, "String"))) fail();
         return T.Boolean;
-      case "&&": case "||":
+      case "&&": case "||": {
+        // One error per expression (the first non-`Boolean` side), and none that follow from it.
+        let reported = false;
         for (const [t, side] of [[l, left], [r, right]] as const) {
-          if (!isPrim(t, "Boolean") && !isDynamic(t)) {
+          if (!reported && !isPrim(t, "Boolean") && !isDynamic(t)) {
+            reported = true;
             const d = this.diags.error("X0315", `\`${op}\` needs \`Boolean\` operands`, side.span, `this is \`${typeToString(t)}\``);
-            if (op === "||" && isNullable(t)) d.help("use `??` for a default value when something is null");
+            const n = nonNull(t);
+            if (op === "||" && side === left && (isPrim(n, "String") || isNumeric(n))) {
+              // `s || 'default'`: JavaScript's `||` also replaces `''` (and `0`), which `??` doesn't.
+              const empty = isPrim(n, "String") ? "''" : "0";
+              const what = isPrim(n, "String") ? "an empty string" : "`0`";
+              d.note(`in JavaScript, \`||\` also replaces ${what}; \`??\` replaces only \`null\``);
+              const text = spanText(left.span);
+              if (left.kind === "Ident") {
+                d.help(`test it explicitly`, [{ span: cover(left.span, right.span), text: `${text} != ${empty} ? ${text} : ${spanText(right.span)}` }]);
+              } else {
+                d.help(`keep the value in a local and test it: \`final value:${typeToString(n)} = …\`, then \`value != ${empty} ? value : ${spanText(right.span)}\``);
+              }
+              if (isNullable(t)) d.help("or use `??` if only `null` should get the default");
+            } else if (op === "||" && isNullable(t)) d.help("use `??` for a default value when something is null");
           }
         }
-        return T.Boolean;
+        return reported ? T.error : T.Boolean;
+      }
       case "??":
         if (!isNullable(l) && !isDynamic(l)) {
           this.diags.warning("X0317", `\`??\` has no effect: \`${typeToString(l)}\` can never be null`, opSpan)

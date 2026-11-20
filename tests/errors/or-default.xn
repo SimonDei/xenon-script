@@ -1,0 +1,12 @@
+public class Main {
+  public function Main() {
+    var name:String = ''
+    var a:String = name || 'Brief'                       // X0315: fix `name != '' ? name : 'Brief'`
+    var b:String = name.trim() || 'Brief'                 // X0315: keep it in a local first
+    var n:int = 0
+    var c:int = n || 1                                    // X0315: `||` also replaces `0`
+    var maybe:String? = null
+    var d:String = maybe ?? 'x'                           // fine: only `null` gets the default
+    trace(a, b, c, d)
+  }
+}
