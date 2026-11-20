@@ -458,6 +458,24 @@ test("hover on destructured names shows their types (tuple positions); completio
   expect(p.completions("Main.xn", offset(text, "var t:Tu", 8)).map((i) => i.label)).toContain("Tuple");
 });
 
+test("completion offers destructured loop bindings while typing inside the loop", () => {
+  const text = `public class Main {
+  public function Main() {
+    var boxesByPage:Map<String, Array<int>> = new Map()
+    for (var [page, boxes] of boxesByPage) {
+      box
+    }
+  }
+}
+`;
+  const p = project({ "Main.xn": text });
+  const items = p.completions("Main.xn", offset(text, "      box", 10));
+  expect(items.filter((i) => ["page", "boxes"].includes(i.label)).map((i) => [i.label, i.detail])).toEqual([
+    ["page", "page:String"],
+    ["boxes", "boxes:Array<int>"],
+  ]);
+});
+
 test("go to definition on built-in types opens the standard library's declaration (Tuple, int, Array)", () => {
   const text = "public class Main {\n  public function Main() {\n    var a:Array<int> = []\n    var n:String = ''\n    var t:Tuple<String, int> = ['a', 1]\n    trace(a, n, t)\n  }\n}\n";
   const p = project({ "Main.xn": text });

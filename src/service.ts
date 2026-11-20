@@ -1171,6 +1171,18 @@ export class XenonProject {
     const add = (item: CompletionItem) => {
       if (!items.has(item.label)) items.set(item.label, item);
     };
+    const bindings = (pattern: A.Pattern): { name: A.Ident; type?: Type }[] => {
+      switch (pattern.kind) {
+        case "BindingName":
+          return [{ name: pattern.name, type: check.bindingTypes.get(pattern.name) }];
+        case "Target":
+          return [];
+        case "ArrayPattern":
+          return [...pattern.elements.flatMap((p) => p ? bindings(p) : []), ...(pattern.rest ? bindings(pattern.rest) : [])];
+        case "ObjectPattern":
+          return [...pattern.props.flatMap((p) => bindings(p.value)), ...(pattern.rest ? bindings(pattern.rest) : [])];
+      }
+    };
     const chain = nodesAt(ast, offset);
     // Locals: declarations before the cursor in the enclosing blocks, and the enclosing functions' parameters.
     for (const node of [...chain].reverse()) {
@@ -1179,14 +1191,16 @@ export class XenonProject {
         for (const s of (node.body as A.Stmt[] | undefined) ?? []) {
           if (s.span.start >= offset) break;
           if (s.kind === "VarDecl") declaredHere.push({ name: s.name, type: s.type ? check.typeNodeTypes.get(s.type) : s.init && check.exprTypes.get(s.init) });
+          if (s.kind === "DestructDecl") declaredHere.push(...bindings(s.pattern));
           if (s.kind === "FuncDecl" && s.fn.name) declaredHere.push({ name: s.fn.name });
         }
       }
       if (node.kind === "Method" || node.kind === "Function") {
         for (const p of (node.params as A.Param[])) declaredHere.push({ name: p.name, type: p.type && check.typeNodeTypes.get(p.type) });
       }
-      const variable = (node as { variable?: { name: A.Ident; type?: A.TypeNode } }).variable;
-      if (variable?.name) declaredHere.push({ name: variable.name, type: variable.type && check.typeNodeTypes.get(variable.type) });
+      const variable = (node as { variable?: A.LoopVar }).variable;
+      if (variable?.pattern) declaredHere.push(...bindings(variable.pattern));
+      else if (variable?.name) declaredHere.push({ name: variable.name, type: variable.type && check.typeNodeTypes.get(variable.type) });
       for (const d of declaredHere) add({ label: d.name.name, kind: "variable", detail: d.type && `${d.name.name}:${typeToString(d.type)}` });
     }
     const cls = this.enclosingClass(a, ast, offset);
