@@ -178,6 +178,7 @@ Run it as `bun src/cli.ts …` from this repository (or `bun run xenon -- …`).
 | `--no-source-maps` | `"sourceMaps": false` | don't write `.js.map` files |
 | `--deny-warnings` | `"denyWarnings": true` | treat warnings as errors |
 | `--null-safety` | `"nullSafety": true` | object types exclude `null` unless written `T?` |
+| | `"globals": { "pizzip": "PizZip" }` | packages the page loads with `<script>` tags: their imports read the global instead (types still come from the package) |
 | `--max-errors <n>` | `"maxErrors"` | stop after `n` errors (default 50) |
 | `--format json` | | machine-readable diagnostics |
 

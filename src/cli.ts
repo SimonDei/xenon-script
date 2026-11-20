@@ -104,7 +104,12 @@ async function loadConfig(args: string[]): Promise<{
     target,
     bundle,
     nullSafety: flags.has("null-safety") || !!project.nullSafety,
+    globals: project.globals ?? {},
   };
+  const globals = config.globals as unknown;
+  if (typeof globals !== "object" || globals === null || Array.isArray(globals) || Object.values(globals).some((v) => typeof v !== "string" || v === "")) {
+    throw new UsageError('"globals" in xenon.json maps package names to global names, e.g. { "pizzip": "PizZip" }');
+  }
   // `--src` names the folder of the .xn files; a project folder there is a mix-up with `--project`.
   const srcDir = resolve(root, config.src);
   if (flags.has("src") && (await Bun.file(join(srcDir, "xenon.json")).exists())) {

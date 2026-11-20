@@ -243,6 +243,11 @@ export interface GenerateOptions {
   target?: "js" | "ts";
   /** Code with errors (editor mode): a file whose generation fails is skipped instead of throwing. */
   tolerant?: boolean;
+  /**
+   * Packages a page loads as globals (`<script>` tags): `{ "pizzip": "PizZip" }`. Their imports
+   * become reads of the global in JavaScript output (typed from the package all the same).
+   */
+  globals?: Record<string, string>;
 }
 
 /** The module a source file compiles to: `com/zoo/Dog.xn` → `com/zoo/Dog.js` (a file's package matches its directory). */
@@ -264,6 +269,7 @@ export function generate(files: A.XenonFile[], check: CheckResult, mainClass: Cl
     if (!first && !(ts && !file.file.prelude && all.some((d) => d.kind === "Typedef"))) continue;
     const module = (first && [...check.classes.values()].find((c) => c.decl === first)?.module) || moduleOf(file);
     const gen = new ModuleGen(module, file, check, ts, ts || !!options.sourceMaps);
+    gen.globals = options.globals ?? {};
     let entries: ReturnType<ModuleGen["run"]>;
     try {
       entries = gen.run();
@@ -352,6 +358,8 @@ const TS_ENUMERABLE_GLOBALS = `declare global {
 }`;
 
 class ModuleGen {
+  /** Packages loaded as globals (`GenerateOptions.globals`): package → global name. */
+  globals: Record<string, string> = {};
   /** Origins of lines spliced in as text (see `Writer`), shared by this module's writers. */
   private markers: LineOrigin[] = [];
   private w = new Writer(this.markers);
@@ -535,6 +543,9 @@ class ModuleGen {
   }
 
   private jsImport(imp: A.JsImport): string {
+    // A package the page loads as a global: read it (the TypeScript output keeps the import, for its types).
+    const global = this.globals[imp.module];
+    if (global !== undefined && !this.ts) return this.globalImport(imp, global);
     const parts: string[] = [];
     if (imp.defaultName) parts.push(imp.defaultName.name);
     if (imp.namespace) parts.push(`* as ${imp.namespace.name}`);
@@ -542,6 +553,28 @@ class ModuleGen {
       parts.push(`{ ${imp.named.map((n) => (n.alias ? `${n.name.name} as ${n.alias.name}` : n.name.name)).join(", ")} }`);
     }
     return parts.length === 0 ? `import ${jsString(imp.module)};` : `import ${parts.join(", ")} from ${jsString(imp.module)};`;
+  }
+
+  /**
+   * `import PizZip from 'pizzip'` with `"globals": { "pizzip": "PizZip" }`: `const PizZip = globalThis.PizZip`,
+   * failing at once with a clear message when the page didn't load it. A dotted name reads a path
+   * (`window.docxtemplater`).
+   */
+  private globalImport(imp: A.JsImport, global: string): string {
+    // `globalThis.PizZip`, `globalThis.window?.docxtemplater` (a missing step gives the message below too).
+    const path = global.split(".").map((p, i) => {
+      const dot = i === 0 ? "." : "?.";
+      return /^[A-Za-z_$][\w$]*$/.test(p) ? `${dot}${p}` : `${i === 0 ? "" : "?."}[${jsString(p)}]`;
+    }).join("");
+    const message = `\`${global}\` (the package '${imp.module}') is not loaded: add its <script> tag before this one`;
+    const value = `globalThis${path} ?? (() => { throw new ReferenceError(${jsString(message)}); })()`;
+    const lines: string[] = [];
+    if (imp.defaultName) lines.push(`const ${imp.defaultName.name} = ${value};`);
+    if (imp.namespace) lines.push(`const ${imp.namespace.name} = ${value};`);
+    if (imp.named.length > 0) {
+      lines.push(`const { ${imp.named.map((n) => (n.alias ? `${n.name.name}: ${n.alias.name}` : n.name.name)).join(", ")} } = ${value};`);
+    }
+    return lines.length > 0 ? lines.join("\n") : `// '${imp.module}' is loaded by the page (\`${global}\`)`;
   }
 
   /** Records that this module references another class and returns its local name. */

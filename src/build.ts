@@ -26,6 +26,8 @@ export interface Config {
   bundle: boolean;
   /** Object types exclude `null` unless written `T?` (`--null-safety` / `"nullSafety": true`). */
   nullSafety: boolean;
+  /** Packages the page loads as globals (`"globals": { "pizzip": "PizZip" }`): no import, a read of the global. */
+  globals: Record<string, string>;
 }
 
 /**
@@ -49,7 +51,7 @@ export function runCommand(config: Config, outDir: string, args: string[]): stri
 export function compileOptions(config: Config, root: string): CompileOptions {
   const sourceRoot = relative(resolve(root, config.out), resolve(root, config.src)).split(sep).join("/");
   const sourceMaps = config.sourceMaps && config.target === "js" ? { sourceRoot } : undefined;
-  return { main: config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target, typeRoot: resolve(root, config.src), nullSafety: config.nullSafety };
+  return { main: config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target, typeRoot: resolve(root, config.src), nullSafety: config.nullSafety, globals: config.globals };
 }
 
 /**

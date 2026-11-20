@@ -50,6 +50,8 @@ export interface CompileOptions {
   tolerant?: boolean;
   /** Null safety: object types exclude `null` unless written `T?` (see `types.nullSafety`). */
   nullSafety?: boolean;
+  /** Packages the page loads as globals, `{ "pizzip": "PizZip" }` (see `GenerateOptions.globals`). */
+  globals?: Record<string, string>;
 }
 
 export interface CompileResult {
@@ -114,7 +116,7 @@ function compileWith(sources: SourceInput[], options: CompileOptions): CompileRe
   const done = { diagnostics: diags, files: userFiles, asts, check: result, declarationErrors };
   if (options.tolerant) return { ...done, outputs: generate(asts, result, mainInfo, { target: options.target, tolerant: true }) };
   if (diags.hasErrors || !mainInfo) return { ...done, outputs: [] };
-  const outputs = generate(asts, result, mainInfo, { sourceMaps: options.sourceMaps, target: options.target });
+  const outputs = generate(asts, result, mainInfo, { sourceMaps: options.sourceMaps, target: options.target, globals: options.globals });
   // JavaScript files of the source folder are copied, unless a compiled module has their path.
   const taken = new Map(outputs.map((o) => [o.path.toLowerCase(), o]));
   for (const asset of options.assets ?? []) {
