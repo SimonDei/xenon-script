@@ -49,6 +49,9 @@ const HAPPY_DOM_GAPS = new Set([
   "Node.prototype.lookupNamespaceURI",
   "Node.prototype.isDefaultNamespace",
   "Element.prototype.style", // `style` lives on HTMLElement/SVGElement, while Xenon's DOM uses Element.
+  "TreeWalker.prototype.root",
+  "TreeWalker.prototype.whatToShow",
+  "TreeWalker.prototype.filter",
   "HTMLElement.prototype.accessKeyLabel",
   "HTMLElement.prototype.anchorElement",
   "HTMLElement.prototype.attributeStyleMap",

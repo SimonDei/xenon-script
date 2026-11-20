@@ -43,6 +43,11 @@ package xenon {
     function getElementsByClassName(classNames:String):HTMLCollection
     function querySelector(selectors:String):Element?
     function querySelectorAll(selectors:String):NodeList<Element>
+    /** Walks the logical subtree rooted at `root`. */
+    function createTreeWalker(root:Node):TreeWalker
+    function createTreeWalker(root:Node, whatToShow:uint):TreeWalker
+    function createTreeWalker(root:Node, whatToShow:uint, filter:(node:Node) -> int):TreeWalker
+    function createTreeWalker(root:Node, whatToShow:uint, filter:{ acceptNode:(node:Node) -> int }):TreeWalker
 
     // ---- making nodes (they belong to this document; insert them with `append` & co.) ----
     function createElement(localName:String):HTMLElement

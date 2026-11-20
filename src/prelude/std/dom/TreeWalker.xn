@@ -1,0 +1,20 @@
+// Browser: a movable view over the nodes in a document subtree.
+package xenon {
+  public native class TreeWalker {
+    private function TreeWalker()
+
+    function get root():Node
+    function get whatToShow():uint
+    function get filter():*
+    function get currentNode():Node
+    function set currentNode(value:Node):void
+
+    function parentNode():Node?
+    function firstChild():Node?
+    function lastChild():Node?
+    function previousSibling():Node?
+    function nextSibling():Node?
+    function previousNode():Node?
+    function nextNode():Node?
+  }
+}

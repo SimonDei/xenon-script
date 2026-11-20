@@ -9,12 +9,17 @@ export const JS_GLOBALS = new Set([
   "WeakRef", "Proxy", "Reflect", "Intl", "BigInt", "ArrayBuffer", "DataView", "Uint8Array", "Int8Array",
   "Uint16Array", "Int16Array", "Uint32Array", "Int32Array", "Float32Array", "Float64Array", "TextEncoder", "TextDecoder",
   "URL", "URLSearchParams", "AbortController", "AbortSignal", "Blob", "FormData", "Headers", "Request", "Response",
-  "globalThis", "process", "Bun", "document", "window", "navigator", "location", "localStorage", "performance",
+  "globalThis", "process", "Bun", "window", "navigator", "location", "localStorage", "performance",
   "crypto",
   "EventTarget", "Event", "CustomEvent", "MessageChannel", "MessagePort", "BroadcastChannel", "WebSocket", "Worker",
   "ReadableStream", "WritableStream", "TransformStream", "File", "FileReader", "FinalizationRegistry",
   "AsyncDisposableStack", "DisposableStack", "requestAnimationFrame", "cancelAnimationFrame", "alert", "HTMLElement",
   "CSSStyleDeclaration",
+]);
+
+/** Browser globals with a concrete prelude type instead of `*`. */
+export const TYPED_GLOBALS = new Map([
+  ["document", "xenon.Document"],
 ]);
 
 /** Hidden JS globals and what to use instead (reported as a hint on "cannot find"). */

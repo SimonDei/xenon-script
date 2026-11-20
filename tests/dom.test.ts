@@ -114,6 +114,19 @@ test("HTMLElement exposes MDN properties and interaction methods", () => {
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
 });
 
+test("document is typed and creates a TreeWalker", () => {
+  const result = compileProject([{ path: "Main.xn", text: `public class Main {
+  public static function walk(root:Node):Node? {
+    var walker:TreeWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, node => node.nodeValue != '' ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP)
+    var next:Node? = walker.nextNode()
+    if (next != null) walker.currentNode = next
+    return walker.parentNode()
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
+});
+
 test("a stable value keeps a guard's narrowing inside a callback", () => {
   const safe = compileProject([{ path: "Main.xn", text: `public class Main {
   public static function has(data:Object?, key:String):Boolean {

@@ -3,7 +3,7 @@ import type { DiagnosticBag, DiagnosticBuilder, Edit } from "./diagnostics.ts";
 import type { JsBinding } from "./dts.ts";
 import { type Budget, type ConstLookup, ConstObject, type ConstValue, fits, type Fold, fold, isPrimitive, callNative, run } from "./consteval.ts";
 import { assignedNames, assignmentWrites, breaksOut, completes, mentions } from "./flow.ts";
-import { GLOBAL_HINTS, JS_GLOBALS } from "./globals.ts";
+import { GLOBAL_HINTS, JS_GLOBALS, TYPED_GLOBALS } from "./globals.ts";
 import { cover, type SourceFile, type Span, span, spanText } from "./source.ts";
 import { suggest } from "./suggest.ts";
 import {
@@ -797,7 +797,13 @@ class Env {
 
   /** JS globals; the prelude may additionally see the JS error classes hidden from user code. */
   isGlobal(scope: FileScope, name: string): boolean {
-    return JS_GLOBALS.has(name) || (scope.file.file.prelude && name in ERROR_HINTS);
+    return JS_GLOBALS.has(name) || TYPED_GLOBALS.has(name) || (scope.file.file.prelude && name in ERROR_HINTS);
+  }
+
+  /** The concrete type of a modeled JavaScript global, if one exists. */
+  globalType(name: string): Type | undefined {
+    const info = TYPED_GLOBALS.get(name) && this.classes.get(TYPED_GLOBALS.get(name)!);
+    return info ? { kind: "class", info } : undefined;
   }
 
   lookupTypedef(scope: FileScope, name: string): TypedefInfo | undefined {
@@ -3665,6 +3671,11 @@ class BodyChecker {
     if (BUILTIN_FNS.has(name)) {
       res.set(e, { kind: "builtin", name: name as BuiltinFn });
       return T.Function;
+    }
+    const globalType = this.env.globalType(name);
+    if (globalType) {
+      res.set(e, { kind: "global" });
+      return globalType;
     }
     if (this.env.isGlobal(this.scope, name)) {
       res.set(e, { kind: "global" });

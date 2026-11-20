@@ -16,6 +16,7 @@ import { type CheckResult, type ClassInfo, findMember, type TypedefInfo, type Me
 import { generatedOffsetAt, type Mapping, type OutputFile, sourceOffsetAt } from "./codegen.ts";
 import { compileProject, type CompileResult, PRELUDE, type SourceInput } from "./compiler.ts";
 import { KEYWORDS } from "./lexer.ts";
+import { TYPED_GLOBALS } from "./globals.ts";
 import { SourceFile, type Span, spanText } from "./source.ts";
 import { isSubclass, memberTypeIn, nonNull, type MethodType, type ShapeMember, type ShapeType, stdClassOf, supertypes, type Type, typeToString } from "./types.ts";
 
@@ -1218,6 +1219,10 @@ export class XenonProject {
     for (const imp of ast.imports) {
       if (imp.kind !== "JsImport") continue;
       for (const n of [imp.defaultName, imp.namespace, ...imp.named.map((x) => x.alias ?? x.name)]) if (n) add({ label: n.name, kind: "value", detail: `import from '${imp.module}'` });
+    }
+    for (const [name, qname] of TYPED_GLOBALS) {
+      const info = a.result.check.classes.get(qname);
+      if (info) add({ label: name, kind: "variable", detail: `${name}:${classText(info)}` });
     }
     add({ label: "trace", kind: "function", detail: "function trace(...values:Array<*>):void" });
     for (const k of KEYWORDS) add({ label: k, kind: "keyword" });
