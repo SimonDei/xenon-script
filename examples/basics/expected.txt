@@ -1,5 +1,6 @@
 0 NaN false
 count is 3, doubled 6
+total 3
 Hello, WORLD
 zero
 one

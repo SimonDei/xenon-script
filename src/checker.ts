@@ -4817,7 +4817,11 @@ class BodyChecker {
       if (elementOf(target)) d.help("check `is Array`; element types are not known at runtime");
       return e.op === "is" ? T.Boolean : T.error;
     }
-    this.env.result.typeChecks.set(e, check);
+    // `v is int` where `v` is an `int | String`: its only numbers are `int`s, so `typeof v === 'number'`
+    // decides (and TypeScript narrows on it, as it can't on `Number.isInteger`).
+    const sourceNumbers = isDynamic(from) ? [] : membersOf(from).filter((m) => isNumeric(m) || (m.kind === "builtin" && m.name === "Object"));
+    const onlyThese = sourceNumbers.length > 0 && sourceNumbers.every((m) => m.kind === "prim" && m.name === (target as { name?: string }).name);
+    this.env.result.typeChecks.set(e, (check.kind === "int" || check.kind === "uint") && onlyThese ? { kind: "typeof", tag: "number" } : check);
     if (e.op === "as" && !isNullable(target) && written.kind !== "nullable") {
       const fn = typeToString(target);
       this.diags.error("X0393", `\`as ${fn}\` is not possible: \`${fn}\` can never be null`, cover(opSpan, t.span))

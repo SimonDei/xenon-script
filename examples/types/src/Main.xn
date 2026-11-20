@@ -33,6 +33,20 @@ package {
       // `Type` (a literal takes it from there) and is a `Type` from then on.
       var pairs:Array<*> = [(['x', 1] : Tuple<String, int>), (['y', 2] : Tuple<String, int>)]
       trace((pairs[0] : Tuple<String, int>)[0].toUpperCase(), ([] : Array<int>).length, ((total : Float) / 2 : Float))
+
+      // Unions and literal types: a value of one of several types, or one of a few values.
+      // `is`, `==` and null checks narrow them.
+      var id:int | String = 'a7'
+      if (id is String) trace(id.toUpperCase())
+      id = 7
+      trace(Main.size('s'), Main.size('l'), Main.kind(id), Main.kind('x'))
+    }
+
+    private static function size(s:'s' | 'm' | 'l'):int => s == 's' ? 1 : s == 'm' ? 2 : 3
+
+    private static function kind(v:int | String):String {
+      if (v is int) return 'number ' + (v + 1)
+      return 'text ' + v.length
     }
 
     public function get name():String { return _name }

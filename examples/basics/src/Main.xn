@@ -12,6 +12,9 @@ package {
       count += 2
       count++
       trace($'count is {count}, doubled {count * 2}')
+      // `final` (or `const`) is assigned once and compiles to JavaScript `const`; `var` to `let`.
+      final label:String = 'total'
+      trace(label, count)
       trace(Main.GREETING + ', ' + name('world'))
 
       var i:int = 0

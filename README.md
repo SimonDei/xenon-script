@@ -37,8 +37,10 @@ public class Main {
 ## Highlights
 
 - **A real type system.** `int`, `uint` and `Float` are distinct number types. Generics work on
-  classes and functions, and typedefs describe object shapes. `T?` marks a value that may be
-  `null`, and a null check narrows it. Mixing in untyped JavaScript is explicit, through `*`.
+  classes and functions, typedefs describe object shapes, and union, literal and tuple types
+  (`int | String`, `'utf8' | 'ascii'`, `Tuple<String, int>`) describe what JavaScript APIs really
+  take. `T?` marks a value that may be `null`, and null checks and `is` narrow it. Mixing in
+  untyped JavaScript is explicit, through `*`.
 - **Errors that explain themselves.** More than 200 error codes, each with a label on the code,
   notes, suggested fixes and `xenon explain <code>`:
   ```
@@ -90,7 +92,9 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Inheritance | `extends`, `override`, `super`, `abstract`, `final`, `protected` | [`inheritance`](examples/inheritance), [`abstract`](examples/abstract) |
 | Properties | `function get color()` / `function set color(v)`; the setter may be narrower (`private set`) | [`interfaces`](examples/interfaces) |
 | Interfaces | `interface IShape { function area():Float }`, checked `implements` | [`interfaces`](examples/interfaces) |
+| Variables | `var` (compiles to `let`), `final` and `const` (assigned once: `const`), `inline final` (pasted as its value) | [`basics`](examples/basics) |
 | Types | `int`, `uint`, `Float`, `String`, `Boolean`, `Array<T>`, `*` (untyped) | [`types`](examples/types) |
+| Unions and literals | `int \| String`, `typedef Encoding = 'utf8' \| 'ascii'`; narrowed by `is`, `==` and null checks | [`types`](examples/types) |
 | Tuples | `Tuple<String, int>`: one type per position, `var [key, value] = pair`; `Object.entries` and map entries are tuples | [`tuples`](examples/tuples) |
 | Type checks | `(expr : Type)`: checked at compile time, gone at runtime; the value is typed against `Type` (`(['a', 1] : Tuple<String, int>)`, `([] : Array<int>)`) | [`types`](examples/types) |
 | Nullable types | `int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
@@ -103,7 +107,7 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Exceptions | `Exception` and its subclasses; anything JavaScript throws is normalized | [`exceptions`](examples/exceptions) |
 | Resources | destructors `~Connection() { … }`, `using` / `await using` | [`destructors`](examples/destructors) |
 | Iteration | `IEnumerable<T>` / `IEnumerator<T>`, usable with `for … of` (also from JavaScript) | [`enumerable`](examples/enumerable) |
-| Compile time | `inline` constants, `constexpr` functions, `const` methods, operator overloading (`operator+`, `-`, `*`, `/`, `==`) | [`inline`](examples/inline), [`const-methods`](examples/const-methods), [`operators`](examples/operators) |
+| Compile time | `inline` constants, `constexpr` functions (the standard library's `Math` and `String` methods too: `'a b'.replace(~/ /g, '')` folds), `const` methods, operator overloading (`operator+`, `-`, `*`, `/`, `==`) | [`inline`](examples/inline), [`const-methods`](examples/const-methods), [`operators`](examples/operators) |
 | Strings | `'single quotes'`, templates `$'Hi {name}'`, regex literals `~/^a+/i` | [`basics`](examples/basics) |
 
 Every folder in [`examples/`](examples) is a complete program with its expected output, and the
@@ -195,8 +199,10 @@ and the language server:
 
 - diagnostics as you type, with quick fixes from the compiler's suggestions
 - hover with XenonScript types and doc comments (including the overload a call uses)
-- go to definition, also into the standard library and `.d.ts` files
-- completion, signature help, find references, rename (a class's file too) and the outline
+- go to definition, also into the standard library (built-in types included) and `.d.ts` files
+- completion that knows the context: only types in a type annotation (`xlsx.` lists the package's
+  types), the expected shape's keys inside an object literal, members after `.`
+- signature help, find references, rename (a class's file too) and the outline
 - semantic highlighting for object keys and shape members
 
 The XenonScript checker answers all of these, including for typed JavaScript imports. TypeScript
