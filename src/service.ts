@@ -257,7 +257,8 @@ function receiverBefore(text: string, nameStart: number): { start: number } | un
     }
     while (j > 0 && /[\w$]/.test(text[j - 1]!)) j--;
     if (j === i) return undefined; // nothing before this dot
-    if (text[j - 1] !== ".") return { start: j };
+    // Not a member access: the end of a spread (`[...doc.`).
+    if (text[j - 1] !== "." || text.slice(j - 3, j) === "...") return { start: j };
     i = j - 1; // continue with the dot before
   }
 }

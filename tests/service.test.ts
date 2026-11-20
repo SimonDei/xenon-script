@@ -489,3 +489,9 @@ test("type completion offers classes imported from JavaScript (import { EventEmi
   const items = p.completions("Main.xn", offset(text, "var e:Even", 10));
   expect(items.map((i) => i.label)).toContain("EventEmitter");
 });
+
+test("completion after a spread's receiver in a statement that doesn't parse yet (for (… of [...doc.)", () => {
+  const text = "public class Main {\n  public function Main() {\n    var words:Array<String> = []\n    for (var w of [...words.\n  }\n}\n";
+  const p = project({ "Main.xn": text });
+  expect(p.completions("Main.xn", offset(text, "[...words.", 10)).map((i) => i.label)).toContain("concat");
+});
