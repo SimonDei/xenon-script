@@ -397,6 +397,9 @@ test("type positions: annotations, parameters, return types; not object literal 
     .toEqual([true, true, true, true, true, true]);
   expect([at("var o = { a: 1, b: "), at("f({ key: "), at("var x = ok ? a : "), at("f(a, b"), at("var o:P = { a: "), at("typedef A = { b:int }\nvar o = { c: ")])
     .toEqual([false, false, false, false, false, false]);
+  // Further type arguments: `Tuple<String, |`, also nested and in a pattern's annotation; not a comparison.
+  expect([at("for (var [a, c]:Tuple<String, "), at("var m:Map<String, Array<int>, "), at("var m:Map<Tuple<int, int>, ")]).toEqual([true, true, true]);
+  expect([at("f(a < b, "), at("if (x < 3, ")]).toEqual([false, false]);
 });
 
 test("hover shows the standard library's constexpr members and inline constants as declared", () => {

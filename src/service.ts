@@ -1208,8 +1208,16 @@ export function isTypePosition(text: string, at: number): boolean {
   const before = text.slice(0, at);
   if (/(?:<|->|\bas|\bis|\bnew|\bextends|\bimplements|\)\s*:)\s*$/.test(before)) return true;
   if (/\b(?:var|const|final)\s+[A-Za-z_$][\w$]*\s*:\s*$/.test(before)) return true;
+  // A destructuring pattern's annotation: `var [key, value]:` / `final { x, y }:`.
+  if (/\b(?:var|const|final)\s*[[{][^=;]*[\]}]\s*:\s*$/.test(before)) return true;
   // `(a:int, b:` is a parameter list, `{ ?a:int, b:` a shape, `{ a: 1, b:` an object literal:
   // the innermost open bracket decides; a `{` opens a shape after `typedef X =` or in a type.
+  // `Tuple<String, |`: the next type argument, when that `<` follows a type name in a type position.
+  if (/,\s*$/.test(before)) {
+    const open = openAngle(text, at);
+    const name = open !== undefined ? /[A-Za-z_$][\w$.]*\s*$/.exec(text.slice(0, open)) : null;
+    if (name && isTypePosition(text, name.index)) return true;
+  }
   const member = /[(,{]\s*(?:\.\.\.|\?|final\s+)?[A-Za-z_$][\w$]*\s*:\s*$/.exec(before);
   if (!member) return false;
   const open = innermostOpen(text, member.index + 1);
@@ -1217,6 +1225,23 @@ export function isTypePosition(text: string, at: number): boolean {
   if (text[open] === "(") return true;
   if (text[open] !== "{") return false;
   return /\btypedef\s+[A-Za-z_$][\w$]*\s*(?:<[^>]*>)?\s*=\s*$/.test(text.slice(0, open)) || isTypePosition(text, open);
+}
+
+/**
+ * The `<` of the type-argument list `at` is in (`Map<String, |`), skipping closed `<…>` pairs; undefined
+ * if a bracket or anything that can't be in a type comes first.
+ */
+function openAngle(text: string, at: number): number | undefined {
+  let depth = 0;
+  for (let i = at - 1; i >= 0; i--) {
+    const c = text[i]!;
+    if (c === ">" && text[i - 1] !== "-") depth++;
+    else if (c === "<") {
+      if (depth === 0) return i;
+      depth--;
+    } else if (!/[\w$.,\s?*|'():>-]/.test(c)) return undefined;
+  }
+  return undefined;
 }
 
 /** The position of the innermost bracket still open at `at` (scanning back, skipping strings roughly). */
