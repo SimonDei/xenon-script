@@ -168,7 +168,7 @@ export interface CheckResult {
   classes: Map<string, ClassInfo>;
   /** Every typedef by qualified name (for completion). */
   typedefs: Map<string, TypedefInfo>;
-  /** The type of each name a destructuring pattern declares (`var [key, value] = entry`), for hover. */
+  /** The type of each name a destructuring pattern or an unannotated callback parameter declares (`var [key, value] = entry`, `e => …`), for hover. */
   bindingTypes: Map<A.Ident, Type>;
 }
 
@@ -3274,7 +3274,7 @@ class BodyChecker {
     if (e.kind === "Array" && expectedElement) {
       const element = expectedElement;
       for (const el of e.elements) {
-        if (el.kind === "Spread") this.valueExpr(el.arg, scope);
+        if (el.kind === "Spread") this.spreadInto(el, element, scope);
         else this.checkAssign(el, element, origin, scope);
       }
       this.record(e, elementOf(expected) ? expected : arrayOf(element));
@@ -3302,6 +3302,15 @@ class BodyChecker {
     const t = this.valueExpr(e, scope);
     this.preTyped.set(e, t);
     return t;
+  }
+
+  /** `...source` in an array literal of `element`s: what it spreads must fit (an untyped source passes). */
+  private spreadInto(el: A.Expr & { kind: "Spread" }, element: Type, scope: Scope) {
+    const t = this.valueExpr(el.arg, scope);
+    const spread = elementOf(t) ?? this.env.iterableElement(t) ?? (isPrim(t, "String") ? T.String : undefined);
+    if (spread && !assignable(spread, element)) {
+      this.diags.error("X0308", "mismatched types", el.arg.span, `its elements are \`${typeToString(spread)}\`, expected \`${typeToString(element)}\``);
+    }
   }
 
   /** An array literal for a `Tuple<…>`: as many elements as positions (X0323), no spread, each fitting its type. */
@@ -3454,9 +3463,15 @@ class BodyChecker {
       case "Super":
         this.diags.error("X0734", "`super` can only be used as `super(...)` or `super.member`", e.span);
         return T.error;
-      case "Array":
-        for (const el of e.elements) this.valueExpr(el.kind === "Spread" ? el.arg : el, scope);
+      case "Array": {
+        const types = e.elements.map((el) => this.valueExpr(el.kind === "Spread" ? el.arg : el, scope));
+        // `[...text.matchAll(re)]`, `[...a, ...b]`: only spreads of typed sources give their elements' type.
+        if (e.elements.length > 0 && e.elements.every((el) => el.kind === "Spread")) {
+          const elements = types.map((t) => elementOf(t) ?? this.env.iterableElement(t) ?? (isPrim(t, "String") ? T.String : undefined));
+          if (elements.every((t) => t && !isDynamic(t))) return arrayOf(unionOf(elements.map((t) => widen(t!))));
+        }
         return T.Array;
+      }
       case "Object":
         this.objectLiteral(e, scope);
         return T.Object;
@@ -4247,6 +4262,7 @@ class BodyChecker {
         const pt = sig.params[i]!.type;
         if (p.init) this.checkAssign(p.init, pt, p.type && { span: p.type.span, label: "parameter type declared here" }, inner);
         inner.declare(p.name.name, { type: pt, kind: p.final ? "final" : "param", nameSpan: p.name.span, typeSpan: p.type?.span });
+        if (!p.type) this.env.result.bindingTypes.set(p.name, pt); // `e => …`: the type from context, for hover
       });
       if (f.body.kind === "Block") {
         this.block(f.body, inner);

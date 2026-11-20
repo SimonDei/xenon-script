@@ -1,0 +1,14 @@
+public class Main {
+  public function Main() {
+    var text:String = 'a {x|y} b {#z}'
+    // `[...text.matchAll(re)]` is an `Array<Array<String>>`: the whole chain is typed.
+    var tags:Array<String> = [...text.matchAll(~/\{([^{}]+)\}/g)]
+      .flatMap(e => e[1].replace(~/^[#^/]/, '').split('|'))
+      .map(e => e.trim())
+    var wrong:Array<int> = [...tags, ...'ab']             // X0308: the elements are `String`s
+    // Untyped in, untyped out: `U` is `*` (no X0797).
+    var dyn:* = [['a']]
+    var loose:Array<*> = dyn.flatMap((e:*) => e)
+    trace(tags, wrong, loose)
+  }
+}

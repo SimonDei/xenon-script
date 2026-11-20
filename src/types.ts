@@ -531,6 +531,12 @@ export function memberTypeIn(info: ClassInfo, args: Type[], owner: ClassInfo, ty
  * the first binding found for each parameter in `out`.
  */
 export function unify(pattern: Type, actual: Type, vars: Set<TypeParamInfo>, out: Map<TypeParamInfo, Type>) {
+  // An untyped value (`*`) says nothing more: the type parameters it would decide are `*` too
+  // (`dyn.flatMap(e => e.split(','))` is an `Array<*>`), unless something decided them already.
+  if (actual.kind === "any") {
+    for (const p of paramsIn(pattern)) if (vars.has(p) && !out.has(p)) out.set(p, actual);
+    return;
+  }
   switch (pattern.kind) {
     case "typeParam":
       if (vars.has(pattern.param) && !out.has(pattern.param) && actual.kind !== "null" && actual.kind !== "error") {
@@ -575,6 +581,20 @@ export function unify(pattern: Type, actual: Type, vars: Set<TypeParamInfo>, out
 }
 
 /** Does the type mention any of these parameters? */
+/** The type parameters a type mentions (`K` and `V` in `Map<K, Array<V>>`). */
+function paramsIn(t: Type, found: TypeParamInfo[] = []): TypeParamInfo[] {
+  switch (t.kind) {
+    case "typeParam": found.push(t.param); break;
+    case "nullable": paramsIn(t.inner, found); break;
+    case "union": t.types.forEach((m) => paramsIn(m, found)); break;
+    case "class": t.args?.forEach((a) => paramsIn(a, found)); break;
+    case "builtin": t.args.forEach((a) => paramsIn(a, found)); break;
+    case "method": t.params.forEach((p) => paramsIn(p.type, found)); paramsIn(t.ret, found); break;
+    case "shape": for (const m of t.members.values()) paramsIn(m.type(), found); break;
+  }
+  return found;
+}
+
 export function mentions(t: Type, params: Set<TypeParamInfo>): boolean {
   switch (t.kind) {
     case "typeParam": return params.has(t.param);

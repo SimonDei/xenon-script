@@ -476,3 +476,9 @@ test("a project with nullSafety: hover shows T?, and the editor reports null err
   const legacy = project({ "Main.xn": text });
   expect([...legacy.diagnostics()].flatMap(([, d]) => d.map((x) => x.code))).not.toContain("X0398");
 });
+
+test("hover on an unannotated callback parameter shows the type it takes from context", () => {
+  const text = "public class Main {\n  public function Main() {\n    var words:Array<String> = ['a', 'bb']\n    var n:Array<int> = words.map(s => s.length)\n    trace(n)\n  }\n}\n";
+  const p = project({ "Main.xn": text });
+  expect((p.hover("Main.xn", offset(text, "s =>"))!.contents as string).split("\n")[1]).toBe("s:String");
+});

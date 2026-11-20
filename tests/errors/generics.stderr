@@ -53,14 +53,6 @@ error[X0601]: this call takes 1 argument but 0 were given
 27 |   public function Box(value:T) { this.value = value }
    |                   --- `constructor` defined here
 
-error[X0797]: can't infer the type of `T`
- --> generics.xn:9:21
-  |
-9 |       var f:* = new Box()
-  |                     ^^^ type arguments are inferred from the arguments
-  |
-help: pass arguments that determine it, or assign the result to a variable with a type
-
 error[X0394]: `Box<int>` can't be checked at runtime
   --> generics.xn:12:16
    |
