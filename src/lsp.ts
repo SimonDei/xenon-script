@@ -170,7 +170,7 @@ export function startServer(connection: Connection = createConnection(ProposedFe
         textDocumentSync: TextDocumentSyncKind.Incremental,
         hoverProvider: true,
         definitionProvider: true,
-        completionProvider: { triggerCharacters: ["."] },
+        completionProvider: { triggerCharacters: [".", ":"] },
         referencesProvider: true,
         renameProvider: { prepareProvider: true },
         signatureHelpProvider: { triggerCharacters: ["(", ","], retriggerCharacters: [","] },
