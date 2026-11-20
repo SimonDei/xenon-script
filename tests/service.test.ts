@@ -138,13 +138,27 @@ test("a static class cannot be instantiated", () => {
     { path: "State.xn", text: "public static final class State {}\n" },
     { path: "Main.xn", text: `public class Main {
   public function Main() {
-    var state:State = new State()
+    var state = new State()
   }
 }
 ` },
   ], { main: "Main" });
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([
     ["X0415", "static class `State` can't be instantiated"],
+  ]);
+});
+
+test("a static class cannot be used as a field type", () => {
+  const result = compileProject([
+    { path: "State.xn", text: "public static final class State {}\n" },
+    { path: "Main.xn", text: `public class Main {
+  private final state:State;
+}
+` },
+  ], { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([
+    ["X0415", "static class `State` can't be used as a value type"],
+    ["X0515", "final field `state` is never assigned"],
   ]);
 });
 

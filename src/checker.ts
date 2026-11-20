@@ -861,6 +861,10 @@ class Env {
    */
   resolveType(node: A.TypeNode, scope: FileScope, allowVoid = false, tparams?: TypeParamScope, allowRaw = false): Type {
     const t = this.resolveTypeNode(node, scope, allowVoid, tparams, allowRaw);
+    if (!allowRaw && t.kind === "class" && t.info.decl.modifiers.static) {
+      this.diags.error("X0415", `static class \`${t.info.decl.name.name}\` can't be used as a value type`, node.span)
+        .secondary(t.info.decl.modifiers.static, "declared `static` here");
+    }
     this.result.typeNodeTypes.set(node, t);
     return t;
   }
