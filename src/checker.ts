@@ -900,8 +900,10 @@ class Env {
       if (node.args.length > 0) this.diags.error("X0423", `type parameter \`${name}\` doesn't take type arguments`, node.span);
       return { kind: "typeParam", param };
     }
-    // `Tuple<String, int>`: one type per position (unless a class of the program is named `Tuple`).
-    if (name === "Tuple" && !this.lookupClass(scope, name, whole) && !this.lookupTypedef(scope, name)) {
+    // `Tuple<String, int>`: one type per position (unless a class of the program is named `Tuple`;
+    // the standard library's `Tuple` only documents the type).
+    const ownTuple = name === "Tuple" ? this.lookupClass(scope, name, whole) : undefined;
+    if (name === "Tuple" && (!ownTuple || ownTuple.file.file.prelude) && !this.lookupTypedef(scope, name)) {
       if (node.args.length === 0) {
         this.diags.error("X0422", "`Tuple` needs a type argument per element: `Tuple<String, int>`", node.span);
         return T.error;

@@ -454,3 +454,11 @@ test("hover on destructured names shows their types (tuple positions); completio
   expect([hover("key,"), hover("value]"), hover("name,"), hover("age]")]).toEqual(["key:String", "value:*", "name:String", "age:int"]);
   expect(p.completions("Main.xn", offset(text, "var t:Tu", 8)).map((i) => i.label)).toContain("Tuple");
 });
+
+test("go to definition on built-in types opens the standard library's declaration (Tuple, int, Array)", () => {
+  const text = "public class Main {\n  public function Main() {\n    var a:Array<int> = []\n    var n:String = ''\n    var t:Tuple<String, int> = ['a', 1]\n    trace(a, n, t)\n  }\n}\n";
+  const p = project({ "Main.xn": text });
+  const target = (needle: string) => p.definition("Main.xn", offset(text, needle, 1)).map((l) => l.path.split("/").at(-1));
+  expect([target("Array<int>"), target("int>"), target("String = ''"), target("Tuple<")]).toEqual([["Array.xn"], ["int.xn"], ["String.xn"], ["Tuple.xn"]]);
+  expect(p.hover("Main.xn", offset(text, "Tuple<", 1))!.contents).toContain("An array with one type per position");
+});

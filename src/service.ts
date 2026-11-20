@@ -17,7 +17,7 @@ import { generatedOffsetAt, type Mapping, type OutputFile, sourceOffsetAt } from
 import { compileProject, type CompileResult, PRELUDE, type SourceInput } from "./compiler.ts";
 import { KEYWORDS } from "./lexer.ts";
 import { SourceFile, type Span, spanText } from "./source.ts";
-import { isSubclass, memberTypeIn, type MethodType, type ShapeMember, type ShapeType, stdClassOf, supertypes, type Type, typeToString } from "./types.ts";
+import { isSubclass, memberTypeIn, nonNull, type MethodType, type ShapeMember, type ShapeType, stdClassOf, supertypes, type Type, typeToString } from "./types.ts";
 
 /** Options of the virtual TypeScript project. Xenon references may be `null`: no strict null checks. */
 export const TS_OPTIONS: ts.CompilerOptions = {
@@ -646,7 +646,16 @@ export class XenonProject {
     if (!t) return undefined;
     const td = (t.kind === "shape" || t.kind === "method") ? t.typedef : undefined;
     if (td) return { text: `typedef ${td.decl.name.name} = ${typeToString({ ...t, alias: undefined } as Type)}`, doc: docComment(td.decl.span.file, td.decl.span.start), span, decl: td.decl.name.span };
+    // A built-in type (`int`, `String`, `Array<T>`, `Tuple<…>`): the standard library declares it.
+    const std = this.stdClassFor(a, nonNull(t));
+    if (std) return { text: typeToString(t), doc: docComment(std.decl.span.file, std.decl.span.start), span, decl: std.decl.name.span };
     return { text: typeToString(t), span };
+  }
+
+  /** The standard library's declaration of a built-in type: `int` → `int.xn`, `Tuple<…>` → `Tuple.xn`. */
+  private stdClassFor(a: Analysis, t: Type): ClassInfo | undefined {
+    const name = t.kind === "prim" ? t.name : t.kind === "builtin" ? t.name : undefined;
+    return name ? a.result.check.classes.get(`xenon.${name}`) : undefined;
   }
 
   /** A member of a value of type `t` (instance members, or statics of a class reference). */

@@ -1,0 +1,21 @@
+// Standard library: `Tuple<A, B, …>`, an array with exactly one type per position. The type is
+// built into the compiler (it takes any number of type arguments); this declaration documents it.
+//
+// At runtime a tuple is a plain JavaScript array, so it has `Array`'s members, seen with the union
+// of its element types (`pair.join('/')`, `pair.length`). In the TypeScript output it is `[A, B]`.
+package xenon {
+  /**
+   * An array with one type per position: `var pair:Tuple<String, int> = ['ann', 31]`.
+   *
+   * - A literal takes the tuple type from context and lists exactly one element per position.
+   * - `pair[0]` is a `String`, `pair[1]` an `int`; any other index gives the union (`String | int`).
+   * - Destructuring types each name: `var [name, age] = pair`; `...rest` keeps the remaining positions.
+   * - A tuple fits `Array<*>` (and `Array<T>` when every position is a `T`); an array never fits a
+   *   tuple, since its length isn't known.
+   *
+   * `Object.entries(o)` gives `Array<Tuple<String, *>>`, and a `Map<K, V>` yields `Tuple<K, V>`.
+   */
+  public native('Array') class Tuple {
+    private function Tuple()
+  }
+}
