@@ -49,8 +49,12 @@ export function tsOptions(): tsModule.CompilerOptions {
 
 /** What a JavaScript import's local name refers to in the generated declarations. */
 export type JsBinding =
-  /** A class, or a module namespace (its exports are the class's statics). */
-  | { kind: "class"; qname: string }
+  /**
+   * A class, or a module namespace (its exports are the class's statics). `selfInstance`: the
+   * constructor value has the instance type itself (JSZip's `declare var JSZip: JSZip` with
+   * `new(): this`), so the instance members are usable through the class name too (`JSZip.loadAsync`).
+   */
+  | { kind: "class"; qname: string; selfInstance?: boolean }
   /** A function or value: a static of the generated holder class. */
   | { kind: "member"; qname: string; member: string }
   /** A type exported by a namespace import, named `Ns.Type` (a structural shape). */
@@ -245,7 +249,8 @@ function generate(probes: { file: A.XenonFile; local: string; kind: string; prob
       const made = type.getConstructSignatures()[0]?.getReturnType().getSymbol();
       if (made && made.flags & (ts.SymbolFlags.Class | ts.SymbolFlags.Interface) && !(p.kind === "namespace")) {
         gen.classDecl(made, p.local, p.local, type);
-        bindings.set(p.local, { kind: "class", qname: `${path}#${p.local}` });
+        const selfInstance = type.getSymbol() === made;
+        bindings.set(p.local, { kind: "class", qname: `${path}#${p.local}`, ...(selfInstance ? { selfInstance } : {}) });
         continue;
       }
       const callable = type.getCallSignatures().length > 0;

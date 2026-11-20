@@ -15,6 +15,8 @@ import {
 
 /** A class known to the project. */
 export interface ClassInfo {
+  /** A JavaScript class whose constructor value is an instance too (JSZip): instance members work through the class name. */
+  selfInstance?: boolean;
   decl: A.ClassDecl;
   file: A.XenonFile;
   /** Dotted package name ('' for the top level). */
@@ -368,6 +370,12 @@ export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typ
   };
   const env = new Env(classes, typedefs, diags, result);
   env.jsBindings = jsBindings;
+  for (const file of jsBindings?.values() ?? []) {
+    for (const b of file.values()) {
+      const info = b.kind === "class" && b.selfInstance ? classes.get(b.qname) : undefined;
+      if (info) info.selfInstance = true;
+    }
+  }
 
   const scopes = env.scopes;
   for (const file of files) scopes.set(file, env.fileScope(file));
@@ -3764,7 +3772,7 @@ class BodyChecker {
           else if (isNative(obj.info)) d.help(`if this JavaScript API exists, use it dynamically: \`(${dynamicReceiver(e.object)} as *).${name}\``);
           return T.error;
         }
-        if (wantStatic && !m.isStatic) {
+        if (wantStatic && !m.isStatic && !obj.info.selfInstance) {
           this.diags.error("X0414", `\`${name}\` is an instance member; it can't be accessed through the class`, e.name.span)
             .secondary(m.decl.name.span, "declared here");
           return T.error;

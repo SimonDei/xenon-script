@@ -280,6 +280,32 @@ public class Main {
   }
 });
 
+test("a constructor value of its own instance type (JSZip): instance members work through the class name too", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const project = join(import.meta.dir, ".dts-selfinstance");
+  const pkg = join(project, "node_modules", "zipish");
+  await rm(project, { recursive: true, force: true });
+  await mkdir(pkg, { recursive: true });
+  await Bun.write(join(pkg, "package.json"), JSON.stringify({ name: "zipish", types: "index.d.ts" }));
+  await Bun.write(join(pkg, "index.d.ts"), `interface Zipish {
+  files: { [key: string]: unknown };
+  file(path: string): string | null;
+  loadAsync(data: ArrayBuffer): Promise<Zipish>;
+  new(): this;
+  version: string;
+}
+declare var Zipish: Zipish;
+export = Zipish;
+`);
+  try {
+    const text = "import Zipish from 'zipish'\n\npublic class Main {\n  public function Main() {}\n  public static async function open(data:ArrayBuffer):Promise<Zipish> {\n    var zip:Zipish = await Zipish.loadAsync(data)\n    var fresh:Zipish = new Zipish()\n    trace(zip.file('a'), Zipish.version, fresh.version)\n    return zip\n  }\n}\n";
+    const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: join(project, "src") });
+    expect(result.diagnostics.sorted().filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
 test("JavaScript files of the source folder are copied, unless a module has their path (X0030)", () => {
   const code = main("import { book } from './lib/sheet.js'", "    trace(book())");
   const copied = compileProject([{ path: "Main.xn", text: code }], { main: "Main", assets: [{ path: "lib/sheet.js", text: "export const book = () => 1;\n" }] });
