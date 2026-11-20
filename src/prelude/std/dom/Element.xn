@@ -26,6 +26,7 @@ package xenon {
     function get classList():*
 
     // ---- attributes ----
+    function get attributes():NamedNodeMap
     function hasAttributes():Boolean
     function getAttributeNames():Array<String>
     /** The attribute's value, or `null` if the element doesn't have it: `br.getAttribute('w:type')`. */

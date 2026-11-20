@@ -1,0 +1,14 @@
+// Browser: an attribute attached to an XML or HTML element.
+package xenon {
+  public native class Attr extends Node {
+    private function Attr()
+
+    function get name():String
+    function get localName():String
+    function get prefix():String?
+    function get namespaceURI():String?
+    function get ownerElement():Element?
+    function get value():String
+    function set value(value:String):void
+  }
+}

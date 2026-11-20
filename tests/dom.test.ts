@@ -53,6 +53,17 @@ test("an empty array can be a DOM fallback through IEnumerable", () => {
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
 });
 
+test("Element.attributes is an iterable collection of Attr values", () => {
+  const result = compileProject([{ path: "Main.xn", text: `public class Main {
+  public function Main() {}
+  public static function attributes(element:Element):Array<String> {
+    return [...element.attributes].map(attr => $'{attr.name}={attr.value}')
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
+});
+
 test("a stable value keeps a guard's narrowing inside a callback", () => {
   const safe = compileProject([{ path: "Main.xn", text: `public class Main {
   public static function has(data:Object?, key:String):Boolean {

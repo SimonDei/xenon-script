@@ -1,0 +1,11 @@
+// Browser: an element's live collection of attributes (`element.attributes`).
+package xenon {
+  public native class NamedNodeMap implements IEnumerable<Attr> {
+    private function NamedNodeMap()
+
+    function get length():int
+    function item(index:int):Attr?
+    function getNamedItem(qualifiedName:String):Attr?
+    function getNamedItemNS(ns:String?, localName:String):Attr?
+  }
+}
