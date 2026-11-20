@@ -2879,7 +2879,21 @@ class BodyChecker {
       if (m.retSpan) d.secondary(m.retSpan, "declared `void` here");
       return;
     }
-    this.checkAssign(s.value, m.ret, m.retSpan && { span: m.retSpan, label: "expected because of this return type" }, scope);
+    const origin = m.retSpan && { span: m.retSpan, label: "expected because of this return type" };
+    // `return response.json()` in an `async` function: a promise is waited for (as `return await …`),
+    // so its value must fit. Literals are still typed from the return type.
+    const promise = this.env.promiseClass;
+    if (m.async && promise && !["Array", "Object", "Function"].includes(s.value.kind)) {
+      const t = this.valueExpr(s.value, scope);
+      const n = nonNull(t);
+      if (n.kind === "class" && n.info === promise) {
+        const value = n.args?.[0] ?? T.any;
+        if (!assignable(value, m.ret)) this.mismatch(s.value, t, m.ret, origin);
+        return;
+      }
+      this.preTyped.set(s.value, t);
+    }
+    this.checkAssign(s.value, m.ret, origin, scope);
   }
 
   /**

@@ -1,0 +1,15 @@
+typedef Result = { mode:String, file:String }
+
+public class Main {
+  public function Main() {}
+
+  private async function json():Promise<*> => null
+  private async function count():Promise<int> => 1
+
+  // A promise returned from an `async` function is waited for: its value must fit.
+  private async function result():Promise<Result> { return json() }         // fine: `*`
+  private async function again():Promise<int> { return count() }            // fine: `Promise<int>`
+  private async function wrong():Promise<String> { return count() }         // X0308: an `int` promise
+  private async function plain():Promise<int> { return 'x' }                // X0308: as before
+  private async function literal():Promise<Result> { return { mode: 'a', file: '' } }  // fine: typed from the result
+}

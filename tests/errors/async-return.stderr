@@ -1,0 +1,20 @@
+error[X0308]: mismatched types
+  --> async-return.xn:12:59
+   |
+12 |   private async function wrong():Promise<String> { return count() }         // X0308: an `int` promise
+   |                                  ---------------          ^^^^^^^ expected `String`, found `Promise<int>`
+   |                                  |
+   |                                  expected because of this return type
+
+error[X0308]: mismatched types
+  --> async-return.xn:13:56
+   |
+13 |   private async function plain():Promise<int> { return 'x' }                // X0308: as before
+   |                                  ------------          ^^^ expected `int`, found `String`
+   |                                  |
+   |                                  expected because of this return type
+   |
+help: convert the value with `int()`
+   |
+13 |   private async function plain():Promise<int> { return int('x') }                // X0308: as before
+   |                                                        ++++   +
