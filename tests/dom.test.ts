@@ -135,6 +135,21 @@ public class Main {
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
 });
 
+test("Element.textContent is non-null and writable; Document.textContent stays nullable", () => {
+  const result = compileProject([{
+    path: "Main.xn",
+    text: `public class Main {
+  public function Main() {}
+  public static function text(element:Element):int {
+    element.textContent = ''
+    return element.textContent.length
+  }
+  public static function documentText(document:Document):int => document.textContent.length
+}
+`,
+  }], { main: "Main", nullSafety: true });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.code)).toEqual(["X0398"]);
+});
 
 test("a DOM result that may be missing is T? with null safety; the DOM's names are free for own classes", () => {
   const nullSafe = compileProject([{ path: "Main.xn", text: `public class Main {

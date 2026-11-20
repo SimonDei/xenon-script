@@ -79,6 +79,10 @@ package xenon {
     function insertAdjacentText(where:String, text:String):void
     function insertAdjacentHTML(where:String, html:String):void
 
+    /** The element's text, or `''` when it has no text. */
+    public override function get textContent():String
+    public override function set textContent(value:String):void
+
     // ---- markup ----
     /** The children as HTML or XML text; setting it parses and replaces them. */
     function get innerHTML():String
