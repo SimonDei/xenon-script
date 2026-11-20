@@ -213,7 +213,13 @@ function typedefText(td: TypedefInfo): string {
 
 function classText(info: ClassInfo): string {
   const d = info.decl;
-  const what = d.isInterface ? "interface" : d.isEnum ? "enum" : `${d.modifiers.abstract ? "abstract " : ""}class`;
+  const modifiers = [
+    d.modifiers.static ? "static" : "",
+    d.modifiers.abstract ? "abstract" : "",
+    d.modifiers.final ? "final" : "",
+  ].filter(Boolean).join(" ");
+  const prefix = modifiers ? `${modifiers} ` : "";
+  const what = d.isInterface ? `${prefix}interface` : d.isEnum ? `${prefix}enum` : `${prefix}class`;
   const tps = info.typeParams.length ? `<${info.typeParams.map((p) => p.name).join(", ")}>` : "";
   const ext = info.parent ? ` extends ${info.parent.decl.name.name}` : "";
   const impl = info.interfaces.length ? ` ${d.isInterface ? "extends" : "implements"} ${info.interfaces.map((i) => i.decl.name.name).join(", ")}` : "";

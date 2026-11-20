@@ -148,6 +148,16 @@ test("a static class cannot be instantiated", () => {
   ]);
 });
 
+test("class hover shows declaration modifiers", () => {
+  const main = "public class Main {\n  public function Main() { trace(State) }\n}\n";
+  const p = project({
+    "State.xn": "public static final class State {}\n",
+    "Main.xn": main,
+  });
+  expect(p.hover("Main.xn", offset(main, "State", 1))!.contents)
+    .toContain("static final class State");
+});
+
 test("a static class cannot be used as a field type", () => {
   const result = compileProject([
     { path: "State.xn", text: "public static final class State {}\n" },
