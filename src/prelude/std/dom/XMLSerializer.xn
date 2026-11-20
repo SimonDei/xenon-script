@@ -1,0 +1,16 @@
+// Browser: the DOM's `XMLSerializer`, the reverse of `DOMParser`: a document or node back to text.
+//   var xml:String = new XMLSerializer().serializeToString(doc)
+// Browser-only: Bun has no DOM, so `XMLSerializer` exists at runtime only in a browser (or with a
+// DOM library such as happy-dom).
+//
+// The text keeps the namespaces (`xmlns:w="…"`) and prefixes of the tree; without an XML
+// declaration (`<?xml …?>`) unless the document has one as a node. An HTML document serializes
+// as XHTML; use `element.outerHTML` for HTML text.
+package xenon {
+  public native class XMLSerializer {
+    function XMLSerializer()
+
+    /** The XML text of `node` and its subtree: a whole `Document`, or one `Element`. */
+    function serializeToString(node:Node):String
+  }
+}

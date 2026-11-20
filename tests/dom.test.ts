@@ -179,3 +179,35 @@ test("DOMParser and Document: parse Word XML, change it, read it back (and the T
   const ts = compileProject([{ path: "Main.xn", text: code }], { main: "Main", target: "ts" });
   expect(typeCheck(ts.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
 });
+
+test("XMLSerializer: a parsed and changed document back to XML text (and the TypeScript output checks)", async () => {
+  const code = `public class Main {
+  public function Main() {}
+
+  /** Removes the placeholder from every text run and serializes the document again. */
+  public static function clean(xml:String, placeholder:String):String {
+    var doc:Document = new DOMParser().parseFromString(xml, 'application/xml')
+    for (var t:Element of doc.getElementsByTagName('w:t')) {
+      var text:String = t.textContent ?? ''
+      if (text.includes(placeholder)) t.textContent = text.replaceAll(placeholder, '')
+    }
+    return new XMLSerializer().serializeToString(doc)
+  }
+}
+`;
+  const result = compileProject([{ path: "Main.xn", text: code }], { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  const source = result.outputs.find((o) => o.path === "Main.js")!.text;
+  const window = new Window();
+  try {
+    const Main = new Function("DOMParser", "XMLSerializer", `${source.replace(/^export /m, "").replace(/\/\/# sourceMappingURL.*$/m, "")}; return Main;`)(window.DOMParser, window.XMLSerializer);
+    const xml = `<w:document xmlns:w="urn:w"><w:p><w:t>Dear ~</w:t></w:p></w:document>`;
+    expect(Main.clean(xml, "~")).toBe(`<w:document xmlns:w="urn:w"><w:p><w:t>Dear </w:t></w:p></w:document>`);
+  } finally {
+    await window.happyDOM.close();
+  }
+  const { typeCheck } = await import("./tsemit.ts");
+  const { join } = await import("node:path");
+  const ts = compileProject([{ path: "Main.xn", text: code }], { main: "Main", target: "ts" });
+  expect(typeCheck(ts.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
+});
