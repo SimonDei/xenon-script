@@ -5321,6 +5321,19 @@ class BodyChecker {
       case "Binary": {
         if (["==", "!=", "===", "!=="].includes(e.op)) {
           const negated = e.op.startsWith("!");
+          const optionalReceiver = (side: A.Expr): A.Expr & { kind: "Ident" } | undefined =>
+            side.kind === "Member" && side.optional && side.object.kind === "Ident" ? side.object : undefined;
+          const receiver = optionalReceiver(e.left) ?? optionalReceiver(e.right);
+          const compared = receiver === (e.left.kind === "Member" ? e.left.object : undefined) ? e.right : e.left;
+          const comparedType = this.env.result.exprTypes.get(compared);
+          if (receiver && comparedType && !isNullable(comparedType) && !isDynamic(comparedType)) {
+            const local = scope.get(receiver.name);
+            const cur = local && this.currentType(local, scope);
+            if (local && cur?.kind === "nullable") {
+              const fact = { local, type: nonNull(cur) };
+              return negated ? { whenTrue: [], whenFalse: [fact] } : { whenTrue: [fact], whenFalse: [] };
+            }
+          }
           const side = e.right.kind === "Null" ? e.left : e.left.kind === "Null" ? e.right : undefined;
           const local = side?.kind === "Ident" ? scope.get(side.name) : undefined;
           if (local) {
