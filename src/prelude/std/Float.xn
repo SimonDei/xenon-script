@@ -9,17 +9,17 @@ package xenon {
     private function Float()
 
     /** Digits in base `radix` (2–36): `(255).toString(16)` is `'ff'`. */
-    function toString(radix:int = 10):String
+    constexpr function toString(radix:int = 10):String
     /** Fixed-point notation with `digits` (0–100) after the point, rounded: `(1.005).toFixed(2)`. */
-    function toFixed(digits:int = 0):String
+    constexpr function toFixed(digits:int = 0):String
     /** Exponential notation with as many digits as needed: `(1234).toExponential()` is `'1.234e+3'`. */
-    function toExponential():String
+    constexpr function toExponential():String
     /** Exponential notation with `digits` (0–100) after the point. */
-    function toExponential(digits:int):String
+    constexpr function toExponential(digits:int):String
     /** Same as `toString()`. */
-    function toPrecision():String
+    constexpr function toPrecision():String
     /** `precision` (1–100) significant digits, in fixed or exponential notation. */
-    function toPrecision(precision:int):String
+    constexpr function toPrecision(precision:int):String
     /** Formatted for the default locale, e.g. `'1,234.5'`. */
     function toLocaleString():String
     /** Formatted for a locale tag like `'de-DE'`; `options` are `Intl.NumberFormat` options. */
@@ -30,31 +30,31 @@ package xenon {
     function valueOf():Float
 
     /** Difference between 1 and the next larger representable number (about 2.2e-16). */
-    static const EPSILON:Float
+    static inline const EPSILON:Float = 2.220446049250313e-16
     /** Largest integer n where n and n + 1 are exact (2^53 − 1). Exceeds the `int` range. */
-    static const MAX_SAFE_INTEGER:Float
+    static inline const MAX_SAFE_INTEGER:Float = 9007199254740991.0
     /** −(2^53 − 1). */
-    static const MIN_SAFE_INTEGER:Float
+    static inline const MIN_SAFE_INTEGER:Float = -9007199254740991.0
     /** Largest finite number (about 1.8e308). */
-    static const MAX_VALUE:Float
+    static inline const MAX_VALUE:Float = 1.7976931348623157e308
     /** Smallest positive number (about 5e-324). */
-    static const MIN_VALUE:Float
+    static inline const MIN_VALUE:Float = 5e-324
     /** Not-a-number. Test with `Float.isNaN(x)`: `NaN == NaN` is false. */
-    static const NaN:Float
-    static const POSITIVE_INFINITY:Float
-    static const NEGATIVE_INFINITY:Float
+    static inline const NaN:Float = 0.0 / 0
+    static inline const POSITIVE_INFINITY:Float = 1.0 / 0
+    static inline const NEGATIVE_INFINITY:Float = -1.0 / 0
 
     /** Is `value` a number other than NaN and ±Infinity? (No conversion: `isFinite('1')` is false.) */
-    static function isFinite(value:*):Boolean
+    static constexpr function isFinite(value:*):Boolean
     /** Is `value` a whole number? (`2.0` is, `'2'` isn't.) */
-    static function isInteger(value:*):Boolean
+    static constexpr function isInteger(value:*):Boolean
     /** Is `value` NaN? (No conversion: `isNaN('x')` is false.) */
-    static function isNaN(value:*):Boolean
+    static constexpr function isNaN(value:*):Boolean
     /** Is `value` a whole number between `MIN_SAFE_INTEGER` and `MAX_SAFE_INTEGER`? */
-    static function isSafeInteger(value:*):Boolean
+    static constexpr function isSafeInteger(value:*):Boolean
     /** Leading number in `text` (`'3.5kg'` → 3.5), or NaN. */
-    static function parseFloat(text:String):Float
+    static constexpr function parseFloat(text:String):Float
     /** Leading integer in `text` in base `radix` (`'ff'`, 16 → 255), or NaN. */
-    static function parseInt(text:String, radix:int = 10):Float
+    static constexpr function parseInt(text:String, radix:int = 10):Float
   }
 }

@@ -46,28 +46,15 @@ help: convert the value with `int()`
   |                     ++++                      +
 
 error[X0308]: mismatched types
- --> std-float.xn:8:24
-  |
-8 |       var parsed:int = Float.parseInt('7')
-  |                  ---   ^^^^^^^^^^^^^^^^^^^ expected `int`, found `Float`
-  |                  |
-  |                  expected because of this type
-  |
-help: convert the value with `int()`
-  |
-8 |       var parsed:int = int(Float.parseInt('7'))
-  |                        ++++                   +
-
-error[X0308]: mismatched types
   --> std-float.xn:9:24
    |
  9 |       trace(n.toString('16'), price.toPrecision(2.5), big, parsed)
    |                        ^^^^ expected `int`, found `String`
    |
-  ::: <xenon prelude>/xenon/Float.xn:12:29
+  ::: <xenon prelude>/xenon/Float.xn:12:39
    |
-12 |     function toString(radix:int = 10):String
-   |                             --- parameter declared here
+12 |     constexpr function toString(radix:int = 10):String
+   |                                       --- parameter declared here
    |
 help: convert the value with `int()`
    |
@@ -89,10 +76,10 @@ error[X0501]: cannot assign to constant `NaN`
 10 |       Float.NaN = 0
    |             ^^^
    |
-  ::: <xenon prelude>/xenon/Float.xn:43:18
+  ::: <xenon prelude>/xenon/Float.xn:43:25
    |
-43 |     static const NaN:Float
-   |                  --- declared `const` here
+43 |     static inline const NaN:Float = 0.0 / 0
+   |                         --- declared `const` here
 
 error[X0420]: cannot find type `Number`
   --> std-float.xn:11:13

@@ -9,7 +9,7 @@ package xenon {
     private function Boolean()
 
     /** `'true'` or `'false'`. */
-    function toString():String
+    constexpr function toString():String
 
     /** The primitive value itself. */
     function valueOf():Boolean
