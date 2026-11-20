@@ -139,7 +139,8 @@ function collectClasses(asts: A.XenonFile[], diags: DiagnosticBag, typedefs: Map
     const fileName = pathParts.pop()!;
     const expectedPkg = pathParts.join(".");
 
-    if (ast.packageSpan && pkg !== expectedPkg) {
+    // The prelude's files are all `package xenon`, also those in `std/dom/`.
+    if (ast.packageSpan && pkg !== expectedPkg && !ast.file.prelude) {
       const expected = expectedPkg === "" ? "the top-level package (`package { … }`)" : `\`package ${expectedPkg}\``;
       diags.error("X0020", `package \`${pkg || "(top level)"}\` doesn't match the file's directory`, ast.packageSpan, `expected ${expected}`)
         .note("a file's package must match its directory below the source root");
@@ -166,9 +167,13 @@ function collectClasses(asts: A.XenonFile[], diags: DiagnosticBag, typedefs: Map
     }
 
     const module = posix.join(...(pkg === "" ? [] : pkg.split(".")), `${fileName}.js`);
+    // The DOM's names (`Node`, `Element`, …) aren't reserved: a program's own `Node` shadows the DOM's.
+    const reserve = (decl: A.TypeDecl) => {
+      if (!ast.file.path.startsWith(`${PRELUDE_PACKAGE}/dom/`)) preludeNames.set(decl.name.name, decl);
+    };
     const add = (decl: A.TypeDecl, filePrivate: boolean) => {
       if (decl.kind === "Typedef") {
-        if (prelude) preludeNames.set(decl.name.name, decl);
+        if (prelude) reserve(decl);
         else if (preludeNames.has(decl.name.name)) {
           diags.error("X0028", `\`${decl.name.name}\` is the name of a built-in type`, decl.name.span)
             .note(`the prelude declares \`${decl.name.name}\` for every file; pick another name`);
@@ -183,7 +188,7 @@ function collectClasses(asts: A.XenonFile[], diags: DiagnosticBag, typedefs: Map
         typedefs.set(qname, { decl, file: ast, pkg, qname, filePrivate, params: uniqueParams(decl.typeParams, diags) });
         return;
       }
-      if (prelude) preludeNames.set(decl.name.name, decl);
+      if (prelude) reserve(decl);
       else if (preludeNames.has(decl.name.name)) {
         const builtin = preludeNames.get(decl.name.name)!;
         diags.error("X0028", `\`${decl.name.name}\` is the name of a built-in ${builtin.kind === "Typedef" ? "type" : "class"}`, decl.name.span)

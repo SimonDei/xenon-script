@@ -13,9 +13,13 @@ export interface PreludeFile {
   text: string;
 }
 
-/** `Prelude.xn` (the runtime classes) first, then the standard library's declarations (`std/*.xn`) by name. */
+/**
+ * `Prelude.xn` (the runtime classes) first, then the standard library's declarations (`std/*.xn`)
+ * by name, then the browser's DOM (`std/dom/*.xn`, as `xenon/dom/…`: names a program may reuse).
+ */
 export function preludeFiles(): PreludeFile[] {
-  const std = [...new Bun.Glob("*.xn").scanSync({ cwd: join(import.meta.dir, "std") })].sort();
+  const scan = (pattern: string) => [...new Bun.Glob(pattern).scanSync({ cwd: join(import.meta.dir, "std") })].map((f) => f.split("\\").join("/")).sort();
+  const std = [...scan("*.xn"), ...scan("dom/*.xn")];
   return [
     { path: "xenon/Prelude.xn", text: readFileSync(join(import.meta.dir, "Prelude.xn"), "utf8") },
     ...std.map((f) => ({ path: `xenon/${f}`, text: readFileSync(join(import.meta.dir, "std", f), "utf8") })),

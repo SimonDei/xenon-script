@@ -1,0 +1,15 @@
+// Browser: the DOM's `HTMLCollection`, a live list of elements (`getElementsByTagName`,
+// `children`): it follows changes to the tree. Browser-only: Bun has no DOM.
+// Use it with `for (var e:Element of collection)`, `length`/`item(i)`, or `Array.from(collection)`
+// for array methods (and to get a snapshot before changing the tree).
+package xenon {
+  public native class HTMLCollection implements IEnumerable<Element> {
+    private function HTMLCollection()
+
+    function get length():int
+    /** The element at `index`, or `null` past the end. */
+    function item(index:int):Element?
+    /** The element with this `id` or `name`, or `null`. */
+    function namedItem(name:String):Element?
+  }
+}

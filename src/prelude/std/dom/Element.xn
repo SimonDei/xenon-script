@@ -1,0 +1,86 @@
+// Browser: the DOM's `Element`, a tag in an HTML or XML document (`<w:p>` in a Word file's XML too).
+// Browser-only: Bun has no DOM, so `Element` exists at runtime only in a browser (or with a DOM
+// library such as happy-dom); `x is Element` in Bun throws a `ReferenceError`.
+//
+// Typing: a missing attribute is `null` (`getAttribute` returns `String?`); lookups that may find
+// nothing are `T?` (`querySelector`, `closest`). `getElementsByTagName` & co. return a live
+// `HTMLCollection`; `querySelectorAll` a static `NodeList<Element>`. Both work with `for … of` and
+// `Array.from`. Not declared yet: `classList` and `style` (`*`), geometry and scrolling, events.
+package xenon {
+  public native class Element extends Node {
+    private function Element()
+
+    // ---- names ----
+    /** The qualified name as written (`'w:p'`; upper case for HTML elements in an HTML document). */
+    function get tagName():String
+    /** The name without the prefix: `'p'` for `<w:p>`. */
+    function get localName():String
+    /** The prefix: `'w'` for `<w:p>`, else `null`. */
+    function get prefix():String?
+    function get namespaceURI():String?
+    function get id():String
+    function set id(value:String):void
+    function get className():String
+    function set className(value:String):void
+    /** The class names as a `DOMTokenList` (`add`, `remove`, `toggle`, `contains`). */
+    function get classList():*
+
+    // ---- attributes ----
+    function hasAttributes():Boolean
+    function getAttributeNames():Array<String>
+    /** The attribute's value, or `null` if the element doesn't have it: `br.getAttribute('w:type')`. */
+    function getAttribute(name:String):String?
+    function getAttributeNS(ns:String?, localName:String):String?
+    function hasAttribute(name:String):Boolean
+    function hasAttributeNS(ns:String?, localName:String):Boolean
+    function setAttribute(name:String, value:String):void
+    function setAttributeNS(ns:String?, qualifiedName:String, value:String):void
+    function removeAttribute(name:String):void
+    function removeAttributeNS(ns:String?, localName:String):void
+    /** Adds the attribute if it's missing, removes it if present (or as `force` says); whether it's there now. */
+    function toggleAttribute(name:String):Boolean
+    function toggleAttribute(name:String, force:Boolean):Boolean
+
+    // ---- finding elements ----
+    /** All descendants with this qualified name (`'w:br'`, `'*'` for all), live. */
+    function getElementsByTagName(qualifiedName:String):HTMLCollection
+    function getElementsByTagNameNS(ns:String?, localName:String):HTMLCollection
+    function getElementsByClassName(classNames:String):HTMLCollection
+    /** The first descendant matching a CSS selector, or `null`. */
+    function querySelector(selectors:String):Element?
+    function querySelectorAll(selectors:String):NodeList<Element>
+    /** The element itself or its nearest ancestor matching the selector, or `null`. */
+    function closest(selectors:String):Element?
+    function matches(selectors:String):Boolean
+
+    // ---- children and siblings that are elements ----
+    function get children():HTMLCollection
+    function get firstElementChild():Element?
+    function get lastElementChild():Element?
+    function get childElementCount():int
+    function get previousElementSibling():Element?
+    function get nextElementSibling():Element?
+
+    // ---- changing the tree (nodes or strings, which become text) ----
+    function append(...nodes:Array<*>):void
+    function prepend(...nodes:Array<*>):void
+    function replaceChildren(...nodes:Array<*>):void
+    function before(...nodes:Array<*>):void
+    function after(...nodes:Array<*>):void
+    function replaceWith(...nodes:Array<*>):void
+    /** Takes the element out of its parent. */
+    function remove():void
+    /** `where`: `'beforebegin'`, `'afterbegin'`, `'beforeend'` or `'afterend'`. */
+    function insertAdjacentElement(where:String, element:Element):Element?
+    function insertAdjacentText(where:String, text:String):void
+    function insertAdjacentHTML(where:String, html:String):void
+
+    // ---- markup ----
+    /** The children as HTML or XML text; setting it parses and replaces them. */
+    function get innerHTML():String
+    function set innerHTML(value:String):void
+    /** The element itself and its children as text. */
+    function get outerHTML():String
+    function set outerHTML(value:String):void
+  }
+}

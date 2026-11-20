@@ -3,8 +3,9 @@
  * every declared class and member must exist in Bun with the declared kind (method, property,
  * static, constructor), and zero-argument members of primitives must return the declared type.
  */
-import { expect, test } from "bun:test";
-import { basename, join } from "node:path";
+import { afterAll, expect, test } from "bun:test";
+import { Window } from "happy-dom";
+import { join } from "node:path";
 import type * as A from "../src/ast.ts";
 import { PRELUDE } from "../src/compiler.ts";
 import { DiagnosticBag } from "../src/diagnostics.ts";
@@ -12,7 +13,14 @@ import { parseFile } from "../src/parser.ts";
 import { SourceFile, spanText } from "../src/source.ts";
 
 const stdDir = join(import.meta.dir, "..", "src", "prelude", "std");
-const stdFiles = (await Array.fromAsync(new Bun.Glob("*.xn").scan({ cwd: stdDir }))).sort();
+const stdFiles = [
+  ...(await Array.fromAsync(new Bun.Glob("*.xn").scan({ cwd: stdDir }))).sort(),
+  ...(await Array.fromAsync(new Bun.Glob("dom/*.xn").scan({ cwd: stdDir }))).map((f) => f.split("\\").join("/")).sort(),
+];
+
+/** The DOM (`std/dom`): Bun has none, so its classes are checked against happy-dom's. */
+const dom = new Window();
+afterAll(() => dom.happyDOM.close());
 
 /** Sample values for running members of primitive classes. */
 const SAMPLES: Record<string, unknown[]> = {
@@ -34,6 +42,9 @@ const SAMPLES: Record<string, unknown[]> = {
  */
 const ARITY_QUIRKS = new Set(["Response.prototype.clone", "Blob.prototype.stream"]);
 
+/** Standard DOM members (every browser has them) that happy-dom doesn't implement. */
+const HAPPY_DOM_GAPS = new Set(["Node.prototype.lookupPrefix", "Node.prototype.lookupNamespaceURI", "Node.prototype.isDefaultNamespace"]);
+
 /** Does a runtime value match a declared (primitive) type name? Unknown types aren't checked. */
 function matches(type: A.TypeNode | undefined, value: unknown): boolean {
   if (!type || type.kind !== "TypeName") return true;
@@ -48,8 +59,8 @@ function matches(type: A.TypeNode | undefined, value: unknown): boolean {
 }
 
 test("every std file is part of the prelude", () => {
-  const loaded = new Set(PRELUDE.map((s) => basename(s.path)));
-  for (const f of stdFiles) expect(loaded.has(f)).toBe(true);
+  const loaded = new Set(PRELUDE.map((s) => s.path));
+  for (const f of stdFiles) expect(loaded.has(`xenon/${f}`)).toBe(true);
 });
 
 for (const file of stdFiles) {
@@ -63,7 +74,8 @@ for (const file of stdFiles) {
     for (const decl of [...ast.decls, ...ast.privateDecls]) {
       if (decl.kind !== "Class" || !decl.modifiers.native) continue;
       const jsName = decl.modifiers.nativeName ?? decl.name.name;
-      const ctor = (globalThis as Record<string, unknown>)[jsName] as Record<string, unknown> | undefined;
+      const runtime = file.startsWith("dom/") ? (dom as unknown as Record<string, unknown>) : (globalThis as Record<string, unknown>);
+      const ctor = runtime[jsName] as Record<string, unknown> | undefined;
       if (ctor == null) {
         problems.push(`${jsName}: no such global`);
         continue;
@@ -90,6 +102,7 @@ for (const file of stdFiles) {
         }
         const target = isStatic ? ctor : proto;
         const onSample = !isStatic && (SAMPLES[decl.name.name] ?? []).some((v) => name in Object(v));
+        if (file.startsWith("dom/") && HAPPY_DOM_GAPS.has(where)) continue;
         if (!(name in target) && !onSample) {
           problems.push(`${where}: missing at runtime`);
           continue;

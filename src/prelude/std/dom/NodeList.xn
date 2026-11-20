@@ -1,0 +1,19 @@
+// Browser: the DOM's `NodeList<T>`, a list of nodes: `childNodes` (live: it follows the tree) or
+// `querySelectorAll(…)` (a snapshot). Browser-only: Bun has no DOM.
+// Use it with `for (var n:Node of list)`, `list.length`/`list.item(i)`, or `Array.from(list)` for
+// array methods.
+package xenon {
+  public native class NodeList<T> implements IEnumerable<T> {
+    private function NodeList()
+
+    function get length():int
+    /** The node at `index`, or `null` past the end. */
+    function item(index:int):T?
+    function forEach(callback:(node:T, index:int, list:NodeList<T>) -> Void):void
+    /** With `thisArg` as the callback's `this` (for `function` callbacks). */
+    function forEach(callback:(node:T, index:int, list:NodeList<T>) -> Void, thisArg:*):void
+    function keys():Iterator<int>
+    function values():Iterator<T>
+    function entries():Iterator<Tuple<int, T>>
+  }
+}

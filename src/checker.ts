@@ -935,7 +935,10 @@ class Env {
       }
       return builtin;
     }
-    const info = this.lookupClass(scope, name, whole);
+    // The program's own declarations shadow the standard library's: a `typedef Node` beats the DOM's `Node`.
+    const found = this.lookupClass(scope, name, whole);
+    const ownTypedef = found?.file.file.prelude ? this.lookupTypedef(scope, name) : undefined;
+    const info = ownTypedef && !ownTypedef.file.file.prelude ? undefined : found;
     if (info) return this.genericClass(node, info, scope, tparams, allowRaw);
     const td = this.lookupTypedef(scope, name);
     if (td) {

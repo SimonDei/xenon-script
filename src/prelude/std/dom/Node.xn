@@ -1,0 +1,79 @@
+// Browser: the DOM's `Node`, the base of everything in a document tree (elements, text, comments).
+// Browser-only: Bun has no DOM, so `Node` exists at runtime only in a browser (or with a DOM library
+// such as happy-dom); `x is Node` in Bun throws a `ReferenceError`.
+//
+// Typing: links that may be missing are `T?` (`parentNode`, `firstChild`, …); `nodeValue` and
+// `textContent` are `String?` (`null` for a document). `childNodes` is a live `NodeList<Node>`.
+// Not declared yet: `EventTarget` (`addEventListener`), `Document`, `Text`, `Attr`.
+package xenon {
+  public native class Node {
+    private function Node()
+
+    // ---- node types (`node.nodeType == Node.ELEMENT_NODE`) ----
+    static inline const ELEMENT_NODE:int = 1
+    static inline const ATTRIBUTE_NODE:int = 2
+    static inline const TEXT_NODE:int = 3
+    static inline const CDATA_SECTION_NODE:int = 4
+    static inline const PROCESSING_INSTRUCTION_NODE:int = 7
+    static inline const COMMENT_NODE:int = 8
+    static inline const DOCUMENT_NODE:int = 9
+    static inline const DOCUMENT_TYPE_NODE:int = 10
+    static inline const DOCUMENT_FRAGMENT_NODE:int = 11
+
+    /** One of the `*_NODE` constants: `Node.ELEMENT_NODE` for an element, `Node.TEXT_NODE` for text. */
+    function get nodeType():int
+    /** The tag name for an element (`'w:p'`, upper case in HTML documents), `'#text'` for text, `'#document'`, … */
+    function get nodeName():String
+    function get baseURI():String
+    /** Is the node part of a document? */
+    function get isConnected():Boolean
+    /** The document the node belongs to (`null` for a document itself). */
+    function get ownerDocument():*
+
+    // ---- the tree ----
+    function get parentNode():Node?
+    /** The parent if it is an element, else `null`. */
+    function get parentElement():Element?
+    /** All children (elements, text, comments), live: it changes with the tree. */
+    function get childNodes():NodeList<Node>
+    function get firstChild():Node?
+    function get lastChild():Node?
+    function get previousSibling():Node?
+    function get nextSibling():Node?
+    function hasChildNodes():Boolean
+    /** The topmost ancestor (the document, or the root of a detached tree); `composed` crosses shadow roots. */
+    function getRootNode():Node
+    function getRootNode(options:{ ?composed:Boolean }):Node
+
+    // ---- content ----
+    /** The text of a text or comment node; `null` for elements and documents. */
+    function get nodeValue():String?
+    function set nodeValue(value:String?):void
+    /** All text inside the node, concatenated; setting it replaces the children with one text node. */
+    function get textContent():String?
+    function set textContent(value:String?):void
+    /** Joins adjacent text nodes and removes empty ones, below this node. */
+    function normalize():void
+
+    // ---- changing the tree (each returns the node it inserted or removed) ----
+    function appendChild(node:Node):Node
+    /** Inserts `node` before `child`, or at the end when `child` is `null`. */
+    function insertBefore(node:Node, child:Node?):Node
+    function replaceChild(node:Node, child:Node):Node
+    function removeChild(child:Node):Node
+    /** A copy; with `deep`, of its whole subtree too. */
+    function cloneNode(deep:Boolean = false):Node
+
+    // ---- comparing ----
+    function contains(other:Node?):Boolean
+    /** Same type, attributes and children (structurally equal). */
+    function isEqualNode(other:Node?):Boolean
+    /** The very same node (like `==`). */
+    function isSameNode(other:Node?):Boolean
+    /** A bit mask of the `DOCUMENT_POSITION_*` flags (preceding 2, following 4, contains 8, contained by 16). */
+    function compareDocumentPosition(other:Node):int
+    function lookupPrefix(ns:String?):String?
+    function lookupNamespaceURI(prefix:String?):String?
+    function isDefaultNamespace(ns:String?):Boolean
+  }
+}

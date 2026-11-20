@@ -14,6 +14,7 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "happy-dom": "^21.0.4",
     "lodash": "4.17.21",
     "vscode-oniguruma": "2.0.1",
     "vscode-textmate": "9.2.0"
