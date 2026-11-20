@@ -89,6 +89,9 @@ function defaultFor(type: string): string {
   return "null";
 }
 
+/** Web platform classes the standard library declares under the same name (non-generic ones). */
+const WEB_CLASSES = new Set(["Blob", "File", "FormData", "Response", "ArrayBuffer", "Event", "EventTarget", "Node", "Element", "Document", "DOMParser", "XMLSerializer", "HTMLCollection"]);
+
 /** The package (and directory) of generated declarations. */
 export const GENERATED_DIR = "__js";
 
@@ -370,6 +373,11 @@ class DeclWriter {
     this.decls[at] = lines.join("\n");
   }
 
+  /** Declared globally by TypeScript's library, Node's types (`@types/node`) or Bun's types: a platform type, not a package's. */
+  private isGlobal(sym: tsModule.Symbol): boolean {
+    return this.isLib(sym) || !!sym.declarations?.some((d) => /[\\/](@types[\\/]node|@types[\\/]bun|bun-types)[\\/]/.test(d.getSourceFile().fileName));
+  }
+
   /** Declared by TypeScript's own library (`lib.*.d.ts`). */
   private isLib(sym: tsModule.Symbol): boolean {
     return !!sym.declarations?.some((d) => this.program.isSourceFileDefaultLibrary(d.getSourceFile()));
@@ -576,6 +584,13 @@ class DeclWriter {
     }
     if (checker.isArrayType(t)) return `Array<${this.type(checker.getTypeArguments(t as tsModule.TypeReference)[0]!, false)}>`;
     const sym = t.getSymbol();
+    // A web platform class the standard library declares (`Blob` in pizzip's `generate(…): Blob`):
+    // the same class, whether TypeScript's DOM library, Node's or Bun's types declare it.
+    if (sym && WEB_CLASSES.has(sym.name) && this.names.has(sym.name) && this.isGlobal(sym)) return sym.name;
+    if (sym && (sym.name === "NodeListOf" || sym.name === "NodeList") && this.isGlobal(sym)) {
+      const args = (t as tsModule.TypeReference).target ? this.checker.getTypeArguments(t as tsModule.TypeReference) : [];
+      return `NodeList<${args[0] ? this.type(args[0], false) : "Node"}>`;
+    }
     if (sym && this.isLib(sym)) return this.libType(sym.name, t);
     const calls = t.getCallSignatures();
     const props = checker.getPropertiesOfType(t);

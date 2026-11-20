@@ -241,6 +241,45 @@ public class Main {
   }
 });
 
+test("global web types in a .d.ts (Node's Blob, the DOM's Element) are the standard library's classes, not copies", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const project = join(import.meta.dir, ".dts-web");
+  await rm(project, { recursive: true, force: true });
+  const write = async (name: string, dts: string) => {
+    const pkg = join(project, "node_modules", name);
+    await mkdir(pkg, { recursive: true });
+    await Bun.write(join(pkg, "package.json"), JSON.stringify({ name, types: "index.d.ts" }));
+    await Bun.write(join(pkg, "index.d.ts"), dts);
+  };
+  // Node's global `Blob` (from @types/node, as pizzip's `generate(): Blob` sees it), and the DOM's types.
+  await write("zipper", "export declare function generate(): Blob;\n");
+  await write("domlib", `/// <reference lib="dom" />\nexport declare function first(root: Document): Element | null;\nexport declare function all(root: Element): NodeListOf<Element>;\n`);
+  try {
+    const text = `import { generate } from 'zipper'
+import { first, all } from 'domlib'
+
+public class Main {
+  public function Main() {
+    var b:Blob = generate()
+    var wrong:String = generate()
+    var e:Element? = first(new Document())
+    var list:NodeList<Element> = all(new Document().createElement('x'))
+    var notList:String = all(new Document().createElement('x'))
+    trace(b.size, wrong, e, list.length, notList)
+  }
+}
+`;
+    const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: join(project, "src") });
+    const errors = result.diagnostics.sorted().filter((d) => d.severity === "error").map((d) => d.labels.find((l) => l.primary)!.message);
+    // Typed as the standard classes (not `*`, which fits anything, nor a generated `Blob2`).
+    expect(errors).toEqual(["expected `String`, found `Blob`", "expected `String`, found `NodeList<Element>`"]);
+    const decls = result.asts.filter((f) => f.file.generated).map((f) => f.file.text).join("\n");
+    expect(decls).not.toMatch(/class (Blob|Element|NodeList)/);
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
 test("JavaScript files of the source folder are copied, unless a module has their path (X0030)", () => {
   const code = main("import { book } from './lib/sheet.js'", "    trace(book())");
   const copied = compileProject([{ path: "Main.xn", text: code }], { main: "Main", assets: [{ path: "lib/sheet.js", text: "export const book = () => 1;\n" }] });
