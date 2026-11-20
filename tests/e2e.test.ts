@@ -16,12 +16,12 @@ for (const name of examples) {
     const paths = await Array.fromAsync(new Bun.Glob("**/*.xn").scan({ cwd: srcRoot }));
     const sources = await Promise.all(paths.map(async (p) => ({ path: p, text: await Bun.file(join(srcRoot, p)).text() })));
     const config = Bun.file(join(root, name, "xenon.json"));
-    const project: { main?: string; bundle?: boolean } = (await config.exists()) ? await config.json() : {};
+    const project: { main?: string; bundle?: boolean; nullSafety?: boolean } = (await config.exists()) ? await config.json() : {};
     const main = project.main ?? "Main";
 
     // As `xenon build` compiles: JavaScript imports typed from their `.d.ts` files, JavaScript
     // files of the source folder copied along.
-    const result = compileProject(sources, { main, typeRoot: srcRoot, assets: await readAssets(srcRoot) });
+    const result = compileProject(sources, { main, typeRoot: srcRoot, assets: await readAssets(srcRoot), nullSafety: !!project.nullSafety });
     const errors = result.diagnostics.items.filter((d) => d.severity === "error");
     expect(renderAll(errors, { color: false })).toBe("");
     expect(renderAll(result.declarationErrors, { color: false })).toBe("");

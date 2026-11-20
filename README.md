@@ -98,6 +98,7 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Tuples | `Tuple<String, int>`: one type per position, `var [key, value] = pair`; `Object.entries` and map entries are tuples | [`tuples`](examples/tuples) |
 | Type checks | `(expr : Type)`: checked at compile time, gone at runtime; the value is typed against `Type` (`(['a', 1] : Tuple<String, int>)`, `([] : Array<int>)`) | [`types`](examples/types) |
 | Nullable types | `int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
+| Null safety (opt-in) | `"nullSafety": true`: object types exclude `null` too (`String` vs `String?`), fields and locals need a value before use, `as` gives `T?` | [`null-safety`](examples/null-safety) |
 | Generics | `class Box<T>`, `function first<T>(items:Array<T>):T?` | [`generics`](examples/generics) |
 | Typedefs | `typedef Point = { x:Float, y:Float, ?label:String }`, aliases | [`typedefs`](examples/typedefs) |
 | Enums | `enum Color { Red, Green }`, string enums | [`enums`](examples/enums) |
@@ -172,6 +173,7 @@ Run it as `bun src/cli.ts …` from this repository (or `bun run xenon -- …`).
 | `--target ts` | `"target": "ts"` | write typed TypeScript instead of JavaScript |
 | `--no-source-maps` | `"sourceMaps": false` | don't write `.js.map` files |
 | `--deny-warnings` | `"denyWarnings": true` | treat warnings as errors |
+| `--null-safety` | `"nullSafety": true` | object types exclude `null` unless written `T?` |
 | `--max-errors <n>` | `"maxErrors"` | stop after `n` errors (default 50) |
 | `--format json` | | machine-readable diagnostics |
 

@@ -24,6 +24,8 @@ export interface Config {
    * packages, `node:`/`bun:` modules and the source folder's JavaScript files stay outside.
    */
   bundle: boolean;
+  /** Object types exclude `null` unless written `T?` (`--null-safety` / `"nullSafety": true`). */
+  nullSafety: boolean;
 }
 
 /**
@@ -47,7 +49,7 @@ export function runCommand(config: Config, outDir: string, args: string[]): stri
 export function compileOptions(config: Config, root: string): CompileOptions {
   const sourceRoot = relative(resolve(root, config.out), resolve(root, config.src)).split(sep).join("/");
   const sourceMaps = config.sourceMaps && config.target === "js" ? { sourceRoot } : undefined;
-  return { main: config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target, typeRoot: resolve(root, config.src) };
+  return { main: config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target, typeRoot: resolve(root, config.src), nullSafety: config.nullSafety };
 }
 
 /**

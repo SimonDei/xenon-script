@@ -1,0 +1,89 @@
+error[X0819]: field `shared` needs a value: `String` can't be null
+ --> null-safety/Main.xn:7:22
+  |
+7 |   private static var shared:String                // X0819: never assigned
+  |                      ^^^^^^
+  |
+help: give it a value, assign it in a `static { }` block, or make its type nullable
+help: make it nullable
+  |
+7 |   private static var shared:String?                // X0819: never assigned
+  |                                   +
+
+error[X0308]: mismatched types
+  --> null-safety/Main.xn:13:20
+   |
+13 |     var s:String = null                           // X0308: `String` can't be null
+   |           ------   ^^^^ expected `String`, found `null`
+   |           |
+   |           expected because of this type
+   |
+   = note: `String` can never be null; `String?` can
+
+error[X0398]: this value may be null
+  --> null-safety/Main.xn:15:11
+   |
+15 |     trace(maybe.length)                           // X0398: may be null
+   |           ^^^^^ `String?`
+   |
+help: check it first: inside `if (maybe != null) { … }` it can't be null
+
+error[X0398]: this value may be null
+  --> null-safety/Main.xn:17:11
+   |
+17 |     trace(u.email.length)                         // X0398: an optional member may be missing
+   |           ^^^^^^^ `String?`
+   |
+   = note: a null check narrows only local variables and parameters (a field can change in between): copy it into a local first
+help: check it first: `if (var x:String = …) { … }` runs only when it isn't null
+
+error[X0510]: `later` is used before it is assigned
+  --> null-safety/Main.xn:19:11
+   |
+18 |     var later:String
+   |         ----- declared here without a value
+19 |     trace(later)                                  // X0510: read before it is assigned
+   |           ^^^^^
+
+warning[X0818]: this comparison is always false
+  --> null-safety/Main.xn:20:13
+   |
+20 |     trace(s == null)                              // X0818 (warning): `s` can't be null
+   |           - ^^
+   |           |
+   |           `String` can't be null
+   |
+help: declare the type `String?` if `null` is meant to be possible
+
+error[X0308]: mismatched types
+  --> null-safety/Main.xn:21:18
+   |
+21 |     var d:Date = (s as *) as Date                 // X0308: `as` gives `Date?`
+   |           ----   ^^^^^^^^^^^^^^^^ expected `Date`, found `Date?`
+   |           |
+   |           expected because of this type
+   |
+   = note: the value may be null
+
+error[X0398]: this value may be null
+  --> null-safety/Main.xn:23:11
+   |
+23 |     trace(f())                                    // X0398: the function may be null
+   |           ^ `() -> int?`
+   |
+help: check it first: inside `if (f != null) { … }` it can't be null
+
+error[X0819]: field `name` needs a value: `String` can't be null
+  --> null-safety/Main.xn:25:3
+   |
+ 4 |   private var name:String                         // X0819 below: not assigned on every path
+   |               ---- `name` declared here without a value
+...
+25 |   }
+   |   ^ the constructor can end here
+   |
+help: assign it on every path, give it a value, or make its type nullable
+help: make it nullable
+   |
+ 4 |   private var name:String?                         // X0819 below: not assigned on every path
+   |                          +

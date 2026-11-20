@@ -301,6 +301,8 @@ export class XenonProject {
     readonly main = "Main",
     /** Where the virtual `.ts` files live (TypeScript resolves npm packages from there upwards). */
     readonly virtualRoot = join(dirname(srcRoot), ".xenon", "ts"),
+    /** The project's compiler settings from `xenon.json` (`nullSafety`). */
+    readonly settings: { nullSafety?: boolean } = {},
   ) {
     const host: ts.LanguageServiceHost = {
       getCompilationSettings: () => TS_OPTIONS,
@@ -371,7 +373,7 @@ export class XenonProject {
   }
 
   private compile(inputs: SourceInput[]): Analysis {
-    const result = compileProject(inputs, { main: this.main, target: "ts", tolerant: true, typeRoot: this.srcRoot });
+    const result = compileProject(inputs, { main: this.main, target: "ts", tolerant: true, typeRoot: this.srcRoot, nullSafety: this.settings.nullSafety });
     const outputs = new Map<string, OutputFile>();
     for (const o of result.outputs) if (o.source) outputs.set(o.source.path, o);
     return { result, outputs };

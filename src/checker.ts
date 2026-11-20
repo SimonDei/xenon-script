@@ -10,7 +10,7 @@ import {
   arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, arrayOf, elementOf, isDynamic, isNullable, isNumeric, isPrim, nonNull, nullableOf,
   bind, eraseParams, memberTypeIn, stdClassOf, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
   supertypeArgs, T, type Type, type TypeParamInfo, typeToString, unify,
-  requiredParams, literalType, literalOf, widen, unionOf, membersOf, valueFits, type UnionType, tupleOf, tupleElements,
+  requiredParams, literalType, literalOf, widen, unionOf, membersOf, valueFits, type UnionType, tupleOf, tupleElements, nullSafety,
 } from "./types.ts";
 
 /** A class known to the project. */
@@ -170,6 +170,11 @@ export interface CheckResult {
   typedefs: Map<string, TypedefInfo>;
   /** The type of each name a destructuring pattern declares (`var [key, value] = entry`), for hover. */
   bindingTypes: Map<A.Ident, Type>;
+}
+
+/** A value type, which can't be `null` without `?` even when null safety is off (`int`, `Boolean`, …). */
+function isLegacyValueType(t: Type): boolean {
+  return (t.kind === "prim" && t.name !== "String") || t.kind === "typeParam" || t.kind === "void";
 }
 
 /** X0521's note and fix: `inline var` becomes `inline final` (the `var` right before the name). */
@@ -2189,6 +2194,10 @@ class BodyChecker {
   private targets: ("loop" | "switch")[] = [];
   /** Definite-assignment state of `final` locals/fields that must be assigned exactly once. */
   private da = new Map<object, DAState>();
+  /** Null safety: `var` fields without a value whose type excludes `null` (tracked in `da` like `final` ones). */
+  private nonNullFields = new Set<MemberSig>();
+  /** Null safety: such `var` locals (`var s:String` with no value), assigned before they're read. */
+  private nonNullLocals = new Set<object>();
   /** Loop depth at which each tracked entity was declared (assigning it in a deeper loop is an error). */
   private daDepth = new Map<object, number>();
   private loopDepth = 0;
@@ -2269,9 +2278,20 @@ class BodyChecker {
       });
     const instanceFinals = finals(false);
     const staticFinals = finals(true);
+    // Null safety: a `var` field whose type excludes `null` (and whose default would be `null`)
+    // needs a value by the end of the constructor (or the static blocks), like a `final` one.
+    const nonNull = (isStatic: boolean) => !nullSafety.on ? [] :
+      members.flatMap((m) => {
+        if (m.kind !== "Field" || m.decl !== "var" || m.init || !!m.modifiers.static !== isStatic) return [];
+        const sig = this.info.members.get(m.name.name);
+        return sig && sig.decl === m && !isNullable(sig.type) && !isLegacyValueType(sig.type) ? [{ field: m, sig }] : [];
+      });
+    const instanceNonNull = nonNull(false);
+    const staticNonNull = nonNull(true);
+    for (const f of [...instanceNonNull, ...staticNonNull]) this.nonNullFields.add(f.sig);
 
     // Static `final` fields without a value must be assigned once, in `static { }` blocks.
-    let staticDA = new Map<object, DAState>(staticFinals.filter((f) => !f.field.init && !f.field.modifiers.inline).map((f) => [f.sig, "no"]));
+    let staticDA = new Map<object, DAState>([...staticFinals.filter((f) => !f.field.init && !f.field.modifiers.inline), ...staticNonNull].map((f) => [f.sig, "no"]));
 
     for (const m of members) {
       this.isStatic = !!m.modifiers.static;
@@ -2306,6 +2326,7 @@ class BodyChecker {
       this.superCall = undefined;
       if (m.isConstructor) {
         for (const f of instanceFinals) this.da.set(f.sig, f.field.init ? "yes" : "no");
+        for (const f of instanceNonNull) this.da.set(f.sig, "no");
         const first = m.body?.body[0];
         if (first?.kind === "ExprStmt" && first.expr.kind === "Call" && first.expr.callee.kind === "Super") this.superCall = first.expr;
         else if (this.info.parent) {
@@ -2380,6 +2401,9 @@ class BodyChecker {
           .help("give it a value, or assign it in a `static { }` block");
       }
     }
+    for (const f of staticNonNull) {
+      if (staticDA.get(f.sig) !== "yes") this.nonNullFieldError(f.sig, "give it a value, assign it in a `static { }` block, or make its type nullable");
+    }
     if (!this.info.ctor) {
       for (const f of instanceFinals) {
         if (!f.field.init) {
@@ -2387,7 +2411,17 @@ class BodyChecker {
             .help("give it a value, or assign it in the constructor");
         }
       }
+      for (const f of instanceNonNull) this.nonNullFieldError(f.sig, "give it a value, assign it in a constructor, or make its type nullable");
     }
+  }
+
+  /** X0819: a non-null field that would stay `null` (no value, no assignment). */
+  private nonNullFieldError(m: MemberSig, help: string, at?: Span, label?: string) {
+    const d = this.diags.error("X0819", `field \`${m.name}\` needs a value: \`${typeToString(m.type)}\` can't be null`, at ?? m.decl.name.span, label);
+    if (at) d.secondary(m.decl.name.span, `\`${m.name}\` declared here without a value`);
+    const typeSpan = m.typeSpan;
+    d.help(help);
+    if (typeSpan) d.help("make it nullable", [{ span: span(typeSpan.file, typeSpan.end, typeSpan.end), text: "?" }]);
   }
 
   /** In a constructor: every `final` field must be assigned when the constructor finishes. */
@@ -2395,6 +2429,10 @@ class BodyChecker {
     for (const [key, state] of this.da) {
       const m = key as MemberSig;
       if (m.owner !== this.info || m.kind !== "field" || state === "yes") continue;
+      if (this.nonNullFields.has(m)) {
+        this.nonNullFieldError(m, "assign it on every path, give it a value, or make its type nullable", at, label);
+        continue;
+      }
       this.diags.error("X0514", `final field \`${m.name}\` is not assigned on every path through the constructor`, at, label)
         .secondary(m.decl.name.span, `\`${m.name}\` declared \`final\` here`);
     }
@@ -2851,9 +2889,12 @@ class BodyChecker {
       if (s.inline && !s.init) this.diags.error("X0522", `inline constant \`${s.name.name}\` needs a value`, s.name.span);
       if (s.init) this.checkAssign(s.init, type, { span: s.type.span, label: "expected because of this type" }, scope);
     }
-    if (s.decl === "final" && !s.init) {
+    // A `final` without a value, and (null safety) a `var` whose type excludes `null`: assigned before it's read.
+    const nonNullVar = nullSafety.on && s.decl === "var" && !s.init && !isNullable(type) && !isLegacyValueType(type);
+    if ((s.decl === "final" && !s.init) || nonNullVar) {
       this.da.set(local, "no");
       this.daDepth.set(local, this.loopDepth);
+      if (nonNullVar) this.nonNullLocals.add(local);
     }
     scope.declare(s.name.name, local);
   }
@@ -3188,6 +3229,11 @@ class BodyChecker {
       if (!assignable(pre, expected) && !this.constantFits(e, expected)) this.mismatch(e, this.shownType(e, pre, expected), expected, origin);
       return;
     }
+    // A literal is never null: against `Node?` it is checked against `Node` (null safety).
+    if ((e.kind === "Object" || e.kind === "Function" || e.kind === "Array") && expected.kind === "nullable" && expected.inner.kind !== "union") {
+      this.checkAssign(e, expected.inner, origin, scope);
+      return;
+    }
     // A literal against a union: checked against the member of its kind (`{…}` against the shape).
     if ((e.kind === "Object" || e.kind === "Function" || e.kind === "Array") && nonNull(expected).kind === "union") {
       const member = this.unionMemberFor(e, nonNull(expected) as UnionType);
@@ -3313,9 +3359,10 @@ class BodyChecker {
     }
     if (fallback) d.help(`give a default with \`??\``, nullishFix(e, fallback, true));
     const local = e.kind === "Ident" && this.env.result.resolutions.get(e)?.kind === "local";
+    const or = fallback ? "or " : "";
     d.help(local
-      ? `or check it first: inside \`if (${spanText(e.span)} != null) { … }\` it can't be null`
-      : `or check it first: \`if (var x:${typeToString(t.inner)} = …) { … }\` runs only when it isn't null`);
+      ? `${or}check it first: inside \`if (${spanText(e.span)} != null) { … }\` it can't be null`
+      : `${or}check it first: \`if (var x:${typeToString(t.inner)} = …) { … }\` runs only when it isn't null`);
     return t.inner;
   }
 
@@ -3511,7 +3558,7 @@ class BodyChecker {
         } else tracked.escaped = true;
       }
       if (local.inline !== undefined) this.env.result.inlineValues.set(e, local.inline);
-      if (this.da.has(local)) this.daRead(local, e.span, local.nameSpan, `final \`${name}\``);
+      if (this.da.has(local)) this.daRead(local, e.span, local.nameSpan, `${this.nonNullLocals.has(local) ? "" : "final "}\`${name}\``);
       const seen = scope.typeOf(local);
       if (seen.blocked) this.narrowingBlocked.add(e);
       return seen.type;
@@ -3526,7 +3573,7 @@ class BodyChecker {
       if (this.beforeSuper && !member.isStatic) {
         this.diags.error("X0736", `instance member \`${name}\` can't be used before \`super(...)\` returns`, e.span);
       }
-      if (this.da.has(member)) this.daRead(member, e.span, member.decl.name.span, `final field \`${name}\``);
+      if (this.da.has(member)) this.daRead(member, e.span, member.decl.name.span, `${this.nonNullFields.has(member) ? "" : "final "}field \`${name}\``);
       if (!member.isStatic && this.isStatic) {
         this.diags.error("X0410", `instance member \`${name}\` can't be used in a static context`, e.span)
           .secondary(member.decl.name.span, "declared as an instance member here");
@@ -3701,7 +3748,7 @@ class BodyChecker {
           return T.error;
         }
         if (this.da.has(m) && (e.object.kind === "This" || (wantStatic && obj.info === this.info))) {
-          this.daRead(m, e.name.span, m.decl.name.span, `final field \`${name}\``);
+          this.daRead(m, e.name.span, m.decl.name.span, `${this.nonNullFields.has(m) ? "" : "final "}field \`${name}\``);
         }
         if (wantStatic) this.inlineRef(e, m);
         this.memberUse(e, m, e.name.span);
@@ -3818,8 +3865,14 @@ class BodyChecker {
     if (e.callee.kind === "Super") return this.superCallExpr(e, scope);
     const savedCallee = this.calledCallee;
     this.calledCallee = e.callee;
-    const callee = this.expr(e.callee, scope);
+    let callee = this.expr(e.callee, scope);
     this.calledCallee = savedCallee;
+    // `a?.m(x)` / `f?.(x)`: the call happens only when there's something to call (the result is
+    // nullable below); a nullable function called directly may be null (X0398).
+    if (callee.kind === "nullable") {
+      const optional = e.optional || (e.callee.kind === "Member" && e.callee.optional);
+      callee = optional ? callee.inner : this.mayBeNull(e.callee, callee);
+    }
     this.env.result.methodClosures.delete(e.callee); // called directly, not used as a value
     let res = e.callee.kind === "Ident" ? this.env.result.resolutions.get(e.callee) : undefined;
     // `Boolean(x)`, `String(x)`, `Float(x)`: the std library's native class of a primitive is
@@ -4836,7 +4889,8 @@ class BodyChecker {
     const sourceNumbers = isDynamic(from) ? [] : membersOf(from).filter((m) => isNumeric(m) || (m.kind === "builtin" && m.name === "Object"));
     const onlyThese = sourceNumbers.length > 0 && sourceNumbers.every((m) => m.kind === "prim" && m.name === (target as { name?: string }).name);
     this.env.result.typeChecks.set(e, (check.kind === "int" || check.kind === "uint") && onlyThese ? { kind: "typeof", tag: "number" } : check);
-    if (e.op === "as" && !isNullable(target) && written.kind !== "nullable") {
+    // `as int` can't give `null` (write `int?`); with null safety, `as Shape` simply gives `Shape?`.
+    if (e.op === "as" && !isNullable(target) && written.kind !== "nullable" && !(nullSafety.on && !isLegacyValueType(target))) {
       const fn = typeToString(target);
       this.diags.error("X0393", `\`as ${fn}\` is not possible: \`${fn}\` can never be null`, cover(opSpan, t.span))
         .help(`cast to \`${fn}?\`, which gives \`null\` for other values`, [{ span: span(t.span.file, t.span.end, t.span.end), text: "?" }])
@@ -4852,7 +4906,8 @@ class BodyChecker {
           .secondary(e.expr.span, `\`${typeToString(from)}\``);
       }
     }
-    return e.op === "is" ? T.Boolean : written;
+    // `x as Shape` gives `null` for other values: with null safety that is a `Shape?`.
+    return e.op === "is" ? T.Boolean : nullSafety.on ? nullableOf(written) : written;
   }
 
   private opError(at: Span, message: string, operand: A.Expr, t: Type) {
@@ -5007,6 +5062,14 @@ class BodyChecker {
       const left = nonNull(l);
       if (left.kind === "class" && this.operatorCall(e, "==", left, nonNull(r), e.left, e.right, e.opSpan)) return T.Boolean;
     }
+    // Null safety: `s == null` on a `String` is a (defensive) check that can't succeed: a warning.
+    if (nullSafety.on && (l.kind === "null") !== (r.kind === "null") && !comparable(l, r)) {
+      const other = l.kind === "null" ? r : l;
+      this.diags.warning("X0818", `this comparison is always ${e.op.startsWith("!") ? "true" : "false"}`, e.opSpan)
+        .secondary(l.kind === "null" ? e.right.span : e.left.span, `\`${typeToString(other)}\` can't be null`)
+        .help(`declare the type \`${typeToString(other)}?\` if \`null\` is meant to be possible`);
+      return T.Boolean;
+    }
     if (!comparable(l, r)) {
       const d = this.diags.error("X0309", `this comparison is always ${e.op.startsWith("!") ? "true" : "false"}`, e.opSpan)
         .secondary(e.left.span, `\`${typeToString(l)}\``)
@@ -5044,6 +5107,7 @@ class BodyChecker {
         return { type, commit: none };
       }
       if (local && this.da.has(local)) {
+        if (this.nonNullLocals.has(local)) return { type, commit: () => this.da.set(local, "yes") };
         return { type, commit: () => this.daWrite(local, target.span, local.nameSpan, `final \`${target.name}\``) };
       }
       if (local && (local.kind === "const" || local.kind === "final")) {
@@ -5092,6 +5156,8 @@ class BodyChecker {
         .note("a `const` method doesn't change the object; remove `const` if it has to");
       return none;
     }
+    // A non-null `var` field being given its first value (any number of times; reads before it are errors).
+    if (own && this.nonNullFields.has(m) && this.da.has(m)) return () => this.da.set(m, "yes");
     if (m.readonly === "const") {
       this.diags.error("X0501", `cannot assign to constant \`${name}\``, at).secondary(m.decl.name.span, "declared `const` here");
     } else if (m.readonly === "getter") {
@@ -5251,8 +5317,10 @@ class BodyChecker {
     const b = this.valueExpr(e.else, scope.withFacts(f.whenFalse));
     if (isDynamic(a) || isDynamic(b)) return T.any;
     if (sameType(a, b)) return a;
-    if (assignable(a, b)) return b.kind === "null" ? a : b;
-    if (assignable(b, a)) return a.kind === "null" ? b : a;
+    // `ok ? s : null`: a `String?` (with null safety; without it `String` already holds `null`).
+    if (a.kind === "null" || b.kind === "null") return nullableOf(a.kind === "null" ? b : a);
+    if (assignable(a, b)) return b;
+    if (assignable(b, a)) return a;
     this.diags.error("X0318", "the branches of `?:` have incompatible types", e.span)
       .secondary(e.then.span, `\`${typeToString(a)}\``)
       .secondary(e.else.span, `\`${typeToString(b)}\``);

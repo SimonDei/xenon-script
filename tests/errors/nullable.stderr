@@ -53,7 +53,7 @@ error[X0398]: this value may be null
 9 |     n++
   |     ^ `int?`
   |
-help: or check it first: inside `if (n != null) { … }` it can't be null
+help: check it first: inside `if (n != null) { … }` it can't be null
 
 error[X0398]: this value may be null
   --> nullable.xn:11:11

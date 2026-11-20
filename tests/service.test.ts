@@ -465,3 +465,14 @@ test("go to definition on built-in types opens the standard library's declaratio
   expect([target("Array<int>"), target("int>"), target("String = ''"), target("Tuple<")]).toEqual([["Array.xn"], ["int.xn"], ["String.xn"], ["Tuple.xn"]]);
   expect(p.hover("Main.xn", offset(text, "Tuple<", 1))!.contents).toContain("An array with one type per position");
 });
+
+test("a project with nullSafety: hover shows T?, and the editor reports null errors", () => {
+  const p = new XenonProject(join(import.meta.dir, ".service-project", "src"), "Main", undefined, { nullSafety: true });
+  const text = "public class Main {\n  public function Main() {\n    var maybe:String? = null\n    trace(maybe.length)\n  }\n}\n";
+  p.set("Main.xn", text);
+  expect((p.hover("Main.xn", offset(text, "maybe:", 1))!.contents as string).split("\n")[1]).toBe("maybe:String?");
+  expect([...p.diagnostics()].flatMap(([, d]) => d.map((x) => x.code))).toContain("X0398");
+  // Without the setting, `String?` is just `String`.
+  const legacy = project({ "Main.xn": text });
+  expect([...legacy.diagnostics()].flatMap(([, d]) => d.map((x) => x.code))).not.toContain("X0398");
+});

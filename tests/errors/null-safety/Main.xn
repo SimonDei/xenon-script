@@ -1,0 +1,26 @@
+typedef User = { name:String, ?email:String }
+
+public class Main {
+  private var name:String                         // X0819 below: not assigned on every path
+  private var label:String                        // fine: assigned in the constructor
+  private var note:String?                        // fine: may be null
+  private static var shared:String                // X0819: never assigned
+
+  public function Main() {
+    label = 'x'
+    var flag:Boolean = Math.random() > 0.5
+    if (flag) name = 'a'
+    var s:String = null                           // X0308: `String` can't be null
+    var maybe:String? = null
+    trace(maybe.length)                           // X0398: may be null
+    var u:User = { name: 'a' }
+    trace(u.email.length)                         // X0398: an optional member may be missing
+    var later:String
+    trace(later)                                  // X0510: read before it is assigned
+    trace(s == null)                              // X0818 (warning): `s` can't be null
+    var d:Date = (s as *) as Date                 // X0308: `as` gives `Date?`
+    var f:Null<() -> int> = null
+    trace(f())                                    // X0398: the function may be null
+    trace(f?.(), maybe?.length, d, note, label, shared)
+  }
+}

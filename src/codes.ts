@@ -281,6 +281,9 @@ export const CODES: Record<string, CodeInfo> = {
   X0815: c("enum instantiated", "Enum values are its members, e.g. `Direction.Up`."),
   X0816: c("`values` in an enum", "`values` is the built-in `Enum.values()`."),
   X0817: c("non-constant enum value", "Enum values are compile-time constants."),
+  X0819: c("non-null field without a value", "With null safety a field whose type excludes `null` (a `String`, a class, a shape, …) needs a value: an initializer, an assignment on every path through the constructor (`static { }` blocks for static fields), or a `T?` type. Until then it would be `null`.",
+    "public var name:String", "public var name:String = ''"),
+  X0818: c("null check on a non-null value", "With null safety the value's type excludes `null`, so the comparison has a fixed result. Values from JavaScript (`*`) or a `T?` may be null; a `T` can't. Remove the check, or declare the type `T?` if `null` is meant to be possible."),
 
   // ---- compatibility and style warnings ----
   X0840: c("`undefined` used", "Xenon has one \"no value\": `null`. `undefined` exists for JavaScript compatibility; `x == null` matches both.",

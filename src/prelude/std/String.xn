@@ -29,7 +29,7 @@ package xenon {
     // ---- characters ----
     constexpr function charAt(index:int = 0):String
     /** Like `s[index]`, but negative indexes count from the end: `'abc'.at(-1)` is `'c'`. */
-    function at(index:int):String
+    function at(index:int):String?
     /** The UTF-16 code unit at `index` (0–65535); NaN if out of range. */
     constexpr function charCodeAt(index:int):int
     /** The full code point at `index` (surrogate pairs combined); `null` if out of range. */
@@ -51,9 +51,9 @@ package xenon {
 
     // ---- regular expressions ----
     /** The match (see `RegExp.exec`), or `null`. With the `g` flag: all matched texts, or `null`. */
-    function match(pattern:RegExp):Array<String>
+    function match(pattern:RegExp):Array<String>?
     /** A string pattern is compiled to a regex first. */
-    function match(pattern:String):Array<String>
+    function match(pattern:String):Array<String>?
     /** Every match with its groups; the regex must have the `g` flag (else a `TypeError`). */
     function matchAll(pattern:RegExp):Iterator<Array<String>>
 

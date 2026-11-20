@@ -68,7 +68,7 @@ package xenon {
 
     /** Normalizes anything thrown (by Xenon or JavaScript) into an `Exception`. */
     public static function from(value:*):Exception {
-      if (value is Exception) return value as Exception
+      if (var known:Exception = value as Exception) return known
       var e:Exception
       if (value is TypeError) e = new TypeException(value.message, value)
       else if (value is RangeError) e = new RangeException(value.message, value)

@@ -228,10 +228,19 @@ export function isDynamic(t: Type): boolean {
   return t.kind === "any" || t.kind === "error";
 }
 
+/**
+ * Null safety (`"nullSafety": true`): object types (`String`, classes, shapes, arrays, functions,
+ * `Object`) exclude `null` and `T?` adds it, as it does for `int`. Without it they include `null`,
+ * as in ActionScript. Set by `compileProject` for the duration of a compile.
+ */
+export const nullSafety = { on: false };
+
 /** Types whose values can be `null`. */
 export function isNullable(t: Type): boolean {
-  if (t.kind === "prim") return t.name === "String";
+  if (t.kind === "nullable" || t.kind === "null" || t.kind === "any" || t.kind === "error") return true;
   if (t.kind === "union") return t.types.some(isNullable);
+  if (nullSafety.on) return false;
+  if (t.kind === "prim") return t.name === "String";
   return t.kind !== "void";
 }
 
@@ -240,6 +249,9 @@ export function isNullable(t: Type): boolean {
  * type parameters (which may stand for one); other types already include `null` and stay as they are.
  */
 export function nullableOf(t: Type): Type {
+  if (nullSafety.on) {
+    return t.kind === "nullable" || t.kind === "null" || t.kind === "any" || t.kind === "error" || t.kind === "void" || (t.kind === "union" && isNullable(t)) ? t : { kind: "nullable", inner: t };
+  }
   if ((t.kind === "prim" && t.name !== "String") || t.kind === "typeParam" || (t.kind === "union" && !isNullable(t))) return { kind: "nullable", inner: t };
   return t;
 }

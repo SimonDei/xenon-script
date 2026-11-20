@@ -180,8 +180,8 @@ error[X0604]: no overload of `match` accepts (int)
 8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
   |                                                             ^^^^^^^ no matching overload
   |
-  = note: `match(pattern:RegExp):Array<String>`
-  = note: `match(pattern:String):Array<String>`
+  = note: `match(pattern:RegExp):Array<String>?`
+  = note: `match(pattern:String):Array<String>?`
 
 error[X0601]: this call takes 1 argument but 0 were given
   --> std-string.xn:8:73
@@ -191,7 +191,7 @@ error[X0601]: this call takes 1 argument but 0 were given
    |
   ::: <xenon prelude>/xenon/String.xn:32:14
    |
-32 |     function at(index:int):String
+32 |     function at(index:int):String?
    |              -- `at` defined here
 
 error[X0415]: `String` can't be instantiated with `new`

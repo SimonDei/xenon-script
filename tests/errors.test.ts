@@ -27,7 +27,10 @@ async function load(name: string): Promise<{ sources: SourceInput[]; display: (p
 for (const name of [...singles, ...projects].sort()) {
   test(`diagnostics: ${name}`, async () => {
     const { sources, display } = await load(name);
-    const result = compileProject(sources, { main: "Main" });
+    // A project case may carry a `xenon.json` (`{ "nullSafety": true }`).
+    const config = Bun.file(join(dir, name, "xenon.json"));
+    const project: { nullSafety?: boolean } = !singles.includes(name) && (await config.exists()) ? await config.json() : {};
+    const result = compileProject(sources, { main: "Main", nullSafety: !!project.nullSafety });
     // Unused-variable/member warnings would drown most cases; only `unused*` cases show them.
     const shown = result.diagnostics.sorted().filter((d) => name.startsWith("unused") || !["X0861", "X0862"].includes(d.code ?? ""));
     const rendered = renderAll(shown, { color: false, displayPath: (f) => (f.prelude ? `<xenon prelude>/${f.path}` : display(f.path)) }) + "\n";

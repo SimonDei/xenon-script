@@ -1,0 +1,6 @@
+Hello, Ann <ann@example.com> 15
+Hello, Bob <no email> 0
+BOB
+12 34
+0 AL - never
+1970

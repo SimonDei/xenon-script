@@ -72,19 +72,19 @@ const SCRIPT = /\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/;
  * not Xenon (the compiler's own `src/prelude/*.xn`, for one). Files in no project (the
  * compiler's deliberately broken test files) get no diagnostics.
  */
-export function locateProject(file: string): { srcRoot: string; main: string } | undefined {
+export function locateProject(file: string): { srcRoot: string; main: string; nullSafety?: boolean } | undefined {
   let srcFolder: string | undefined;
   for (let dir = dirname(file); ; ) {
     const config = join(dir, "xenon.json");
     if (existsSync(config)) {
-      let json: { src?: string; main?: string } = {};
+      let json: { src?: string; main?: string; nullSafety?: boolean } = {};
       try {
         json = JSON.parse(readFileSync(config, "utf8"));
       } catch {
         // a broken xenon.json: the CLI reports it; use the defaults here
       }
       const srcRoot = resolve(dir, json.src ?? "src");
-      if (!relative(srcRoot, file).startsWith("..")) return { srcRoot, main: json.main ?? "Main" };
+      if (!relative(srcRoot, file).startsWith("..")) return { srcRoot, main: json.main ?? "Main", ...(json.nullSafety ? { nullSafety: true } : {}) };
     }
     if (!srcFolder && basename(dir) === "src") {
       let scripts = false;
@@ -121,7 +121,7 @@ export function startServer(connection: Connection = createConnection(ProposedFe
     if (!p) {
       if (!create) return undefined;
       p = (async () => {
-        const project = new XenonProject(found.srcRoot, found.main);
+        const project = new XenonProject(found.srcRoot, found.main, undefined, { nullSafety: found.nullSafety });
         await project.load();
         return project;
       })();

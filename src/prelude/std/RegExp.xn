@@ -20,7 +20,7 @@ package xenon {
     /** Is there a match anywhere in `text`? */
     function test(text:String):Boolean
     /** The match (see the file header), or `null`. With `g`/`y`, searches from `lastIndex`. */
-    function exec(text:String):Array<String>
+    function exec(text:String):Array<String>?
     /** `'/pattern/flags'` */
     function toString():String
 

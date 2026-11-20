@@ -4,7 +4,7 @@ import { check, type CheckResult, type ClassInfo, type TypedefInfo } from "./che
 import { generate, type OutputFile } from "./codegen.ts";
 import { type Diagnostic, DiagnosticBag } from "./diagnostics.ts";
 import { type JsDeclarations, jsDeclarations } from "./dts.ts";
-import { BUILTIN_TYPES } from "./types.ts";
+import { BUILTIN_TYPES, nullSafety } from "./types.ts";
 import { parseFile } from "./parser.ts";
 import { preludeFiles } from "./prelude/files.ts" with { type: "macro" };
 import { SourceFile } from "./source.ts";
@@ -48,6 +48,8 @@ export interface CompileOptions {
    * the generator can't handle is left out), so the language server always has virtual files.
    */
   tolerant?: boolean;
+  /** Null safety: object types exclude `null` unless written `T?` (see `types.nullSafety`). */
+  nullSafety?: boolean;
 }
 
 export interface CompileResult {
@@ -63,6 +65,16 @@ export interface CompileResult {
 
 /** Compiles a whole project held in memory. Never throws for user errors; check `diagnostics`. */
 export function compileProject(sources: SourceInput[], options: CompileOptions): CompileResult {
+  const before = nullSafety.on;
+  nullSafety.on = !!options.nullSafety;
+  try {
+    return compileWith(sources, options);
+  } finally {
+    nullSafety.on = before;
+  }
+}
+
+function compileWith(sources: SourceInput[], options: CompileOptions): CompileResult {
   const diags = new DiagnosticBag(options.maxErrors);
   const files = [
     ...PRELUDE.map((s) => new SourceFile(s.path, s.text, true)),

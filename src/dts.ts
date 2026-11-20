@@ -67,7 +67,6 @@ export interface JsDeclarations {
 const MAX_LITERALS = 30;
 
 /** Types that need `?` or `| null` to hold `null`: numbers, booleans, their literals, unions of them. */
-const VALUE_TYPES = /^(Float|Boolean|true|false|-?\d[\w.+-]*|[^{(<]* \| [^{(<]*)$/;
 
 /** A string as a Xenon literal type: `'buffer'`. */
 function quote(value: string): string {
@@ -467,7 +466,10 @@ class DeclWriter {
     if (parts.length === 0) return ret ? "void" : "*";
     if (parts.length === 1) {
       const only = this.type(parts[0]!, false);
-      return nullish && VALUE_TYPES.test(only) ? (only.includes(" ") ? `${only} | null` : `${only}?`) : only;
+      // `T | null` / `T | undefined`: `T?` (for object types that matters with null safety; without it they hold `null` anyway).
+      if (!nullish || only === "*" || only === "void") return only;
+      if (only.includes(" | ")) return `${only} | null`;
+      return only.startsWith("(") ? `Null<${only}>` : `${only}?`;
     }
     if (t.aliasSymbol && !written?.isUnion()) {
       const known = this.typeNames.get(t);

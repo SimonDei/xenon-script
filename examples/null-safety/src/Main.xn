@@ -1,0 +1,34 @@
+// Null safety ("nullSafety": true in xenon.json): object types exclude `null`, `T?` adds it.
+typedef User = { name:String, ?email:String }
+
+public class Main {
+  private var greeting:String          // no value yet: the constructor must assign it (X0819)
+  private var lastSeen:Date? = null     // may stay null
+
+  public function Main() {
+    greeting = 'Hello'
+    var users:Array<User> = [{ name: 'Ann', email: 'ann@example.com' }, { name: 'Bob' }]
+    for (var u:User of users) {
+      // An optional member is a `String?`: `??` gives a default, `?.` keeps the null.
+      trace($'{greeting}, {u.name} <{u.email ?? 'no email'}>', u.email?.length ?? 0)
+    }
+
+    // Results that may be missing are `T?`; a check or `if (var …)` makes them usable.
+    var ages:Map<String, int> = new Map([['ann', 31]])
+    var found:User? = users.find((u:User):Boolean => u.name == 'Bob')
+    if (found != null) trace(found.name.toUpperCase())
+    if (var m:Array<String> = ~/(\d+)-(\d+)/.exec('call 12-34')) trace(m[1], m[2])
+    trace(ages.get('bob') ?? 0, initials('Ann Lee'), initials(null), describe(lastSeen))
+
+    // `as` gives `T?`: `null` when the value has another type.
+    var anything:* = new Date(0)
+    if (var d:Date = anything as Date) trace(d.getUTCFullYear())
+  }
+
+  private function initials(name:String?):String {
+    if (name == null) return '-'
+    return name.split(' ').map((part:String):String => part.charAt(0)).join('')   // `name` is a `String` here
+  }
+
+  private function describe(when:Date?):String => when == null ? 'never' : when.toISOString()
+}
