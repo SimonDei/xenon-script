@@ -203,6 +203,44 @@ test("TypeScript tuples are Tuple<…> (fixed length) or Array<*> (optional or r
   }
 });
 
+test("interfaces are shapes (object literals fit them, callbacks included) unless a method is overloaded or generic", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const project = join(import.meta.dir, ".dts-shapes");
+  const pkg = join(project, "node_modules", "templ");
+  await rm(project, { recursive: true, force: true });
+  await mkdir(pkg, { recursive: true });
+  await Bun.write(join(pkg, "package.json"), JSON.stringify({ name: "templ", types: "index.d.ts" }));
+  await Bun.write(join(pkg, "index.d.ts"), `export interface Parser { get(scope: any): any; }
+export interface Options { linebreaks?: boolean; parser?(tag: string): Parser; nullGetter?(part: { module: string }): any; }
+export interface Buf { write(s: string): void; write(n: number): void; }
+export declare class Doc { constructor(zip: any, options?: Options); render(): string; }
+export declare function makeBuf(): Buf;
+`);
+  try {
+    const text = `import { Doc, makeBuf } from 'templ'
+
+public class Main {
+  public function Main() {
+    var doc:Doc = new Doc(null, {
+      linebreaks: true,
+      nullGetter: part => part.module != '' ? '' : '-',
+      parser: tag => ({ get: scope => tag == '.' ? scope : null })
+    })
+    var b = makeBuf()
+    trace(doc.render(), b)
+  }
+}
+`;
+    const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: join(project, "src") });
+    expect(result.diagnostics.sorted().filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+    const decls = result.asts.filter((f) => f.file.generated).map((f) => f.file.text).join("\n");
+    expect(decls).toContain("typedef Parser = { get:(scope:*) -> * }");
+    expect(decls).toMatch(/class Buf\b/); // overloaded `write`: a native class
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
 test("JavaScript files of the source folder are copied, unless a module has their path (X0030)", () => {
   const code = main("import { book } from './lib/sheet.js'", "    trace(book())");
   const copied = compileProject([{ path: "Main.xn", text: code }], { main: "Main", assets: [{ path: "lib/sheet.js", text: "export const book = () => 1;\n" }] });

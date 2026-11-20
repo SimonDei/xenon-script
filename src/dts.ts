@@ -375,12 +375,21 @@ class DeclWriter {
     return !!sym.declarations?.some((d) => this.program.isSourceFileDefaultLibrary(d.getSourceFile()));
   }
 
-  /** Classes and interfaces with methods become native classes; other object types shapes. */
+  /**
+   * Classes become native classes. Interfaces are structural, as in TypeScript: shapes, so an object
+   * literal can be passed for one (docxtemplater's `{ get(scope) { … } }` parser, an options bag
+   * with callbacks), unless a shape can't hold them: a method with overloads or type parameters
+   * (Node's `Buffer`) makes a native class.
+   */
   private isClassLike(sym: tsModule.Symbol): boolean {
     const ts = this.ts;
     if (sym.flags & ts.SymbolFlags.Class) return true;
     if (!(sym.flags & ts.SymbolFlags.Interface)) return false;
-    return this.checker.getPropertiesOfType(this.checker.getDeclaredTypeOfSymbol(sym)).some((p) => p.flags & ts.SymbolFlags.Method);
+    return this.checker.getPropertiesOfType(this.checker.getDeclaredTypeOfSymbol(sym)).some((p) => {
+      if (!(p.flags & ts.SymbolFlags.Method)) return false;
+      const calls = this.checker.getTypeOfSymbol(p).getCallSignatures();
+      return calls.length > 1 || calls.some((c) => (c.typeParameters?.length ?? 0) > 0);
+    });
   }
 
   /** The native class for a class-like symbol, declared on first use. */

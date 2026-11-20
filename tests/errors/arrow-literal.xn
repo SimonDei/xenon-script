@@ -1,0 +1,11 @@
+typedef Parser = { get:(scope:*) -> * }
+typedef Options = { ?parser:(tag:String) -> Parser }
+
+public class Main {
+  public function Main() {
+    var ok:Options = { parser: tag => ({ get: scope => scope }) }          // fine: the literal is a `Parser`
+    var bad:Options = { parser: tag => ({ got: scope => scope }) }         // X0791: `got` isn't a member of `Parser`
+    var label:String = 'x'
+    trace(ok, bad, label ? 1 : 2)                                           // X0310: compare `!= ''`
+  }
+}

@@ -15,10 +15,11 @@ error[X0310]: condition must be a `Boolean`
 7 |       while (name) {}
   |              ^^^^ expected `Boolean`, found `String`
   |
-help: check for null explicitly
+  = note: `null` != '' is true too: write `s != null && s != ''` if `null` must count as empty
+help: a `String` is true in JavaScript when it isn't empty: compare explicitly
   |
-7 |       while (name != null) {}
-  |                  ++++++++
+7 |       while (name != '') {}
+  |                  ++++++
 
 error[X0315]: `&&` needs `Boolean` operands
  --> conditions.xn:8:24

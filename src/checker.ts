@@ -3215,7 +3215,11 @@ class BodyChecker {
     const end = span(e.span.file, e.span.end, e.span.end);
     if (isNumeric(t)) d.help("compare explicitly", [{ span: end, text: " != 0" }]);
     else if (t.kind === "nullable" && isPrim(t.inner, "Boolean")) d.help("compare with `true` (`null` and `false` both skip)", [{ span: end, text: " == true" }]);
-    else if (isNullable(t) && t.kind !== "null") d.help("check for null explicitly", [{ span: end, text: " != null" }]);
+    else if (isPrim(nonNull(t), "String")) {
+      // JavaScript's `if (s)` means "not empty" (and not null): the same test, written out.
+      d.help("a `String` is true in JavaScript when it isn't empty: compare explicitly", [{ span: end, text: " != ''" }]);
+      if (isNullable(t)) d.note("`null` != '' is true too: write `s != null && s != ''` if `null` must count as empty");
+    } else if (isNullable(t) && t.kind !== "null") d.help("check for null explicitly", [{ span: end, text: " != null" }]);
   }
 
   /* -------------------------- assignability -------------------------- */
@@ -4251,6 +4255,10 @@ class BodyChecker {
       } else if (f.returnType) {
         if (bodyRet.kind === "void") this.expr(f.body, inner);
         else this.checkAssign(f.body, bodyRet, { span: f.returnType.span, label: "expected because of this return type" }, inner);
+      } else if (context && !f.async && ["Object", "Array", "Function"].includes(f.body.kind) && context.ret.kind !== "void" && !isDynamic(context.ret)) {
+        // `tag => ({ get: … })` where a `(tag:String) -> Parser` is expected: the literal is typed from `Parser`.
+        this.checkAssign(f.body, context.ret, undefined, inner);
+        bodyRet = context.ret;
       } else {
         // `x => x * 2`: the body's type is the return type.
         bodyRet = this.expr(f.body, inner);
