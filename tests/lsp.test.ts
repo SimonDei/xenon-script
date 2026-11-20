@@ -54,7 +54,11 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
   try {
     const capabilities = { workspace: { workspaceEdit: { documentChanges: true, resourceOperations: ["rename"] } } };
     const init = await rpc.sendRequest("initialize", { processId: null, rootUri: pathToFileURL(dir).href, capabilities });
-    expect(init).toMatchObject({ capabilities: { hoverProvider: true, definitionProvider: true, completionProvider: { triggerCharacters: [".", ":"] } } });
+    expect(init).toMatchObject({ capabilities: {
+      hoverProvider: true,
+      definitionProvider: true,
+      completionProvider: { triggerCharacters: expect.arrayContaining([".", ":", "b", "E", "_", "$"]) },
+    } });
     rpc.sendNotification("initialized", {});
 
     const uri = pathToFileURL(join(dir, "app", "Main.xn")).href;
@@ -92,6 +96,12 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
       context: { triggerKind: 2, triggerCharacter: ":" },
     })) as { label: string }[];
     expect(typeItems.map((i) => i.label)).toContain("Element");
+    const scopeItems = (await rpc.sendRequest("textDocument/completion", {
+      textDocument: { uri },
+      position: { line: 4, character: 11 },
+      context: { triggerKind: 2, triggerCharacter: "g" },
+    })) as { label: string }[];
+    expect(scopeItems.map((i) => i.label)).toContain("greeting");
 
     // References: the declaration and the use.
     const refs = (await rpc.sendRequest("textDocument/references", { textDocument: { uri }, position: { line: 4, character: 12 }, context: { includeDeclaration: true } })) as { range: { start: unknown } }[];

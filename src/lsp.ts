@@ -61,6 +61,7 @@ const SYMBOLS: Record<XenonSymbolKind, SymbolKind> = {
 };
 
 const SEVERITY = { error: DiagnosticSeverity.Error, warning: DiagnosticSeverity.Warning, info: DiagnosticSeverity.Information };
+const COMPLETION_TRIGGERS = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$", ".", ":"];
 
 /** Files a JavaScript or TypeScript project keeps in its `src/`. */
 const SCRIPT = /\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/;
@@ -170,7 +171,7 @@ export function startServer(connection: Connection = createConnection(ProposedFe
         textDocumentSync: TextDocumentSyncKind.Incremental,
         hoverProvider: true,
         definitionProvider: true,
-        completionProvider: { triggerCharacters: [".", ":"] },
+        completionProvider: { triggerCharacters: COMPLETION_TRIGGERS },
         referencesProvider: true,
         renameProvider: { prepareProvider: true },
         signatureHelpProvider: { triggerCharacters: ["(", ","], retriggerCharacters: [","] },
