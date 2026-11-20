@@ -596,7 +596,7 @@
         },
         {
           "name": "support.type.builtin.xenon",
-          "match": "\\b(?:Object|Array|Function|Promise|Class|RegExp)\\b"
+          "match": "\\b(?:Object|Array|Tuple|Function|Promise|Class|RegExp)\\b"
         },
         {
           "name": "support.class.exception.xenon",
