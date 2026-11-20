@@ -92,6 +92,7 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Interfaces | `interface IShape { function area():Float }`, checked `implements` | [`interfaces`](examples/interfaces) |
 | Types | `int`, `uint`, `Float`, `String`, `Boolean`, `Array<T>`, `*` (untyped) | [`types`](examples/types) |
 | Tuples | `Tuple<String, int>`: one type per position, `var [key, value] = pair`; `Object.entries` and map entries are tuples | [`tuples`](examples/tuples) |
+| Type checks | `(expr : Type)`: checked at compile time, gone at runtime; the value is typed against `Type` (`(['a', 1] : Tuple<String, int>)`, `([] : Array<int>)`) | [`types`](examples/types) |
 | Nullable types | `int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
 | Generics | `class Box<T>`, `function first<T>(items:Array<T>):T?` | [`generics`](examples/generics) |
 | Typedefs | `typedef Point = { x:Float, y:Float, ?label:String }`, aliases | [`typedefs`](examples/typedefs) |

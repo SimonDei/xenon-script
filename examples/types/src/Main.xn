@@ -28,6 +28,11 @@ package {
       var total:Float = Main.sum(1, 2, 3.5)
       var none:Float = Main.sum()
       trace(total, none)
+
+      // `(expr : Type)`: a compile-time type check, gone at runtime. The value is typed against
+      // `Type` (a literal takes it from there) and is a `Type` from then on.
+      var pairs:Array<*> = [(['x', 1] : Tuple<String, int>), (['y', 2] : Tuple<String, int>)]
+      trace((pairs[0] : Tuple<String, int>)[0].toUpperCase(), ([] : Array<int>).length, ((total : Float) / 2 : Float))
     }
 
     public function get name():String { return _name }

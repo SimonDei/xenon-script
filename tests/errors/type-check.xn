@@ -1,0 +1,13 @@
+typedef Point = { x:Float, y:Float }
+
+public class Main {
+  public function Main() {
+    var n:int = 1
+    trace((n : String))                       // X0308: an `int` isn't a `String`
+    trace(({ x: 1 } : Point))                 // X0792: `y` is missing
+    trace((['a', 1, 2] : Tuple<String, int>)) // X0323: one element too many
+    var f:Float = (n : Float)                 // fine: `int` widens to `Float`
+    var s:String = (n : Float)                // X0308: the result is a `Float`
+    trace(f, s, (n : *).anything)             // fine: `*` switches checking off
+  }
+}

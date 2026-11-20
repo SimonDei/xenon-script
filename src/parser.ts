@@ -1395,6 +1395,12 @@ export class Parser {
             if (this.arrowAhead()) return this.parseFunction(true);
             const open = this.advance();
             const inner = this.parseExpr();
+            // `(expr : Type)`: a compile-time type check (an arrow's `(a:int) =>` was ruled out above).
+            if (this.eat(":")) {
+              const type = this.parseType();
+              this.expectClose(")", open);
+              return { kind: "TypeCheck", expr: inner, type, span: this.sp(start) };
+            }
             this.expectClose(")", open);
             return inner;
           }

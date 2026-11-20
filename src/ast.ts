@@ -286,6 +286,8 @@ export type Expr =
   | { kind: "Assign"; op: string; target: Expr; value: Expr; opSpan: Span; span: Span }
   | { kind: "Conditional"; cond: Expr; then: Expr; else: Expr; span: Span }
   | { kind: "TypeOp"; op: "is" | "as"; expr: Expr; type: TypeNode; span: Span }
+  /** `(expr : Type)`: a compile-time type check (no runtime effect): `expr` is typed against `Type`, the result is a `Type`. */
+  | { kind: "TypeCheck"; expr: Expr; type: TypeNode; span: Span }
   | { kind: "Await"; arg: Expr; span: Span }
   | { kind: "DestructAssign"; pattern: Pattern; value: Expr; span: Span }
   | FunctionNode

@@ -1425,6 +1425,13 @@ class ModuleGen {
         };
       case "TypeOp":
         return this.typeOp(e);
+      case "TypeCheck": {
+        // No runtime effect. TypeScript gets the checked type, so it types the value as Xenon does (`['a', 1]` as a tuple).
+        const inner = this.expr(e.expr);
+        if (!this.ts) return inner;
+        const t = this.check.typeNodeTypes.get(e.type) ?? { kind: "any" };
+        return { code: `(${this.wrap(inner, P.rel)} as ${this.tok(e.type.span, this.tsType(t))})`, prec: P.primary };
+      }
       case "Function":
         return this.fn(e);
       case "DestructAssign":

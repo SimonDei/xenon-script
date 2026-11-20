@@ -2469,6 +2469,7 @@ class BodyChecker {
     const ok = (e: A.Expr): boolean => {
       switch (e.kind) {
         case "Number": case "String": case "Bool": case "Null": case "Regex": return true;
+        case "TypeCheck": return ok(e.expr);
         case "This": return instance || bad(e, "`this`");
         case "Template": return e.parts.every((p) => p.kind === "text" || ok(p.expr));
         case "Unary": return e.op === "typeof" || e.op === "delete" ? bad(e, `\`${e.op}\``) : ok(e.arg);
@@ -3461,6 +3462,12 @@ class BodyChecker {
       }
       case "TypeOp":
         return this.typeOp(e, scope);
+      case "TypeCheck": {
+        // `(expr : Type)`: `expr` is checked top-down against `Type` (literals take it from there), and is a `Type` from here on.
+        const t = this.resolveT(e.type, this.scope);
+        this.checkAssign(e.expr, t, { span: e.type.span, label: "expected because of this type check" }, scope);
+        return t;
+      }
       case "Error":
         return T.error;
     }

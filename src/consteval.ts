@@ -56,6 +56,7 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
     case "String": return { ok: true, value: e.value };
     case "Bool": return { ok: true, value: e.value };
     case "Null": return { ok: true, value: null };
+    case "TypeCheck": return fold(e.expr, lookup);
     // A fresh object per evaluation (a regex keeps state between `exec` calls).
     case "Regex": return { ok: true, value: new RegExp(e.pattern, e.flags) };
     case "This":
