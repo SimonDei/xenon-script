@@ -14,6 +14,7 @@ export const JS_GLOBALS = new Set([
   "EventTarget", "Event", "CustomEvent", "MessageChannel", "MessagePort", "BroadcastChannel", "WebSocket", "Worker",
   "ReadableStream", "WritableStream", "TransformStream", "File", "FileReader", "FinalizationRegistry",
   "AsyncDisposableStack", "DisposableStack", "requestAnimationFrame", "cancelAnimationFrame", "alert", "HTMLElement",
+  "CSSStyleDeclaration",
 ]);
 
 /** Hidden JS globals and what to use instead (reported as a hint on "cannot find"). */

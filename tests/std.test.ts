@@ -34,6 +34,7 @@ const SAMPLES: Record<string, unknown[]> = {
   // `next` lives on the concrete iterators, not on Iterator.prototype
   RegExp: [/ab+/gi, new RegExp('x', 'dy')],
   Iterator: [[1, 2, 3].values(), new Set([4, 5]).values(), new Map([[1, 2]]).keys()],
+  CSSStyleProperties: [dom.document.createElement("div").style],
 };
 
 /**
@@ -130,6 +131,8 @@ for (const file of stdFiles) {
         const target = isStatic ? ctor : proto;
         const onSample = !isStatic && (SAMPLES[decl.name.name] ?? []).some((v) => name in Object(v));
         if (file.startsWith("dom/") && HAPPY_DOM_GAPS.has(where)) continue;
+        // Browser CSS properties are engine-dependent; happy-dom exposes only a subset on its style object.
+        if (decl.name.name === "CSSStyleProperties" && m.kind === "Method" && m.accessor && !onSample) continue;
         if (!(name in target) && !onSample) {
           problems.push(`${where}: missing at runtime`);
           continue;

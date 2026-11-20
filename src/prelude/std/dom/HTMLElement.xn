@@ -10,6 +10,8 @@ package xenon {
     function get anchorElement():Element?
     /** Typed CSS declarations from the `style` attribute. */
     function get attributeStyleMap():*
+    /** The live inline styles. Assigning a `String` replaces `cssText`. */
+    public override function get style():CSSStyleProperties
     function get autocapitalize():String
     function set autocapitalize(value:String):void
     function get autocorrect():Boolean

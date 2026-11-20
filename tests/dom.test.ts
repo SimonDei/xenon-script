@@ -75,6 +75,21 @@ test("Element.style is dynamic for CSS property assignment", () => {
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
 });
 
+test("HTMLElement.style exposes CSSStyleProperties and CSSStyleDeclaration methods", () => {
+  const result = compileProject([{ path: "Main.xn", text: `public class Main {
+  public static function style(element:HTMLElement):Void {
+    var styles:CSSStyleProperties = element.style
+    styles.display = 'none'
+    styles.backgroundColor = 'red'
+    styles.setProperty('margin-top', '1rem', 'important')
+    trace(styles.getPropertyValue('border-top'), styles.cssText, styles.item(0), styles.length)
+    element.style.cssText = 'position: absolute'
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
+});
+
 test("HTMLElement exposes MDN properties and interaction methods", () => {
   const result = compileProject([{ path: "Main.xn", text: `public class Main {
   public static function use(doc:Document):Void {
