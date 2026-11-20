@@ -482,3 +482,10 @@ test("hover on an unannotated callback parameter shows the type it takes from co
   const p = project({ "Main.xn": text });
   expect((p.hover("Main.xn", offset(text, "s =>"))!.contents as string).split("\n")[1]).toBe("s:String");
 });
+
+test("type completion offers classes imported from JavaScript (import { EventEmitter } …)", () => {
+  const text = "import { EventEmitter } from 'node:events'\n\npublic class Main {\n  public function Main() {\n    var e:Even\n  }\n}\n";
+  const p = project({ "Main.xn": text });
+  const items = p.completions("Main.xn", offset(text, "var e:Even", 10));
+  expect(items.map((i) => i.label)).toContain("EventEmitter");
+});

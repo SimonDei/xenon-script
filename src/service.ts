@@ -1133,8 +1133,17 @@ export class XenonProject {
     for (const td of typedefs) {
       add({ label: td.decl.name.name, kind: "typedef", detail: typedefText(td), documentation: docComment(td.decl.span.file, td.decl.span.start) });
     }
+    // JavaScript imports that are types (`import JSZip from 'jszip'`) or hold some (`xlsx.`, `JSZip.`).
+    const fromImports = a.result.check.qualifiedTypes.get(ast) ?? new Map();
+    for (const [name, info] of fromImports) {
+      if (name.includes(".")) continue;
+      add("typeParams" in info ? { ...classItem(info), detail: classText(info) } : { label: name, kind: "typedef", detail: typedefText(info) });
+    }
     for (const imp of ast.imports) {
-      if (imp.kind === "JsImport" && imp.namespace) add({ label: imp.namespace.name, kind: "module", detail: `import * as ${imp.namespace.name} from '${imp.module}'` });
+      if (imp.kind !== "JsImport") continue;
+      for (const n of [imp.defaultName, imp.namespace, ...imp.named.map((x) => x.alias ?? x.name)]) {
+        if (n && [...fromImports.keys()].some((k) => k.startsWith(`${n.name}.`))) add({ label: n.name, kind: "module", detail: `import ${imp.namespace === n ? "* as " : ""}${n.name} from '${imp.module}'` });
+      }
     }
     return [...items.values()];
   }

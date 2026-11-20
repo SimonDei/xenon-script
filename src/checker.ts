@@ -139,7 +139,10 @@ const BUILTIN_FNS = new Set<string>(["trace", "int", "uint", "Float", "String", 
 const CASTS: Record<string, Type> = { int: T.int, uint: T.uint, Float: T.Float, String: T.String, Boolean: T.Boolean };
 
 export interface CheckResult {
-  /** Per file, the types JavaScript namespace imports export (`xlsx.WorkBook`), for completion. */
+  /**
+   * Per file, the types its JavaScript imports provide, for completion: a namespace's exports
+   * (`xlsx.WorkBook`, `JSZip.JSZipObject`) and imported classes themselves (`JSZip`).
+   */
   qualifiedTypes: Map<A.XenonFile, Map<string, ClassInfo | TypedefInfo>>;
   resolutions: Map<A.Expr | A.ObjectProp, Resolution>;
   /** Class referenced by a type node (`new X`, `extends X`, annotations). */
@@ -384,7 +387,8 @@ export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typ
   const scopes = env.scopes;
   for (const file of files) scopes.set(file, env.fileScope(file));
   for (const [file, scope] of scopes) {
-    const qualified: [string, ClassInfo | TypedefInfo][] = [...scope.classes, ...scope.typedefs].filter(([name]) => name.includes("."));
+    const qualified: [string, ClassInfo | TypedefInfo][] = [...scope.classes, ...scope.typedefs]
+      .filter(([name, t]) => name.includes(".") || t.file.file.generated);
     if (qualified.length > 0) result.qualifiedTypes.set(file, new Map(qualified));
   }
 
