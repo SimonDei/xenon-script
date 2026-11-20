@@ -540,6 +540,18 @@ export class XenonProject {
         const info = imp.path.at(-1) === node && !imp.wildcard ? check.classes.get(imp.path.map((p) => p.name).join(".")) : undefined;
         return info && ofClass(info, node.span);
       }
+      // `{ excelRow: 1 }` / `{ data }` in a literal checked against a shape: the shape's member.
+      if ((parent.kind === "Prop" && (parent as A.ObjectProp & { kind: "Prop" }).key === node) || parent.kind === "Shorthand") {
+        const literal = chain.at(-3);
+        const t = literal?.kind === "Object" ? check.exprTypes.get(literal as A.Expr) : undefined;
+        const shape = t?.kind === "nullable" ? t.inner : t;
+        const s = shape?.kind === "shape" ? shapeMember(shape, (node as A.Ident).name) : undefined;
+        if (shape?.kind === "shape" && s) {
+          const owner = shape.typedef ? `${shape.typedef.decl.name.name}.` : "";
+          return { text: `${owner}${shapeMemberText(s.member)}`, doc: s.node && docComment(s.node.span.file, s.node.span.start), span: node.span, decl: s.node?.name.span };
+        }
+        if (parent.kind === "Prop") return undefined;
+      }
       // `{ name }`: the property is a variable or member in scope.
       if (parent.kind === "Shorthand") {
         const r = check.resolutions.get(parent as A.ObjectProp) as Resolution | undefined;

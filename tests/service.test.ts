@@ -410,3 +410,30 @@ test("hover shows the standard library's constexpr members and inline constants 
   expect(first("split")).toBe("function String.split(separator:String):Array<String>");
   expect(first("replace")).toBe("constexpr function String.replace(pattern:String, replacement:String):String");
 });
+
+test("hover on an object literal's key shows the expected shape's member; go to definition reaches it", () => {
+  const text = `typedef Row = {
+  /** The row in the sheet, from 1. */
+  excelRow:int,
+  data:*
+}
+
+public class Main {
+  public function Main() {
+    var rows:Array<Row> = []
+    var data:* = {}
+    rows.push({ excelRow: 2, data })
+    var loose:* = { excelRow: 1 }
+    trace(rows, loose)
+  }
+}
+`;
+  const p = project({ "Main.xn": text });
+  const hover = (needle: string, from = 0) => p.hover("Main.xn", text.indexOf(needle, from) + 1)?.contents;
+  const push = offset(text, "rows.push");
+  expect(hover("excelRow", push)).toBe("```xenon\nRow.excelRow:int\n```\n\nThe row in the sheet, from 1.");
+  expect(hover("data }", push)).toBe("```xenon\nRow.data:*\n```");
+  expect(p.definition("Main.xn", text.indexOf("excelRow", push) + 1)[0]!.range.start.line).toBe(2);
+  // A literal without a shape to check against: no member to show.
+  expect(hover("excelRow: 1")).toBeUndefined();
+});
