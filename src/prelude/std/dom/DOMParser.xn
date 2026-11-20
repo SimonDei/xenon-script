@@ -1,0 +1,18 @@
+// Browser: the DOM's `DOMParser`, which turns HTML or XML text into a `Document`:
+//   var doc:Document = new DOMParser().parseFromString(xml, 'application/xml')
+// Browser-only: Bun has no DOM, so `DOMParser` exists at runtime only in a browser (or with a DOM
+// library such as happy-dom).
+//
+// Malformed XML doesn't throw: the result contains a `<parsererror>` element instead, so check
+// `doc.getElementsByTagName('parsererror').length == 0`. HTML is always parsed (forgivingly).
+package xenon {
+  /** What `parseFromString` can parse: HTML, or XML (also XHTML and SVG). */
+  public typedef DOMParserSupportedType = 'text/html' | 'text/xml' | 'application/xml' | 'application/xhtml+xml' | 'image/svg+xml'
+
+  public native class DOMParser {
+    function DOMParser()
+
+    /** A new document from `text`; `type` decides the parser (`'application/xml'` for a Word file's XML). */
+    function parseFromString(text:String, type:DOMParserSupportedType):Document
+  }
+}

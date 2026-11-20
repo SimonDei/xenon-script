@@ -142,3 +142,40 @@ test("DOM code's TypeScript output type-checks (TypeScript's DOM library)", asyn
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
   expect(typeCheck(result.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
 });
+
+test("DOMParser and Document: parse Word XML, change it, read it back (and the TypeScript output checks)", async () => {
+  const code = `public class Main {
+  public function Main() {}
+  private static inline final W:String = 'urn:w'
+
+  /** The paragraphs' text, after appending one more paragraph. */
+  public static function paragraphs(xml:String):Array<String> {
+    var doc:Document = new DOMParser().parseFromString(xml, 'application/xml')
+    if (doc.getElementsByTagName('parsererror').length > 0) return ['invalid']
+    var body:Element? = doc.documentElement?.firstElementChild
+    if (body == null) return []
+    var p:Element = doc.createElementNS(W, 'w:p')
+    p.append(doc.createTextNode('added'))
+    body.append(p)
+    // (\`getElementsByTagNameNS(W, 'p')\` would do too in a browser; happy-dom doesn't find namespaced elements that way.)
+    return Array.from(doc.getElementsByTagName('w:p'), (e:Element, i:int):String => $'{i}:{e.textContent ?? ''}:{e.ownerDocument == doc}')
+  }
+}
+`;
+  const xml = `<w:document xmlns:w="urn:w"><w:body><w:p>Hello</w:p><w:p>World</w:p></w:body></w:document>`;
+  const js = compileProject([{ path: "Main.xn", text: code }], { main: "Main" });
+  expect(js.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  const source = js.outputs.find((o) => o.path === "Main.js")!.text;
+  const window = new Window();
+  try {
+    const Main = new Function("DOMParser", `${source.replace(/^export /m, "").replace(/\/\/# sourceMappingURL.*$/m, "")}; return Main;`)(window.DOMParser);
+    expect(Main.paragraphs(xml)).toEqual(["0:Hello:true", "1:World:true", "2:added:true"]);
+    expect(Main.paragraphs("<w:document")).toEqual(["invalid"]);
+  } finally {
+    await window.happyDOM.close();
+  }
+  const { typeCheck } = await import("./tsemit.ts");
+  const { join } = await import("node:path");
+  const ts = compileProject([{ path: "Main.xn", text: code }], { main: "Main", target: "ts" });
+  expect(typeCheck(ts.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
+});

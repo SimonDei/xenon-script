@@ -5,7 +5,7 @@
 // Typing: links that may be missing are `T?` (`parentNode`, `firstChild`, …); `nodeValue` and
 // `textContent` are `String?` (`null` for a document). `childNodes` is a live `NodeList<Node>`.
 // Events come from `EventTarget` (`node.addEventListener('click', e => …)`).
-// Not declared yet: `Document`, `Text`, `Attr`.
+// Not declared yet: `Text`, `Attr`.
 package xenon {
   public native class Node extends EventTarget {
     private function Node()
@@ -29,7 +29,7 @@ package xenon {
     /** Is the node part of a document? */
     function get isConnected():Boolean
     /** The document the node belongs to (`null` for a document itself). */
-    function get ownerDocument():*
+    function get ownerDocument():Document?
 
     // ---- the tree ----
     function get parentNode():Node?

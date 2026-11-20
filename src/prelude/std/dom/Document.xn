@@ -1,0 +1,68 @@
+// Browser: the DOM's `Document`, the root of an HTML or XML tree: the page's `document`, or what
+// `DOMParser.parseFromString` returns (a Word file's `word/document.xml`, for one).
+// Browser-only: Bun has no DOM, so `Document` exists at runtime only in a browser (or with a DOM
+// library such as happy-dom).
+//
+// Typing: `documentElement`, `body` and `head` are `Element?` (an XML document has no `body`; an
+// empty one no root). Text and comment nodes are `Node`s until `Text` is declared.
+// Not declared yet: `Text`, `Comment`, `DocumentType`, the HTML element classes, `document.cookie`
+// and the other page-only members.
+package xenon {
+  public native class Document extends Node {
+    /** An empty document (no root element). */
+    function Document()
+
+    // ---- what it is ----
+    /** `'text/html'`, `'application/xml'`, … (as passed to `DOMParser`). */
+    function get contentType():String
+    function get URL():String
+    function get documentURI():String
+    /** The encoding: `'UTF-8'`. */
+    function get characterSet():String
+    /** The `<!DOCTYPE …>` node, or `null`. */
+    function get doctype():*
+
+    // ---- the tree ----
+    /** The root element: `<html>`, or an XML file's top element (`<w:document>`); `null` if there is none. */
+    function get documentElement():Element?
+    /** `<body>` of an HTML document; `null` in XML. */
+    function get body():Element?
+    function get head():Element?
+    function get title():String
+    function set title(value:String):void
+    function get children():HTMLCollection
+    function get firstElementChild():Element?
+    function get lastElementChild():Element?
+    function get childElementCount():int
+
+    // ---- finding elements ----
+    function getElementById(id:String):Element?
+    /** All elements with this qualified name (`'w:p'`, `'*'` for all), live. */
+    function getElementsByTagName(qualifiedName:String):HTMLCollection
+    function getElementsByTagNameNS(ns:String?, localName:String):HTMLCollection
+    function getElementsByClassName(classNames:String):HTMLCollection
+    function querySelector(selectors:String):Element?
+    function querySelectorAll(selectors:String):NodeList<Element>
+
+    // ---- making nodes (they belong to this document; insert them with `append` & co.) ----
+    function createElement(localName:String):Element
+    /** `is`: the name of a customized built-in element (custom elements). */
+    function createElement(localName:String, options:{ ?is:String }):Element
+    /** An element with a namespace: `createElementNS(W, 'w:r')` for a Word run. */
+    function createElementNS(ns:String?, qualifiedName:String):Element
+    function createElementNS(ns:String?, qualifiedName:String, options:{ ?is:String }):Element
+    function createTextNode(data:String):Node
+    function createComment(data:String):Node
+    /** A lightweight container: appending it moves its children, not itself. */
+    function createDocumentFragment():Node
+    /** A copy of a node from another document, owned by this one (`deep`: with its subtree). */
+    function importNode(node:Node, deep:Boolean = false):Node
+    /** Moves a node from another document into this one. */
+    function adoptNode(node:Node):Node
+
+    // ---- changing the top level ----
+    function append(...nodes:Array<*>):void
+    function prepend(...nodes:Array<*>):void
+    function replaceChildren(...nodes:Array<*>):void
+  }
+}
