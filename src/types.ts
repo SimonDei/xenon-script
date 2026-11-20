@@ -3,7 +3,7 @@ import type { ClassInfo, TypedefInfo } from "./checker.ts";
 export type PrimName = "int" | "uint" | "Float" | "String" | "Boolean";
 
 /** Built-in reference types that are not (yet) modelled member by member. */
-export type BuiltinName = "Object" | "Array" | "Function" | "Class";
+export type BuiltinName = "Object" | "Array" | "Function" | "Class" | "Tuple";
 
 /** A type parameter (`T` in `class Box<T>` or `function map<U>()`), compared by identity. */
 export interface TypeParamInfo {
@@ -104,8 +104,26 @@ export function arrayOf(element: Type): Type {
   return { kind: "builtin", name: "Array", args: [element] };
 }
 
-/** The element type of an `Array<T>` (`*` for a bare `Array`), or undefined for other types. */
+/**
+ * `Tuple<A, B, …>`: an array with exactly these element types, one per position (`Object.entries`
+ * gives `Array<Tuple<String, *>>`). At runtime a plain array.
+ */
+export function tupleOf(elements: Type[]): Type {
+  return { kind: "builtin", name: "Tuple", args: elements };
+}
+
+/** The element types of a `Tuple<…>`, or undefined for other types. */
+export function tupleElements(t: Type): Type[] | undefined {
+  return t.kind === "builtin" && t.name === "Tuple" ? t.args : undefined;
+}
+
+/**
+ * The element type of an `Array<T>` (`*` for a bare `Array`), or undefined for other types. A
+ * tuple's elements as one type: the union of its element types (what `for … of` and its array
+ * methods see; positions are typed one by one through indexes and destructuring).
+ */
 export function elementOf(t: Type): Type | undefined {
+  if (t.kind === "builtin" && t.name === "Tuple") return unionOf(t.args.map(widen));
   return t.kind === "builtin" && t.name === "Array" ? t.args[0] ?? T.any : undefined;
 }
 
@@ -238,7 +256,7 @@ export function typeToString(t: Type): string {
     case "null": return "null";
     case "any": return "*";
     case "error": return "{error}";
-    case "builtin": return t.args.length && !t.args.every(isDynamic) ? `${t.name}<${t.args.map(typeToString).join(", ")}>` : t.name;
+    case "builtin": return t.args.length && (t.name === "Tuple" || !t.args.every(isDynamic)) ? `${t.name}<${t.args.map(typeToString).join(", ")}>` : t.name;
     case "class": return t.args?.length ? `${t.info.decl.name.name}<${t.args.map(typeToString).join(", ")}>` : t.info.decl.name.name;
     case "typeParam": return t.param.name;
     // `int | Boolean | null`, as written (`(int | Boolean)?` isn't Xenon).
@@ -384,16 +402,36 @@ export function assignable(from: Type, to: Type): boolean {
     // Generic types are invariant: compare the arguments as seen from the target class.
     const seen = supertypeArgs(from.info, from.args ?? [], to.info);
     // `*` as a type argument is a wildcard on either side: `Box<int>` fits `Box<*>` and back.
-    return !seen || seen.length === 0 || to.args.every((a, i) => sameType(a, seen[i] ?? T.any) || isDynamic(a) || isDynamic(seen[i] ?? T.any));
+    return !seen || seen.length === 0 || to.args.every((a, i) => sameArg(a, seen[i] ?? T.any));
   }
   if (to.kind === "builtin") {
     if (to.name === "Function") return from.kind === "method" || (from.kind === "builtin" && from.name === "Function");
     if (to.name === "Class") return from.kind === "classRef" || (from.kind === "builtin" && from.name === "Class");
-    if (from.kind !== "builtin" || from.name !== to.name) return false;
+    if (from.kind !== "builtin") return false;
+    // A tuple is an array: it fits `Array<*>`, and `Array<T>` when every element is a `T`.
+    if (to.name === "Array" && from.name === "Tuple") {
+      const e = to.args[0] ?? T.any;
+      return isDynamic(e) || from.args.every((a) => sameType(widen(a), e) || isDynamic(a));
+    }
+    if (from.name !== to.name) return false;
+    // Tuples of the same length, position by position (with `*` as a wildcard, like type arguments).
+    if (to.name === "Tuple" && from.args.length !== to.args.length) return false;
     // `*` element types are a wildcard: `Array<int>` fits `Array` (= `Array<*>`) and back.
-    return to.args.every((a, i) => sameType(a, from.args[i] ?? T.any) || isDynamic(a) || isDynamic(from.args[i] ?? T.any));
+    return to.args.every((a, i) => sameArg(a, from.args[i] ?? T.any));
   }
   if (to.kind === "classRef") return from.kind === "classRef" && isSubclass(from.info, to.info);
+  return false;
+}
+
+/**
+ * Type arguments match: the same type, with `*` as a wildcard on either side, also nested
+ * (`IEnumerable<Tuple<String, int>>` fits `IEnumerable<Tuple<*, int>>`).
+ */
+function sameArg(a: Type, b: Type): boolean {
+  if (sameType(a, b) || isDynamic(a) || isDynamic(b)) return true;
+  if (a.kind === "builtin" && b.kind === "builtin") return a.name === b.name && a.args.length === b.args.length && a.args.every((x, i) => sameArg(x, b.args[i]!));
+  if (a.kind === "class" && b.kind === "class") return a.info === b.info && (a.args ?? []).length === (b.args ?? []).length && (a.args ?? []).every((x, i) => sameArg(x, b.args![i]!));
+  if (a.kind === "nullable" && b.kind === "nullable") return sameArg(a.inner, b.inner);
   return false;
 }
 
@@ -506,6 +544,8 @@ export function unify(pattern: Type, actual: Type, vars: Set<TypeParamInfo>, out
     }
     case "builtin":
       if (actual.kind === "builtin" && actual.name === pattern.name) pattern.args.forEach((p, i) => actual.args[i] && unify(p, actual.args[i]!, vars, out));
+      // `Array<T>` from a tuple: `T` is the union of its elements.
+      else if (pattern.name === "Array" && pattern.args[0] && tupleElements(actual)) unify(pattern.args[0], elementOf(actual)!, vars, out);
       return;
     case "method":
       if (actual.kind !== "method") return;

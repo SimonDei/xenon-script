@@ -631,6 +631,8 @@ export class XenonProject {
   /** The type a declaration gives its name: a parameter, local, loop or catch variable. */
   private declaredType(a: Analysis, decl: Node, name: A.Ident): Type | undefined {
     const check = a.result.check;
+    const bound = check.bindingTypes.get(name);
+    if (bound) return bound;
     const typeNode = (decl as { type?: A.TypeNode }).type;
     if (typeNode && (decl as { name?: unknown }).name === name) return check.typeNodeTypes.get(typeNode);
     if (decl.kind === "VarDecl" && (decl as A.Stmt & { kind: "VarDecl" }).init) return check.exprTypes.get((decl as A.Stmt & { kind: "VarDecl" }).init!);
@@ -1113,6 +1115,7 @@ export class XenonProject {
       for (const p of (n as { typeParams?: A.Ident[] }).typeParams ?? []) add({ label: p.name, kind: "typeParameter", detail: `type parameter ${p.name}` });
     }
     for (const t of ["int", "uint", "Float", "String", "Boolean", "void"]) add({ label: t, kind: "class" });
+    add({ label: "Tuple", kind: "class", detail: "Tuple<A, B, …>: an array with one type per position" });
     const { classes, typedefs } = this.visibleTypes(a, ast);
     for (const c of classes) add(classItem(c));
     for (const td of typedefs) {

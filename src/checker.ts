@@ -10,7 +10,7 @@ import {
   arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, arrayOf, elementOf, isDynamic, isNullable, isNumeric, isPrim, nonNull, nullableOf,
   bind, eraseParams, memberTypeIn, stdClassOf, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
   supertypeArgs, T, type Type, type TypeParamInfo, typeToString, unify,
-  requiredParams, literalType, literalOf, widen, unionOf, membersOf, valueFits, type UnionType,
+  requiredParams, literalType, literalOf, widen, unionOf, membersOf, valueFits, type UnionType, tupleOf, tupleElements,
 } from "./types.ts";
 
 /** A class known to the project. */
@@ -168,6 +168,8 @@ export interface CheckResult {
   classes: Map<string, ClassInfo>;
   /** Every typedef by qualified name (for completion). */
   typedefs: Map<string, TypedefInfo>;
+  /** The type of each name a destructuring pattern declares (`var [key, value] = entry`), for hover. */
+  bindingTypes: Map<A.Ident, Type>;
 }
 
 /** X0521's note and fix: `inline var` becomes `inline final` (the `var` right before the name). */
@@ -357,7 +359,7 @@ class Scope {
  */
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
-    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs,
+    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(),
   };
   const env = new Env(classes, typedefs, diags, result);
   env.jsBindings = jsBindings;
@@ -436,7 +438,7 @@ class Env {
   ) {
     // `Array<int>` and `String` fit interfaces their std classes implement (`Iterable<T>`).
     stdClassOf.fn = (t) => {
-      if (t.kind === "builtin" && t.name === "Array" && this.arrayClass) return { kind: "class", info: this.arrayClass, args: [t.args[0] ?? T.any] };
+      if (t.kind === "builtin" && (t.name === "Array" || t.name === "Tuple") && this.arrayClass) return { kind: "class", info: this.arrayClass, args: [elementOf(t)!] };
       if (t.kind === "prim") {
         const info = this.primClass(t.name);
         if (info) return { kind: "class", info };
@@ -669,14 +671,6 @@ class Env {
   }
 
 
-  /** The `[K, V]` of a `Map<K, V>` (or a subclass of one), for `for (var [k, v]:* of map)`. */
-  mapArgs(t: Type): [Type, Type] | undefined {
-    const map = this.classes.get("xenon.Map");
-    if (!map || t.kind !== "class" || !isSubclass(t.info, map)) return undefined;
-    const args = supertypeArgs(t.info, t.args ?? [], map) ?? [];
-    return [args[0] ?? T.any, args[1] ?? T.any];
-  }
-
   /** The prelude's `IEnumerable<T>`: what `for … of` loops over. */
   get enumerable(): ClassInfo | undefined {
     return this.classes.get("xenon.IEnumerable");
@@ -905,6 +899,14 @@ class Env {
     if (param) {
       if (node.args.length > 0) this.diags.error("X0423", `type parameter \`${name}\` doesn't take type arguments`, node.span);
       return { kind: "typeParam", param };
+    }
+    // `Tuple<String, int>`: one type per position (unless a class of the program is named `Tuple`).
+    if (name === "Tuple" && !this.lookupClass(scope, name, whole) && !this.lookupTypedef(scope, name)) {
+      if (node.args.length === 0) {
+        this.diags.error("X0422", "`Tuple` needs a type argument per element: `Tuple<String, int>`", node.span);
+        return T.error;
+      }
+      return tupleOf(node.args.map((a) => this.resolveType(a, scope, false, tparams)));
     }
     if (name === "Array" || (name === "Vector" && !this.lookupClass(scope, name, whole))) {
       if (name === "Vector") {
@@ -2979,8 +2981,10 @@ class BodyChecker {
   /** Declares a `for (… in/of …)` loop variable after checking it against the element type. */
   private loopVar(v: A.LoopVar, element: Type, scope: Scope, what: string, kind: Local["kind"] = v.decl) {
     if (v.pattern) {
-      // `for (var [k, v] of …)`: an annotation states the element type; otherwise it comes from the source.
-      const source = v.type ? this.resolveT(v.type, this.scope) : element;
+      // `for (var [k, v] of …)`: an annotation states the element type; otherwise it comes from the
+      // source. Tuples (a map's `Tuple<K, V>`) keep their positions' types under a `:*` too.
+      const declared = v.type && this.resolveT(v.type, this.scope);
+      const source = declared && !(isDynamic(declared) && tupleElements(element)) ? declared : element;
       if (v.type && !assignable(element, source)) {
         this.diags.error("X0308", "mismatched types", v.type.span, `the ${what} are \`${typeToString(element)}\``);
       }
@@ -3045,15 +3049,7 @@ class BodyChecker {
       if (t.kind === "class") d.help(`implement \`IEnumerable<T>\` in \`${t.info.decl.name.name}\`: \`function getEnumerator():IEnumerator<T>\``);
       element = T.error;
     }
-    // A map yields `[key, value]` pairs; destructuring them types `key` as `K` and `value` as `V`.
-    const kv = this.env.mapArgs(t);
-    if (kv) element = T.Array;
-    const pattern = s.variable.pattern;
-    if (kv && pattern?.kind === "ArrayPattern" && (!s.variable.type || isDynamic(this.resolveT(s.variable.type, this.scope)))) {
-      pattern.elements.forEach((el, i) => {
-        if (el) this.bindPattern(el, i < 2 ? kv[i]! : T.any, scope, s.variable.decl === "var" ? "var" : s.variable.decl);
-      });
-    } else this.loopVar(s.variable, element, scope, "elements");
+    this.loopVar(s.variable, element, scope, "elements");
     this.loopBody(() => this.nested(s.body, scope));
   }
 
@@ -3196,6 +3192,12 @@ class BodyChecker {
       if (!assignable(t, expected)) this.mismatch(e, t, expected, origin);
       return;
     }
+    // `var pair:Tuple<String, int> = ['a', 1]`: one element per position, each checked against its type.
+    const positions = e.kind === "Array" ? tupleElements(expected) : undefined;
+    if (e.kind === "Array" && positions) {
+      this.tupleLiteral(e, positions, expected, scope);
+      return;
+    }
     // Array literals take their type from context: `var v:Array<int> = [1, 2]`, also through an
     // interface arrays implement: `Iterable<int>`.
     const expectedElement = e.kind === "Array" ? elementOf(expected) ?? this.env.arrayElementFor(expected) : undefined;
@@ -3211,6 +3213,39 @@ class BodyChecker {
     const actual = this.valueExpr(e, scope);
     if (assignable(actual, expected) || this.constantFits(e, expected)) return;
     this.mismatch(e, this.shownType(e, actual, expected), expected, origin);
+  }
+
+  /**
+   * An argument's type for inferring type arguments against `pattern`. A literal for a tuple
+   * (`['a', 1]` for `Tuple<K, V>`) is typed position by position (its elements are remembered in
+   * `preTyped`; the literal itself is checked against the inferred tuple later); anything else whole.
+   */
+  private inferredLiteral(e: A.Expr, pattern: Type, scope: Scope): Type {
+    const positions = tupleElements(pattern);
+    if (e.kind === "Array" && positions && e.elements.length === positions.length && e.elements.every((el) => el.kind !== "Spread")) {
+      return tupleOf(e.elements.map((el) => {
+        const t = this.valueExpr(el, scope);
+        this.preTyped.set(el, t);
+        return widen(t);
+      }));
+    }
+    const t = this.valueExpr(e, scope);
+    this.preTyped.set(e, t);
+    return t;
+  }
+
+  /** An array literal for a `Tuple<…>`: as many elements as positions (X0323), no spread, each fitting its type. */
+  private tupleLiteral(e: A.Expr & { kind: "Array" }, positions: Type[], expected: Type, scope: Scope) {
+    const spread = e.elements.find((el) => el.kind === "Spread");
+    if (spread) {
+      this.diags.error("X0323", `a \`${typeToString(expected)}\` literal lists its elements one by one`, spread.span, "the length of a spread isn't known");
+      for (const el of e.elements) this.valueExpr(el.kind === "Spread" ? el.arg : el, scope);
+    } else if (e.elements.length !== positions.length) {
+      const extra = e.elements[positions.length];
+      this.diags.error("X0323", "wrong tuple length", extra?.span ?? e.span, `\`${typeToString(expected)}\` has ${positions.length} element${positions.length === 1 ? "" : "s"}, found ${e.elements.length}`);
+    }
+    if (!spread) e.elements.forEach((el, i) => (i < positions.length ? this.checkAssign(el, positions[i]!, undefined, scope) : this.valueExpr(el, scope)));
+    this.record(e, expected);
   }
 
   /**
@@ -3375,6 +3410,20 @@ class BodyChecker {
             this.diags.error("X0308", "mismatched types", e.index.span, `a \`String\` index is an \`int\`, found \`${typeToString(idx)}\``);
           }
           return T.String;
+        }
+        // `pair[0]`: a constant position has its own type; any other index the union of them.
+        const positions = tupleElements(obj);
+        if (positions) {
+          if (!isNumeric(idx) && !isDynamic(idx)) {
+            this.diags.error("X0308", "mismatched types", e.index.span, `a tuple index is an \`int\`, found \`${typeToString(idx)}\``);
+          }
+          const at = this.constValue(e.index);
+          if (at.ok && typeof at.value === "number") {
+            if (Number.isInteger(at.value) && at.value >= 0 && at.value < positions.length) return positions[at.value]!;
+            this.diags.error("X0324", "tuple index out of range", e.index.span, `\`${typeToString(obj)}\` has positions 0 to ${positions.length - 1}`);
+            return T.error;
+          }
+          return elementOf(obj)!;
         }
         const element = elementOf(obj);
         if (element && !isDynamic(element)) {
@@ -3550,7 +3599,8 @@ class BodyChecker {
     let obj = objType;
     // The built-in array type has its members from the std class `Array<T>`.
     const arrayClass = this.env.arrayClass;
-    if (obj.kind === "builtin" && obj.name === "Array" && arrayClass) obj = { kind: "class", info: arrayClass, args: [obj.args[0] ?? T.any] };
+    // A tuple is an array of its elements' union (`pair.join(',')`, `pair.length`).
+    if (obj.kind === "builtin" && (obj.name === "Array" || obj.name === "Tuple") && arrayClass) obj = { kind: "class", info: arrayClass, args: [elementOf(obj)!] };
     const name = e.name.name;
     switch (obj.kind) {
       case "builtin": {
@@ -3692,7 +3742,7 @@ class BodyChecker {
         return !!m && !m.isStatic;
       }
       case "builtin":
-        if (t.name === "Array" && this.env.arrayClass) return this.hasMember({ kind: "class", info: this.env.arrayClass, args: t.args }, name);
+        if ((t.name === "Array" || t.name === "Tuple") && this.env.arrayClass) return this.hasMember({ kind: "class", info: this.env.arrayClass, args: [elementOf(t)!] }, name);
         if (t.name === "Function") return !!this.env.functionMember(name);
         return t.name === "Object" || !!this.env.rootMember(name);
       case "method": return !!this.env.functionMember(name);
@@ -3953,6 +4003,7 @@ class BodyChecker {
           this.diags.error("X0204", `\`${p.name.name}\` is already declared in this scope`, p.name.span).secondary(prev.nameSpan, "previously declared here");
         }
         scope.declare(p.name.name, { type: source, kind: decl ?? "var", nameSpan: p.name.span });
+        this.env.result.bindingTypes.set(p.name, source);
         return;
       }
       case "Target": {
@@ -3973,6 +4024,18 @@ class BodyChecker {
         return;
       }
       case "ArrayPattern": {
+        // `var [key, value] = entry`: each name gets its position's type; `...rest` the remaining ones.
+        const positions = tupleElements(source);
+        if (positions) {
+          const extra = p.elements.findIndex((el, i) => el && i >= positions.length);
+          if (extra >= 0) {
+            this.diags.error("X0773", "too many names for a tuple", p.elements[extra]!.span, `\`${typeToString(source)}\` has ${positions.length} element${positions.length === 1 ? "" : "s"}`);
+          }
+          p.elements.forEach((el, i) => el && this.bindPattern(el, positions[i] ?? T.error, scope, decl));
+          const remaining = positions.slice(p.elements.length);
+          if (p.rest) this.bindPattern(p.rest, remaining.length ? tupleOf(remaining) : arrayOf(T.any), scope, decl);
+          return;
+        }
         let element: Type = T.any;
         let rest: Type = T.Array;
         const sourceElement = elementOf(source);
@@ -4208,8 +4271,7 @@ class BodyChecker {
       if (a.kind === "Array" && patternElement) {
         for (const el of a.elements) {
           if (el.kind === "Spread") continue;
-          const t = this.valueExpr(el, scope);
-          this.preTyped.set(el, t);
+          const t = this.inferredLiteral(el, patternElement, scope);
           // Elements of different types: the wider one, or `*` if neither holds the other.
           const mine = new Map<TypeParamInfo, Type>();
           unify(patternElement, t, set, mine);
@@ -4292,7 +4354,12 @@ class BodyChecker {
         // A literal fits a union when it fits a member.
         const each = (pt: Type) => membersOf(pt).some((m) => {
           if (a.kind === "Function") return m.kind === "method" || (m.kind === "builtin" && (m.name === "Function" || m.name === "Object"));
-          if (a.kind === "Array") return m.kind === "builtin" && (m.name === "Array" || m.name === "Object");
+          if (a.kind === "Array") {
+            // A tuple of the same length (a spread's length isn't known), an array, or an interface arrays implement.
+            const positions = tupleElements(m);
+            if (positions) return a.elements.length === positions.length && a.elements.every((el) => el.kind !== "Spread");
+            return (m.kind === "builtin" && (m.name === "Array" || m.name === "Object")) || !!this.env.arrayElementFor(m);
+          }
           return m.kind === "shape" ? !strict || this.objectMayFit(a as A.Expr & { kind: "Object" }, m) : m.kind === "builtin" && m.name === "Object";
         });
         if (a.kind === "Function" || a.kind === "Array" || a.kind === "Object") return each(pt);

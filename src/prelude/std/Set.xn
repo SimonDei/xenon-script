@@ -26,7 +26,7 @@ package xenon {
     /** Same as `values()`: a set's keys are its values. */
     function keys():Iterator<T>
     /** `[value, value]` pairs, mirroring `Map.entries()`. */
-    function entries():Iterator<Array<T>>
+    function entries():Iterator<Tuple<T, T>>
 
     // Set algebra: each returns a new set and leaves both operands unchanged.
     function union(other:Set<T>):Set<T>

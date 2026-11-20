@@ -185,6 +185,24 @@ test("a package installed while the language server runs is typed on the next co
   }
 });
 
+test("TypeScript tuples are Tuple<…> (fixed length) or Array<*> (optional or rest elements)", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const project = join(import.meta.dir, ".dts-tuples");
+  const pkg = join(project, "node_modules", "pairs");
+  await rm(project, { recursive: true, force: true });
+  await mkdir(pkg, { recursive: true });
+  await Bun.write(join(pkg, "package.json"), JSON.stringify({ name: "pairs", types: "index.d.ts" }));
+  await Bun.write(join(pkg, "index.d.ts"), "export declare function pair(): [string, number];\nexport declare function loose(): [string, number?];\n");
+  try {
+    const text = "import * as pairs from 'pairs'\n\npublic class Main {\n  public function Main() {\n    var p:Tuple<String, Float> = pairs.pair()\n    var [name, n] = pairs.pair()\n    var l:Array<*> = pairs.loose()\n    trace(p, name.length, n * 2, l, pairs.pair()[2])\n  }\n}\n";
+    const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: join(project, "src") });
+    expect(result.diagnostics.sorted().filter((d) => d.severity === "error").map((d) => d.code)).toEqual(["X0324"]);
+    expect(result.declarationErrors).toEqual([]);
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
 test("JavaScript files of the source folder are copied, unless a module has their path (X0030)", () => {
   const code = main("import { book } from './lib/sheet.js'", "    trace(book())");
   const copied = compileProject([{ path: "Main.xn", text: code }], { main: "Main", assets: [{ path: "lib/sheet.js", text: "export const book = () => 1;\n" }] });

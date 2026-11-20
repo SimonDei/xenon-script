@@ -1,0 +1,41 @@
+// Tuples: `Tuple<A, B, …>` is an array with one type per position (a plain array at runtime).
+typedef Range = Tuple<int, int>
+
+public class Main {
+  public function Main() {
+    // A literal takes the tuple type from context; each position keeps its own type.
+    var pair:Tuple<String, int> = ['ann', 31]
+    var name:String = pair[0]
+    var age:int = pair[1] + 1
+    trace(name.toUpperCase(), age, pair.length, pair.join('/'))
+
+    // Destructuring types each name; `...rest` keeps the remaining positions.
+    var [label, low, high]:Tuple<String, int, int> = ['span', 3, 9]
+    var [first, ...others]:Tuple<String, Boolean, Float> = ['x', true, 0.5]
+    trace(label.length, high - low, first, others[0], others[1] * 2)
+
+    // Standard library entries are tuples: keys are `String`s, map entries `Tuple<K, V>`.
+    var config:Object = { host: 'localhost', port: 8080 }
+    for (var [key, value] of Object.entries(config)) {
+      trace(key.padEnd(5, '.'), value)
+    }
+    var ages:Map<String, int> = new Map([['ann', 31], ['bob', 27]])   // `K` and `V` inferred
+    for (var [who, years] of ages) trace(who.charAt(0), years + 1)
+    for (var [i, letter] of ['a', 'b'].entries()) trace(i * 10, letter.toUpperCase())
+    trace(Object.fromEntries(ages.entries()))
+
+    // Tuples as parameters and results; a typedef names one.
+    var r:Range = span([4, 1, 7])
+    trace(r[0], r[1], width(r))
+    var swapped:Tuple<int, String> = swap(pair)
+    trace(swapped)
+  }
+
+  private function span(values:Array<int>):Range {
+    return [int(Math.min(...values)), int(Math.max(...values))]
+  }
+
+  private function width(r:Range):int => r[1] - r[0]
+
+  private function swap(p:Tuple<String, int>):Tuple<int, String> => [p[1], p[0]]
+}

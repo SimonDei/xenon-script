@@ -13,8 +13,8 @@
  * - TypeScript interfaces and object types become typedef shapes (structural, as in TypeScript),
  *   functions types `(a:T) -> R`, arrays `Array<T>`, `Promise`/`Map`/`Set`/`Iterator`/`RegExp`/`Date`
  *   the standard library's classes; `number` is `Float`, `string | null` is `String`, `number | null`
- *   is `Float?`.
- * Whatever doesn't map (other unions, intersections, tuples, enums, generics' type parameters,
+ *   is `Float?`; a tuple `[string, number]` is `Tuple<String, Float>`.
+ * Whatever doesn't map (other unions, intersections, tuples with optional or rest elements, enums, generics' type parameters,
  * overloaded methods inside object types, other built-in types such as `Uint8Array`) is `*`,
  * member by member, so code that compiled against untyped imports keeps compiling.
  */
@@ -556,7 +556,13 @@ class DeclWriter {
 
   private objectType(t: tsModule.ObjectType): string {
     const checker = this.checker;
-    if (checker.isTupleType(t)) return "Array<*>";
+    // `[string, number]`: a `Tuple<String, Float>`; with optional or rest elements its length varies: `Array<*>`.
+    if (checker.isTupleType(t)) {
+      const target = (t as tsModule.TypeReference).target as tsModule.TupleType;
+      const fixed = target.elementFlags.every((f) => f & this.ts.ElementFlags.Required);
+      const elements = checker.getTypeArguments(t as tsModule.TypeReference);
+      return fixed && elements.length > 0 ? `Tuple<${elements.map((e) => this.type(e, false)).join(", ")}>` : "Array<*>";
+    }
     if (checker.isArrayType(t)) return `Array<${this.type(checker.getTypeArguments(t as tsModule.TypeReference)[0]!, false)}>`;
     const sym = t.getSymbol();
     if (sym && this.isLib(sym)) return this.libType(sym.name, t);

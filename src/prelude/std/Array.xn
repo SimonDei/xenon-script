@@ -103,6 +103,6 @@ package xenon {
     function keys():Iterator<int>
     function values():Iterator<T>
     /** `[index, item]` pairs. */
-    function entries():Iterator<Array<*>>
+    function entries():Iterator<Tuple<int, T>>
   }
 }

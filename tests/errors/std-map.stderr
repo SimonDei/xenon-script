@@ -4,9 +4,9 @@ error[X0308]: mismatched types
  4 |     ages.set('ann', 'thirty')
    |                     ^^^^^^^^ expected `int`, found `String`
    |
-  ::: <xenon prelude>/xenon/Map.xn:26:31
+  ::: <xenon prelude>/xenon/Map.xn:27:31
    |
-26 |     function set(key:K, value:V):Map<K, V>
+27 |     function set(key:K, value:V):Map<K, V>
    |                               - parameter declared here
    |
 help: convert the value with `int()`
@@ -20,9 +20,9 @@ error[X0308]: mismatched types
  5 |     ages.set(7, 30)
    |              ^ expected `String`, found `int`
    |
-  ::: <xenon prelude>/xenon/Map.xn:26:22
+  ::: <xenon prelude>/xenon/Map.xn:27:22
    |
-26 |     function set(key:K, value:V):Map<K, V>
+27 |     function set(key:K, value:V):Map<K, V>
    |                      - parameter declared here
    |
 help: convert the value with `String()`
@@ -90,7 +90,8 @@ error[X0604]: no overload of `new Map` accepts (int)
    |                                                  ^^^ no matching overload
    |
    = note: `new Map()`
-   = note: `new Map(pairs:Array<Array<*>>)`
+   = note: `new Map(pairs:IEnumerable<Tuple<K, V>>)`
+   = note: `new Map(pairs:IEnumerable<Array<*>>)`
    = note: `new Map(other:Map<K, V>)`
 
 error[X0308]: mismatched types
@@ -110,9 +111,9 @@ error[X0504]: `size` has a getter but no setter
 12 |     ages.size = 3
    |          ^^^^
    |
-  ::: <xenon prelude>/xenon/Map.xn:22:18
+  ::: <xenon prelude>/xenon/Map.xn:23:18
    |
-22 |     function get size():int
+23 |     function get size():int
    |                  ---- getter declared here
 
 error[X0422]: `Map` needs 2 type arguments

@@ -82,6 +82,9 @@ export const CODES: Record<string, CodeInfo> = {
   X0321: c("binding refers to itself", "The bound value mentions an outer variable with the same name, which would be shadowed. Rename the binding."),
   X0322: c("assignment used as a condition", "`=` assigns. To compare use `==`; to bind and test a value use `if (var x:T = …)`.",
     "if (done = true) {}", "if (done == true) {}"),
+  X0323: c("wrong tuple length", "A `Tuple<A, B, …>` has exactly one element per type argument: an array literal for it lists that many, and only a tuple of the same length fits it.",
+    "var pair:Tuple<String, int> = ['a']", "var pair:Tuple<String, int> = ['a', 1]"),
+  X0324: c("tuple index out of range", "A tuple's constant index must be one of its positions (from 0); `t[2]` of a `Tuple<A, B>` doesn't exist."),
   X0330: c("invalid range step", "A range `step` is a positive compile-time constant; ranges never count down."),
   X0331: c("empty range", "The range's start isn't below its end, so the loop never runs. Ranges count up only."),
   X0332: c("range variable assigned", "The variable of a range loop is read-only."),
@@ -225,6 +228,7 @@ export const CODES: Record<string, CodeInfo> = {
   // ---- destructuring ----
   X0770: c("can't destructure", "Only objects can be destructured with `{…}`, and only arrays/vectors/strings with `[…]`."),
   X0771: c("destructuring a method", "A method taken out of its object would lose `this`; call it instead."),
+  X0773: c("too many names for a tuple", "Destructuring a `Tuple<A, B>` binds at most one name per element; a further name would always be `undefined`."),
   X0772: c("destructuring a private field", "Private fields compile to JavaScript `#private` fields, which destructuring can't read; read the field directly."),
 
   // ---- interfaces and typedefs ----

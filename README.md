@@ -91,6 +91,7 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Properties | `function get color()` / `function set color(v)`; the setter may be narrower (`private set`) | [`interfaces`](examples/interfaces) |
 | Interfaces | `interface IShape { function area():Float }`, checked `implements` | [`interfaces`](examples/interfaces) |
 | Types | `int`, `uint`, `Float`, `String`, `Boolean`, `Array<T>`, `*` (untyped) | [`types`](examples/types) |
+| Tuples | `Tuple<String, int>`: one type per position, `var [key, value] = pair`; `Object.entries` and map entries are tuples | [`tuples`](examples/tuples) |
 | Nullable types | `int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
 | Generics | `class Box<T>`, `function first<T>(items:Array<T>):T?` | [`generics`](examples/generics) |
 | Typedefs | `typedef Point = { x:Float, y:Float, ?label:String }`, aliases | [`typedefs`](examples/typedefs) |
@@ -133,8 +134,8 @@ import _ from 'lodash'                      // no types installed: `*`
 - **Typed imports.** Declarations are read from `node_modules` (`@types/*`, Bun's types, a
   package's own types). Namespaces become classes with static members, and exported classes
   become classes you can `new`, test with `is` and subclass. Object types become typedef shapes.
-  Whatever has no XenonScript equivalent, such as most unions or tuples, is `*` for that member
-  only. See [`examples/declarations`](examples/declarations).
+  Fixed-length tuples become `Tuple<…>`. Whatever has no XenonScript equivalent, such as most
+  unions, is `*` for that member only. See [`examples/declarations`](examples/declarations).
 - **Local libraries.** `.js`, `.mjs`, `.cjs`, `.json` and `.d.ts` files in the source folder are
   copied to the output. They are imported relative to the importing file, and their types can be
   named as `XLSX.WorkBook`. See [`examples/vendor`](examples/vendor).

@@ -1,0 +1,14 @@
+ANN 32 2 ann/31
+4 6 x true 1
+host. localhost
+port. 8080
+a 32
+b 28
+0 A
+10 B
+{
+  ann: 31,
+  bob: 27,
+}
+1 7 6
+[ 31, "ann" ]

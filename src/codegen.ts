@@ -408,6 +408,7 @@ class ModuleGen {
       case "builtin":
         switch (t.name) {
           case "Array": return `Array<${this.tsType(t.args[0] ?? { kind: "any" })}>`;
+          case "Tuple": return `[${t.args.map((a) => this.tsType(a)).join(", ")}]`;
           case "Function": return "Function";
           case "Object": return "Record<string, any>"; // a dynamic object: any property may be read
           case "Class": return "any";

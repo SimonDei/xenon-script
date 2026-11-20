@@ -1,17 +1,18 @@
 // Standard library: JavaScript's `Map<K, V>`: key/value pairs in insertion order. Keys are compared
 // like `==` in Xenon, except that NaN equals NaN; objects are compared by identity.
 //
-// Iterate with a destructuring loop: `for (var [key, value]:* of map)`, where `key` is a `K` and
-// `value` a `V`. Without the pattern each element is an `Array<*>` pair (`[key, value]`).
+// Iterate with a destructuring loop: `for (var [key, value] of map)`, where `key` is a `K` and
+// `value` a `V`: each element is a `Tuple<K, V>`.
 // Typing: `get` returns `V?`, `null` for a missing key: `ages.get('ann') ?? 0`, or
-// `if (var age:int = ages.get('ann')) …`. `new Map(pairs)` can't infer `K` and `V` from
-// an array of `[key, value]` pairs: declare them, `var m:Map<String, int> = new Map(…)`.
+// `if (var age:int = ages.get('ann')) …`. `new Map([['a', 1]])` infers `Map<String, int>`.
 // Not declared (too new): `getOrInsert`, `getOrInsertComputed`.
 package xenon {
-  public native class Map<K, V> implements IEnumerable<Array<*>> {
+  public native class Map<K, V> implements IEnumerable<Tuple<K, V>> {
     function Map()
     /** From `[key, value]` pairs: `new Map([['a', 1], ['b', 2]])`. */
-    function Map(pairs:Array<Array<*>>)
+    function Map(pairs:IEnumerable<Tuple<K, V>>)
+    /** From pairs built at runtime (`items.map(i => [i.id, i])`): declare `K` and `V`, `var m:Map<String, Item> = new Map(…)`. */
+    function Map(pairs:IEnumerable<Array<*>>)
     /** A copy of another map. */
     function Map(other:Map<K, V>)
 
@@ -34,6 +35,6 @@ package xenon {
     function keys():Iterator<K>
     function values():Iterator<V>
     /** `[key, value]` pairs. */
-    function entries():Iterator<Array<*>>
+    function entries():Iterator<Tuple<K, V>>
   }
 }

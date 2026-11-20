@@ -437,3 +437,20 @@ public class Main {
   // A literal without a shape to check against: no member to show.
   expect(hover("excelRow: 1")).toBeUndefined();
 });
+
+test("hover on destructured names shows their types (tuple positions); completion offers Tuple", () => {
+  const text = `public class Main {
+  public function Main() {
+    for (var [key, value] of Object.entries({ a: 1 })) trace(key, value)
+    var [name, age] = pair()
+    var t:Tu
+    trace(name, age)
+  }
+  private function pair():Tuple<String, int> => ['ann', 31]
+}
+`;
+  const p = project({ "Main.xn": text });
+  const hover = (needle: string) => (p.hover("Main.xn", offset(text, needle, 1))!.contents as string).split("\n")[1];
+  expect([hover("key,"), hover("value]"), hover("name,"), hover("age]")]).toEqual(["key:String", "value:*", "name:String", "age:int"]);
+  expect(p.completions("Main.xn", offset(text, "var t:Tu", 8)).map((i) => i.label)).toContain("Tuple");
+});
