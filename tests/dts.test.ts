@@ -336,6 +336,32 @@ export = Zipish;
   }
 });
 
+test("members named like keywords are declared (entry.async(…)); a constrained type parameter is its constraint", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const project = join(import.meta.dir, ".dts-keywords");
+  const pkg = join(project, "node_modules", "entries");
+  await rm(project, { recursive: true, force: true });
+  await mkdir(pkg, { recursive: true });
+  await Bun.write(join(pkg, "package.json"), JSON.stringify({ name: "entries", types: "index.d.ts" }));
+  await Bun.write(join(pkg, "index.d.ts"), `type OutputType = "string" | "blob";
+export interface Entry {
+  async<T extends OutputType>(type: T): Promise<unknown>;
+  default: string;
+  readonly delete: boolean;
+}
+export declare function entry(): Entry;
+`);
+  try {
+    const text = "import { entry } from 'entries'\n\npublic class Main {\n  public function Main() {}\n  public static async function read():Promise<String> {\n    entry().default = 'x'\n    trace(entry().delete, await entry().async('blob'))\n    var bad:* = await entry().async('json')\n    return await entry().async('string')\n  }\n}\n";
+    const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: join(project, "src") });
+    const errors = result.diagnostics.sorted().filter((d) => d.severity === "error");
+    // Only the wrong output type: the members exist, and `type` takes the constraint's values.
+    expect(errors.map((d) => d.labels.find((l) => l.primary)!.message)).toEqual(["expected `OutputType`, found `'json'`"]);
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
 test("JavaScript files of the source folder are copied, unless a module has their path (X0030)", () => {
   const code = main("import { book } from './lib/sheet.js'", "    trace(book())");
   const copied = compileProject([{ path: "Main.xn", text: code }], { main: "Main", assets: [{ path: "lib/sheet.js", text: "export const book = () => 1;\n" }] });

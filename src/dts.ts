@@ -456,19 +456,34 @@ class DeclWriter {
     return [...this.typeNames.values()].includes(text) ? { kind: "typedef", name: text } : undefined;
   }
 
+  /** Nesting of constraint lookups (a constraint may mention its own parameter: `T extends Node<T>`). */
+  private depth = 0;
+  private withDepth<R>(f: () => R): R {
+    this.depth++;
+    try {
+      return f();
+    } finally {
+      this.depth--;
+    }
+  }
+
   /** One member: methods with all their signatures, read-only properties as getters (statics as `const`). */
   member(sym: tsModule.Symbol, type: tsModule.Type, name: string, isStatic: boolean, indent: string): string | undefined {
     const ts = this.ts;
-    if (!IDENT.test(name) || KEYWORDS.has(name) || name === "constructor") return undefined;
+    if (!IDENT.test(name) || name === "constructor") return undefined;
     const doc = this.doc(sym, indent);
     const st = isStatic ? "static " : "";
     const calls = type.getCallSignatures();
     const isFunction = sym.flags & (ts.SymbolFlags.Method | ts.SymbolFlags.Function) || (calls.length > 0 && this.checker.getPropertiesOfType(type).length === 0);
+    // Member names may be keywords (`zipObject.async(…)`, `module.default`), as in JavaScript: methods
+    // and accessors can be named so; a property with such a name is declared as a getter (and setter).
     if (isFunction && calls.length > 0) {
       return calls.map((c, i) => `${i === 0 ? doc : ""}${indent}${st}function ${name}(${this.params(c)}):${this.type(c.getReturnType(), true)}`).join("\n");
     }
     const t = this.type(type, false);
-    if (this.readonly(sym)) return isStatic ? `${doc}${indent}static const ${name}:${t}` : `${doc}${indent}function get ${name}():${t}`;
+    const keyword = KEYWORDS.has(name);
+    if (this.readonly(sym)) return isStatic && !keyword ? `${doc}${indent}static const ${name}:${t}` : `${doc}${indent}${st}function get ${name}():${t}`;
+    if (keyword) return `${doc}${indent}${st}function get ${name}():${t}\n${indent}${st}function set ${name}(value:${t}):void`;
     return `${doc}${indent}${st}var ${name}:${t}`;
   }
 
@@ -568,6 +583,12 @@ class DeclWriter {
   type(t: tsModule.Type, ret: boolean): string {
     const F = this.ts.TypeFlags;
     if (t.flags & (F.Any | F.Unknown)) return "*";
+    // A type parameter (generic signatures aren't declared as generic): its constraint, which every
+    // `T` fits (`<T extends OutputType>(type: T)` takes `'string' | 'blob' | …`), else `*`.
+    if (t.flags & F.TypeParameter) {
+      const constraint = this.checker.getBaseConstraintOfType(t);
+      return constraint && constraint !== t && !(constraint.flags & (F.Unknown | F.Any)) && this.depth < 4 ? this.withDepth(() => this.type(constraint, ret)) : "*";
+    }
     if (t.flags & (F.Void | F.Undefined | F.Never)) return ret ? "void" : "*";
     // Literal types: what TypeScript chooses overloads by (`withFileTypes: true`, `encoding: 'buffer'`).
     if (t.flags & F.BooleanLiteral) return (t as tsModule.Type & { intrinsicName: string }).intrinsicName === "true" ? "true" : "false";
