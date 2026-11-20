@@ -95,3 +95,49 @@ console.log(a.balance, a.check(new Account(1)), Account.opened === undefined, Ac
     await rm(out, { recursive: true, force: true });
   }
 });
+
+test("private methods and fully private properties are #private: JavaScript can't call them", async () => {
+  const sources = [
+    { path: "Counter.xn", text: `public class Counter {
+  private var n:int = 0
+  public function bump():int { step(); return n }
+  public function twice():int { var f:() -> Void = step; f(); f(); return n }
+  public function sameAs(other:Counter):Boolean { return other.value == value }
+  public function later():int {
+    var g:() -> int = function():int { step(); return value }
+    return g()
+  }
+  public static function make():Counter { return Counter.fresh() }
+  private function step():void { n++ }
+  private function get value():int { return n }
+  private static function fresh():Counter { return new Counter() }
+}
+` },
+    { path: "Main.xn", text: "public class Main {\n  public function Main() {}\n}\n" },
+  ];
+  const result = compileProject(sources, { main: "Main" });
+  expect(result.diagnostics.hasErrors).toBe(false);
+  const js = result.outputs.find((o) => o.path === "Counter.js")!.text;
+  expect(js).toContain("#step() {");
+  expect(js).toContain("get #value() {");
+  expect(js).toContain("static #fresh() {");
+
+  const out = join(import.meta.dir, ".private-methods-out");
+  await rm(out, { recursive: true, force: true });
+  try {
+    for (const o of result.outputs) {
+      await mkdir(dirname(join(out, o.path)), { recursive: true });
+      await Bun.write(join(out, o.path), o.text);
+    }
+    await Bun.write(join(out, "consumer.mjs"), `import { Counter } from './Counter.js';
+const c = Counter.make();
+console.log(c.bump(), c.twice(), c.later(), c.sameAs(c), typeof c.step, c.value, typeof Counter.fresh, Object.getOwnPropertyNames(Counter.prototype).sort().join());
+`);
+    const proc = Bun.spawn(["bun", join(out, "consumer.mjs")], { stdout: "pipe", stderr: "pipe" });
+    const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+    expect(stderr).toBe("");
+    expect(stdout).toBe("1 3 4 true undefined undefined undefined bump,constructor,later,sameAs,twice\n");
+  } finally {
+    await rm(out, { recursive: true, force: true });
+  }
+});

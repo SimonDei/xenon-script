@@ -29,6 +29,19 @@ function privateSetter(m: MemberSig | undefined): boolean {
   return !!get && !!set && visibilityOf(set) === "private" && visibilityOf(get) !== "private";
 }
 
+/**
+ * A private method, or a property whose getter and setter are both private: a JavaScript `#name`,
+ * which no other code can call. Not constructors, destructors, operator methods (`operator+` is no
+ * identifier), enums, native classes or the prelude.
+ */
+function privateMethod(m: MemberSig | undefined): boolean {
+  if (!m || (m.kind !== "method" && m.kind !== "accessor") || m.owner.decl.isEnum || isNative(m.owner) || m.owner.file.file.prelude) return false;
+  if (!/^[A-Za-z_$][\w$]*$/.test(m.name)) return false;
+  if (m.kind === "accessor") return [accessorHalf(m, "get"), accessorHalf(m, "set")].every((d) => !d || visibilityOf(d) === "private");
+  const d = m.decl as A.Method;
+  return !d.isConstructor && !d.isDestructor && visibilityOf(d) === "private";
+}
+
 /** Standard-library classes that are iterable at runtime but not in TypeScript's typings: the TypeScript output casts them in `for … of`. */
 const TS_NOT_ITERABLE = new Set(["xenon.FormData"]);
 
@@ -791,13 +804,15 @@ class ModuleGen {
       this.w.line("}");
       return;
     }
+    // A private method is a JavaScript `#name` (TypeScript allows no `private` keyword on one).
+    const hidden = !!info && privateMethod(info.members.get(m.name.name));
     const prefix = [
-      this.visibility(m),
+      hidden ? "" : this.visibility(m),
       m.modifiers.static ? "static " : "",
       m.modifiers.async ? "async " : "",
       m.accessor ? `${m.accessor} ` : "",
     ].join("");
-    const name = this.tok(m.name.span, m.isConstructor ? "constructor" : methodName(m.name.name));
+    const name = (hidden ? "#" : "") + this.tok(m.name.span, m.isConstructor ? "constructor" : methodName(m.name.name));
     const ret = m.isConstructor || m.accessor === "set" ? "" : this.ann(m.returnType);
     this.w.line(`${prefix}${name}${this.typeParams(m.typeParams)}(${this.params(m.params)})${ret} {`);
     // Derived constructors must call super() before using `this`; Xenon inserts it when omitted.
@@ -842,14 +857,15 @@ class ModuleGen {
   private writeTargets = new Set<A.Expr>();
 
   /**
-   * The property name for an access to member `m` (see `fieldStorage`): `#x` for a private field,
-   * and for writing a `final`/`const` one (only its class can); the plain name otherwise.
+   * The property name for an access to member `m` (see `fieldStorage`): `#x` for a private field or
+   * method (`privateMethod`), and for writing a `final`/`const` one (only its class can); the plain
+   * name otherwise.
    */
   private fieldName(m: MemberSig | undefined, access: A.Expr, id: A.Ident, plain = this.name(id)): string {
     const storage = fieldStorage(m);
     // The `#` stays outside the mapped token: `items` in the source maps to `items` in `#items`.
     const write = this.writeTargets.has(access);
-    if (storage === "private" || (write && (storage === "readonly" || privateSetter(m)))) return `#${this.tok(id.span, id.name)}`;
+    if (storage === "private" || privateMethod(m) || (write && (storage === "readonly" || privateSetter(m)))) return `#${this.tok(id.span, id.name)}`;
     return plain;
   }
 
@@ -1243,7 +1259,9 @@ class ModuleGen {
     const cache = (o: string) => (this.ts ? `(${o} as any)` : o);
     if (e.kind === "Ident") {
       const self = this.receiver();
-      return { code: `${cache(self)}[${key(`xenon.bound.${e.name}`)}] ??= ${self}.${this.tok(e.span, e.name)}.bind(${self})`, prec: P.assign };
+      const r = this.check.resolutions.get(e);
+      const prop = this.fieldName(r?.kind === "member" ? findMember(r.owner, e.name) : undefined, e, e, this.tok(e.span, e.name));
+      return { code: `${cache(self)}[${key(`xenon.bound.${e.name}`)}] ??= ${self}.${prop}.bind(${self})`, prec: P.assign };
     }
     if (e.kind !== "Member") throw new Error("codegen: unexpected method closure");
     const name = e.name.name;
@@ -1256,8 +1274,11 @@ class ModuleGen {
     if (this.check.exprTypes.get(e.object)?.kind === "prim") {
       return this.reuse(e.object, (first, again) => ({ code: `${first}.${this.name(e.name)}.bind(${again})`, prec: P.call }));
     }
+    const objType = this.check.exprTypes.get(e.object);
+    const t = objType && nonNull(objType);
+    const prop = this.fieldName(t?.kind === "class" || t?.kind === "classRef" ? findMember(t.info, name) : undefined, e, e.name);
     return this.reuse(e.object, (first, again) => ({
-      code: `${cache(first)}[${key(`xenon.bound.${name}`)}] ??= ${again}.${this.name(e.name)}.bind(${again})`,
+      code: `${cache(first)}[${key(`xenon.bound.${name}`)}] ??= ${again}.${prop}.bind(${again})`,
       prec: P.assign,
     }));
   }

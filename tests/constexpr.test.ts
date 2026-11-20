@@ -25,7 +25,7 @@ test("a constexpr method of the own object is folded (constexpr methods are impl
 }
 `);
   // folded whatever the visibility; one reading a field of the runtime object stays a call.
-  expect(js).toContain("console.log(3628800, 6, 42, 2, this.usesThis(1));");
+  expect(js).toContain("console.log(3628800, 6, 42, 2, this.#usesThis(1));");
 });
 
 test("String methods and regex literals fold at compile time, in constexpr functions too", () => {
