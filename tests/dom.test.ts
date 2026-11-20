@@ -64,6 +64,17 @@ test("Element.attributes is an iterable collection of Attr values", () => {
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
 });
 
+test("Element.style is dynamic for CSS property assignment", () => {
+  const result = compileProject([{ path: "Main.xn", text: `public class Main {
+  public static function style(element:Element):Void {
+    Object.assign(element.style, { position: 'absolute', width: '10pt' })
+    element.style.display = 'none'
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
+});
+
 test("a stable value keeps a guard's narrowing inside a callback", () => {
   const safe = compileProject([{ path: "Main.xn", text: `public class Main {
   public static function has(data:Object?, key:String):Boolean {

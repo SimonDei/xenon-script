@@ -43,7 +43,12 @@ const SAMPLES: Record<string, unknown[]> = {
 const ARITY_QUIRKS = new Set(["Response.prototype.clone", "Blob.prototype.stream"]);
 
 /** Standard DOM members (every browser has them) that happy-dom doesn't implement. */
-const HAPPY_DOM_GAPS = new Set(["Node.prototype.lookupPrefix", "Node.prototype.lookupNamespaceURI", "Node.prototype.isDefaultNamespace"]);
+const HAPPY_DOM_GAPS = new Set([
+  "Node.prototype.lookupPrefix",
+  "Node.prototype.lookupNamespaceURI",
+  "Node.prototype.isDefaultNamespace",
+  "Element.prototype.style", // `style` lives on HTMLElement/SVGElement, while Xenon's DOM uses Element.
+]);
 
 /** Does a runtime value match a declared (primitive) type name? Unknown types aren't checked. */
 function matches(type: A.TypeNode | undefined, value: unknown): boolean {

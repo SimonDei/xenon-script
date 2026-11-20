@@ -24,6 +24,8 @@ package xenon {
     function set className(value:String):void
     /** The class names as a `DOMTokenList` (`add`, `remove`, `toggle`, `contains`). */
     function get classList():*
+    /** Inline CSS properties; dynamic because CSSStyleDeclaration has hundreds of properties. */
+    function get style():*
 
     // ---- attributes ----
     function get attributes():NamedNodeMap
