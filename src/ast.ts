@@ -74,6 +74,7 @@ export interface Param {
 
 export interface Field {
   kind: "Field";
+  attributes?: Attribute[];
   modifiers: Modifiers;
   decl: "var" | "const" | "final";
   name: Ident;
@@ -82,8 +83,20 @@ export interface Field {
   span: Span;
 }
 
+/**
+ * `[Route('/', verb = 'POST')]` before a class, method or field: an instance of the attribute class
+ * `name`, created with `args` and then given the `named` values (see src/attributes.ts).
+ */
+export interface Attribute {
+  name: TypeNode & { kind: "TypeName" };
+  args: Expr[];
+  named: { name: Ident; value: Expr; span: Span }[];
+  span: Span;
+}
+
 export interface Method {
   kind: "Method";
+  attributes?: Attribute[];
   modifiers: Modifiers;
   name: Ident;
   /** `function map<U>(…)` */
@@ -113,6 +126,7 @@ export type Member = Field | Method | StaticBlock;
 
 export interface ClassDecl {
   kind: "Class";
+  attributes?: Attribute[];
   /** `class Box<T, U>` */
   typeParams?: Ident[];
   /** `interface`: no bodies or fields; `implements` then lists the interfaces it extends. */

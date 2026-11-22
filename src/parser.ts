@@ -354,6 +354,64 @@ export class Parser {
   }
 
   private parseTypeDecl(): A.TypeDecl | A.Method {
+    const attributes = this.parseAttributes();
+    const decl = this.parseTypeDeclInner();
+    if (attributes.length === 0) return decl;
+    // The declaration's span covers its attributes (hover and completion find them inside it).
+    decl.span = cover(attributes[0]!.span, decl.span);
+    if (decl.kind === "Class" && !decl.isInterface && !decl.isEnum) decl.attributes = attributes;
+    else this.misplacedAttributes(attributes, decl.kind === "Method" ? "a package-level function" : decl.kind === "Typedef" ? "a typedef" : decl.isEnum ? "an enum" : "an interface");
+    return decl;
+  }
+
+  /** X0834 for attributes before a declaration that can't have any. */
+  private misplacedAttributes(attributes: A.Attribute[], what: string) {
+    const at = cover(attributes[0]!.span, attributes.at(-1)!.span);
+    this.diags.error("X0834", `attributes can't be used on ${what}`, at, "not allowed here")
+      .note("attributes can be used on classes, methods and fields");
+  }
+
+  /**
+   * `[Name(args, prop = value), Other]`, possibly several brackets, before a declaration. Only
+   * declarations can follow, so a `[` here is never an array literal.
+   */
+  private parseAttributes(): A.Attribute[] {
+    const result: A.Attribute[] = [];
+    while (this.is("[")) {
+      const open = this.advance();
+      do {
+        const start = this.tok.span.start;
+        const name: A.Ident[] = [this.ident("an attribute name")];
+        while (this.eat(".")) name.push(this.ident("a name"));
+        const typeName = { kind: "TypeName" as const, name, args: [], span: this.sp(start) };
+        const args: A.Expr[] = [];
+        const named: A.Attribute["named"] = [];
+        if (this.is("(")) {
+          const paren = this.advance();
+          while (!this.is(")")) {
+            // `verb = 'POST'`: a named value (after the positional ones).
+            if (this.tok.kind === "ident" && this.is("=", this.peekTok())) {
+              const nStart = this.tok.span.start;
+              const n = this.ident();
+              this.advance();
+              named.push({ name: n, value: this.parseAssign(), span: this.sp(nStart) });
+            } else {
+              const arg = this.parseAssign();
+              if (named.length > 0) this.diags.error("X0100", "positional attribute arguments come before named ones", arg.span, "after a named argument");
+              args.push(arg);
+            }
+            if (!this.eat(",")) break;
+          }
+          this.expectClose(")", paren);
+        }
+        result.push({ name: typeName, args, named, span: this.sp(start) });
+      } while (this.eat(","));
+      this.expectClose("]", open);
+    }
+    return result;
+  }
+
+  private parseTypeDeclInner(): A.TypeDecl | A.Method {
     const start = this.tok.span.start;
     const modifiers = this.parseModifiers(false);
     if (this.is("function")) return this.parseMethod(modifiers, start, ""); // package-level: checked in collectClasses (X0029)
@@ -482,6 +540,16 @@ export class Parser {
   }
 
   private parseMember(className: string): A.Member {
+    const attributes = this.parseAttributes();
+    const member = this.parseMemberInner(className);
+    if (attributes.length === 0) return member;
+    member.span = cover(attributes[0]!.span, member.span);
+    if (member.kind === "StaticBlock") this.misplacedAttributes(attributes, "a `static` block");
+    else member.attributes = attributes;
+    return member;
+  }
+
+  private parseMemberInner(className: string): A.Member {
     const start = this.tok.span.start;
     const modifiers = this.parseModifiers(true);
 

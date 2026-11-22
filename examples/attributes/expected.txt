@@ -1,0 +1,7 @@
+GET /users/ -> list
+GET /users/all -> list
+POST /users/ -> create
+true 0
+user_name list,create,id,name
+id returned 7
+create returned created 7

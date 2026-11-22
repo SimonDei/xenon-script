@@ -158,6 +158,39 @@ test("class hover shows declaration modifiers", () => {
     .toContain("static final class State");
 });
 
+test("class hover says when a class is scoped (a destructor without IDisposable)", () => {
+  const main = `public class Main {
+  public function Main() { trace(Res, Kept) }
+}
+class Res {
+  public function ~Res() {}
+}
+class Kept implements IDisposable {
+  public function dispose():void {}
+}
+`;
+  const p = project({ "Main.xn": main });
+  expect(p.hover("Main.xn", offset(main, "Res", 1))!.contents).toContain("scoped class Res");
+  expect(p.hover("Main.xn", offset(main, "Kept", 1))!.contents).toContain("\nclass Kept implements IDisposable");
+});
+
+test("hovers find doc comments above attributes and show deprecation", () => {
+  const main = `public class Main {
+  public function Main() { new Page().old() }
+}
+class Page {
+  /** The old way. */
+  [Deprecated('use list()')]
+  public function old():void {}
+}
+`;
+  const p = project({ "Main.xn": main });
+  const hover = p.hover("Main.xn", offset(main, "old()", 1))!.contents;
+  expect(hover).toContain("**Deprecated**: use list()");
+  expect(hover).toContain("The old way.");
+  expect(p.diagnostics().get("Main.xn")!.map((d) => d.code)).toEqual(["X0873"]);
+});
+
 test("method hover shows static final and abstract modifiers", () => {
   const main = `public abstract class Base {
   public static final function version():int => 1

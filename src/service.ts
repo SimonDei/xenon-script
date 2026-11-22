@@ -171,7 +171,20 @@ export function nodesAt(file: A.XenonFile, offset: number): Node[] {
 
 /** The `/** … *\/` comment right before a declaration, without its stars. */
 function docComment(file: SourceFile, start: number): string | undefined {
-  const before = file.text.slice(0, start).trimEnd();
+  let before = file.text.slice(0, start).trimEnd();
+  // A declaration with attributes starts at its first attribute's name, right after the `[`.
+  if (before.endsWith("[")) before = before.slice(0, -1).trimEnd();
+  // Attributes may sit between the comment and the declaration: `/** … */ [Route('/')] function …`.
+  while (before.endsWith("]")) {
+    let depth = 0;
+    let i = before.length - 1;
+    for (; i >= 0; i--) {
+      if (before[i] === "]") depth++;
+      else if (before[i] === "[" && --depth === 0) break;
+    }
+    if (i < 0) break;
+    before = before.slice(0, i).trimEnd();
+  }
   if (!before.endsWith("*/")) return undefined;
   const open = before.lastIndexOf("/**");
   if (open < 0) return undefined;
@@ -513,8 +526,15 @@ export class XenonProject {
     const node = chain.at(-1);
     const parent = chain.at(-2);
     if (!node) return undefined;
-    const ofMember = (m: MemberSig, span: Span): Sym => ({ text: memberText(m), doc: docComment(m.decl.span.file, m.decl.span.start), span, decl: m.decl.name.span, member: m });
-    const ofClass = (info: ClassInfo, span: Span): Sym => ({ text: classText(info), doc: docComment(info.decl.span.file, info.decl.span.start), span, decl: info.decl.name.span, info });
+    // `[Deprecated('…')]` shows in the documentation.
+    const withDeprecation = (doc: string | undefined, attrs: A.Attribute[] | undefined) => {
+      const a = attrs?.find((x) => check.typeResolutions.get(x.name)?.qname === "xenon.Deprecated");
+      if (!a) return doc;
+      const message = a.args[0]?.kind === "String" ? `: ${a.args[0].value}` : "";
+      return `**Deprecated**${message}${doc ? `\n\n${doc}` : ""}`;
+    };
+    const ofMember = (m: MemberSig, span: Span): Sym => ({ text: memberText(m), doc: withDeprecation(docComment(m.decl.span.file, m.decl.span.start), m.decl.attributes), span, decl: m.decl.name.span, member: m });
+    const ofClass = (info: ClassInfo, span: Span): Sym => ({ text: classText(info), doc: withDeprecation(docComment(info.decl.span.file, info.decl.span.start), info.decl.attributes), span, decl: info.decl.name.span, info });
 
     // A name inside a larger node: `obj.name`, a declaration's name, a type name.
     if (!node.kind && parent) {

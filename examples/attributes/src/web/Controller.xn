@@ -1,0 +1,7 @@
+package web {
+  [Usage(AttributeTarget.Class)]
+  public class Controller implements IAttribute {
+    public final prefix:String
+    public function Controller(prefix:String) { this.prefix = prefix }
+  }
+}

@@ -1,0 +1,74 @@
+public class Main {
+  public static inline final BASE:String = '/api'
+
+  public function Main() {
+    var p:Page = new Page()
+    p.old()                                         // X0873
+    var o:Old = new Old()                           // X0873 (twice: type and new)
+  }
+}
+
+[Usage(AttributeTarget.Method, multiple = true)]
+class Route implements IAttribute {
+  public final path:String
+  public var verb:String = 'GET'
+  public function Route(path:String) { this.path = path }
+}
+
+[Usage(AttributeTarget.Class)]
+class Tag implements IAttribute {}
+
+class Logged implements IAttribute {
+  public function wrap(method:Function, name:String):Function { return method }
+}
+
+class Plain {}
+
+enum Color { Red }
+
+[Tag, Tag]                                          // X0835
+class Page {
+  public var title:String = ''
+
+  [Route(Main.BASE), Route('/x', verb = 'POST')]    // inline constant: fine
+  public function list():void {}
+
+  [Route('/' + title)]                              // X0836
+  public function bad():void {}
+
+  [Route('/', method = 'POST'), Route('/', path = '/y')]   // X0837 twice
+  public function named():void {}
+
+  [Route(42)]                                       // X0308
+  public function typed():void {}
+
+  [Tag]                                             // X0834: Tag is for classes
+  public function tagged():void {}
+
+  [Route('/')]                                      // X0834: Route is for methods
+  public var field:int = 0
+
+  [Plain]                                           // X0832
+  public function plain():void {}
+
+  [Color]                                           // X0833
+  public function colored():void {}
+
+  [Route('/')]                                      // X0834: getter
+  public function get size():int { return 0 }
+
+  [Deprecated('use list()')]
+  public function old():void { old() }              // no warning inside itself
+
+  [Logged]                                          // X0838
+  public static constexpr function kib(n:int):int => n * 1024
+
+  [Route('/')]                                      // data only: fine on constexpr
+  public static constexpr function mib(n:int):int => n * 1048576
+}
+
+[Deprecated]
+class Old {}
+
+[Route('/')]                                        // X0834: enum
+enum Size { Small }

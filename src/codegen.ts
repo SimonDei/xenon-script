@@ -381,6 +381,16 @@ export async function $destroyAsync(value${any}, error${ts ? ": unknown" : ""})$
     throw $suppressed(e, error);
   }
 }
+/**
+ * A method wrapped by attributes (\`IAttribute.wrap\`), on its first call: the attribute classes may
+ * be defined after this class (later in the module, or in a module of an import cycle).
+ */
+export function $wrapLazily(method${any}, wrap${ts ? ": (method: any) => any" : ""})${ts ? ": any" : ""} {
+  let wrapped${any};
+  return function (${ts ? "this: any, " : ""}...args${ts ? ": any[]" : ""}) {
+    return (wrapped ??= wrap(method)).apply(this, args);
+  };
+}
 function $suppressed(error${ts ? ": unknown" : ""}, suppressed${ts ? ": unknown" : ""})${ts ? ": Error" : ""} {
   const message = "An error was suppressed during disposal";
   if (typeof SuppressedError === "function") return new SuppressedError(error, suppressed, message);
@@ -713,6 +723,9 @@ class ModuleGen {
     this.disposeBridge(info, !!prev);
     this.w.dedent();
     this.w.line("}");
+    for (const l of this.afterClass) this.w.line(l);
+    this.afterClass = [];
+    this.attributeTable(info, decl);
     // Mark the prototype for every interface this class implements (super-interfaces included);
     // subclasses inherit the marks through the prototype chain.
     const marks = [...supertypes(info)].filter((t) => t.decl.isInterface && !this.inheritedMark(info, t));
@@ -754,7 +767,11 @@ class ModuleGen {
         const name = this.tok(m.name.span, methodName(m.name.name));
         if (m.accessor === "set") this.w.line(`set ${name}(${this.params(m.params)});`);
         else if (m.accessor === "get") this.w.line(`get ${name}()${this.ann(m.returnType)};`);
-        else this.w.line(`${name}${this.typeParams(m.typeParams)}(${this.params(m.params, true)})${this.ann(m.returnType) || ": void"};`);
+        // `IAttribute.wrap` is optional (see the prelude); TypeScript rejects classes implementing an
+        // interface of only optional members that have none of them, so it isn't declared there.
+        else if (!(this.file.file.prelude && decl.name.name === "IAttribute" && m.name.name === "wrap")) {
+          this.w.line(`${name}${this.typeParams(m.typeParams)}(${this.params(m.params, true)})${this.ann(m.returnType) || ": void"};`);
+        }
       });
     }
     this.w.dedent();
@@ -849,14 +866,40 @@ class ModuleGen {
    * parent's destructor runs afterwards, also after an early `return` or an exception. The
    * topmost class with a destructor also gets `dispose()`.
    */
-  private destructor(info: ClassInfo, m: A.Method) {
-    const async = !!m.modifiers.async;
-    const sym = async ? "Symbol.asyncDispose" : "Symbol.dispose";
-    const parent = info.parent ? chainDestructor(info.parent) : undefined;
-    this.w.line(`${async ? "async " : ""}[${sym}]() {`);
+  /** Code creating one attribute: `new Route("/")`, with its named values `Object.assign`ed. */
+  private attributeValue({ node, create }: { node: A.Attribute; create: A.Expr }): string {
+    const made = this.expr(create).code;
+    if (node.named.length === 0) return made;
+    return `Object.assign(${made}, { ${node.named.map((n) => `${n.name.name}: ${this.wrap(this.expr(n.value), P.assign)}`).join(", ")} })`;
+  }
+
+  /**
+   * Attributes (src/attributes.ts): a function creating them, kept on the class under
+   * `Attributes.KEY` and called by the first lookup. Nothing runs when the module loads, so the
+   * attribute classes may come from modules loaded later (cycles included).
+   */
+  private attributeTable(info: ClassInfo, decl: A.ClassDecl) {
+    const create = (list: { node: A.Attribute; create: A.Expr }[]) => `[${list.map((a) => this.attributeValue(a)).join(", ")}]`;
+    const own = this.check.attributes.get(decl);
+    const members = decl.members.flatMap((m) => {
+      const list = m.kind === "StaticBlock" ? undefined : this.check.attributes.get(m);
+      const key = m.kind === "StaticBlock" ? "" : /^[A-Za-z_$][\w$]*$/.test(m.name.name) ? m.name.name : jsString(m.name.name);
+      return m.kind !== "StaticBlock" && list ? [`${key}: ${create(list)}`] : [];
+    });
+    if (!own && members.length === 0) return;
+    const key = `${this.classRef(this.check.classes.get("xenon.Attributes")!)}.KEY`;
+    const target = this.ts ? `(${decl.name.name} as any)` : decl.name.name;
+    this.w.line(`${target}[${key}] = () => ({`);
     this.w.indent();
-    this.w.line("if (this.#disposed) return;");
-    this.w.line("this.#disposed = true;");
+    this.w.line(`type: ${own ? create(own) : "[]"},`);
+    if (members.length === 0) this.w.line("members: {},");
+    else {
+      this.w.line("members: {");
+      this.w.indent();
+      for (const m of members) this.w.line(`${m},`);
+      this.w.dedent();
+      this.w.line("},");
+    }
     this.w.dedent();
     this.w.line("});");
   }
@@ -980,7 +1023,61 @@ class ModuleGen {
     this.w.line("}");
   }
 
+  /**
+   * The attributes on `m` that wrap it (their class defines `IAttribute.wrap`), as code creating
+   * each, outermost first (the attribute nearest the method wraps it first).
+   */
+  private wrappers(m: A.Method): string[] {
+    if (!m.body || m.isConstructor || m.isDestructor || m.accessor) return [];
+    return (this.check.attributes.get(m) ?? []).filter(({ node }) => {
+      const info = this.check.typeResolutions.get(node.name);
+      const wrap = info && findMember(info, "wrap");
+      return !!wrap && !wrap.owner.decl.isInterface;
+    }).map((a) => this.attributeValue(a));
+  }
+
+  /**
+   * `fn` passed through each wrapping attribute on its first call:
+   * `$wrapLazily(fn, (m) => new A().wrap(new B().wrap(m, "m"), "m"))`.
+   */
+  private wrapChain(wrappers: string[], fn: string, name: string): string {
+    const m = this.ts ? "(m: any)" : "(m)";
+    return `${this.helper("$wrapLazily")}(${fn}, ${m} => ${wrappers.reduceRight((inner, w) => `${w}.wrap(${inner}, ${jsString(name)})`, "m")})`;
+  }
+
+  /** Lines run right after the class's declaration (wrapping public methods). */
+  private afterClass: string[] = [];
+
   private method(m: A.Method, hasParent = false, guard?: string, info?: ClassInfo) {
+    const wrappers = this.wrappers(m);
+    if (wrappers.length > 0 && info) {
+      const hidden = privateMethod(info.members.get(m.name.name));
+      const cls = info.decl.name.name;
+      if (!hidden) {
+        // Replaced once the class exists: `C.prototype.m = new Logged().wrap(C.prototype.m, "m")`.
+        const holder = m.modifiers.static ? cls : `${cls}.prototype`;
+        const target = this.ts ? `(${holder} as any)` : holder;
+        const name = methodName(m.name.name);
+        this.afterClass.push(`${target}.${name} = ${this.wrapChain(wrappers, `${target}.${name}`, m.name.name)};`);
+      } else {
+        // A `#private` method can't be replaced: the body becomes `#m$raw`, and `#m` calls the
+        // wrapped function, created once when the class is defined.
+        const st = m.modifiers.static ? "static " : "";
+        const any = this.ts ? ": any" : "";
+        const raw = `#${m.name.name}$raw`;
+        const wrapped = `#${m.name.name}$wrapped`;
+        const params = this.ts ? "this: any, ...args: any[]" : "...args";
+        this.w.line(`static ${wrapped}${any} = ${this.wrapChain(wrappers, `function (${params}) { return this.${raw}(...args); }`, m.name.name)};`);
+        this.w.line();
+        this.w.line(`${st}#${this.tok(m.name.span, m.name.name)}(...args${this.ts ? ": any[]" : ""})${any} { return ${cls}.${wrapped}.apply(this, args); }`);
+        this.w.line();
+        const ret = this.ann(m.returnType);
+        this.w.line(`${st}${m.modifiers.async ? "async " : ""}${raw}${this.typeParams(m.typeParams)}(${this.params(m.params)})${ret} {`);
+        this.functionBody(m.body!);
+        this.w.line("}");
+        return;
+      }
+    }
     // A private setter of a readable property: `set #name(v)`, plus `get #name()` reading through the
     // public getter, so `this.#name += 1` works inside the class.
     const sig = m.accessor === "set" && info ? info.members.get(m.name.name) : undefined;
@@ -1540,6 +1637,17 @@ class ModuleGen {
   }
 
   expr(e: A.Expr): Code {
+    // A temporary owning a scoped value: kept where it is created, so evaluation order is unchanged.
+    const temp = this.stmtTemps && this.check.scopedTemps.get(e);
+    if (temp) {
+      const name = this.temp("$t");
+      this.stmtTemps!.push({ name, async: temp.async });
+      return { code: `(${name} = ${this.wrap(this.exprInner(e), P.assign)})`, prec: P.primary };
+    }
+    return this.exprInner(e);
+  }
+
+  private exprInner(e: A.Expr): Code {
     const folded = this.check.inlineValues.get(e);
     if (folded !== undefined) {
       const js = constToJs(folded, jsString);

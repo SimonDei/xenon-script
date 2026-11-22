@@ -1,0 +1,37 @@
+// Attributes: `[Name(args)]` on classes, methods and fields, read at run time with `Attributes`.
+// A tiny router collects the routes of a controller; `[Deprecated]` warns where `all()` is used.
+import web.*
+
+public class Main {
+  public function Main() {
+    var ctrl:Controller? = Attributes.first(UserController, Controller)
+    var prefix:String = ctrl == null ? '' : ctrl.prefix
+    for (var name:String of Attributes.members(UserController)) {
+      for (var r:Route of Attributes.ofMember(UserController, name, Route)) {
+        trace(r.verb, prefix + r.path, '->', name)
+      }
+    }
+    trace(Attributes.first(UserController, Controller) == ctrl, Attributes.of(Main, Controller).length)
+    trace(Attributes.ofMember(UserController, 'name', Column)[0].name, Attributes.members(UserController).join(','))
+    new UserController().create()
+  }
+}
+
+/** Users. */
+[Controller('/users')]
+class UserController {
+  [Route('/'), Route('/all')]
+  public function list():String { return 'all users' }
+
+  [Route('/', verb = 'POST'), Logged]
+  public function create():String { return 'created ' + id() }
+
+  [Logged]
+  private function id():int { return 7 }
+
+  [Column('user_name')]
+  public var name:String = 'ada'
+
+  [Deprecated('use list()')]
+  public function all():String { return list() }
+}

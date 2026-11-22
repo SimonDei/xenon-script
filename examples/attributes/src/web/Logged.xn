@@ -1,0 +1,13 @@
+package web {
+  /** Logs what a method returns: `wrap` replaces the method when the class is defined. */
+  [Usage(AttributeTarget.Method)]
+  public class Logged implements IAttribute {
+    public function wrap(method:Function, name:String):Function {
+      return function(...args:Array<*>):* {
+        var result:* = method.apply(this, args)
+        trace(name + ' returned ' + result)
+        return result
+      }
+    }
+  }
+}

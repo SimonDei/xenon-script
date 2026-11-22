@@ -2,6 +2,7 @@ import type * as A from "./ast.ts";
 import type { DiagnosticBag, DiagnosticBuilder, Edit } from "./diagnostics.ts";
 import type { JsBinding } from "./dts.ts";
 import { checkScoped } from "./scoped.ts";
+import { attributeUsage, checkDeprecated, COMPILE_TIME_ATTRIBUTES, isConstantArgument } from "./attributes.ts";
 import { type Budget, type ConstLookup, ConstObject, type ConstValue, fits, type Fold, fold, isPrimitive, callNative, run } from "./consteval.ts";
 import { assignedNames, assignmentWrites, breaksOut, completes, mentions } from "./flow.ts";
 import { GLOBAL_HINTS, JS_GLOBALS, TYPED_GLOBALS } from "./globals.ts";
@@ -190,6 +191,11 @@ export interface CheckResult {
   scopedTemps: Map<A.Expr, ScopedOwner>;
   /** `return r` statements handing an owned local on to the caller (it isn't destroyed here). */
   scopedReturns: Set<A.Stmt>;
+  /**
+   * Attributes created at run time, per declaration: the `new` expression creating each (checked
+   * like one) and its named values. Compile-time attributes (`Usage`, `Deprecated`) aren't here.
+   */
+  attributes: Map<A.ClassDecl | A.Method | A.Field, { node: A.Attribute; create: A.Expr & { kind: "New" } }[]>;
 }
 
 /** How a scoped value is destroyed: awaited for an async destructor; `handedOff` when some `return` passes it on. */
@@ -402,7 +408,7 @@ class Scope {
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
     qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
-    expectedTypes: new Map(), scopedLocals: new Map(), scopedTemps: new Map(), scopedReturns: new Set(),
+    expectedTypes: new Map(), scopedLocals: new Map(), scopedTemps: new Map(), scopedReturns: new Set(), attributes: new Map(),
   };
   const env = new Env(classes, typedefs, diags, result);
   env.jsBindings = jsBindings;
@@ -436,6 +442,7 @@ export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typ
   for (const info of infos) env.checkAbstractImplemented(info);
   for (const info of infos) if (!info.decl.isInterface && !info.decl.isEnum && !isNative(info)) new BodyChecker(env, info, scopes.get(info.file)!).run();
   checkScoped(files, result, diags);
+  checkDeprecated(files, result, diags);
   for (const scope of scopes.values()) env.reportUnusedImports(scope);
   for (const info of infos) env.reportUnusedPrivates(info);
 
@@ -1383,6 +1390,8 @@ class Env {
         const impl = findClassMember(info, req.name);
         if (!impl) {
           if (builtinEnumerable && req.owner === this.enumerable) continue;
+          // `IAttribute.wrap` is optional: only attributes that wrap methods define it.
+          if (req.owner.qname === "xenon.IAttribute" && req.name === "wrap") continue;
           missing.push(req);
           continue;
         }
@@ -2369,7 +2378,98 @@ class BodyChecker {
     return this.env.diags;
   }
 
+  /**
+   * The attributes of this class and its members (src/attributes.ts): each is a `new` of an
+   * attribute class with constant arguments, allowed on its target by the class's `Usage`.
+   */
+  private checkAttributes() {
+    const decl = this.info.decl;
+    const scope = new Scope();
+    this.isStatic = true;
+    this.tparams = new Map();
+    const iface = this.env.classes.get("xenon.IAttribute");
+    const check = (owner: A.ClassDecl | A.Method | A.Field, target: "Class" | "Method" | "Field", what: string) => {
+      const list = owner.attributes;
+      if (!list?.length) return;
+      const seen = new Map<ClassInfo, A.Attribute>();
+      const emitted: { node: A.Attribute; create: A.Expr & { kind: "New" } }[] = [];
+      for (const a of list) {
+        const t = this.resolveT(a.name, this.scope, false, true);
+        if (t.kind === "error") continue;
+        const info = t.kind === "class" && !t.info.decl.isInterface && !t.info.decl.isEnum ? t.info : undefined;
+        if (!info) {
+          this.diags.error("X0833", `\`${typeToString(t)}\` isn't an attribute class`, a.name.span, "not a class");
+          continue;
+        }
+        if (iface && !isSubclass(info, iface)) {
+          this.diags.error("X0832", `\`${info.decl.name.name}\` isn't an attribute: it doesn't implement \`IAttribute\``, a.name.span)
+            .secondary(info.decl.name.span, "declared here")
+            .help(`add \`implements IAttribute\` to \`${info.decl.name.name}\``);
+          continue;
+        }
+        const usage = attributeUsage(info);
+        if (!usage.targets.has(target)) {
+          const allowed = [...usage.targets].map((x) => x.toLowerCase() + (x === "Class" ? "es" : "s")).join(", ");
+          const d = this.diags.error("X0834", `\`${info.decl.name.name}\` can't be used on ${what}`, a.name.span, `allowed on ${allowed}`);
+          if (usage.node) d.secondary(usage.node.span, "where it may be used");
+        }
+        const first = seen.get(info);
+        if (first && !usage.multiple) {
+          const d = this.diags.error("X0835", `\`${info.decl.name.name}\` is used more than once here`, a.name.span, "repeated")
+            .secondary(first.name.span, "first used here");
+          if (usage.node) d.secondary(usage.node.span, "`multiple = true` would allow it");
+        }
+        seen.set(info, a);
+        // A wrapping attribute on a `constexpr` method: calls with constant arguments are computed
+        // when compiling, so the wrapper would only see the others.
+        const wrap = findMember(info, "wrap");
+        if (owner.kind === "Method" && owner.modifiers.constexpr && wrap && !wrap.owner.decl.isInterface) {
+          this.diags.error("X0838", `\`${info.decl.name.name}\` wraps the method, which can't be \`constexpr\``, a.name.span, "defines `wrap`")
+            .secondary(owner.modifiers.constexpr, "calls with constant arguments are computed when compiling")
+            .note("the wrapper would run only for calls whose arguments are known at run time")
+            .help("remove `constexpr`, or use an attribute without `wrap`");
+        }
+        // Checked like `new Route(args)`; its named values like assignments to its members.
+        const create = { kind: "New" as const, callee: a.name, args: a.args, span: a.span };
+        this.valueExpr(create, scope);
+        for (const n of a.named) {
+          const m = findMember(info, n.name.name);
+          const writable = m && !m.isStatic && visibilityOf(m.decl) === "public" && (m.kind === "field" ? !m.readonly : m.kind === "accessor" && !!accessorHalf(m, "set"));
+          if (!m || !writable) {
+            const d = this.diags.error("X0837", `\`${n.name.name}\` can't be set on \`${info.decl.name.name}\``, n.name.span, m ? "not a public writable field or setter" : "no such member");
+            if (m) d.secondary(m.decl.name.span, "declared here");
+            this.valueExpr(n.value, scope);
+            continue;
+          }
+          this.checkAssign(n.value, m.type, m.typeSpan && { span: m.typeSpan, label: "member type" }, scope);
+        }
+        for (const v of [...a.args, ...a.named.map((n) => n.value)]) {
+          const arg = v.kind === "Spread" ? v.arg : v;
+          if (!isConstantArgument(arg, (x) => this.constValue(x).ok, this.env.result)) {
+            this.diags.error("X0836", "attribute arguments must be constants", arg.span, "not a compile-time constant")
+              .note("literals, enum members, `inline` constants, `constexpr` calls and arrays of them: attributes are created from them at run time, without running other code");
+          }
+        }
+        if (!COMPILE_TIME_ATTRIBUTES.has(info.qname)) emitted.push({ node: a, create });
+      }
+      if (emitted.length > 0) this.env.result.attributes.set(owner, emitted);
+    };
+    check(decl, "Class", "a class");
+    for (const m of decl.members) {
+      if (m.kind === "StaticBlock" || !m.attributes?.length) continue;
+      if (m.kind === "Method" && (m.isConstructor || m.isDestructor || m.accessor || decl.isInterface)) {
+        const what = m.isConstructor ? "a constructor" : m.isDestructor ? "a destructor" : m.accessor ? "a getter or setter" : "an interface member";
+        const at = cover(m.attributes[0]!.span, m.attributes.at(-1)!.span);
+        this.diags.error("X0834", `attributes can't be used on ${what}`, at, "not allowed here").note("attributes can be used on classes, methods and fields");
+        continue;
+      }
+      check(m, m.kind === "Field" ? "Field" : "Method", m.kind === "Field" ? "a field" : "a method");
+    }
+    this.isStatic = false;
+  }
+
   run() {
+    this.checkAttributes();
     const members = this.info.decl.members;
     const finals = (isStatic: boolean) =>
       members.flatMap((m) => {

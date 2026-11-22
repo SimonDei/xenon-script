@@ -1,0 +1,145 @@
+warning[X0873]: `Page.old` is deprecated: use list()
+  --> attributes.xn:6:7
+   |
+ 6 |     p.old()                                         // X0873
+   |       ^^^ deprecated
+...
+60 |   [Deprecated('use list()')]
+   |    ------------------------ marked here
+
+warning[X0873]: `Old` is deprecated
+  --> attributes.xn:7:11
+   |
+ 7 |     var o:Old = new Old()                           // X0873 (twice: type and new)
+   |           ^^^ deprecated
+...
+70 | [Deprecated]
+   |  ---------- marked here
+
+warning[X0873]: `Old` is deprecated
+  --> attributes.xn:7:21
+   |
+ 7 |     var o:Old = new Old()                           // X0873 (twice: type and new)
+   |                     ^^^ deprecated
+...
+70 | [Deprecated]
+   |  ---------- marked here
+
+error[X0835]: `Tag` is used more than once here
+  --> attributes.xn:29:7
+   |
+18 | [Usage(AttributeTarget.Class)]
+   |  ---------------------------- `multiple = true` would allow it
+...
+29 | [Tag, Tag]                                          // X0835
+   |  ---  ^^^ repeated
+   |  |
+   |  first used here
+
+error[X0836]: attribute arguments must be constants
+  --> attributes.xn:36:10
+   |
+36 |   [Route('/' + title)]                              // X0836
+   |          ^^^^^^^^^^^ not a compile-time constant
+   |
+   = note: literals, enum members, `inline` constants, `constexpr` calls and arrays of them: attributes are created from them at run time, without running other code
+
+error[X0410]: instance member `title` can't be used in a static context
+  --> attributes.xn:36:16
+   |
+31 |   public var title:String = ''
+   |              ----- declared as an instance member here
+...
+36 |   [Route('/' + title)]                              // X0836
+   |                ^^^^^
+
+error[X0837]: `method` can't be set on `Route`
+  --> attributes.xn:39:15
+   |
+39 |   [Route('/', method = 'POST'), Route('/', path = '/y')]   // X0837 twice
+   |               ^^^^^^ no such member
+
+error[X0837]: `path` can't be set on `Route`
+  --> attributes.xn:39:44
+   |
+13 |   public final path:String
+   |                ---- declared here
+...
+39 |   [Route('/', method = 'POST'), Route('/', path = '/y')]   // X0837 twice
+   |                                            ^^^^ not a public writable field or setter
+
+error[X0308]: mismatched types
+  --> attributes.xn:42:10
+   |
+15 |   public function Route(path:String) { this.path = path }
+   |                              ------ parameter declared here
+...
+42 |   [Route(42)]                                       // X0308
+   |          ^^ expected `String`, found `Int`
+   |
+help: convert the value with `String()`
+   |
+42 |   [Route(String(42))]                                       // X0308
+   |          +++++++  +
+
+error[X0834]: `Tag` can't be used on a method
+  --> attributes.xn:45:4
+   |
+18 | [Usage(AttributeTarget.Class)]
+   |  ---------------------------- where it may be used
+...
+45 |   [Tag]                                             // X0834: Tag is for classes
+   |    ^^^ allowed on classes
+
+error[X0834]: `Route` can't be used on a field
+  --> attributes.xn:48:4
+   |
+11 | [Usage(AttributeTarget.Method, multiple = true)]
+   |  ---------------------------------------------- where it may be used
+...
+48 |   [Route('/')]                                      // X0834: Route is for methods
+   |    ^^^^^ allowed on methods
+
+error[X0832]: `Plain` isn't an attribute: it doesn't implement `IAttribute`
+  --> attributes.xn:51:4
+   |
+25 | class Plain {}
+   |       ----- declared here
+...
+51 |   [Plain]                                           // X0832
+   |    ^^^^^
+   |
+help: add `implements IAttribute` to `Plain`
+
+error[X0833]: `Color` isn't an attribute class
+  --> attributes.xn:54:4
+   |
+54 |   [Color]                                           // X0833
+   |    ^^^^^ not a class
+
+error[X0834]: attributes can't be used on a getter or setter
+  --> attributes.xn:57:4
+   |
+57 |   [Route('/')]                                      // X0834: getter
+   |    ^^^^^^^^^^ not allowed here
+   |
+   = note: attributes can be used on classes, methods and fields
+
+error[X0838]: `Logged` wraps the method, which can't be `constexpr`
+  --> attributes.xn:63:4
+   |
+63 |   [Logged]                                          // X0838
+   |    ^^^^^^ defines `wrap`
+64 |   public static constexpr function kib(n:int):int => n * 1024
+   |                 --------- calls with constant arguments are computed when compiling
+   |
+   = note: the wrapper would run only for calls whose arguments are known at run time
+help: remove `constexpr`, or use an attribute without `wrap`
+
+error[X0834]: attributes can't be used on an enum
+  --> attributes.xn:73:2
+   |
+73 | [Route('/')]                                        // X0834: enum
+   |  ^^^^^^^^^^ not allowed here
+   |
+   = note: attributes can be used on classes, methods and fields

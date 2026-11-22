@@ -1,0 +1,8 @@
+package web {
+  /** The database column a field is stored in. */
+  [Usage(AttributeTarget.Field)]
+  public class Column implements IAttribute {
+    public final name:String
+    public function Column(name:String) { this.name = name }
+  }
+}

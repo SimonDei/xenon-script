@@ -15,6 +15,7 @@ import {
   type Connection,
   createConnection,
   DiagnosticSeverity,
+  DiagnosticTag,
   MarkupKind,
   ProposedFeatures,
   LSPErrorCodes,
@@ -149,6 +150,8 @@ export function startServer(connection: Connection = createConnection(ProposedFe
             code: d.code,
             source: d.source,
             relatedInformation: d.related.map((r) => ({ location: toLsp(r.location), message: r.message })),
+            // Uses of `[Deprecated]` declarations are shown struck through.
+            tags: d.code === "X0873" ? [DiagnosticTag.Deprecated] : undefined,
             // Kept by the editor and handed back with code action requests.
             data: d.fixes.length > 0 ? d.fixes : undefined,
           })),
