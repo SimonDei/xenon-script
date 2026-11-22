@@ -1256,6 +1256,7 @@ export class XenonProject {
     }
     add({ label: "trace", kind: "function", detail: "function trace(...values:Array<*>):void" });
     for (const k of KEYWORDS) add({ label: k, kind: "keyword" });
+    add({ label: "defer", kind: "keyword", detail: "run the following statement when this block ends" });
     for (const t of ["Int", "UInt", "Float", "String", "Bool"]) add({ label: t, kind: "class" });
     return [...items.values()];
   }

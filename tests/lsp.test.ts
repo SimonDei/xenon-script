@@ -102,6 +102,7 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
       context: { triggerKind: 2, triggerCharacter: "g" },
     })) as { label: string }[];
     expect(scopeItems.map((i) => i.label)).toContain("greeting");
+    expect(scopeItems.map((i) => i.label)).toContain("defer");
 
     // References: the declaration and the use.
     const refs = (await rpc.sendRequest("textDocument/references", { textDocument: { uri }, position: { line: 4, character: 12 }, context: { includeDeclaration: true } })) as { range: { start: unknown } }[];
