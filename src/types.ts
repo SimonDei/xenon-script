@@ -440,7 +440,7 @@ export function assignable(from: Type, to: Type): boolean {
 
 /**
  * Type arguments match: the same type, with `*` as a wildcard on either side, also nested
- * (`IEnumerable<Tuple<String, int>>` fits `IEnumerable<Tuple<*, int>>`).
+ * (`Iterable<Tuple<String, int>>` fits `Iterable<Tuple<*, int>>`).
  */
 function sameArg(a: Type, b: Type): boolean {
   if (sameType(a, b) || isDynamic(a) || isDynamic(b)) return true;

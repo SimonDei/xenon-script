@@ -3,7 +3,7 @@
 // Values are compared like `==` in Xenon, except that NaN equals NaN (`new Set([NaN, NaN]).size` is 1).
 // Iterate with `for (var v:T of set)`; the loop variable is typed `T`.
 package xenon {
-  public native class Set<T> implements IEnumerable<T> {
+  public native class Set<T> implements Iterable<T> {
     function Set()
     /** A set of the distinct values of an array. */
     function Set(values:Array<T>)

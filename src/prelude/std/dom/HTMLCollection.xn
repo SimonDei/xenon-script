@@ -3,7 +3,7 @@
 // Use it with `for (var e:Element of collection)`, `length`/`item(i)`, or `Array.from(collection)`
 // for array methods (and to get a snapshot before changing the tree).
 package xenon {
-  public native class HTMLCollection implements IEnumerable<Element> {
+  public native class HTMLCollection implements Iterable<Element> {
     private function HTMLCollection()
 
     function get length():int

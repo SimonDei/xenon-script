@@ -9,7 +9,7 @@
 // Not declared: `copyWithin`, `flat` with a depth (`flat()` returns `Array<*>`), `toLocaleString`
 // with arguments, `Array.fromAsync`; use `(array as *)`.
 package xenon {
-  public native class Array<T> implements IEnumerable<T> {
+  public native class Array<T> implements Iterable<T> {
     // ---- statics ----
     /** Is `value` an array? (A runtime test; `x is Array` is the same.) */
     static function isArray(value:*):Boolean
@@ -19,14 +19,14 @@ package xenon {
     static function from<T>(source:Set<T>):Array<T>
     static function from<T>(source:Iterator<T>):Array<T>
     /** Anything `for … of` can go through: a map's entries, a DOM `HTMLCollection` or `NodeList`. */
-    static function from<T>(source:IEnumerable<T>):Array<T>
+    static function from<T>(source:Iterable<T>):Array<T>
     /** The characters of a string. */
     static function from(source:String):Array<String>
     /** Maps while copying: `Array.from(names, (n, i) => …)`. */
     static function from<T, U>(source:Array<T>, mapper:(item:T, index:int) -> U):Array<U>
     static function from<T, U>(source:Set<T>, mapper:(item:T, index:int) -> U):Array<U>
     static function from<T, U>(source:Iterator<T>, mapper:(item:T, index:int) -> U):Array<U>
-    static function from<T, U>(source:IEnumerable<T>, mapper:(item:T, index:int) -> U):Array<U>
+    static function from<T, U>(source:Iterable<T>, mapper:(item:T, index:int) -> U):Array<U>
     /** An array-like object: `Array.from({ length: 3 }, (_, i) => i * 2)`. */
     static function from<U>(source:{ length:int }, mapper:(item:*, index:int) -> U):Array<U>
 

@@ -1,5 +1,5 @@
 package shop.model {
-  public class Cart implements IEnumerable<Item> {
+  public class Cart implements Iterable<Item> {
     private var items:Array<Item> = []
 
     public function add(item:Item, count:int = 1):Cart {

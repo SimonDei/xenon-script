@@ -50,15 +50,15 @@ package xenon {
     /** A new promise and its `resolve`/`reject` functions, for settling it outside an executor. */
     static function withResolvers<T>():PromiseWithResolvers<T>
 
-    // ---- combining (an array, a set or any `IEnumerable` of promises) ----
+    // ---- combining (an array, a set or any `Iterable` of promises) ----
     /** All values, in the order of `promises`; rejects as soon as one of them rejects. */
-    static function all<T>(promises:IEnumerable<Promise<T>>):Promise<Array<T>>
+    static function all<T>(promises:Iterable<Promise<T>>):Promise<Array<T>>
     /** Waits for every promise; never rejects. Each result tells whether its promise was fulfilled. */
-    static function allSettled<T>(promises:IEnumerable<Promise<T>>):Promise<Array<PromiseSettledResult<T>>>
+    static function allSettled<T>(promises:Iterable<Promise<T>>):Promise<Array<PromiseSettledResult<T>>>
     /** The first value to arrive; rejects only if all of them reject (with an `AggregateError`, its `errors` the reasons). */
-    static function any<T>(promises:IEnumerable<Promise<T>>):Promise<T>
+    static function any<T>(promises:Iterable<Promise<T>>):Promise<T>
     /** Settles like the first promise to settle, fulfilled or rejected: `Promise.race([load(), timeout(5000)])`. */
-    static function race<T>(promises:IEnumerable<Promise<T>>):Promise<T>
+    static function race<T>(promises:Iterable<Promise<T>>):Promise<T>
 
     // ---- reacting ----
     /** A promise of what `onFulfilled` returns for the value (waiting for it if it's a promise); rejections pass through. */

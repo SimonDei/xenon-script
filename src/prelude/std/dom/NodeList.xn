@@ -3,7 +3,7 @@
 // Use it with `for (var n:Node of list)`, `list.length`/`list.item(i)`, or `Array.from(list)` for
 // array methods.
 package xenon {
-  public native class NodeList<T> implements IEnumerable<T> {
+  public native class NodeList<T> implements Iterable<T> {
     private function NodeList()
 
     function get length():int

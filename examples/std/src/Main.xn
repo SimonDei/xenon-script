@@ -37,7 +37,7 @@ package {
     }
 
     // Promises: `then`/`catch` wait for a returned promise; the combinators take an array, a
-    // set or any `IEnumerable`. Runs after the other timers, so its lines come last.
+    // set or any `Iterable`. Runs after the other timers, so its lines come last.
     private function promises():void {
       setTimeout(async () => {
         var id:Promise<int> = Promise.resolve(7)

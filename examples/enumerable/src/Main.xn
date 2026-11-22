@@ -1,9 +1,9 @@
-// Enumerables, C#-style: `IEnumerable<T>` hands out an `IEnumerator<T>` (`moveNext()` + `current`).
+// Enumerables, C#-style: `Iterable<T>` hands out an `IEnumerator<T>` (`moveNext()` + `current`).
 // Arrays, strings, Set, Map and Iterator are enumerable; a class becomes one by implementing
 // `getEnumerator()`, and then works with `for … of` (in the JavaScript output too).
 public class Main {
   public function Main() {
-    // a class of our own works with `for … of`, and wherever an IEnumerable<int> is wanted
+    // a class of our own works with `for … of`, and wherever an Iterable<int> is wanted
     var countdown:Countdown = new Countdown(3)
     for (var n:int of countdown) trace('countdown', n)
     trace(total(countdown), total([1, 2, 3]), total(new Set([4, 5])), total(new Map([['a', 6]]).values()))
@@ -17,32 +17,32 @@ public class Main {
     // generic code over any enumerable: T comes from the argument
     trace(firstOf(countdown) ?? -1, firstOf('xyz'), firstOf(new Set(['only'])), count('héllo'))
 
-    // `is IEnumerable` asks the value itself (true for JavaScript iterables too)
+    // `is Iterable` asks the value itself (true for JavaScript iterables too)
     var values:Array<*> = [countdown, 'text', 42, [1], null]
-    trace(values.map((v:*, i:int):Boolean => v is IEnumerable).join(' '))
+    trace(values.map((v:*, i:int):Boolean => v is Iterable).join(' '))
   }
 
-  private function total(numbers:IEnumerable<int>):int {
+  private function total(numbers:Iterable<int>):int {
     var sum:int = 0
     for (var x:int of numbers) sum += x
     return sum
   }
 
-  private function count(items:IEnumerable<*>):int {
+  private function count(items:Iterable<*>):int {
     var c:int = 0
     var e:IEnumerator<*> = items.getEnumerator()
     while (e.moveNext()) c++
     return c
   }
 
-  private function firstOf<T>(items:IEnumerable<T>):T? {
+  private function firstOf<T>(items:Iterable<T>):T? {
     for (var item:T of items) return item
     return null
   }
 }
 
 /** Counts down from `from` to 1 with an enumerator class of its own. */
-class Countdown implements IEnumerable<int> {
+class Countdown implements Iterable<int> {
   private var from:int
 
   public function Countdown(from:int) {
@@ -72,7 +72,7 @@ class CountdownEnumerator implements IEnumerator<int> {
 }
 
 /** Enumerates the songs of an array it holds: hands out the array's enumerator. */
-class Playlist implements IEnumerable<String> {
+class Playlist implements Iterable<String> {
   private var songs:Array<String>
 
   public function Playlist(songs:Array<String>) {

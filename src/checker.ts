@@ -116,7 +116,7 @@ export type RuntimeCheck =
   | { kind: "enum"; info: ClassInfo } // Object.values(Direction).includes(x)
   | { kind: "js"; name: string } // x instanceof Response (JS import or global)
   | { kind: "typeof"; tag: "string" | "number" | "boolean" | "function" }
-  | { kind: "iterable" } // typeof x?.[Symbol.iterator] === 'function': `is IEnumerable` (arrays, strings, … have no marker)
+  | { kind: "iterable" } // typeof x?.[Symbol.iterator] === 'function': `is Iterable` (arrays, strings, … have no marker)
   | { kind: "int" } // Number.isInteger(x)
   | { kind: "uint" } // Number.isInteger(x) && x >= 0
   | { kind: "array" } // Array.isArray(x)
@@ -161,7 +161,7 @@ export interface CheckResult {
   methodClosures: Set<A.Expr>;
   /** `a + b` / `a -= b` & co. that call `a['operator+'](b)`, and `a == b` / `a != b` that call `operator==` (the operator is the node's). */
   operatorCalls: Set<A.Expr>;
-  /** `x.getEnumerator` resolving to `IEnumerable`'s declaration (x may be built-in): compiled to `Enumerable.enumerate(x)`. */
+  /** `x.getEnumerator` resolving to `Iterable`'s declaration (x may be built-in): compiled to `Enumerable.enumerate(x)`. */
   enumerateCalls: Set<A.Expr>;
   /**
    * Calls of standard-library members typed differently from TypeScript's (`p.catch(log)` is a
@@ -706,14 +706,14 @@ class Env {
   }
 
 
-  /** The prelude's `IEnumerable<T>`: what `for … of` loops over. */
+  /** The prelude's `Iterable<T>`: what `for … of` loops over. */
   get enumerable(): ClassInfo | undefined {
-    return this.classes.get("xenon.IEnumerable");
+    return this.classes.get("xenon.Iterable");
   }
 
   /**
-   * What `for … of` yields for a class type: the `T` of the `IEnumerable<T>` it implements (`Set<T>`,
-   * `Iterator<T>`, `IEnumerable<T>` itself, or any class implementing it). Undefined if it doesn't.
+   * What `for … of` yields for a class type: the `T` of the `Iterable<T>` it implements (`Set<T>`,
+   * `Iterator<T>`, `Iterable<T>` itself, or any class implementing it). Undefined if it doesn't.
    */
   iterableElement(t: Type): Type | undefined {
     const e = this.enumerable;
@@ -3163,7 +3163,7 @@ class BodyChecker {
     } else if (t.kind === "prim" || t.kind === "null" || t.kind === "classRef" || t.kind === "method" ||
       (t.kind === "builtin" && t.name !== "Array") || (t.kind === "class" && !hasJsAncestor(t.info))) {
       const d = this.diags.error("X0391", `\`${typeToString(t)}\` is not iterable`, s.iterable.span);
-      if (t.kind === "class") d.help(`implement \`IEnumerable<T>\` in \`${t.info.decl.name.name}\`: \`function getEnumerator():IEnumerator<T>\``);
+      if (t.kind === "class") d.help(`implement \`Iterable<T>\` in \`${t.info.decl.name.name}\`: \`function getEnumerator():IEnumerator<T>\``);
       element = T.error;
     }
     this.loopVar(s.variable, element, scope, "elements");
@@ -3911,7 +3911,7 @@ class BodyChecker {
   }
 
   /**
-   * `x.getEnumerator` that resolves to `IEnumerable`'s own declaration: `x` may be a built-in (an array,
+   * `x.getEnumerator` that resolves to `Iterable`'s own declaration: `x` may be a built-in (an array,
    * a set, …) without the method, so it compiles to `Enumerable.enumerate(x)`.
    */
   private enumerateCall(e: A.Expr & { kind: "Member" }, m: MemberSig) {
@@ -4429,8 +4429,8 @@ class BodyChecker {
     args.forEach((a, i) => {
       const pattern = patternAt(i);
       if (a.kind === "Function" || a.kind === "Spread" || !pattern) return;
-      // An array literal for `Array<X>` or `IEnumerable<X>` (`Promise.all([a, b])`): unify `X` with each element.
-      const enumerable = pattern.kind === "class" && pattern.info.qname === "xenon.IEnumerable" ? pattern.args?.[0] : undefined;
+      // An array literal for `Array<X>` or `Iterable<X>` (`Promise.all([a, b])`): unify `X` with each element.
+      const enumerable = pattern.kind === "class" && pattern.info.qname === "xenon.Iterable" ? pattern.args?.[0] : undefined;
       const patternElement = a.kind === "Array" ? elementOf(pattern) ?? enumerable : undefined;
       if (a.kind === "Array" && patternElement) {
         for (const el of a.elements) {
@@ -5517,7 +5517,7 @@ function runtimeCheck(t: Type): RuntimeCheck | undefined {
   switch (t.kind) {
     case "class":
       if (t.info.decl.isEnum) return { kind: "enum", info: t.info };
-      if (t.info.qname === "xenon.IEnumerable") return { kind: "iterable" };
+      if (t.info.qname === "xenon.Iterable") return { kind: "iterable" };
       return t.info.decl.isInterface ? { kind: "interface", info: t.info } : { kind: "class", info: t.info };
     case "prim":
       switch (t.name) {

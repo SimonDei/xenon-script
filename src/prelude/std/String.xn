@@ -15,7 +15,7 @@
 // Not declared: the deprecated HTML methods (`anchor`, `big`, …), `substr`, `trimLeft`/`trimRight`
 // (use `trimStart`/`trimEnd`) and `String.raw`.
 package xenon {
-  public native class String implements IEnumerable<String> {
+  public native class String implements Iterable<String> {
     private function String()
 
     /** `String.fromCharCode(72, 105)` is `'Hi'`; each code is a UTF-16 unit (0–65535). */

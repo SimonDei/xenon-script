@@ -7,12 +7,12 @@
 // `if (var age:int = ages.get('ann')) …`. `new Map([['a', 1]])` infers `Map<String, int>`.
 // Not declared (too new): `getOrInsert`, `getOrInsertComputed`.
 package xenon {
-  public native class Map<K, V> implements IEnumerable<Tuple<K, V>> {
+  public native class Map<K, V> implements Iterable<Tuple<K, V>> {
     function Map()
     /** From `[key, value]` pairs: `new Map([['a', 1], ['b', 2]])`. */
-    function Map(pairs:IEnumerable<Tuple<K, V>>)
+    function Map(pairs:Iterable<Tuple<K, V>>)
     /** From pairs built at runtime (`items.map(i => [i.id, i])`): declare `K` and `V`, `var m:Map<String, Item> = new Map(…)`. */
-    function Map(pairs:IEnumerable<Array<*>>)
+    function Map(pairs:Iterable<Array<*>>)
     /** A copy of another map. */
     function Map(other:Map<K, V>)
 

@@ -12,7 +12,7 @@
 // Typing: values read back are `*`: a `String` or a `File` (`if (value is File) …`).
 // Not declared: Bun's `toJSON()` and `length`.
 package xenon {
-  public native class FormData implements IEnumerable<Tuple<String, *>> {
+  public native class FormData implements Iterable<Tuple<String, *>> {
     /** An empty form. */
     function FormData()
 

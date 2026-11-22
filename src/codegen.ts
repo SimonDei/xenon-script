@@ -345,8 +345,8 @@ function resolveTokens(entries: { text: string; origin?: LineOrigin }[], tokens:
 const TS_NATIVE: Record<string, string> = { Iterator: "IteratorObject", NodeList: "NodeListOf" };
 
 /**
- * Built-in enumerables (`Array<T> implements IEnumerable<T>` in the standard library) get
- * `getEnumerator()` in the TypeScript output's types, so they fit `IEnumerable<T>` there too. At
+ * Built-in enumerables (`Array<T> implements Iterable<T>` in the standard library) get
+ * `getEnumerator()` in the TypeScript output's types, so they fit `Iterable<T>` there too. At
  * runtime calls go through `Enumerable.enumerate`.
  */
 const TS_ENUMERABLE_GLOBALS = `declare global {
@@ -673,7 +673,7 @@ class ModuleGen {
     this.w.line(`${exported ? "export " : ""}interface ${this.name(decl.name)}${this.typeParams(decl.typeParams)}${ext} {`);
     this.w.indent();
     // `for … of` works on every enumerable: classes get a `[Symbol.iterator]` (see `enumerableIterator`).
-    if (decl.name.name === "IEnumerable" && this.file.file.prelude) this.w.line("[Symbol.iterator](): Iterator<T>;");
+    if (decl.name.name === "Iterable" && this.file.file.prelude) this.w.line("[Symbol.iterator](): Iterator<T>;");
     for (const m of decl.members) {
       if (m.kind !== "Method") continue;
       this.from(m, () => {
@@ -705,11 +705,11 @@ class ModuleGen {
   }
 
   /**
-   * The first class (from the top) implementing `IEnumerable<T>` becomes a JavaScript iterable: `for … of`
+   * The first class (from the top) implementing `Iterable<T>` becomes a JavaScript iterable: `for … of`
    * (also in plain JavaScript) walks its `getEnumerator()`. Subclasses inherit it; built-ins have their own.
    */
   private enumerableIterator(info: ClassInfo) {
-    const e = this.check.classes.get("xenon.IEnumerable");
+    const e = this.check.classes.get("xenon.Iterable");
     if (!e || info.decl.isInterface || !isSubclass(info, e) || (info.parent && isSubclass(info.parent, e))) return;
     this.w.line();
     this.w.line("*[Symbol.iterator]() {");

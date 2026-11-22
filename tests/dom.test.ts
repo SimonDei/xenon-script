@@ -42,11 +42,11 @@ test("DOM code type-checks and runs against a DOM", async () => {
   }
 });
 
-test("an empty array can be a DOM fallback through IEnumerable", () => {
+test("an empty array can be a DOM fallback through Iterable", () => {
   const result = compileProject([{ path: "Main.xn", text: `public class Main {
   public function Main() {}
   public static function children(parent:Node?):Array<Node> {
-    return Array.from(parent?.childNodes ?? ([] : IEnumerable<Node>))
+    return Array.from(parent?.childNodes ?? ([] : Iterable<Node>))
   }
 }
 ` }], { main: "Main", nullSafety: true });

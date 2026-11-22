@@ -51,9 +51,9 @@ package xenon {
      */
     static function assign(target:Object, ...sources:Array<Object>):*
     /** `{ [key]: value, … }` from `[key, value]` pairs: an array, a map or an iterator (`map.entries()`). */
-    static function fromEntries<V>(entries:IEnumerable<Tuple<*, V>>):Object
+    static function fromEntries<V>(entries:Iterable<Tuple<*, V>>):Object
     /** From pairs built at runtime (`items.map(i => [i.id, i])`). */
-    static function fromEntries(entries:IEnumerable<Array<*>>):Object
+    static function fromEntries(entries:Iterable<Array<*>>):Object
     /** A new object whose prototype is `prototype`; `Object.create(null)` has none. */
     static function create(prototype:Object?):Object
     /** `descriptors` maps property names to descriptors, as for `defineProperty`. */
