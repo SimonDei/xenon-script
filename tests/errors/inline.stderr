@@ -18,9 +18,9 @@ error[X0523]: inline initializer is not a compile-time constant
   |                                 |
   |                                 `C` is declared `inline`
   |
-  = note: allowed: literals, other inline constants, operators and `int()`/`uint()`/`Float()`/`String()`/`Boolean()`
+  = note: allowed: literals, other inline constants, operators and `Int()`/`UInt()`/`Float()`/`String()`/`Bool()`
 
-error[X0525]: the value of `D` doesn't fit `int`
+error[X0525]: the value of `D` doesn't fit `Int`
  --> inline.xn:6:33
   |
 6 |     private static inline final D:int = 7 / 2
@@ -28,12 +28,12 @@ error[X0525]: the value of `D` doesn't fit `int`
   |                                 |
   |                                 evaluates to 3.5
   |
-help: convert the value with `int()`
+help: convert the value with `Int()`
   |
-6 |     private static inline final D:int = int(7 / 2)
+6 |     private static inline final D:int = Int(7 / 2)
   |                                         ++++     +
 
-error[X0525]: the value of `E` doesn't fit `uint`
+error[X0525]: the value of `E` doesn't fit `UInt`
  --> inline.xn:7:33
   |
 7 |     private static inline final E:uint = -1
@@ -41,9 +41,9 @@ error[X0525]: the value of `E` doesn't fit `uint`
   |                                 |
   |                                 evaluates to -1
   |
-help: convert the value with `uint()`
+help: convert the value with `UInt()`
   |
-7 |     private static inline final E:uint = uint(-1)
+7 |     private static inline final E:uint = UInt(-1)
   |                                          +++++  +
 
 error[X0521]: an `inline` field must be `final`
@@ -83,7 +83,7 @@ error[X0523]: inline initializer is not a compile-time constant
    |                                 |
    |                                 `J` is declared `inline`
    |
-   = note: allowed: literals, other inline constants, operators and `int()`/`uint()`/`Float()`/`String()`/`Boolean()`
+   = note: allowed: literals, other inline constants, operators and `Int()`/`UInt()`/`Float()`/`String()`/`Bool()`
 
 error[X0521]: an `inline` constant must be `final`
   --> inline.xn:16:18
@@ -105,7 +105,7 @@ error[X0523]: inline initializer is not a compile-time constant
    |                    |
    |                    `y` is declared `inline`
    |
-   = note: allowed: literals, other inline constants, operators and `int()`/`uint()`/`Float()`/`String()`/`Boolean()`
+   = note: allowed: literals, other inline constants, operators and `Int()`/`UInt()`/`Float()`/`String()`/`Bool()`
 
 error[X0520]: `inline` is only allowed on constants
   --> inline.xn:22:12

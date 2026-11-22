@@ -1,16 +1,16 @@
-error[X0415]: `Boolean` can't be instantiated with `new`
+error[X0415]: `Bool` can't be instantiated with `new`
  --> std-boolean.xn:5:27
   |
 5 |       var wrapped:* = new Boolean(ready)
   |                           ^^^^^^^
   |
   = note: in JavaScript this creates a wrapper object, which is always truthy and never `==` a primitive value
-help: to convert a value, call `Boolean(x)` without `new`
+help: to convert a value, call `Bool(x)` without `new`
   |
 5 -       var wrapped:* = new Boolean(ready)
 5 +       var wrapped:* = Boolean(ready)
 
-error[X0426]: no member `toStrng` on `Boolean`
+error[X0426]: no member `toStrng` on `Bool`
  --> std-boolean.xn:6:28
   |
 6 |       trace(wrapped, ready.toStrng(), ready.length, (ready as *).length)
@@ -21,7 +21,7 @@ help: a member with a similar name exists: `toString`
 6 |       trace(wrapped, ready.toString(), ready.length, (ready as *).length)
   |                            ~~~~~~~~
 
-error[X0426]: no member `length` on `Boolean`
+error[X0426]: no member `length` on `Bool`
  --> std-boolean.xn:6:45
   |
 6 |       trace(wrapped, ready.toStrng(), ready.length, (ready as *).length)
@@ -29,7 +29,7 @@ error[X0426]: no member `length` on `Boolean`
   |
 help: if this JavaScript API exists, use it dynamically: `(ready as *).length`
 
-error[X0426]: no static member `parse` on `Boolean`
+error[X0426]: no static member `parse` on `Bool`
  --> std-boolean.xn:7:21
   |
 7 |       trace(Boolean.parse('true'))
@@ -41,7 +41,7 @@ error[X0308]: mismatched types
  --> std-boolean.xn:8:22
   |
 8 |       var s:String = ready.valueOf()
-  |             ------   ^^^^^^^^^^^^^^^ expected `String`, found `Boolean`
+  |             ------   ^^^^^^^^^^^^^^^ expected `String`, found `Bool`
   |             |
   |             expected because of this type
   |
@@ -50,10 +50,10 @@ help: convert the value with `String()`
 8 |       var s:String = String(ready.valueOf())
   |                      +++++++               +
 
-error[X0028]: `Boolean` is the name of a built-in class
+error[X0028]: `Boolean` is the name of a built-in type
   --> std-boolean.xn:14:14
    |
 14 | native class Boolean {
    |              ^^^^^^^
    |
-   = note: the standard library declares `Boolean` for every file; pick another name
+   = note: the prelude declares `Boolean` for every file; pick another name

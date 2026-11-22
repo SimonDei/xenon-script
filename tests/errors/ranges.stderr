@@ -18,9 +18,9 @@ error[X0330]: ranges can't count down
 6 |       for (var i:int of 10..0 step -1) {}
   |                                    ^^ the step must be positive
   |
-help: use a C-style `for`, e.g. `for (var i:int = 10; i >= 0; i--)`
+help: use a C-style `for`, e.g. `for (var i:Int = 10; i >= 0; i--)`
 
-error[X0334]: range bounds must be `int` or `uint`
+error[X0334]: range bounds must be `Int` or `UInt`
  --> ranges.xn:7:28
   |
 7 |       for (var i:int of 0..f) {}
@@ -50,4 +50,4 @@ error[X0333]: ranges are only supported in `for (… of …)` loops
 10 |       var r:* = 0..10
    |                  ^^
    |
-help: for example `for (var i:int of 0..10) { … }`
+help: for example `for (var i:Int of 0..10) { … }`

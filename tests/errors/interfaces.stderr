@@ -67,7 +67,7 @@ error[X0787]: `Partial` doesn't implement `move`
   |
 help: add the missing members (the stubs throw `NotImplementedException`)
   |
-+ |     public function move(dx:int, dy:int):void { throw new NotImplementedException() }
++ |     public function move(dx:Int, dy:Int):Void { throw new NotImplementedException() }
 5 |   }
 
 error[X0788]: `Partial.name` doesn't match `IShape.name`

@@ -17,7 +17,7 @@ error[X0526]: calling `plain` isn't allowed in a `constexpr` function
    |          |
    |          `constexpr` here
    |
-   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `constexpr` functions (also the standard library's: `Math.floor`, `trim`, `replace`, …), methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
+   = note: allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `Int()`, inline constants, `constexpr` functions (also the standard library's: `Math.floor`, `trim`, `replace`, …), methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`
 
 error[X0523]: an inline constant can't hold an object
   --> constexpr-objects.xn:18:45
@@ -27,7 +27,7 @@ error[X0523]: an inline constant can't hold an object
    |                              |
    |                              `ORIGIN` is declared `inline`
    |
-   = note: an inline constant is pasted into the code: it must be a number, `String` or `Boolean`; use `static final` for an object
+   = note: an inline constant is pasted into the code: it must be a number, `String` or `Bool`; use `static final` for an object
 
 error[X0723]: `Base.size` is `constexpr` and can't be overridden
   --> constexpr-objects.xn:29:28

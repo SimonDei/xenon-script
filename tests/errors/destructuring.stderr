@@ -1,4 +1,4 @@
-error[X0770]: `int` values can't be destructured with `{…}`
+error[X0770]: `Int` values can't be destructured with `{…}`
  --> destructuring.xn:8:11
   |
 8 |       var { a } = n
@@ -36,11 +36,11 @@ error[X0308]: mismatched types
   --> destructuring.xn:11:16
    |
 11 |       var [x = 'text']:Array<int> = [1]
-   |                ^^^^^^ expected `int`, found `String`
+   |                ^^^^^^ expected `Int`, found `String`
    |
-help: convert the value with `int()`
+help: convert the value with `Int()`
    |
-11 |       var [x = int('text')]:Array<int> = [1]
+11 |       var [x = Int('text')]:Array<int> = [1]
    |                ++++      +
 
 error[X0501]: cannot assign twice to final `f1`

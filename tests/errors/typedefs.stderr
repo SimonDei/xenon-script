@@ -55,7 +55,7 @@ error[X0308]: mismatched types
   --> typedefs/Main.xn:11:23
    |
 11 |       var r:Reducer = (a:int, b:String):int => a
-   |             -------   ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Reducer`, found `(a:int, b:String) -> int`
+   |             -------   ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Reducer`, found `(a:Int, b:String) -> Int`
    |             |
    |             expected because of this type
 
@@ -63,7 +63,7 @@ error[X0308]: mismatched types
   --> typedefs/Main.xn:12:23
    |
 12 |       var s:Reducer = (a, b) => 'text'
-   |             -------   ^^^^^^^^^^^^^^^^ expected `Reducer`, found `(a:int, b:int) -> String`
+   |             -------   ^^^^^^^^^^^^^^^^ expected `Reducer`, found `(a:Int, b:Int) -> String`
    |             |
    |             expected because of this type
 
@@ -71,7 +71,7 @@ error[X0308]: mismatched types
   --> typedefs/Main.xn:13:23
    |
 13 |       var t:Reducer = this.notReducer
-   |             -------   ^^^^^^^^^^^^^^^ expected `Reducer`, found `(x:String) -> int`
+   |             -------   ^^^^^^^^^^^^^^^ expected `Reducer`, found `(x:String) -> Int`
    |             |
    |             expected because of this type
 

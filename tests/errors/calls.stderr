@@ -20,13 +20,13 @@ error[X0308]: mismatched types
  --> calls.xn:6:19
   |
 6 |       var n:int = greet('Bob')
-  |             ---   ^^^^^^^^^^^^ expected `int`, found `String`
+  |             ---   ^^^^^^^^^^^^ expected `Int`, found `String`
   |             |
   |             expected because of this type
   |
-help: convert the value with `int()`
+help: convert the value with `Int()`
   |
-6 |       var n:int = int(greet('Bob'))
+6 |       var n:int = Int(greet('Bob'))
   |                   ++++            +
 
 error[X0308]: mismatched types
@@ -47,4 +47,4 @@ error[X0311]: this expression has no value
  --> calls.xn:8:13
   |
 8 |       trace(nothing())
-  |             ^^^^^^^^^ returns `void`
+  |             ^^^^^^^^^ returns `Void`

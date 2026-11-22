@@ -22,7 +22,7 @@ error[X0308]: mismatched types
   --> literal-types.xn:14:21
    |
 14 |     var back:true = flag                       // a `Boolean` may be `false`
-   |              ----   ^^^^ expected `true`, found `Boolean`
+   |              ----   ^^^^ expected `true`, found `Bool`
    |              |
    |              expected because of this type
    |
@@ -52,33 +52,33 @@ error[X0308]: mismatched types
   --> literal-types.xn:24:23
    |
 24 |     var asUint:uint = neg                      // -1 isn't a `uint`
-   |                ----   ^^^ expected `uint`, found `-1`
+   |                ----   ^^^ expected `UInt`, found `-1`
    |                |
    |                expected because of this type
    |
-help: convert the value with `uint()`
+help: convert the value with `UInt()`
    |
-24 |     var asUint:uint = uint(neg)                      // -1 isn't a `uint`
+24 |     var asUint:uint = UInt(neg)                      // -1 isn't a `uint`
    |                       +++++   +
 
 error[X0308]: mismatched types
   --> literal-types.xn:26:22
    |
 26 |     var notInt:int = half                      // 0.5 isn't an `int`
-   |                ---   ^^^^ expected `int`, found `0.5`
+   |                ---   ^^^^ expected `Int`, found `0.5`
    |                |
    |                expected because of this type
    |
-help: convert the value with `int()`
+help: convert the value with `Int()`
    |
-26 |     var notInt:int = int(half)                      // 0.5 isn't an `int`
+26 |     var notInt:int = Int(half)                      // 0.5 isn't an `int`
    |                      ++++    +
 
 error[X0308]: mismatched types
   --> literal-types.xn:28:19
    |
 28 |     var plain:1 = asInt                        // an `int` may be anything
-   |               -   ^^^^^ expected `1`, found `int`
+   |               -   ^^^^^ expected `1`, found `Int`
    |               |
    |               expected because of this type
    |
@@ -104,7 +104,7 @@ error[X0308]: mismatched types
   --> literal-types.xn:38:30
    |
 38 |     var entries:Array<int> = dir.read({ withFileTypes: true })
-   |                 ----------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Array<int>`, found `Array<Boolean>`
+   |                 ----------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Array<Int>`, found `Array<Bool>`
    |                 |
    |                 expected because of this type
 
@@ -120,7 +120,7 @@ error[X0308]: mismatched types
   --> literal-types.xn:40:21
    |
 40 |     var named:int = dir.read({ encoding: 'utf8' })       // not `Raw`: 'utf8' isn't 'buffer'
-   |               ---   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `int`, found `Array<String>`
+   |               ---   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Int`, found `Array<String>`
    |               |
    |               expected because of this type
 
@@ -128,7 +128,7 @@ error[X0308]: mismatched types
   --> literal-types.xn:41:24
    |
 41 |     var level:String = dir.level(1)                        // `level(n:1)`
-   |               ------   ^^^^^^^^^^^^ expected `String`, found `Boolean`
+   |               ------   ^^^^^^^^^^^^ expected `String`, found `Bool`
    |               |
    |               expected because of this type
    |
@@ -141,7 +141,7 @@ error[X0308]: mismatched types
   --> literal-types.xn:42:25
    |
 42 |     var other2:String = dir.level(2)                       // `level(n:int)`
-   |                ------   ^^^^^^^^^^^^ expected `String`, found `int`
+   |                ------   ^^^^^^^^^^^^ expected `String`, found `Int`
    |                |
    |                expected because of this type
    |

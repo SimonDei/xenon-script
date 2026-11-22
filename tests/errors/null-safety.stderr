@@ -69,7 +69,7 @@ error[X0398]: this value may be null
   --> null-safety/Main.xn:23:11
    |
 23 |     trace(f())                                    // X0398: the function may be null
-   |           ^ `() -> int?`
+   |           ^ `() -> Int?`
    |
 help: check it first: inside `if (f != null) { … }` it can't be null
 

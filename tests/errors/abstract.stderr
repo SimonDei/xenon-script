@@ -41,7 +41,7 @@ error[X0710]: `Shape` is abstract and can't be instantiated
   |
 help: create an instance of a concrete subclass
 
-error[X0415]: `n` is a `int` and can't be instantiated with `new`
+error[X0415]: `n` is a `Int` and can't be instantiated with `new`
  --> abstract/Main.xn:6:21
   |
 6 |       var x:* = new n()
@@ -90,7 +90,7 @@ error[X0711]: `Square` doesn't implement the abstract member `sides`
   |
 help: add the missing members (the stubs throw `NotImplementedException`)
   |
-+ |     override public function get sides():int { throw new NotImplementedException() }
++ |     override public function get sides():Int { throw new NotImplementedException() }
 4 |   }
 
 error[X0720]: `area` overrides `Shape.area` but is not marked `override`

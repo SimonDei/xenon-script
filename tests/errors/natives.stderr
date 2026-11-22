@@ -1,4 +1,4 @@
-error[X0604]: no overload of `new Date` accepts (Boolean)
+error[X0604]: no overload of `new Date` accepts (Bool)
  --> natives.xn:4:24
   |
 4 |       var d:Date = new Date(true)
@@ -37,7 +37,7 @@ error[X0426]: no member `getYear` on `Date`
   |
 help: if this JavaScript API exists, use it dynamically: `(d as *).getYear`
 
-error[X0604]: no overload of `split` accepts (int)
+error[X0604]: no overload of `split` accepts (Int)
  --> natives.xn:6:55
   |
 6 |       trace(t.toUppercase(), t.newApi(), d.getYear(), t.split(5))

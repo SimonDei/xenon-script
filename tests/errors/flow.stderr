@@ -20,7 +20,7 @@ error[X0314]: not all code paths of `sign` return a value
   --> flow.xn:17:5
    |
 14 |     private function sign(n:int):int {
-   |                                  --- returns `int`
+   |                                  --- returns `Int`
 ...
 17 |     }
    |     ^ execution can reach the end of the method here

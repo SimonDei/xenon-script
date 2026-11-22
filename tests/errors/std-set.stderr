@@ -2,23 +2,23 @@ error[X0308]: mismatched types
   --> std-set.xn:4:13
    |
  4 |     ids.add('three')
-   |             ^^^^^^^ expected `int`, found `String`
+   |             ^^^^^^^ expected `Int`, found `String`
    |
   ::: <xenon prelude>/xenon/Set.xn:16:24
    |
 16 |     function add(value:T):Set<T>
    |                        - parameter declared here
    |
-help: convert the value with `int()`
+help: convert the value with `Int()`
    |
- 4 |     ids.add(int('three'))
+ 4 |     ids.add(Int('three'))
    |             ++++       +
 
 error[X0308]: mismatched types
  --> std-set.xn:5:29
   |
 5 |     var wrong:Set<String> = ids
-  |               -----------   ^^^ expected `Set<String>`, found `Set<int>`
+  |               -----------   ^^^ expected `Set<String>`, found `Set<Int>`
   |               |
   |               expected because of this type
 
@@ -26,7 +26,7 @@ error[X0308]: mismatched types
  --> std-set.xn:6:20
   |
 6 |     var n:String = ids.size
-  |           ------   ^^^^^^^^ expected `String`, found `int`
+  |           ------   ^^^^^^^^ expected `String`, found `Int`
   |           |
   |           expected because of this type
   |
@@ -39,7 +39,7 @@ error[X0308]: mismatched types
  --> std-set.xn:7:16
   |
 7 |     for (var s:String of ids) trace(s)
-  |              - ^^^^^^ the elements are `int`
+  |              - ^^^^^^ the elements are `Int`
   |              |
   |              `s` declared as `String`
 
@@ -63,7 +63,7 @@ error[X0308]: mismatched types
   --> std-set.xn:9:33
    |
  9 |     trace(ids.length, ids.union([1]), ids.valuez(), new Set(5), wrong, n)
-   |                                 ^^^ expected `Set<int>`, found `Array`
+   |                                 ^^^ expected `Set<Int>`, found `Array`
    |
   ::: <xenon prelude>/xenon/Set.xn:32:26
    |
@@ -81,7 +81,7 @@ help: a member with a similar name exists: `values`
 9 |     trace(ids.length, ids.union([1]), ids.values(), new Set(5), wrong, n)
   |                                           ~~~~~~
 
-error[X0604]: no overload of `new Set` accepts (int)
+error[X0604]: no overload of `new Set` accepts (Int)
  --> std-set.xn:9:57
   |
 9 |     trace(ids.length, ids.union([1]), ids.valuez(), new Set(5), wrong, n)
@@ -108,4 +108,4 @@ error[X0422]: `Set` needs 1 type argument
 11 |     var bare:Set = new Set()                     // type arguments can only be left out in `new`, `is` and `as`
    |              ^^^ missing type arguments
    |
-help: for example `Set<int>`; `new` and `is`/`as` can leave them out
+help: for example `Set<Int>`; `new` and `is`/`as` can leave them out

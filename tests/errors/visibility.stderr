@@ -55,7 +55,7 @@ error[X0603]: `zone` is internal to package `zoo`
 error[X0441]: class `zoo.Hidden` is internal to package `zoo`
   --> visibility/Main.xn:10:13
    |
-10 |       var h:zoo.Hidden = null
+10 |       var h:zoo.Hidden? = null
    |             ^^^^^^^^^^ not visible here
    |
   ::: visibility/zoo/Hidden.xn:2:9

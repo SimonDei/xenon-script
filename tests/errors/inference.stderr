@@ -2,10 +2,10 @@ error[X0308]: mismatched types
  --> inference.xn:8:32
   |
 8 |     var wrong:Array<int> = [...tags, ...'ab']             // X0308: the elements are `String`s
-  |                                ^^^^ its elements are `String`, expected `int`
+  |                                ^^^^ its elements are `String`, expected `Int`
 
 error[X0308]: mismatched types
  --> inference.xn:8:41
   |
 8 |     var wrong:Array<int> = [...tags, ...'ab']             // X0308: the elements are `String`s
-  |                                         ^^^^ its elements are `String`, expected `int`
+  |                                         ^^^^ its elements are `String`, expected `Int`

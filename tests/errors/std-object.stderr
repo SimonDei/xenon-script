@@ -2,7 +2,7 @@ error[X0308]: mismatched types
  --> std-object.xn:4:28
   |
 4 |     var names:Array<int> = Object.keys(o)           // keys are Strings
-  |               ----------   ^^^^^^^^^^^^^^ expected `Array<int>`, found `Array<String>`
+  |               ----------   ^^^^^^^^^^^^^^ expected `Array<Int>`, found `Array<String>`
   |               |
   |               expected because of this type
 
@@ -10,7 +10,7 @@ error[X0308]: mismatched types
  --> std-object.xn:5:17
   |
 5 |     var n:int = Object.values(o)                     // an Array, not an int
-  |           ---   ^^^^^^^^^^^^^^^^ expected `int`, found `Array`
+  |           ---   ^^^^^^^^^^^^^^^^ expected `Int`, found `Array`
   |           |
   |           expected because of this type
 
@@ -34,7 +34,7 @@ error[X0604]: no overload of `hasOwn` accepts (Object)
   = note: `hasOwn(object:Object, key:String):Boolean`
   = note: `hasOwn(object:Object, index:Float):Boolean`
 
-error[X0604]: no overload of `hasOwn` accepts (Object, Boolean)
+error[X0604]: no overload of `hasOwn` accepts (Object, Bool)
  --> std-object.xn:6:45
   |
 6 |     trace(Object.keyz(o), Object.hasOwn(o), Object.hasOwn(o, true))
@@ -88,7 +88,7 @@ error[X0308]: mismatched types
   --> std-object.xn:9:28
    |
  9 |     Object.groupBy([1, 2], (n:int):int => n)         // the callback must return a String
-   |                            ^^^^^^^^^^^^^^^^ expected `(item:int, index:int) -> String`, found `(n:int) -> int`
+   |                            ^^^^^^^^^^^^^^^^ expected `(item:Int, index:Int) -> String`, found `(n:Int) -> Int`
    |
   ::: <xenon prelude>/xenon/Object.xn:65:57
    |

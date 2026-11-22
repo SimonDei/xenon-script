@@ -27,13 +27,13 @@ error[X0425]: cannot find `Any` in this scope
 7 |       var fine:() -> Void = ():Void => trace(Bool(x), Int(1.5), Any)
   |                                                                 ^^^ not found in this scope
 
-error[X0028]: `Int` is the name of a built-in type
+error[X0028]: `Int` is the name of a built-in class
   --> aliases.xn:13:7
    |
 13 | class Int {}
    |       ^^^
    |
-   = note: the prelude declares `Int` for every file; pick another name
+   = note: the standard library declares `Int` for every file; pick another name
 
 error[X0028]: `Bool` is the name of a built-in type
   --> aliases.xn:14:9

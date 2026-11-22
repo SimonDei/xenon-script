@@ -85,7 +85,7 @@ error[X0901]: cannot change `total` in const method `report`
 error[X0903]: static methods can't be `const`
   --> const-methods.xn:29:28
    |
-29 |     public static function make():Main const { return null }
+29 |     public static function make():Main? const { return null }
    |                            ^^^^
    |
    = note: `const` restricts `this`, which static methods don't have

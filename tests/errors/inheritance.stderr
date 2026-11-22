@@ -72,8 +72,8 @@ error[X0722]: `move` doesn't match the member it overrides
  9 |     public function move(dx:int, dy:int):void {}
    |                     ---- `Base.move` declared here
    |
-   = note: parameter `dx` is `Float` instead of `int`
-   = note: returns `int` instead of `void`
+   = note: parameter `dx` is `Float` instead of `Int`
+   = note: returns `Int` instead of `Void`
 
 error[X0723]: `Base.id` is `final` and can't be overridden
   --> inheritance/Child.xn:12:30
@@ -97,7 +97,7 @@ error[X0722]: `area` doesn't match the member it overrides
 11 |     public function get area():Float { return 0 }
    |                         ---- `Base.area` declared here
    |
-   = note: type `int` instead of `Float`
+   = note: type `Int` instead of `Float`
 
 error[X0721]: `hiden` doesn't override anything
   --> inheritance/Child.xn:14:5
@@ -137,7 +137,7 @@ error[X0725]: instance member `count` conflicts with static `Base.count`
 error[X0721]: static members can't be overridden
   --> inheritance/Child.xn:17:5
    |
-17 |     override public static function make():Base { return null }
+17 |     override public static function make():Base? { return null }
    |     ^^^^^^^^
    |
    = note: a static member with a parent's name simply hides it
@@ -194,7 +194,7 @@ error[X0308]: mismatched types
  --> inheritance/Main.xn:4:33
   |
 4 |       var n:NoCtor = new NoCtor(1)
-  |                                 ^ expected `String`, found `int`
+  |                                 ^ expected `String`, found `Int`
   |
  ::: inheritance/Base.xn:6:32
   |

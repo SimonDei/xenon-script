@@ -2,7 +2,7 @@ error[X0398]: this value may be null
  --> narrowing.xn:9:11
   |
 9 |     trace(m + 1)                                      // reassigned with an `int?`
-  |           ^ `int?`
+  |           ^ `Int?`
   |
 help: give a default with `??`
   |
@@ -14,7 +14,7 @@ error[X0398]: this value may be null
   --> narrowing.xn:12:13
    |
 12 |       trace(m + 1)                                    // reassigned inside the check
-   |             ^ `int?`
+   |             ^ `Int?`
    |
 help: give a default with `??`
    |
@@ -26,16 +26,16 @@ error[X0398]: this value may be null
   --> narrowing.xn:16:35
    |
 16 |       var f:() -> int = ():int => c + 1               // the closure may run after `c` changes
-   |                                   ^ `int?`
+   |                                   ^ `Int?`
    |
    = note: a null check outside a function expression doesn't reach into it: the variable could change before the function runs
-help: copy it into a `final` local after the check: `final value:int = c`
+help: copy it into a `final` local after the check: `final value:Int = c`
 
 error[X0398]: this value may be null
   --> narrowing.xn:22:15
    |
 22 |         trace(loop + 1)                               // the loop assigns `loop` below
-   |               ^^^^ `int?`
+   |               ^^^^ `Int?`
    |
 help: give a default with `??`
    |
@@ -47,20 +47,20 @@ error[X0398]: this value may be null
   --> narrowing.xn:27:30
    |
 27 |     if (field != null) trace(field + 1)               // fields aren't narrowed
-   |                              ^^^^^ `int?`
+   |                              ^^^^^ `Int?`
    |
    = note: a null check narrows only local variables and parameters (a field can change in between): copy it into a local first
 help: give a default with `??`
    |
 27 |     if (field != null) trace((field ?? 0) + 1)               // fields aren't narrowed
    |                              +     ++++++
-help: or check it first: `if (var x:int = …) { … }` runs only when it isn't null
+help: or check it first: `if (var x:Int = …) { … }` runs only when it isn't null
 
 error[X0398]: this value may be null
   --> narrowing.xn:28:39
    |
 28 |     if (m != null || c != null) trace(m + c)          // `||`: neither is known
-   |                                       ^ `int?`
+   |                                       ^ `Int?`
    |
 help: give a default with `??`
    |
@@ -72,7 +72,7 @@ error[X0398]: this value may be null
   --> narrowing.xn:28:43
    |
 28 |     if (m != null || c != null) trace(m + c)          // `||`: neither is known
-   |                                           ^ `int?`
+   |                                           ^ `Int?`
    |
 help: give a default with `??`
    |
@@ -84,7 +84,7 @@ error[X0398]: this value may be null
   --> narrowing.xn:29:26
    |
 29 |     if (m == null) trace(m + 1)                       // wrong branch
-   |                          ^ `int?`
+   |                          ^ `Int?`
    |
 help: give a default with `??`
    |

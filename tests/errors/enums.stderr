@@ -2,7 +2,7 @@ error[X0308]: mismatched types
  --> enums.xn:4:25
   |
 4 |       var d:Direction = 1
-  |             ---------   ^ expected `Direction`, found `int`
+  |             ---------   ^ expected `Direction`, found `Int`
   |             |
   |             expected because of this type
 
@@ -10,7 +10,7 @@ error[X0309]: this comparison is always false
  --> enums.xn:6:15
   |
 6 |       trace(d == 1, d == Color.Red, d < Direction.Down)
-  |             - ^^ - `int`
+  |             - ^^ - `Int`
   |             |
   |             `Direction`
   |
@@ -84,13 +84,13 @@ error[X0813]: `Uno` has the same value as `One`
    |            |
    |            first member with this value
 
-error[X0811]: enum values must be `int`s or `String`s
+error[X0811]: enum values must be `Int`s or `String`s
   --> enums.xn:22:19
    |
 22 | enum Bad { Half = 0.5, Flag = true }
    |                   ^^^ found 0.5
 
-error[X0811]: enum values must be `int`s or `String`s
+error[X0811]: enum values must be `Int`s or `String`s
   --> enums.xn:22:31
    |
 22 | enum Bad { Half = 0.5, Flag = true }

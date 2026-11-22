@@ -10,7 +10,7 @@ error[X0308]: mismatched types
  --> std-iterator.xn:5:36
   |
 5 |     var strings:Iterator<String> = ids.values()
-  |                 ----------------   ^^^^^^^^^^^^ expected `Iterator<String>`, found `Iterator<int>`
+  |                 ----------------   ^^^^^^^^^^^^ expected `Iterator<String>`, found `Iterator<Int>`
   |                 |
   |                 expected because of this type
 
@@ -18,7 +18,7 @@ error[X0308]: mismatched types
  --> std-iterator.xn:7:23
   |
 7 |     var text:String = step.value
-  |              ------   ^^^^^^^^^^ expected `String`, found `int`
+  |              ------   ^^^^^^^^^^ expected `String`, found `Int`
   |              |
   |              expected because of this type
   |
@@ -31,7 +31,7 @@ error[X0308]: mismatched types
  --> std-iterator.xn:8:16
   |
 8 |     for (var s:String of ids.values()) trace(s)
-  |              - ^^^^^^ the elements are `int`
+  |              - ^^^^^^ the elements are `Int`
   |              |
   |              `s` declared as `String`
 
@@ -39,7 +39,7 @@ error[X0308]: mismatched types
  --> std-iterator.xn:9:33
   |
 9 |     var doubled:Array<String> = ids.values().map((n:int, i:int):int => n * 2).toArray()
-  |                 -------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Array<String>`, found `Array<int>`
+  |                 -------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Array<String>`, found `Array<Int>`
   |                 |
   |                 expected because of this type
 
@@ -47,16 +47,16 @@ error[X0308]: mismatched types
   --> std-iterator.xn:10:29
    |
 10 |     trace(ids.values().take('2'), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
-   |                             ^^^ expected `int`, found `String`
+   |                             ^^^ expected `Int`, found `String`
    |
   ::: <xenon prelude>/xenon/Iterator.xn:31:25
    |
 31 |     function take(limit:int):Iterator<T>
    |                         --- parameter declared here
    |
-help: convert the value with `int()`
+help: convert the value with `Int()`
    |
-10 |     trace(ids.values().take(int('2')), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
+10 |     trace(ids.values().take(Int('2')), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
    |                             ++++   +
 
 error[X0426]: no member `length` on `Iterator`
@@ -71,14 +71,14 @@ error[X0308]: mismatched types
   --> std-iterator.xn:10:76
    |
 10 |     trace(ids.values().take('2'), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
-   |                                                                            ^^^^^^^^^^^^^^^^ expected `(value:int, index:int) -> Boolean`, found `(n:int) -> int`
+   |                                                                            ^^^^^^^^^^^^^^^^ expected `(value:Int, index:Int) -> Bool`, found `(n:Int) -> Int`
    |
   ::: <xenon prelude>/xenon/Iterator.xn:29:26
    |
 29 |     function filter(test:(value:T, index:int) -> Boolean):Iterator<T>
    |                          ------------------------------- parameter declared here
 
-error[X0604]: no overload of `from` accepts (int)
+error[X0604]: no overload of `from` accepts (Int)
   --> std-iterator.xn:11:11
    |
 11 |     trace(Iterator.from(5), ids.values().next().missing)
@@ -88,7 +88,7 @@ error[X0604]: no overload of `from` accepts (int)
    = note: `from(source:Set<T>):Iterator<T>`
    = note: `from(source:Iterator<T>):Iterator<T>`
 
-error[X0426]: no member `missing` on `IteratorResult<int>`
+error[X0426]: no member `missing` on `IteratorResult<Int>`
   --> std-iterator.xn:11:49
    |
 11 |     trace(Iterator.from(5), ids.values().next().missing)

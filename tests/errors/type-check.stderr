@@ -4,7 +4,7 @@ error[X0308]: mismatched types
 6 |     trace((n : String))                       // X0308: an `int` isn't a `String`
   |            ^   ------ expected because of this type check
   |            |
-  |            expected `String`, found `int`
+  |            expected `String`, found `Int`
   |
 help: convert the value with `String()`
   |
@@ -21,7 +21,7 @@ error[X0323]: wrong tuple length
  --> type-check.xn:8:21
   |
 8 |     trace((['a', 1, 2] : Tuple<String, int>)) // X0323: one element too many
-  |                     ^ `Tuple<String, int>` has 2 elements, found 3
+  |                     ^ `Tuple<String, Int>` has 2 elements, found 3
 
 error[X0308]: mismatched types
   --> type-check.xn:10:20

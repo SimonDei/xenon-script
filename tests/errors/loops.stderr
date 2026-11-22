@@ -9,7 +9,7 @@ help: iterate over its values
 7 |       for (var v:* of Object.values(obj)) {}
   |                       ++++++++++++++   +
 
-error[X0391]: `int` is not iterable
+error[X0391]: `Int` is not iterable
  --> loops.xn:8:23
   |
 8 |       for (var v:* of n) {}
@@ -21,7 +21,7 @@ error[X0308]: mismatched types
 9 |       for (var w:int of words) {}
   |                - ^^^ the elements are `String`
   |                |
-  |                `w` declared as `int`
+  |                `w` declared as `Int`
 
 error[X0308]: mismatched types
   --> loops.xn:10:18
@@ -29,7 +29,7 @@ error[X0308]: mismatched types
 10 |       for (var k:int in obj) {}
    |                - ^^^ the keys are `String`
    |                |
-   |                `k` declared as `int`
+   |                `k` declared as `Int`
 
 error[X0100]: the loop variable must be declared here
   --> loops.xn:11:12

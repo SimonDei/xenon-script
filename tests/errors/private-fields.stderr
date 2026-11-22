@@ -5,4 +5,4 @@ error[X0772]: private field `pin` can't be destructured
   |           ^^^
   |
   = note: private fields are JavaScript `#private` fields, which destructuring can't read
-help: read it directly: `var pin:int = ….pin`
+help: read it directly: `var pin:Int = ….pin`

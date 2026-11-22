@@ -40,17 +40,6 @@ help: Xenon calls floating-point numbers `Float`
 10 |       var t:Float = 1
    |             ~~~~~
 
-warning[X0850]: variable `u` has no type annotation; it is untyped (`*`)
-  --> members.xn:11:11
-   |
-11 |       var u = 5
-   |           ^
-   |
-help: add the type of the initializer
-   |
-11 |       var u:int = 5
-   |            ++++
-
 error[X0420]: cannot find type `Errror`
   --> members.xn:12:13
    |
@@ -70,7 +59,7 @@ error[X0312]: `oops` can't return a value
   --> members.xn:19:14
    |
 17 |     private function oops():void {
-   |                             ---- declared `void` here
+   |                             ---- declared `Void` here
 ...
 19 |       return 5
    |              ^

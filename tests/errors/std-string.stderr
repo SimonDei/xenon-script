@@ -2,7 +2,7 @@ error[X0308]: mismatched types
  --> std-string.xn:4:23
   |
 4 |     var size:String = s.length                      // length is an int
-  |              ------   ^^^^^^^^ expected `String`, found `int`
+  |              ------   ^^^^^^^^ expected `String`, found `Int`
   |              |
   |              expected because of this type
   |
@@ -72,39 +72,39 @@ error[X0308]: mismatched types
   --> std-string.xn:7:20
    |
  7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
-   |                    ^^^ expected `int`, found `String`
+   |                    ^^^ expected `Int`, found `String`
    |
   ::: <xenon prelude>/xenon/String.xn:30:37
    |
 30 |     constexpr function charAt(index:int = 0):String
    |                                     --- parameter declared here
    |
-help: convert the value with `int()`
+help: convert the value with `Int()`
    |
- 7 |     trace(s.charAt(int('1')), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
+ 7 |     trace(s.charAt(Int('1')), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
    |                    ++++   +
 
 error[X0308]: mismatched types
   --> std-string.xn:7:35
    |
  7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
-   |                                   ^^^ expected `int`, found `String`
+   |                                   ^^^ expected `Int`, found `String`
    |
-  ::: <xenon prelude>/xenon/String.xn:86:37
+  ::: <xenon prelude>/xenon/String.xn:92:37
    |
-86 |     constexpr function repeat(count:int):String
+92 |     constexpr function repeat(count:int):String
    |                                     --- parameter declared here
    |
-help: convert the value with `int()`
+help: convert the value with `Int()`
    |
- 7 |     trace(s.charAt('1'), s.repeat(int('2')), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
+ 7 |     trace(s.charAt('1'), s.repeat(Int('2')), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
    |                                   ++++   +
 
 error[X0308]: mismatched types
   --> std-string.xn:7:51
    |
  7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
-   |                                                   ^ expected `String`, found `int`
+   |                                                   ^ expected `String`, found `Int`
    |
   ::: <xenon prelude>/xenon/String.xn:39:39
    |
@@ -129,11 +129,11 @@ error[X0308]: mismatched types
   --> std-string.xn:7:83
    |
  7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
-   |                                                                                   ^ expected `String`, found `int`
+   |                                                                                   ^ expected `String`, found `Int`
    |
-  ::: <xenon prelude>/xenon/String.xn:87:50
+  ::: <xenon prelude>/xenon/String.xn:94:50
    |
-87 |     constexpr function padStart(length:int, fill:String = ' '):String
+94 |     constexpr function padStart(length:int, fill:String = ' '):String
    |                                                  ------ parameter declared here
    |
 help: convert the value with `String()`
@@ -141,7 +141,7 @@ help: convert the value with `String()`
  7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, String(0)))
    |                                                                                   +++++++ +
 
-error[X0604]: no overload of `replace` accepts (int, String)
+error[X0604]: no overload of `replace` accepts (Int, String)
  --> std-string.xn:8:11
   |
 8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
@@ -152,7 +152,7 @@ error[X0604]: no overload of `replace` accepts (int, String)
   = note: `replace(pattern:String, replacer:Function):String`
   = note: `replace(pattern:RegExp, replacer:Function):String`
 
-error[X0604]: no overload of `replace` accepts (String, int)
+error[X0604]: no overload of `replace` accepts (String, Int)
  --> std-string.xn:8:30
   |
 8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
@@ -163,7 +163,7 @@ error[X0604]: no overload of `replace` accepts (String, int)
   = note: `replace(pattern:String, replacer:Function):String`
   = note: `replace(pattern:RegExp, replacer:Function):String`
 
-error[X0604]: no overload of `split` accepts (int)
+error[X0604]: no overload of `split` accepts (Int)
  --> std-string.xn:8:49
   |
 8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
@@ -174,7 +174,7 @@ error[X0604]: no overload of `split` accepts (int)
   = note: `split(separator:RegExp):Array<String>`
   = note: `split(separator:RegExp, limit:int):Array<String>`
 
-error[X0604]: no overload of `match` accepts (int)
+error[X0604]: no overload of `match` accepts (Int)
  --> std-string.xn:8:61
   |
 8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
@@ -187,7 +187,7 @@ error[X0601]: this call takes 1 argument but 0 were given
   --> std-string.xn:8:73
    |
  8 |     trace(s.replace(1, 'x'), s.replace('l', 5), s.split(5), s.match(5), s.at())
-   |                                                                         ^^^^^^ missing `index:int`
+   |                                                                         ^^^^^^ missing `index:Int`
    |
   ::: <xenon prelude>/xenon/String.xn:32:14
    |
@@ -232,20 +232,20 @@ error[X0308]: mismatched types
   --> std-string.xn:10:19
    |
 10 |     var pos:int = s.indexOf('l') + 'x'
-   |             ---   ^^^^^^^^^^^^^^^^^^^^ expected `int`, found `String`
+   |             ---   ^^^^^^^^^^^^^^^^^^^^ expected `Int`, found `String`
    |             |
    |             expected because of this type
    |
-help: convert the value with `int()`
+help: convert the value with `Int()`
    |
-10 |     var pos:int = int(s.indexOf('l') + 'x')
+10 |     var pos:int = Int(s.indexOf('l') + 'x')
    |                   ++++                    +
 
 error[X0308]: mismatched types
   --> std-string.xn:11:23
    |
 11 |     var code:String = s.charCodeAt(0)
-   |              ------   ^^^^^^^^^^^^^^^ expected `String`, found `int`
+   |              ------   ^^^^^^^^^^^^^^^ expected `String`, found `Int`
    |              |
    |              expected because of this type
    |
@@ -258,6 +258,6 @@ error[X0308]: mismatched types
   --> std-string.xn:12:28
    |
 12 |     var parts:Array<int> = s.split(',')
-   |               ----------   ^^^^^^^^^^^^ expected `Array<int>`, found `Array<String>`
+   |               ----------   ^^^^^^^^^^^^ expected `Array<Int>`, found `Array<String>`
    |               |
    |               expected because of this type

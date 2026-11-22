@@ -2,20 +2,20 @@ error[X0320]: this value can never be null; use a normal condition
  --> bindings.xn:6:23
   |
 6 |       if (var n:int = count()) trace(n)
-  |                       ^^^^^^^ `int`
+  |                       ^^^^^^^ `Int`
   |
   = note: `if (var x:T = …)` runs its block only when the value is not null
 
-error[X0310]: condition must be a `Boolean`
- --> bindings.xn:7:30
+error[X0310]: condition must be a `Bool`
+ --> bindings.xn:7:32
   |
-7 |       if (var m:Main = this, m.parent) trace(m)
-  |                              ^^^^^^^^ expected `Boolean`, found `Main`
+7 |       if (var m:Main = parent, m.parent) trace(m)
+  |                                ^^^^^^^^ expected `Bool`, found `Main?`
   |
 help: check for null explicitly
   |
-7 |       if (var m:Main = this, m.parent != null) trace(m)
-  |                                      ++++++++
+7 |       if (var m:Main = parent, m.parent != null) trace(m)
+  |                                        ++++++++
 
 error[X0321]: the value bound to `node` refers to another `node`
  --> bindings.xn:9:30
@@ -30,10 +30,10 @@ help: give the binding a different name
 error[X0107]: use `var` for a binding in a condition
   --> bindings.xn:10:11
    |
-10 |       if (const c:Main = this) trace(c)
+10 |       if (const c:Main = parent) trace(c)
    |           ^^^^^
    |
 help: replace it with `var`
    |
-10 |       if (var c:Main = this) trace(c)
+10 |       if (var c:Main = parent) trace(c)
    |           ~~~

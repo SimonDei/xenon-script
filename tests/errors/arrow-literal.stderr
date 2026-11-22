@@ -9,13 +9,12 @@ help: did you mean `get`?
 7 |     var bad:Options = { parser: tag => ({ get: scope => scope }) }         // X0791: `got` isn't a member of `Parser`
   |                                           ~~~
 
-error[X0310]: condition must be a `Boolean`
+error[X0310]: condition must be a `Bool`
  --> arrow-literal.xn:9:20
   |
 9 |     trace(ok, bad, label ? 1 : 2)                                           // X0310: compare `!= ''`
-  |                    ^^^^^ expected `Boolean`, found `String`
+  |                    ^^^^^ expected `Bool`, found `String`
   |
-  = note: `null` != '' is true too: write `s != null && s != ''` if `null` must count as empty
 help: a `String` is true in JavaScript when it isn't empty: compare explicitly
   |
 9 |     trace(ok, bad, label != '' ? 1 : 2)                                           // X0310: compare `!= ''`

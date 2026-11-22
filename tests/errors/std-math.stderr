@@ -2,16 +2,16 @@ error[X0308]: mismatched types
   --> std-math.xn:6:29
    |
  6 |     var bad:int = Math.imul(1.5, 2)         // imul takes ints
-   |                             ^^^ expected `int`, found `Float`
+   |                             ^^^ expected `Int`, found `Float`
    |
   ::: <xenon prelude>/xenon/Math.xn:77:38
    |
 77 |     static constexpr function imul(a:int, b:int):int
    |                                      --- parameter declared here
    |
-help: convert the value with `int()`
+help: convert the value with `Int()`
    |
- 6 |     var bad:int = Math.imul(int(1.5), 2)         // imul takes ints
+ 6 |     var bad:int = Math.imul(Int(1.5), 2)         // imul takes ints
    |                             ++++   +
 
 error[X0426]: no static member `sqroot` on `Math`

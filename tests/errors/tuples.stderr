@@ -2,19 +2,19 @@ error[X0323]: wrong tuple length
  --> tuples.xn:3:36
   |
 3 |     var short:Tuple<String, int> = ['a']                  // X0323: one element missing
-  |                                    ^^^^^ `Tuple<String, int>` has 2 elements, found 1
+  |                                    ^^^^^ `Tuple<String, Int>` has 2 elements, found 1
 
 error[X0323]: wrong tuple length
  --> tuples.xn:4:44
   |
 4 |     var long:Tuple<String, int> = ['a', 1, true]          // X0323: one too many
-  |                                            ^^^^ `Tuple<String, int>` has 2 elements, found 3
+  |                                            ^^^^ `Tuple<String, Int>` has 2 elements, found 3
 
 error[X0308]: mismatched types
  --> tuples.xn:5:37
   |
 5 |     var wrong:Tuple<String, int> = [1, 'a']               // X0308 twice: positions swapped
-  |                                     ^ expected `String`, found `int`
+  |                                     ^ expected `String`, found `Int`
   |
 help: convert the value with `String()`
   |
@@ -25,14 +25,14 @@ error[X0308]: mismatched types
  --> tuples.xn:5:40
   |
 5 |     var wrong:Tuple<String, int> = [1, 'a']               // X0308 twice: positions swapped
-  |                                        ^^^ expected `int`, found `String`
+  |                                        ^^^ expected `Int`, found `String`
   |
-help: convert the value with `int()`
+help: convert the value with `Int()`
   |
-5 |     var wrong:Tuple<String, int> = [1, int('a')]               // X0308 twice: positions swapped
+5 |     var wrong:Tuple<String, int> = [1, Int('a')]               // X0308 twice: positions swapped
   |                                        ++++   +
 
-error[X0323]: a `Tuple<int, int>` literal lists its elements one by one
+error[X0323]: a `Tuple<Int, Int>` literal lists its elements one by one
  --> tuples.xn:6:35
   |
 6 |     var spread:Tuple<int, int> = [...[1, 2]]              // X0323: a spread's length isn't known
@@ -42,30 +42,30 @@ error[X0324]: tuple index out of range
  --> tuples.xn:8:16
   |
 8 |     trace(pair[2])                                        // X0324: positions 0 and 1
-  |                ^ `Tuple<String, int>` has positions 0 to 1
+  |                ^ `Tuple<String, Int>` has positions 0 to 1
 
 error[X0308]: mismatched types
  --> tuples.xn:9:15
   |
 9 |     pair[1] = 'two'                                       // X0308: position 1 is an `int`
-  |               ^^^^^ expected `int`, found `String`
+  |               ^^^^^ expected `Int`, found `String`
   |
-help: convert the value with `int()`
+help: convert the value with `Int()`
   |
-9 |     pair[1] = int('two')                                       // X0308: position 1 is an `int`
+9 |     pair[1] = Int('two')                                       // X0308: position 1 is an `int`
   |               ++++     +
 
 error[X0773]: too many names for a tuple
   --> tuples.xn:10:16
    |
 10 |     var [a, b, c] = pair                                  // X0773: two elements
-   |                ^ `Tuple<String, int>` has 2 elements
+   |                ^ `Tuple<String, Int>` has 2 elements
 
 error[X0308]: mismatched types
   --> tuples.xn:12:36
    |
 12 |     var fromList:Tuple<int, int> = list                   // X0308: an array's length isn't known
-   |                  ---------------   ^^^^ expected `Tuple<int, int>`, found `Array<int>`
+   |                  ---------------   ^^^^ expected `Tuple<Int, Int>`, found `Array<Int>`
    |                  |
    |                  expected because of this type
 
@@ -73,7 +73,7 @@ error[X0308]: mismatched types
   --> tuples.xn:13:38
    |
 13 |     var other:Tuple<String, Float> = pair                 // X0308: positions are compared exactly
-   |               --------------------   ^^^^ expected `Tuple<String, Float>`, found `Tuple<String, int>`
+   |               --------------------   ^^^^ expected `Tuple<String, Float>`, found `Tuple<String, Int>`
    |               |
    |               expected because of this type
 
@@ -87,6 +87,6 @@ error[X0308]: mismatched types
   --> tuples.xn:17:25
    |
 17 |     var either:String = pair[i]                           // X0308: any position: `String | int`
-   |                ------   ^^^^^^^ expected `String`, found `String | int`
+   |                ------   ^^^^^^^ expected `String`, found `String | Int`
    |                |
    |                expected because of this type

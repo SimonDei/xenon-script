@@ -10,18 +10,18 @@ error[X0308]: mismatched types
   --> operator-overload.xn:6:23
    |
  6 |       var x:Vec = v + 5
-   |                       ^ expected `Vec`, found `int`
+   |                       ^ expected `Vec`, found `Int`
 ...
 19 |   public function operator+(other:Vec):Vec const { return this }
    |                                   --- `operator+` parameter declared here
 
-error[X0315]: cannot apply `+` to `int` and `Vec`
+error[X0315]: cannot apply `+` to `Int` and `Vec`
  --> operator-overload.xn:7:21
   |
 7 |       var y:Vec = 5 + v
   |                   - ^ - `Vec`
   |                   |
-  |                   `int`
+  |                   `Int`
 
 error[X0370]: `+` is not defined for `Dog`
  --> operator-overload.xn:9:15
@@ -105,7 +105,7 @@ error[X0201]: `operator+` is declared more than once in `Vec`
 21 |   public static function operator+(a:Vec):Vec { return a }
    |                          ^^^^^^^^^ duplicate declaration
 
-error[X0372]: `operator==` must return a `Boolean`
+error[X0372]: `operator==` must return a `Bool`
   --> operator-overload.xn:27:42
    |
 27 |   public function operator==(other:Pair):int { return 1 }        // must return a Boolean

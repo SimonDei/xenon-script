@@ -9,7 +9,6 @@ help: test it explicitly
   |
 4 |     var a:String = name != '' ? name : 'Brief'                       // X0315: fix `name != '' ? name : 'Brief'`
   |                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-help: or use `??` if only `null` should get the default
 
 error[X0315]: `||` needs `Boolean` operands
  --> or-default.xn:5:20
@@ -19,13 +18,12 @@ error[X0315]: `||` needs `Boolean` operands
   |
   = note: in JavaScript, `||` also replaces an empty string; `??` replaces only `null`
 help: keep the value in a local and test it: `final value:String = …`, then `value != '' ? value : 'Brief'`
-help: or use `??` if only `null` should get the default
 
 error[X0315]: `||` needs `Boolean` operands
  --> or-default.xn:7:17
   |
 7 |     var c:int = n || 1                                    // X0315: `||` also replaces `0`
-  |                 ^ this is `int`
+  |                 ^ this is `Int`
   |
   = note: in JavaScript, `||` also replaces `0`; `??` replaces only `null`
 help: test it explicitly

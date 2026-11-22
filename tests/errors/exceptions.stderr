@@ -13,7 +13,7 @@ error[X0750]: only `Exception`s can be thrown
  --> exceptions.xn:8:13
   |
 8 |       throw 42
-  |             ^^ this is `int`
+  |             ^^ this is `Int`
 
 error[X0420]: cannot find type `Error`
   --> exceptions.xn:12:13

@@ -2,7 +2,7 @@ error[X0308]: mismatched types
  --> std-promise.xn:4:30
   |
 4 |     var label:Promise<int> = id.then(n => Promise.resolve('#' + n))   // a Promise<String>: flattened
-  |               ------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Promise<int>`, found `Promise<String>`
+  |               ------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Promise<Int>`, found `Promise<String>`
   |               |
   |               expected because of this type
 
@@ -10,7 +10,7 @@ error[X0308]: mismatched types
  --> std-promise.xn:5:33
   |
 5 |     var wrong:Promise<String> = id.catch(e => 'none')                   // the replacement must be an int
-  |               ---------------   ^^^^^^^^^^^^^^^^^^^^^ expected `Promise<String>`, found `Promise<int>`
+  |               ---------------   ^^^^^^^^^^^^^^^^^^^^^ expected `Promise<String>`, found `Promise<Int>`
   |               |
   |               expected because of this type
 
@@ -18,7 +18,7 @@ error[X0308]: mismatched types
   --> std-promise.xn:5:42
    |
  5 |     var wrong:Promise<String> = id.catch(e => 'none')                   // the replacement must be an int
-   |                                          ^^^^^^^^^^^ expected `(reason:*) -> int`, found `(e:*) -> String`
+   |                                          ^^^^^^^^^^^ expected `(reason:*) -> Int`, found `(e:*) -> String`
    |
   ::: <xenon prelude>/xenon/Promise.xn:71:31
    |
@@ -29,7 +29,7 @@ error[X0308]: mismatched types
  --> std-promise.xn:6:38
   |
 6 |     var all:Promise<Array<String>> = Promise.all([id, id])
-  |             ----------------------   ^^^^^^^^^^^^^^^^^^^^^ expected `Promise<Array<String>>`, found `Promise<Array<int>>`
+  |             ----------------------   ^^^^^^^^^^^^^^^^^^^^^ expected `Promise<Array<String>>`, found `Promise<Array<Int>>`
   |             |
   |             expected because of this type
 
@@ -37,24 +37,24 @@ error[X0308]: mismatched types
  --> std-promise.xn:7:71
   |
 7 |     var done:Promise<void> = new Promise((resolve, reject) => resolve(1))
-  |                                                                       ^ expected `void`, found `int`
+  |                                                                       ^ expected `Void`, found `Int`
 
 error[X0308]: mismatched types
  --> std-promise.xn:9:19
   |
 9 |     later.resolve('x')
-  |                   ^^^ expected `int`, found `String`
+  |                   ^^^ expected `Int`, found `String`
   |
-help: convert the value with `int()`
+help: convert the value with `Int()`
   |
-9 |     later.resolve(int('x'))
+9 |     later.resolve(Int('x'))
   |                   ++++   +
 
 error[X0604]: no overload of `then` accepts ()
-  --> std-promise.xn:10:5
+  --> std-promise.xn:10:10
    |
-10 |     id.then()
-   |     ^^^^^^^ no matching overload
+10 |     void id.then()
+   |          ^^^^^^^ no matching overload
    |
    = note: `then(onFulfilled:(value:T) -> Promise<U>):Promise<U>`
    = note: `then(onFulfilled:(value:T) -> U):Promise<U>`

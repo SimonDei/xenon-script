@@ -14,7 +14,7 @@ error[X0771]: method `toUpperCase` can't be destructured
   |
 help: call it on the object instead
 
-error[X0770]: `int` values can't be destructured with `{…}`
+error[X0770]: `Int` values can't be destructured with `{…}`
  --> destructure-primitives.xn:8:9
   |
 8 |     var { MAX_VALUE } = count                       // static
@@ -24,7 +24,7 @@ error[X0308]: mismatched types
  --> destructure-primitives.xn:9:20
   |
 9 |     var n:String = length
-  |           ------   ^^^^^^ expected `String`, found `int`
+  |           ------   ^^^^^^ expected `String`, found `Int`
   |           |
   |           expected because of this type
   |

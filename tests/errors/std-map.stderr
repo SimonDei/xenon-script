@@ -2,23 +2,23 @@ error[X0308]: mismatched types
   --> std-map.xn:4:21
    |
  4 |     ages.set('ann', 'thirty')
-   |                     ^^^^^^^^ expected `int`, found `String`
+   |                     ^^^^^^^^ expected `Int`, found `String`
    |
   ::: <xenon prelude>/xenon/Map.xn:27:31
    |
 27 |     function set(key:K, value:V):Map<K, V>
    |                               - parameter declared here
    |
-help: convert the value with `int()`
+help: convert the value with `Int()`
    |
- 4 |     ages.set('ann', int('thirty'))
+ 4 |     ages.set('ann', Int('thirty'))
    |                     ++++        +
 
 error[X0308]: mismatched types
   --> std-map.xn:5:14
    |
  5 |     ages.set(7, 30)
-   |              ^ expected `String`, found `int`
+   |              ^ expected `String`, found `Int`
    |
   ::: <xenon prelude>/xenon/Map.xn:27:22
    |
@@ -34,7 +34,7 @@ error[X0308]: mismatched types
  --> std-map.xn:6:23
   |
 6 |     var name:String = ages.get('ann')
-  |              ------   ^^^^^^^^^^^^^^^ expected `String`, found `int?`
+  |              ------   ^^^^^^^^^^^^^^^ expected `String`, found `Int?`
   |              |
   |              expected because of this type
   |
@@ -47,7 +47,7 @@ error[X0308]: mismatched types
  --> std-map.xn:7:37
   |
 7 |     var wrong:Map<String, String> = ages
-  |               -------------------   ^^^^ expected `Map<String, String>`, found `Map<String, int>`
+  |               -------------------   ^^^^ expected `Map<String, String>`, found `Map<String, Int>`
   |               |
   |               expected because of this type
 
@@ -59,7 +59,7 @@ error[X0426]: no member `toFixed` on `String`
   |
 help: if this JavaScript API exists, use it dynamically: `(key as *).toFixed`
 
-error[X0426]: no member `toUpperCase` on `int`
+error[X0426]: no member `toUpperCase` on `Int`
  --> std-map.xn:9:35
   |
 9 |       trace(key.toFixed(2), value.toUpperCase())
@@ -83,22 +83,27 @@ error[X0426]: no member `length` on `Map`
    |
 help: if this JavaScript API exists, use it dynamically: `(ages as *).length`
 
-error[X0604]: no overload of `new Map` accepts (int)
+error[X0604]: no overload of `new Map` accepts (Int)
   --> std-map.xn:11:50
    |
 11 |     trace(ages.contains('ann'), ages.length, new Map(5), ages.keys().toArray().join(1))
    |                                                  ^^^ no matching overload
    |
    = note: `new Map()`
-   = note: `new Map(pairs:IEnumerable<Tuple<K, V>>)`
-   = note: `new Map(pairs:IEnumerable<Array<*>>)`
+   = note: `new Map(pairs:Iterable<Tuple<K, V>>)`
+   = note: `new Map(pairs:Iterable<Array<*>>)`
    = note: `new Map(other:Map<K, V>)`
 
 error[X0308]: mismatched types
   --> std-map.xn:11:85
    |
 11 |     trace(ages.contains('ann'), ages.length, new Map(5), ages.keys().toArray().join(1))
-   |                                                                                     ^ expected `String`, found `int`
+   |                                                                                     ^ expected `String`, found `Int`
+   |
+  ::: <xenon prelude>/xenon/Array.xn:90:29
+   |
+90 |     function join(separator:String = ','):String
+   |                             ------ parameter declared here
    |
 help: convert the value with `String()`
    |
@@ -122,4 +127,4 @@ error[X0422]: `Map` needs 2 type arguments
 14 |     var bare:Map = new Map()                      // type arguments can only be left out in `new`, `is` and `as`
    |              ^^^ missing type arguments
    |
-help: for example `Map<int, int>`; `new` and `is`/`as` can leave them out
+help: for example `Map<Int, Int>`; `new` and `is`/`as` can leave them out

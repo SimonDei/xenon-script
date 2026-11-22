@@ -17,22 +17,22 @@ error[X0506]: `writeOnly` has a setter but no getter
    |                         --------- setter declared here
 
 error[X0607]: a method can't be taken as a value through `?.`
-  --> accessors.xn:10:31
+  --> accessors.xn:10:32
    |
-10 |       var f:Function = other?.helper
-   |                               ^^^^^^
+10 |       var f:Function? = other?.helper
+   |                                ^^^^^^
    |
 help: call it, or check for null first
 
-error[X0211]: a setter's return type must be `void`
+error[X0211]: a setter's return type must be `Void`
   --> accessors.xn:13:42
    |
 13 |     public function set writeOnly(v:int):int { _v = v; return v }
    |                                          ^^^
    |
-help: use `:void`
+help: use `:Void`
    |
-13 |     public function set writeOnly(v:int):void { _v = v; return v }
+13 |     public function set writeOnly(v:int):Void { _v = v; return v }
    |                                          ~~~~
 
 error[X0312]: `writeOnly` can't return a value

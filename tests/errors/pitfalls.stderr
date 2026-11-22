@@ -22,7 +22,7 @@ help: compare with `==`
 8 |       while (x == 2) {}
   |                ~~
 
-error[X0313]: `total` must return a `int`
+error[X0313]: `total` must return a `Int`
   --> pitfalls.xn:13:7
    |
 12 |     private function total():int {

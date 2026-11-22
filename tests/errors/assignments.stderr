@@ -27,21 +27,21 @@ error[X0308]: mismatched types
   --> assignments.xn:14:7
    |
  5 |     private var total:int
-   |                       --- `total` declared as `int` here
+   |                       --- `total` declared as `Int` here
 ...
 14 |       total += 0.5
-   |       ^^^^^^^^^^^^ `+=` produces `Float`, but the target is `int`
+   |       ^^^^^^^^^^^^ `+=` produces `Float`, but the target is `Int`
 
 error[X0308]: mismatched types
   --> assignments.xn:15:7
    |
  5 |     private var total:int
-   |                       --- `total` declared as `int` here
+   |                       --- `total` declared as `Int` here
 ...
 15 |       total /= 2
-   |       ^^^^^^^^^^ `/=` produces `Float`, but the target is `int`
+   |       ^^^^^^^^^^ `/=` produces `Float`, but the target is `Int`
    |
-help: use `x = int(x / y)` for integer division
+help: use `x = Int(x / y)` for integer division
 
 error[X0502]: `id` is `final` and can only be assigned in the constructor of its class
   --> assignments.xn:19:7

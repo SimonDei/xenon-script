@@ -36,29 +36,29 @@ error[X0308]: mismatched types
  --> std-float.xn:7:21
   |
 7 |       var big:int = Float.MAX_SAFE_INTEGER
-  |               ---   ^^^^^^^^^^^^^^^^^^^^^^ expected `int`, found `Float`
+  |               ---   ^^^^^^^^^^^^^^^^^^^^^^ expected `Int`, found `Float`
   |               |
   |               expected because of this type
   |
-help: convert the value with `int()`
+help: convert the value with `Int()`
   |
-7 |       var big:int = int(Float.MAX_SAFE_INTEGER)
+7 |       var big:int = Int(Float.MAX_SAFE_INTEGER)
   |                     ++++                      +
 
 error[X0308]: mismatched types
   --> std-float.xn:9:24
    |
  9 |       trace(n.toString('16'), price.toPrecision(2.5), big, parsed)
-   |                        ^^^^ expected `int`, found `String`
+   |                        ^^^^ expected `Int`, found `String`
    |
   ::: <xenon prelude>/xenon/Float.xn:12:39
    |
 12 |     constexpr function toString(radix:int = 10):String
    |                                       --- parameter declared here
    |
-help: convert the value with `int()`
+help: convert the value with `Int()`
    |
- 9 |       trace(n.toString(int('16')), price.toPrecision(2.5), big, parsed)
+ 9 |       trace(n.toString(Int('16')), price.toPrecision(2.5), big, parsed)
    |                        ++++    +
 
 error[X0604]: no overload of `toPrecision` accepts (Float)

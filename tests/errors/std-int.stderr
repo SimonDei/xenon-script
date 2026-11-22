@@ -4,51 +4,64 @@ error[X0501]: cannot assign to constant `MAX_VALUE`
  5 |       int.MAX_VALUE = 0
    |           ^^^^^^^^^
    |
-  ::: <xenon prelude>/xenon/int.xn:16:32
+  ::: <xenon prelude>/xenon/Int.xn:16:32
    |
-16 |     public static inline const MAX_VALUE:int = 2147483647
+16 |     public static inline const MAX_VALUE:Int = 2147483647
    |                                --------- declared `const` here
 
 error[X0308]: mismatched types
  --> std-int.xn:6:19
   |
 6 |       var a:int = uint.MAX_VALUE
-  |             ---   ^^^^^^^^^^^^^^ expected `int`, found `uint`
+  |             ---   ^^^^^^^^^^^^^^ expected `Int`, found `UInt`
   |             |
   |             expected because of this type
   |
-help: convert the value with `int()`
+help: convert the value with `Int()`
   |
-6 |       var a:int = int(uint.MAX_VALUE)
+6 |       var a:int = Int(uint.MAX_VALUE)
   |                   ++++              +
 
 error[X0308]: mismatched types
  --> std-int.xn:7:20
   |
 7 |       var b:uint = Int.MIN_VALUE
-  |             ----   ^^^^^^^^^^^^^ expected `uint`, found `int`
+  |             ----   ^^^^^^^^^^^^^ expected `UInt`, found `Int`
   |             |
   |             expected because of this type
   |
-help: convert the value with `uint()`
+help: convert the value with `UInt()`
   |
-7 |       var b:uint = uint(Int.MIN_VALUE)
+7 |       var b:uint = UInt(Int.MIN_VALUE)
   |                    +++++             +
 
 error[X0308]: mismatched types
  --> std-int.xn:8:19
   |
 8 |       var c:int = n.valueOf() / 2
-  |             ---   ^^^^^^^^^^^^^^^ expected `int`, found `Float`
+  |             ---   ^^^^^^^^^^^^^^^ expected `Int`, found `Float`
   |             |
   |             expected because of this type
   |
-help: convert the value with `int()`
+help: convert the value with `Int()`
   |
-8 |       var c:int = int(n.valueOf() / 2)
+8 |       var c:int = Int(n.valueOf() / 2)
   |                   ++++               +
 
-error[X0426]: no static member `MAX_VLUE` on `int`
+error[X0308]: mismatched types
+ --> std-int.xn:9:19
+  |
+9 |       var d:int = int.parseInt('7')
+  |             ---   ^^^^^^^^^^^^^^^^^ expected `Int`, found `Float`
+  |             |
+  |             expected because of this type
+  |
+help: convert the value with `Int()`
+  |
+9 |       var d:int = Int(int.parseInt('7'))
+  |                   ++++                 +
+
+error[X0426]: no static member `MAX_VLUE` on `Int`
   --> std-int.xn:10:17
    |
 10 |       trace(int.MAX_VLUE, new int(), a, b, c, d)
@@ -59,7 +72,7 @@ help: a member with a similar name exists: `MAX_VALUE`
 10 |       trace(int.MAX_VALUE, new int(), a, b, c, d)
    |                 ~~~~~~~~~
 
-error[X0415]: `int` can't be instantiated with `new`
+error[X0415]: `Int` can't be instantiated with `new`
   --> std-int.xn:10:31
    |
 10 |       trace(int.MAX_VLUE, new int(), a, b, c, d)

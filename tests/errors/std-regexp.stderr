@@ -8,7 +8,7 @@ error[X0604]: no overload of `new RegExp` accepts ()
   = note: `new RegExp(source:RegExp)`
   = note: `new RegExp(source:RegExp, flags:String)`
 
-error[X0604]: no overload of `new RegExp` accepts (int)
+error[X0604]: no overload of `new RegExp` accepts (Int)
  --> std-regexp.xn:5:27
   |
 5 |     var also:RegExp = new RegExp(5)
@@ -22,7 +22,7 @@ error[X0308]: mismatched types
  --> std-regexp.xn:6:23
   |
 6 |     var text:String = digits.exec('a1')            // exec gives the match array, not a String
-  |              ------   ^^^^^^^^^^^^^^^^^ expected `String`, found `Array<String>`
+  |              ------   ^^^^^^^^^^^^^^^^^ expected `String`, found `Array<String>?`
   |              |
   |              expected because of this type
 
@@ -30,7 +30,7 @@ error[X0308]: mismatched types
  --> std-regexp.xn:7:25
   |
 7 |     var found:Boolean = digits.exec('a1')
-  |               -------   ^^^^^^^^^^^^^^^^^ expected `Boolean`, found `Array<String>`
+  |               -------   ^^^^^^^^^^^^^^^^^ expected `Bool`, found `Array<String>?`
   |               |
   |               expected because of this type
 
@@ -38,16 +38,16 @@ error[X0308]: mismatched types
   --> std-regexp.xn:9:24
    |
  9 |     digits.lastIndex = 'zero'
-   |                        ^^^^^^ expected `int`, found `String`
+   |                        ^^^^^^ expected `Int`, found `String`
    |
   ::: <xenon prelude>/xenon/RegExp.xn:43:19
    |
 43 |     var lastIndex:int
-   |                   --- `lastIndex` declared as `int` here
+   |                   --- `lastIndex` declared as `Int` here
    |
-help: convert the value with `int()`
+help: convert the value with `Int()`
    |
- 9 |     digits.lastIndex = int('zero')
+ 9 |     digits.lastIndex = Int('zero')
    |                        ++++      +
 
 error[X0504]: `global` has a getter but no setter
@@ -76,7 +76,7 @@ error[X0308]: mismatched types
   --> std-regexp.xn:11:41
    |
 11 |     trace(digits.tset('x'), digits.test(5), digits.matches, bad, also, text, found, n)
-   |                                         ^ expected `String`, found `int`
+   |                                         ^ expected `String`, found `Int`
    |
   ::: <xenon prelude>/xenon/RegExp.xn:21:24
    |

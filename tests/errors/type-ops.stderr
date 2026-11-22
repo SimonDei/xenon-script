@@ -22,39 +22,39 @@ error[X0396]: `String` values can never be `Main`
   |             |
   |             `String`
 
-error[X0396]: `int` values can never be `Main`
+error[X0396]: `Int` values can never be `Main`
  --> type-ops.xn:9:26
   |
 9 |       trace(s is Main, n as Main)
   |                        - ^^^^^^^
   |                        |
-  |                        `int`
+  |                        `Int`
 
-error[X0393]: `as int` is not possible: `int` can never be null
+error[X0393]: `as Int` is not possible: `Int` can never be null
   --> type-ops.xn:10:15
    |
 10 |       trace(d as int, d as Boolean)
    |               ^^^^^^
    |
-help: cast to `int?`, which gives `null` for other values
+help: cast to `Int?`, which gives `null` for other values
    |
 10 |       trace(d as int?, d as Boolean)
    |                     +
-help: or convert with `int(x)`, or test with `x is int`
+help: or convert with `Int(x)`, or test with `x is Int`
 
-error[X0393]: `as Boolean` is not possible: `Boolean` can never be null
+error[X0393]: `as Bool` is not possible: `Bool` can never be null
   --> type-ops.xn:10:25
    |
 10 |       trace(d as int, d as Boolean)
    |                         ^^^^^^^^^^
    |
-help: cast to `Boolean?`, which gives `null` for other values
+help: cast to `Bool?`, which gives `null` for other values
    |
 10 |       trace(d as int, d as Boolean?)
    |                                   +
-help: or convert with `Boolean(x)`, or test with `x is Boolean`
+help: or convert with `Bool(x)`, or test with `x is Bool`
 
-error[X0394]: `Array<int>` can't be checked at runtime
+error[X0394]: `Array<Int>` can't be checked at runtime
   --> type-ops.xn:11:18
    |
 11 |       trace(d is Array<int>, d is *)

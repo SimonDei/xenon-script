@@ -21,7 +21,7 @@ error[X0510]: final field `id` is used before it is assigned
  3 |     private final id:String
    |                   -- declared here without a value
 ...
-15 |       var flag:Boolean = id == null
+15 |       var flag:Boolean = id == ''
    |                          ^^
 
 error[X0510]: final field `id` is used before it is assigned

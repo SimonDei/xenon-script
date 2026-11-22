@@ -1,18 +1,18 @@
-error[X0315]: cannot apply `-` to `String` and `int`
+error[X0315]: cannot apply `-` to `String` and `Int`
  --> operators.xn:7:15
   |
 7 |       trace(s - n, b * 2, -s, !n)
-  |             - ^ - `int`
+  |             - ^ - `Int`
   |             |
   |             `String`
 
-error[X0315]: cannot apply `*` to `Boolean` and `int`
+error[X0315]: cannot apply `*` to `Bool` and `Int`
  --> operators.xn:7:22
   |
 7 |       trace(s - n, b * 2, -s, !n)
-  |                    - ^ - `int`
+  |                    - ^ - `Int`
   |                    |
-  |                    `Boolean`
+  |                    `Bool`
 
 error[X0315]: cannot apply unary `-` to `String`
  --> operators.xn:7:27
@@ -20,11 +20,11 @@ error[X0315]: cannot apply unary `-` to `String`
 7 |       trace(s - n, b * 2, -s, !n)
   |                           ^- this is `String`
 
-error[X0315]: `!` needs a `Boolean`
+error[X0315]: `!` needs a `Bool`
  --> operators.xn:7:31
   |
 7 |       trace(s - n, b * 2, -s, !n)
-  |                               ^- this is `int`
+  |                               ^- this is `Int`
 
 error[X0309]: this comparison is always false
  --> operators.xn:8:15
@@ -32,19 +32,29 @@ error[X0309]: this comparison is always false
 8 |       trace(n == 'one', s != null, n == null)
   |             - ^^ ----- `String`
   |             |
-  |             `int`
+  |             `Int`
   |
   = note: `==` never converts between types in Xenon
 
-error[X0309]: this comparison is always false
+warning[X0818]: this comparison is always true
+ --> operators.xn:8:27
+  |
+8 |       trace(n == 'one', s != null, n == null)
+  |                         - ^^
+  |                         |
+  |                         `String` can't be null
+  |
+help: declare the type `String?` if `null` is meant to be possible
+
+warning[X0818]: this comparison is always false
  --> operators.xn:8:38
   |
 8 |       trace(n == 'one', s != null, n == null)
-  |                                    - ^^ ---- `null`
+  |                                    - ^^
   |                                    |
-  |                                    `int`
+  |                                    `Int` can't be null
   |
-  = note: `int` can never be null
+help: declare the type `Int?` if `null` is meant to be possible
 
 error[X0370]: `+` is not defined for `Main`
  --> operators.xn:9:18

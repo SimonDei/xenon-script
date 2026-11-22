@@ -1,4 +1,4 @@
-error[X0604]: no overload of `new Date` accepts (Boolean)
+error[X0604]: no overload of `new Date` accepts (Bool)
  --> std-date.xn:4:22
   |
 4 |     var a:Date = new Date(true)
@@ -22,7 +22,7 @@ error[X0308]: mismatched types
  --> std-date.xn:7:23
   |
 7 |     var year:String = d.getFullYear()
-  |              ------   ^^^^^^^^^^^^^^^ expected `String`, found `int`
+  |              ------   ^^^^^^^^^^^^^^^ expected `String`, found `Int`
   |              |
   |              expected because of this type
   |
@@ -64,7 +64,7 @@ error[X0308]: mismatched types
   --> std-date.xn:11:47
    |
 11 |     trace(a, b, later, year, when, Date.parse(0), d.toISOStrng(), Date.now = 1)
-   |                                               ^ expected `String`, found `int`
+   |                                               ^ expected `String`, found `Int`
    |
   ::: <xenon prelude>/xenon/Date.xn:25:32
    |
@@ -97,7 +97,7 @@ error[X0308]: mismatched types
   --> std-date.xn:11:78
    |
 11 |     trace(a, b, later, year, when, Date.parse(0), d.toISOStrng(), Date.now = 1)
-   |                                                                              ^ expected `() -> Float`, found `int`
+   |                                                                              ^ expected `() -> Float`, found `Int`
    |
   ::: <xenon prelude>/xenon/Date.xn:23:27
    |

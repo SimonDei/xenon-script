@@ -13,7 +13,7 @@ error[X0308]: mismatched types
   --> std-globals.xn:4:16
    |
  4 |     setTimeout(10, () => trace('x'))                 // arguments swapped (JS habit from other APIs)
-   |                ^^ expected `() -> void`, found `int`
+   |                ^^ expected `() -> Void`, found `Int`
    |
   ::: <xenon prelude>/xenon/globals.xn:13:39
    |
@@ -24,7 +24,7 @@ error[X0308]: mismatched types
   --> std-globals.xn:4:20
    |
  4 |     setTimeout(10, () => trace('x'))                 // arguments swapped (JS habit from other APIs)
-   |                    ^^^^^^^^^^^^^^^^ expected `Float`, found `() -> void`
+   |                    ^^^^^^^^^^^^^^^^ expected `Float`, found `() -> Void`
    |
   ::: <xenon prelude>/xenon/globals.xn:13:54
    |
@@ -35,24 +35,24 @@ error[X0308]: mismatched types
  --> std-globals.xn:7:23
   |
 7 |     var encoded:int = encodeURIComponent('a b')
-  |                 ---   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `int`, found `String`
+  |                 ---   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Int`, found `String`
   |                 |
   |                 expected because of this type
   |
-help: convert the value with `int()`
+help: convert the value with `Int()`
   |
-7 |     var encoded:int = int(encodeURIComponent('a b'))
+7 |     var encoded:int = Int(encodeURIComponent('a b'))
   |                       ++++                         +
 
 error[X0308]: mismatched types
   --> std-globals.xn:8:28
    |
  8 |     var text:String = btoa(42)
-   |                            ^^ expected `String`, found `int`
+   |                            ^^ expected `String`, found `Int`
    |
-  ::: <xenon prelude>/xenon/globals.xn:57:29
+  ::: <xenon prelude>/xenon/globals.xn:62:29
    |
-57 |   native function btoa(text:String):String
+62 |   native function btoa(text:String):String
    |                             ------ parameter declared here
    |
 help: convert the value with `String()`
@@ -61,36 +61,36 @@ help: convert the value with `String()`
    |                            +++++++  +
 
 error[X0604]: no overload of `fetch` accepts (String, String)
- --> std-globals.xn:9:5
+ --> std-globals.xn:9:10
   |
-9 |     fetch('/api', 'POST')                            // options are an object: { method: 'POST' }
-  |     ^^^^^ no matching overload
+9 |     void fetch('/api', 'POST')                          // options are an object: { method: 'POST' }
+  |          ^^^^^ no matching overload
   |
   = note: `fetch(url:String):Promise<Response>`
   = note: `fetch(url:String, options:RequestInit):Promise<Response>`
 
 error[X0791]: `methd` is not a member of `RequestInit`
-  --> std-globals.xn:10:21
+  --> std-globals.xn:10:26
    |
-10 |     fetch('/api', { methd: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
-   |                     ^^^^^ unknown member
+10 |     void fetch('/api', { methd: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
+   |                          ^^^^^ unknown member
    |
 help: did you mean `method`?
    |
-10 |     fetch('/api', { method: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
-   |                     ~~~~~~
+10 |     void fetch('/api', { method: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
+   |                          ~~~~~~
 
 error[X0308]: mismatched types
-  --> std-globals.xn:10:47
+  --> std-globals.xn:10:52
    |
-10 |     fetch('/api', { methd: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
-   |                                               ^ expected `Boolean?`, found `int`
+10 |     void fetch('/api', { methd: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
+   |                                                    ^ expected `Bool?`, found `Int`
 
 error[X0308]: mismatched types
   --> std-globals.xn:11:47
    |
 11 |     var copy:Array<String> = structuredClone([1, 2])
-   |                                               ^ expected `String`, found `int`
+   |                                               ^ expected `String`, found `Int`
    |
   ::: <xenon prelude>/xenon/globals.xn:24:44
    |
@@ -106,7 +106,7 @@ error[X0308]: mismatched types
   --> std-globals.xn:11:50
    |
 11 |     var copy:Array<String> = structuredClone([1, 2])
-   |                                                  ^ expected `String`, found `int`
+   |                                                  ^ expected `String`, found `Int`
    |
   ::: <xenon prelude>/xenon/globals.xn:24:44
    |
@@ -122,7 +122,7 @@ error[X0763]: an `async` function must return a `Promise<T>`
   --> std-globals.xn:13:23
    |
 13 |     var f:() -> int = async () => { return 1 }        // but an async arrow can't produce an `int`
-   |                       ^ found `int`
+   |                       ^ found `Int`
 
 error[X0425]: cannot find `twice` in this scope
   --> std-globals.xn:14:35
