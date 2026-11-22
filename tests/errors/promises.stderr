@@ -1,0 +1,47 @@
+warning[X0874]: this promise is neither awaited nor kept
+ --> promises.xn:3:5
+  |
+3 |     save()                                          // X0874 (help: `void`)
+  |     ^^^^^^ if it fails, the error is lost
+  |
+help: or mark it as intentionally not awaited
+  |
+3 |     void save()                                          // X0874 (help: `void`)
+  |     +++++
+
+warning[X0874]: this promise is neither awaited nor kept
+ --> promises.xn:4:5
+  |
+4 |     save().then((n) => trace(n))                    // X0874: a failure isn't handled
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ if it fails, the error is lost
+  |
+help: or mark it as intentionally not awaited
+  |
+4 |     void save().then((n) => trace(n))                    // X0874: a failure isn't handled
+  |     +++++
+
+warning[X0874]: this promise is neither awaited nor kept
+ --> promises.xn:5:5
+  |
+5 |     save().finally(() => trace('done'))             // X0874
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ if it fails, the error is lost
+  |
+help: or mark it as intentionally not awaited
+  |
+5 |     void save().finally(() => trace('done'))             // X0874
+  |     +++++
+
+warning[X0874]: this promise is neither awaited nor kept
+  --> promises.xn:14:5
+   |
+14 |     save()                                          // X0874 (help: `await` or `void`)
+   |     ^^^^^^ if it fails, the error is lost
+   |
+help: wait for it
+   |
+14 |     await save()                                          // X0874 (help: `await` or `void`)
+   |     ++++++
+help: or mark it as intentionally not awaited
+   |
+14 |     void save()                                          // X0874 (help: `await` or `void`)
+   |     +++++

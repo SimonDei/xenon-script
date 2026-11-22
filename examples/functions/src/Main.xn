@@ -41,7 +41,7 @@ package {
       var fact:Function = function f(n:int):int { return n <= 1 ? 1 : n * f(n - 1) }
       trace('5! =', fact(5))
 
-      run()
+      void run()                     // starts the async part; nothing waits for it
     }
 
     private function makeCounter(start:int):Function {

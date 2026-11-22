@@ -1158,7 +1158,7 @@ export class XenonProject {
     for (const n of nodesAt(ast, offset)) {
       for (const p of (n as { typeParams?: A.Ident[] }).typeParams ?? []) add({ label: p.name, kind: "typeParameter", detail: `type parameter ${p.name}` });
     }
-    for (const t of ["int", "uint", "Float", "String", "Boolean", "void"]) add({ label: t, kind: "class" });
+    for (const t of ["Int", "UInt", "Float", "String", "Bool", "Void"]) add({ label: t, kind: "class" });
     add({ label: "Tuple", kind: "class", detail: "Tuple<A, B, …>: an array with one type per position" });
     const { classes, typedefs } = this.visibleTypes(a, ast);
     for (const c of classes) add(classItem(c));

@@ -36,7 +36,12 @@ package {
       var other:* = log
       trace(thing is IDisposable, other is IDisposable)
 
-      run()
+      void run()                             // starts the async part; nothing waits for it
+    }
+
+    private static function flush():void {
+      trace(log.join(' | '))
+      log = []
     }
 
     private function scoped():void {

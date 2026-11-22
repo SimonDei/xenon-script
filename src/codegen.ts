@@ -1762,7 +1762,7 @@ class ModuleGen {
         return { code: `new ${this.tok(e.callee.span, callee)}(${this.args(e.args)})`, prec: P.call };
       }
       case "Unary": {
-        const op = e.op === "typeof" || e.op === "delete" ? `${e.op} ` : e.op;
+        const op = e.op === "typeof" || e.op === "delete" || e.op === "void" ? `${e.op} ` : e.op;
         let arg = this.wrap(this.expr(e.arg), P.unary);
         // Avoid `- -x` turning into `--x`.
         if ((e.op === "-" || e.op === "+") && plain(arg).startsWith(e.op)) arg = `(${arg})`;

@@ -6,8 +6,8 @@ public class Main {
     setTimeout(() => n++, 10)                        // a callback may return a value; it's ignored
     var encoded:int = encodeURIComponent('a b')
     var text:String = btoa(42)
-    fetch('/api', 'POST')                            // options are an object: { method: 'POST' }
-    fetch('/api', { methd: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
+    void fetch('/api', 'POST')                          // options are an object: { method: 'POST' }
+    void fetch('/api', { methd: 'POST', keepalive: 1 })   // RequestInit is checked like any shape
     var copy:Array<String> = structuredClone([1, 2])
     queueMicrotask(async () => { await fetch('/x') })  // fine: an async callback whose result is ignored
     var f:() -> int = async () => { return 1 }        // but an async arrow can't produce an `int`

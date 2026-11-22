@@ -1337,7 +1337,8 @@ export class Parser {
       this.advance();
       return { kind: "Unary", op: t.value, arg: this.parseUnary(), span: this.sp(start) };
     }
-    if (this.is("typeof") || this.is("delete")) {
+    // `void save()`: evaluates and discards (marks a promise as intentionally not awaited).
+    if (this.is("typeof") || this.is("delete") || this.is("void")) {
       this.advance();
       return { kind: "Unary", op: t.value, arg: this.parseUnary(), span: this.sp(start) };
     }

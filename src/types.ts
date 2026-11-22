@@ -266,7 +266,7 @@ export function nonNull(t: Type): Type {
 export function typeToString(t: Type): string {
   switch (t.kind) {
     case "prim": return t.literal === undefined ? t.name : typeof t.literal !== "string" ? literalNumberText(t) : `'${t.literal.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
-    case "void": return "void";
+    case "void": return "Void";
     case "null": return "null";
     case "any": return "*";
     case "error": return "{error}";

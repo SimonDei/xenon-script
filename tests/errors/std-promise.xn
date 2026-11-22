@@ -7,7 +7,7 @@ public class Main {
     var done:Promise<void> = new Promise((resolve, reject) => resolve(1))
     var later:PromiseWithResolvers<int> = Promise.withResolvers()
     later.resolve('x')
-    id.then()
+    void id.then()
     trace(label, wrong, all, done)
   }
 }

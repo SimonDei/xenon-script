@@ -333,6 +333,8 @@ export const CODES: Record<string, CodeInfo> = {
   X0871: c("duplicate import", "The class is imported twice."),
   X0872: c("import from the own package", "Classes of the same package are visible without an import."),
   X0873: c("deprecated", "The class, method or field is marked `[Deprecated('…')]`: its message says what to use instead. Uses inside the deprecated declaration itself aren't reported."),
+  X0874: c("promise not awaited", "A statement made a promise and dropped it: if the work fails, nothing sees the error, and nothing waits for it to finish. Wait for it with `await` (in an `async` function), keep it (`var job = save()`), handle failure (`.catch(…)`), or write `void save()` to say it runs on its own on purpose.",
+    "save()", "await save()"),
 
   // ---- const methods ----
   X0901: c("change in a const method", "A `const` method doesn't change the object: no field or setter writes through `this`.",

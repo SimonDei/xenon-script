@@ -1685,8 +1685,8 @@ class Env {
         if (m.accessor === "get" && m.params.length > 0) this.diags.error("X0205", "getters can't have parameters", m.params[0]!.span);
         if (m.accessor === "set" && m.params.length !== 1) this.diags.error("X0206", "setters take exactly one parameter", m.name.span);
         if (m.accessor === "set" && m.returnType && !isVoidNode(m.returnType)) {
-          this.diags.error("X0211", "a setter's return type must be `void`", m.returnType.span)
-            .help("use `:void`", [{ span: m.returnType.span, text: "void" }]);
+          this.diags.error("X0211", "a setter's return type must be `Void`", m.returnType.span)
+            .help("use `:Void`", [{ span: m.returnType.span, text: "Void" }]);
         }
         if (prev && prev.kind === "accessor" && !prev.decl2 && (prev.decl as A.Method).accessor !== m.accessor && prev.isStatic === isStatic) {
           prev.decl2 = m;
@@ -3080,16 +3080,18 @@ class BodyChecker {
     // value that says nothing (none, `null`) leaves it untyped.
     let inferred: Type | undefined;
     if (!s.type) {
-      const d = this.diags.warning("X0850", `variable \`${s.name.name}\` has no type annotation; it is untyped (\`*\`)`, s.name.span);
-      const initType = s.init ? this.expr(s.init, scope) : undefined;
-      const at = span(s.name.span.file, s.name.span.end, s.name.span.end);
-      const describable = initType && !isDynamic(initType) && !["null", "void", "method", "classRef"].includes(initType.kind) && !fromDeclarations(initType);
-      if (describable) d.help("add the type of the initializer", [{ span: at, text: `:${typeToString(widen(initType))}` }]);
-      else d.help("add a type, or `:*` to make it explicitly dynamic", [{ span: at, text: ":*" }]);
-      const untypedLocal: Local = { type: T.any, kind: s.decl, nameSpan: s.name.span };
-      this.declared.push({ local: untypedLocal, name: s.name });
-      scope.declare(s.name.name, untypedLocal);
-      return;
+      const initType = s.init ? this.valueExpr(s.init, scope) : undefined;
+      if (initType && initType.kind !== "null" && initType.kind !== "void") inferred = initType.kind === "error" ? T.error : this.inferredType(s.init!);
+      else {
+        const at = span(s.name.span.file, s.name.span.end, s.name.span.end);
+        this.diags.warning("X0850", `variable \`${s.name.name}\` has no type ${s.init ? "and its value is `null`" : "and no value"}; it is untyped (\`*\`)`, s.name.span)
+          .note("a variable takes its value's type; without a value saying which, it is untyped")
+          .help("add a type, or `:*` to make it explicitly dynamic", [{ span: at, text: ":*" }]);
+        const untypedLocal: Local = { type: T.any, kind: s.decl, nameSpan: s.name.span };
+        this.declared.push({ local: untypedLocal, name: s.name });
+        scope.declare(s.name.name, untypedLocal);
+        return;
+      }
     }
     const type = inferred ?? this.resolveT(s.type!, this.scope);
     if (s.decl === "const" && !s.init) {
@@ -3143,6 +3145,24 @@ class BodyChecker {
       return { kind: "shape", members };
     }
     return widen(own);
+  }
+
+  /**
+   * X0874: a promise made by a statement and then dropped (`save()` where `save` is async): if it
+   * fails, nothing sees the error. Awaiting it, keeping it, `void save()` (on purpose) and chains
+   * that handle failure (`.catch(…)`, `.then(ok, failed)`) are fine.
+   */
+  private floatingPromise(e: A.Expr, t: Type): boolean {
+    const promise = this.env.promiseClass;
+    const n = nonNull(t);
+    if (!promise || n.kind !== "class" || n.info !== promise) return false;
+    if (e.kind === "Await" || e.kind === "Assign" || (e.kind === "Unary" && e.op === "void")) return true;
+    if (e.kind === "Call" && e.callee.kind === "Member" && (e.callee.name.name === "catch" || (e.callee.name.name === "then" && e.args.length >= 2))) return true;
+    const at = span(e.span.file, e.span.start, e.span.start);
+    const d = this.diags.warning("X0874", "this promise is neither awaited nor kept", e.span, "if it fails, the error is lost");
+    if (this.method?.async) d.help("wait for it", [{ span: at, text: "await " }]);
+    d.help("or mark it as intentionally not awaited", [{ span: at, text: "void " }]);
+    return true;
   }
 
   private returnStmt(s: A.Stmt & { kind: "Return" }, scope: Scope) {
@@ -5108,6 +5128,8 @@ class BodyChecker {
         return T.int;
       case "typeof":
         return T.String;
+      case "void":
+        return T.void;
       case "delete": {
         if (e.arg.kind !== "Member" && e.arg.kind !== "Index") {
           this.diags.error("X0316", "`delete` needs a property access", e.arg.span);

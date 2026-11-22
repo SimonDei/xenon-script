@@ -1,0 +1,21 @@
+public class Main {
+  public function Main() {
+    save()                                          // X0874 (help: `void`)
+    save().then((n) => trace(n))                    // X0874: a failure isn't handled
+    save().finally(() => trace('done'))             // X0874
+    save().catch((e) => trace('failed'))            // handled: fine
+    save().then((n) => trace(n), (e) => trace('x')) // handled: fine
+    void save()                                     // on purpose: fine
+    var job = save()                                // kept: fine
+    trace(job)
+  }
+
+  private async function run():Promise<Void> {
+    save()                                          // X0874 (help: `await` or `void`)
+    await save()                                    // fine
+  }
+
+  private async function save():Promise<Int> {
+    return 1
+  }
+}
