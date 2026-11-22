@@ -19,7 +19,7 @@ export interface Token {
   flags?: string;
 }
 
-/** Reserved keywords (A0). Contextual keywords (get, set, from, of, step, operator) lex as identifiers. */
+/** Reserved keywords (A0). */
 export const KEYWORDS = new Set([
   // structure
   "package", "import", "class", "interface", "enum", "typedef", "extends", "implements",
@@ -39,6 +39,13 @@ export const KEYWORDS = new Set([
   "void",
   // reserved for future use
   "namespace", "use", "with", "yield", "let", "goto",
+]);
+
+/** Words with syntax meaning only in particular positions, while remaining usable as identifiers. */
+export const CONTEXTUAL_KEYWORDS = new Set([
+  "get", "set", "operator", "from", "of", "step", "defer",
+  // A compile-time operator unless a local, member, class or package-level function shadows it.
+  "nameof",
 ]);
 
 /** Punctuators, longest first so the greedy match is correct. */

@@ -15,7 +15,7 @@ import type * as A from "./ast.ts";
 import { type CheckResult, type ClassInfo, findMember, isScoped, type TypedefInfo, type MemberSig, readDecl, type Resolution, visibilityOf } from "./checker.ts";
 import { generatedOffsetAt, type Mapping, type OutputFile, sourceOffsetAt } from "./codegen.ts";
 import { compileProject, type CompileResult, PRELUDE, type SourceInput } from "./compiler.ts";
-import { KEYWORDS } from "./lexer.ts";
+import { CONTEXTUAL_KEYWORDS, KEYWORDS } from "./lexer.ts";
 import { TYPED_GLOBALS } from "./globals.ts";
 import { SourceFile, type Span, spanText } from "./source.ts";
 import { isSubclass, memberTypeIn, nonNull, type MethodType, type ShapeMember, type ShapeType, stdClassOf, supertypes, type Type, typeToString } from "./types.ts";
@@ -1256,7 +1256,13 @@ export class XenonProject {
     }
     add({ label: "trace", kind: "function", detail: "function trace(...values:Array<*>):void" });
     for (const k of KEYWORDS) add({ label: k, kind: "keyword" });
-    add({ label: "defer", kind: "keyword", detail: "run the following statement when this block ends" });
+    for (const k of CONTEXTUAL_KEYWORDS) add({
+      label: k,
+      kind: "keyword",
+      detail: k === "defer" ? "run the following statement when this block ends"
+        : k === "nameof" ? "checked compile-time name of a symbol as String"
+        : undefined,
+    });
     for (const t of ["Int", "UInt", "Float", "String", "Bool"]) add({ label: t, kind: "class" });
     return [...items.values()];
   }

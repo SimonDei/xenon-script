@@ -118,6 +118,7 @@ Working name **XenonScript**, extension `.xn`.
 | `of` | value loop: `for (var v:T of coll)` (as in JS, `of` stays usable as a name) |
 | `step` | after a range in a loop header: `0..n step 2` |
 | `defer` | at the start of a statement: `defer close()` or `defer { ... }` |
+| `nameof` | compile-time operator: `nameof(user.email)` (shadowable by a declaration) |
 | `static` block | `static { ... }` inside a class body |
 
 **Built-in type names** (predeclared, not keywords; shadowing is a compile error): `int` `uint` `Float` `String` `Boolean` `Object` `Array` `Function` `Class` `RegExp`, plus the dynamic type `*`. **Built-in typedefs** (prelude): `Int` `UInt` `Void` `Bool` `Any` (see A2). **Built-in classes** (prelude): `Exception` `ArgumentException` `TypeException` `RangeException` `StateException` `NotImplementedException` (see A6c). `Error` and the JS error classes are hidden.

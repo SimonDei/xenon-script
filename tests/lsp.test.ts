@@ -103,6 +103,7 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
     })) as { label: string }[];
     expect(scopeItems.map((i) => i.label)).toContain("greeting");
     expect(scopeItems.map((i) => i.label)).toContain("defer");
+    expect(scopeItems.map((i) => i.label)).toContain("nameof");
 
     // References: the declaration and the use.
     const refs = (await rpc.sendRequest("textDocument/references", { textDocument: { uri }, position: { line: 4, character: 12 }, context: { includeDeclaration: true } })) as { range: { start: unknown } }[];

@@ -130,7 +130,7 @@ test("completion: members after a dot, scope names elsewhere", () => {
 
   const scope = labels(insert(""));
   expect(scope.slice(0, 3)).toEqual(["a", "scores", "n"]); // locals declared before the cursor
-  expect(scope).toEqual(expect.arrayContaining(["Animal", "Main", "Exception", "Map", "setTimeout", "readFileSync", "path", "document", "trace", "while", "defer"]));
+  expect(scope).toEqual(expect.arrayContaining(["Animal", "Main", "Exception", "Map", "setTimeout", "readFileSync", "path", "document", "trace", "while", "defer", "operator", "nameof"]));
 });
 
 test("a static class cannot be instantiated", () => {
