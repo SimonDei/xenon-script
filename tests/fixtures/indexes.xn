@@ -1,0 +1,30 @@
+public class Main {
+  public function Main() {
+    var list = [1, 2]
+    trace(list[1], 'abc'[2])
+    list[5] = 9                                  // a plain write may grow the array
+    list[0] += 10
+    list[1]++
+    trace(list.join(','))
+    var pair:Tuple<String, Int> = ['a', 1]
+    trace(pair[1])
+    var maybe = list.at(10)
+    trace(maybe ?? -1)
+    try {
+      trace(list[10])
+    } catch (e:RangeException) {
+      trace('caught: ' + e.message)
+    }
+    try {
+      trace('abc'[-1])
+    } catch (e:RangeException) {
+      trace('caught: ' + e.message)
+    }
+    var rows = [[1]]
+    try {
+      rows[1][0] += 1
+    } catch (e:RangeException) {
+      trace('caught: ' + e.message)
+    }
+  }
+}

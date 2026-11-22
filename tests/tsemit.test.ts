@@ -90,7 +90,7 @@ export const IShape = Symbol('geo.IShape');
   expect(box).toContain("label: string | null = null;"); // `String?` with null safety (the default)
   expect(box).toContain("constructor(first: T) {");
   expect(box).toContain("map<U>(f: (item: T) => U): Box<U> {");
-  expect(box).toContain("return new Box<U>(f(this.#items[0]));");
+  expect(box).toContain("return new Box<U>(f(this.#items[$index(this.#items, 0)]));"); // a checked position
   const main = files.get("Main.ts")!;
   expect(main).toContain("let n: number | null = null;");
   expect(main).toContain("let c: Color = Color.Green;");

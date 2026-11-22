@@ -391,6 +391,11 @@ export function $wrapLazily(method${any}, wrap${ts ? ": (method: any) => any" : 
     return (wrapped ??= wrap(method)).apply(this, args);
   };
 }
+/** A checked position (\`a[i]\` on an array or string): \`i\` itself, or a \`RangeException\` when it is out of range. */
+export function $index(array${ts ? ": { length: number }" : ""}, i${ts ? ": number" : ""})${ts ? ": number" : ""} {
+  if (i >= 0 && i < array.length) return i;
+  throw new RangeException(\`index \${i} is out of range (length \${array.length})\`);
+}
 function $suppressed(error${ts ? ": unknown" : ""}, suppressed${ts ? ": unknown" : ""})${ts ? ": Error" : ""} {
   const message = "An error was suppressed during disposal";
   if (typeof SuppressedError === "function") return new SuppressedError(error, suppressed, message);
@@ -1142,6 +1147,8 @@ class ModuleGen {
   /** How instance members are reached here: `this`, or `$self` inside `function` expressions. */
   /** Member expressions being assigned (`this.x = …`, `x++`, `[this.a, this.b] = …`). */
   private writeTargets = new Set<A.Expr>();
+  /** Write targets that are read too: `a[i] += 1`, `a[i]++` (their index is checked like a read's). */
+  private readWrites = new Set<A.Expr>();
 
   /**
    * The property name for an access to member `m` (see `fieldStorage`): `#x` for a private field or
@@ -1727,8 +1734,16 @@ class ModuleGen {
         if (t?.kind === "classRef" && m?.isStatic && m.owner !== t.info) return { code: `${this.classRef(m.owner)}.${prop}`, prec: P.call };
         return { code: `${this.wrap(this.expr(e.object), P.call)}${e.optional ? "?." : "."}${prop}`, prec: P.call };
       }
-      case "Index":
-        return { code: `${this.wrap(this.expr(e.object), P.call)}${e.optional ? "?." : ""}[${this.expr(e.index).code}]`, prec: P.call };
+      case "Index": {
+        // `a[i]` read (or changed: `a[i] += 1`, `a[i]++`): a position out of range throws instead of
+        // giving `undefined`. A plain `a[i] = x` isn't checked: it may grow the array.
+        const plainWrite = this.writeTargets.has(e) && !this.readWrites.has(e);
+        if (!this.check.checkedIndexes.has(e) || plainWrite) {
+          return { code: `${this.wrap(this.expr(e.object), P.call)}${e.optional ? "?." : ""}[${this.expr(e.index).code}]`, prec: P.call };
+        }
+        const index = this.helper("$index");
+        return this.reuse(e.object, (first, again) => ({ code: `${first}${e.optional ? "?." : ""}[${index}(${again}, ${this.wrap(this.expr(e.index), P.assign)})]`, prec: P.call }));
+      }
       case "Call": {
         const call = this.call(e);
         const t = this.ts && this.check.tsResultCasts.has(e) ? this.check.exprTypes.get(e) : undefined;

@@ -198,6 +198,11 @@ export interface CheckResult {
    * like one) and its named values. Compile-time attributes (`Usage`, `Deprecated`) aren't here.
    */
   attributes: Map<A.ClassDecl | A.Method | A.Field, { node: A.Attribute; create: A.Expr & { kind: "New" } }[]>;
+  /**
+   * `a[i]` on an array, tuple or `String` with a position not known to exist: compiled to throw a
+   * `RangeException` when `i` is out of range (reads; a plain `a[i] = x` may grow an array).
+   */
+  checkedIndexes: Set<A.Expr>;
 }
 
 /** How a scoped value is destroyed: awaited for an async destructor; `handedOff` when some `return` passes it on. */
@@ -410,7 +415,7 @@ class Scope {
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
     qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
-    expectedTypes: new Map(), scopedLocals: new Map(), scopedTemps: new Map(), scopedReturns: new Set(), attributes: new Map(),
+    expectedTypes: new Map(), scopedLocals: new Map(), scopedTemps: new Map(), scopedReturns: new Set(), attributes: new Map(), checkedIndexes: new Set(),
   };
   const env = new Env(classes, typedefs, diags, result);
   env.jsBindings = jsBindings;
@@ -3731,6 +3736,11 @@ class BodyChecker {
       case "Index": {
         const obj = this.valueExpr(e.object, scope);
         const idx = this.valueExpr(e.index, scope);
+        // Positions that may not exist are checked at run time (see `CheckResult.checkedIndexes`).
+        const nonNullObj = nonNull(obj);
+        if (isNumeric(idx) && (isPrim(nonNullObj, "String") || (nonNullObj.kind === "builtin" && (nonNullObj.name === "Array" || nonNullObj.name === "Tuple")))) {
+          this.env.result.checkedIndexes.add(e);
+        }
         if (isPrim(obj, "String")) {
           if (!isNumeric(idx) && !isDynamic(idx)) {
             this.diags.error("X0308", "mismatched types", e.index.span, `a \`String\` index is an \`int\`, found \`${typeToString(idx)}\``);
@@ -3745,7 +3755,10 @@ class BodyChecker {
           }
           const at = this.constValue(e.index);
           if (at.ok && typeof at.value === "number") {
-            if (Number.isInteger(at.value) && at.value >= 0 && at.value < positions.length) return positions[at.value]!;
+            if (Number.isInteger(at.value) && at.value >= 0 && at.value < positions.length) {
+              this.env.result.checkedIndexes.delete(e); // a tuple's own position: always there
+              return positions[at.value]!;
+            }
             this.diags.error("X0324", "tuple index out of range", e.index.span, `\`${typeToString(obj)}\` has positions 0 to ${positions.length - 1}`);
             return T.error;
           }
