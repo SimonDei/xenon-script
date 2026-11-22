@@ -1,10 +1,11 @@
 # XenonScript
 
-**Classes and static types in the style of ActionScript 3, compiled to plain ES-module JavaScript.**
+**A statically typed, class-based language in the style of ActionScript 3, compiled to readable
+JavaScript and TypeScript.**
 
 XenonScript (`.xn`) gives you packages, classes, interfaces, generics and nullable types, checked
-by a strict compiler with readable error messages. The output is the JavaScript you would have
-written by hand, one module per class, with source maps back to your code. Any JavaScript or npm
+by a strict compiler with readable error messages. The output follows your source modules and looks
+like the JavaScript you would write by hand, with source maps back to your code. Any JavaScript or npm
 library can be imported, and is typed from its `.d.ts` files where they exist.
 
 ```actionscript
@@ -20,12 +21,12 @@ public class Main {
     for (var user:User of users) {
       trace($'{GREETING}, {user.name} <{user.email ?? 'no email'}>')
     }
-    var best:int? = [3, 8, 5].find((n:int):Boolean => n > 4)   // `T?`: may be null
+    var best:Int? = [3, 8, 5].find((n:Int):Bool => n > 4)   // `T?`: may be null
     trace(best ?? 0, basename('/src/Main.xn'))
     size('https://example.com').then(bytes => trace(bytes, 'bytes'))
   }
 
-  private static async function size(url:String):Promise<int> {
+  private static async function size(url:String):Promise<Int> {
     var res:Response = await fetch(url)
     if (!res.ok) throw new Exception($'{res.status} {res.statusText}')
     var body:Blob = await res.blob()
@@ -47,18 +48,38 @@ public class Main {
   error[X0308]: mismatched types
    --> src/Main.xn:5:21
     |
-  5 |     var lines:int = readFileSync('notes.txt', 'utf8')
-    |               ---   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `int`, found `String`
+  5 |     var lines:Int = readFileSync('notes.txt', 'utf8')
+    |               ---   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Int`, found `String`
     |               |
     |               expected because of this type
     |
-  help: convert the value with `int()`
+  help: convert the value with `Int()`
   ```
 - **JavaScript in, JavaScript out.** Imports of npm packages and `node:`/`bun:` modules are typed
   from their `.d.ts` files. The output is readable ES modules, so a single bundled file or typed
   TypeScript are equally possible.
 - **A full editor experience.** The VS Code extension provides diagnostics as you type, quick fixes,
   hover, go to definition, completion, signature help, references, rename and the outline.
+
+## Documentation
+
+Read [the XenonScript Book](doc/README.md) for a progressive tutorial:
+
+1. [Getting started](doc/01-getting-started.md)
+2. [Values and syntax](doc/02-values-and-syntax.md)
+3. [Types and null safety](doc/03-types-and-null-safety.md)
+4. [Control flow and functions](doc/04-control-flow-and-functions.md)
+5. [Classes and objects](doc/05-classes-and-objects.md)
+6. [Interfaces, generics, and contracts](doc/06-interfaces-and-generics.md)
+7. [Async, errors, and resources](doc/07-async-errors-and-resources.md)
+8. [Compile-time programming](doc/08-compile-time-programming.md)
+9. [JavaScript interoperability](doc/09-packages-and-javascript.md)
+10. [The standard library](doc/10-standard-library.md)
+11. [Compiler and editor workflow](doc/11-compiler-and-editor.md)
+12. [Language quick reference](doc/12-reference.md)
+
+The complete [table of contents and feature map](doc/README.md) links every language area to a
+chapter and runnable example.
 
 ## Quick start
 
@@ -84,7 +105,12 @@ bun /path/to/xenon/src/cli.ts run          # in my-app/: build to out/ and run
 bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 ```
 
+For the next steps, start with [Chapter 1](doc/01-getting-started.md).
+
 ## The language at a glance
+
+This table is the short index. The linked book chapters explain syntax, checks, generated output, and
+the important edge cases.
 
 | Topic | What it looks like | Example |
 |---|---|---|
@@ -93,18 +119,18 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Properties | `function get color()` / `function set color(v)`; the setter may be narrower (`private set`) | [`interfaces`](examples/interfaces) |
 | Interfaces | `interface IShape { function area():Float }`, checked `implements` | [`interfaces`](examples/interfaces) |
 | Variables | `var` (compiles to `let`), `final` and `const` (assigned once: `const`), `inline final` (pasted as its value) | [`basics`](examples/basics) |
-| Types | `Int`, `UInt`, `Float`, `String`, `Bool`, `Void`, `Array<T>`, `*` (untyped); ActionScript's `int`, `uint`, `Boolean`, `void` as aliases; local variables take their value's type (`var names = ['a']` is an `Array<String>`) | [`types`](examples/types) |
-| Unions and literals | `int \| String`, `typedef Encoding = 'utf8' \| 'ascii'`; narrowed by `is`, `==` and null checks | [`types`](examples/types) |
-| Tuples | `Tuple<String, int>`: one type per position, `var [key, value] = pair`; `Object.entries` and map entries are tuples | [`tuples`](examples/tuples) |
-| Type checks | `(expr : Type)`: checked at compile time, gone at runtime; the value is typed against `Type` (`(['a', 1] : Tuple<String, int>)`, `([] : Array<int>)`) | [`types`](examples/types) |
-| Nullable types | `int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
+| Types | `Int`, `UInt`, `Float`, `String`, `Bool`, `Void`, `Array<T>`, `*` (untyped); the lowercase ActionScript spellings `int`, `uint`, `Boolean`, and `void` remain aliases; local variables take their value's type (`var names = ['a']` is an `Array<String>`) | [`types`](examples/types) |
+| Unions and literals | `Int \| String`, `typedef Encoding = 'utf8' \| 'ascii'`; narrowed by `is`, `==` and null checks | [`types`](examples/types) |
+| Tuples | `Tuple<String, Int>`: one type per position, `var [key, value] = pair`; `Object.entries` and map entries are tuples | [`tuples`](examples/tuples) |
+| Type checks | `(expr : Type)`: checked at compile time, gone at runtime; the value is typed against `Type` (`(['a', 1] : Tuple<String, Int>)`, `([] : Array<Int>)`) | [`types`](examples/types) |
+| Nullable types | `Int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
 | Null safety (on by default; `"nullSafety": false` turns it off) | object types exclude `null` too (`String` vs `String?`), fields and locals need a value before use, `as` gives `T?` | [`null-safety`](examples/null-safety) |
 | Checked indexes | `list[i]` and `text[i]` throw a `RangeException` when `i` is out of range instead of giving `undefined`; `list.at(i)` gives `T?` | |
 | Generics | `class Box<T>`, `function first<T>(items:Array<T>):T?` | [`generics`](examples/generics) |
 | Typedefs | `typedef Point = { x:Float, y:Float, ?label:String }`, aliases | [`typedefs`](examples/typedefs) |
 | Enums | `enum Color { Red, Green }`, string enums | [`enums`](examples/enums) |
-| Functions | arrows with lexical `this`, closures, `async`/`await`, function types `(a:int) -> int`, expression bodies `function area():Float => w * h` | [`functions`](examples/functions), [`closures`](examples/closures) |
-| Control flow | ranges `for (var n:int of 0..10)`, `0..=10 step 5`, `for … of`, `switch` | [`control`](examples/control) |
+| Functions | arrows with lexical `this`, closures, `async`/`await`, function types `(a:Int) -> Int`, expression bodies `function area():Float => w * h` | [`functions`](examples/functions), [`closures`](examples/closures) |
+| Control flow | ranges `for (var n:Int of 0..10)`, `0..=10 step 5`, `for … of`, `switch`, and LIFO `defer` cleanup | [`control`](examples/control) |
 | Destructuring | `var [first, , third, ...tail] = list`, `var { name, address: { city } } = user` | [`destructuring`](examples/destructuring) |
 | Exceptions | `Exception` and its subclasses; anything JavaScript throws is normalized | [`exceptions`](examples/exceptions) |
 | Resources | destructors `function ~Connection() { … }`: destroyed when their scope ends (scoped classes), or `implements IDisposable` with a `dispose()` method for `using` / `await using` | [`destructors`](examples/destructors) |
@@ -117,12 +143,12 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 `constexpr` may use a runtime fallback when an argument is not constant. `consteval` is stricter:
 every call must be evaluated during compilation, and its value is emitted in place:
 
-```xn
-public static consteval function square(n:int):int => n * n
+```actionscript
+public static consteval function square(n:Int):Int => n * n
 
 trace(square(12)) // emits console.log(144)
 
-var n:int = input()
+var n:Int = input()
 trace(square(n))  // compile error X0528
 ```
 
