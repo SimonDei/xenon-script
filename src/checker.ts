@@ -2014,7 +2014,7 @@ class Env {
   /** Warns about a missing annotation and types the declaration as `*`. `fixAt`: where `:*` goes. */
   untyped(at: Span, what: string, init?: A.Expr, fixAt: number = at.end): Type {
     const d = this.diags.warning("X0850", `missing type annotation on ${what}; it is untyped (\`*\`)`, at);
-    if (init) d.note("Xenon doesn't infer declaration types");
+    if (init) d.note("fields and parameters need a type (only local variables take their value's type)");
     d.help("add a type, or `:*` to make it explicitly dynamic", [{ span: span(at.file, fixAt, fixAt), text: ":*" }]);
     return T.any;
   }
@@ -3071,6 +3071,9 @@ class BodyChecker {
       this.diags.error("X0204", `\`${s.name.name}\` is already declared in this scope`, s.name.span)
         .secondary(prev.nameSpan, "previously declared here");
     }
+    // Without an annotation the variable has its value's type (`var n = 0` is an `Int`); only a
+    // value that says nothing (none, `null`) leaves it untyped.
+    let inferred: Type | undefined;
     if (!s.type) {
       const d = this.diags.warning("X0850", `variable \`${s.name.name}\` has no type annotation; it is untyped (\`*\`)`, s.name.span);
       const initType = s.init ? this.expr(s.init, scope) : undefined;
@@ -3083,24 +3086,25 @@ class BodyChecker {
       scope.declare(s.name.name, untypedLocal);
       return;
     }
-    const type = this.resolveT(s.type, this.scope);
+    const type = inferred ?? this.resolveT(s.type!, this.scope);
     if (s.decl === "const" && !s.init) {
       this.diags.error("X0503", `constant \`${s.name.name}\` must be initialized`, s.name.span)
         .help("use `final` for a value assigned once later");
     }
-    const local: Local = { type, kind: s.decl, nameSpan: s.name.span, typeSpan: s.type.span };
+    const local: Local = { type, kind: s.decl, nameSpan: s.name.span, typeSpan: s.type?.span };
+    if (inferred) this.env.result.bindingTypes.set(s.name, type);
     this.declared.push({ local, name: s.name });
     if (s.init?.kind === "New" && type.kind === "class" && isManualDisposable(type.info) && !chainDestructor(type.info)) {
       this.disposables.set(local, { name: s.name, disposed: false, escaped: false, type: type.info.decl.name.name });
     }
     if (s.inline && s.decl !== "var" && s.init) {
-      this.valueExpr(s.init, scope);
+      if (s.type) this.valueExpr(s.init, scope);
       const f = this.constValue(s.init);
-      if (this.reportFold(f, s.name, type, s.type.span, s.init)) local.inline = (f as { value: ConstValue }).value;
+      if (this.reportFold(f, s.name, type, s.type?.span, s.init)) local.inline = (f as { value: ConstValue }).value;
     } else {
       if (s.inline && s.decl === "var") inlineVar(this.diags.error("X0521", "an `inline` constant must be `final`", s.name.span, "declared with `var`"), s.name);
       if (s.inline && !s.init) this.diags.error("X0522", `inline constant \`${s.name.name}\` needs a value`, s.name.span);
-      if (s.init) this.checkAssign(s.init, type, { span: s.type.span, label: "expected because of this type" }, scope);
+      if (s.init && s.type) this.checkAssign(s.init, type, { span: s.type.span, label: "expected because of this type" }, scope);
     }
     // A `final` without a value, and (null safety) a `var` whose type excludes `null`: assigned before it's read.
     const nonNullVar = nullSafety.on && s.decl === "var" && !s.init && !isNullable(type) && !isLegacyValueType(type);
@@ -3118,6 +3122,24 @@ class BodyChecker {
    * their own outside a context, get one from their parts: `['a', 'b']` is an `Array<String>`
    * (a union for mixed elements), `{ x: 1, name: 'a' }` the shape `{ x:Int, name:String }`.
    */
+  private inferredType(e: A.Expr): Type {
+    const own = this.env.result.exprTypes.get(e) ?? T.any;
+    if (e.kind === "Array" && e.elements.length > 0 && e.elements.every((el) => el.kind !== "Spread")) {
+      const elements = e.elements.map((el) => this.inferredType(el));
+      return elements.some(isDynamic) || elements.some((t) => t.kind === "error") ? own : arrayOf(unionOf(elements));
+    }
+    if (e.kind === "Object" && e.props.length > 0 && e.props.every((p) => p.kind === "Prop" && !("expr" in p.key))) {
+      const members = new Map<string, ShapeMember>();
+      for (const p of e.props as (A.ObjectProp & { kind: "Prop" })[]) {
+        const name = "name" in p.key ? p.key.name : (p.key as { value: string }).value;
+        const t = this.inferredType(p.value);
+        members.set(name, { name, optional: false, readonly: false, type: () => t });
+      }
+      return { kind: "shape", members };
+    }
+    return widen(own);
+  }
+
   private returnStmt(s: A.Stmt & { kind: "Return" }, scope: Scope) {
     const m = this.method;
     if (!m) return;
@@ -3247,8 +3269,10 @@ class BodyChecker {
             .note("`if (var x:T = …)` runs its block only when the value is not null");
         }
       } else {
-        this.valueExpr(item.init, inner);
-        type = this.env.untyped(item.name.span, `binding \`${item.name.name}\``);
+        // `if (var n = maybe)`: the value's type without `null` (the block runs only when it isn't).
+        const init = this.valueExpr(item.init, inner);
+        type = init.kind === "null" ? this.env.untyped(item.name.span, `binding \`${item.name.name}\``) : nonNull(widen(init));
+        this.env.result.bindingTypes.set(item.name, type);
       }
       inner.declare(item.name.name, { type, kind: "var", nameSpan: item.name.span, typeSpan: item.type?.span });
     }
@@ -3276,10 +3300,9 @@ class BodyChecker {
           .secondary(v.name.span, `\`${v.name.name}\` declared as \`${typeToString(type)}\``);
       }
     } else {
+      // Without an annotation: the element type (`for (var name of names)` is a `String`).
       type = element;
-      this.diags.warning("X0850", `loop variable \`${v.name.name}\` has no type annotation; it is untyped (\`*\`)`, v.name.span)
-        .help(isDynamic(element) ? "add a type" : "add the element type", [{ span: span(v.name.span.file, v.name.span.end, v.name.span.end), text: `:${isDynamic(element) ? "*" : typeToString(element)}` }]);
-      type = T.any;
+      this.env.result.bindingTypes.set(v.name, type);
     }
     scope.declare(v.name.name, { type, kind, nameSpan: v.name.span, typeSpan: v.type?.span, captureUnstable: true });
   }

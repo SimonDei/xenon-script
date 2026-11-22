@@ -71,11 +71,11 @@ test("generated declarations are never emitted, and the program is unchanged", (
   expect(typed.map((o) => o.text)).toEqual(plain.map((o) => o.text));
 });
 
-test("fix-its never name a type only the declarations know", () => {
-  const { result } = compile(main("import { readFileSync } from 'node:fs'", "    var buf = readFileSync('x')\n    trace(buf)"));
-  const untyped = result.diagnostics.items.find((d) => d.code === "X0850")!;
-  // Only the generic suggestion (`:*`), not `:Buffer` (a name this file can't write).
-  expect(untyped.help.flatMap((h) => h.edits?.map((e) => e.text) ?? [])).toEqual([":*"]);
+test("a local without a type takes a type only the declarations know (no annotation needed)", () => {
+  const { result, errors } = compile(main("import { readFileSync } from 'node:fs'", "    var buf = readFileSync('x')\n    var n:Int = buf\n    trace(buf.length, n)"));
+  expect(result.diagnostics.items.some((d) => d.code === "X0850")).toBe(false);
+  // Typed from the declarations: assigning it to an `Int` is a mismatch, `buf.length` is fine.
+  expect(errors).toEqual(["X0308 6:17 mismatched types"]);
 });
 
 test("the declarations of many modules compile cleanly", () => {

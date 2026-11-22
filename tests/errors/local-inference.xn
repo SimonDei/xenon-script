@@ -1,0 +1,22 @@
+public class Main {
+  public function Main() {
+    var n = 0
+    n = 1.5                                   // X0308: `n` is an `Int`
+    var names = ['ada', 'bob']
+    names.push(3)                             // X0308: an `Array<String>`
+    var point = { x: 1, label: 'a' }
+    point.x = 'far'                           // X0308: the shape's `x` is an `Int`
+    for (var name of names) {
+      var len:String = name.length            // X0308: `name` is a `String`, its length an `Int`
+    }
+    var ages:Map<String, Int> = new Map()
+    if (var age = ages.get('ada')) {
+      var s:String = age                      // X0308: `age` is an `Int` (not `Int?`)
+    }
+    var nothing = null                        // X0850: nothing to infer from
+    var later                                 // X0850
+    var fine = [1, 2.5]                       // `Array<Float>`
+    var mixed = [1, 'a']                      // `Array<Int | String>`
+    trace(fine[0] + 1, mixed, nothing, later)
+  }
+}
