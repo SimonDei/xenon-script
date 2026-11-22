@@ -58,9 +58,11 @@ package xenon {
     function matchAll(pattern:RegExp):Iterator<Array<String>>
 
     // ---- extracting ----
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function slice(start:int):String
     /** From `start` up to (not including) `end`; negative values count from the end. */
     constexpr function slice(start:int, end:int):String
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function substring(start:int):String
     /** Like `slice`, but swaps the arguments if `start > end` and clamps negatives to 0. */
     constexpr function substring(start:int, end:int):String
@@ -72,30 +74,44 @@ package xenon {
 
     // ---- changing ----
     /** Replaces the first occurrence; `$&`, `$1`, … in `replacement` insert the match and groups. */
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function replace(pattern:String, replacement:String):String
     constexpr function replace(pattern:RegExp, replacement:String):String
     /** `replacer` is called as `(match, ...groups, offset, whole)` and returns the new text. */
     function replace(pattern:String, replacer:Function):String
     function replace(pattern:RegExp, replacer:Function):String
     /** Replaces every occurrence; a regex must have the `g` flag (else a `TypeError`). */
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function replaceAll(pattern:String, replacement:String):String
     constexpr function replaceAll(pattern:RegExp, replacement:String):String
     function replaceAll(pattern:String, replacer:Function):String
     function replaceAll(pattern:RegExp, replacer:Function):String
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function concat(...parts:Array<String>):String
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function repeat(count:int):String
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function padStart(length:int, fill:String = ' '):String
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function padEnd(length:int, fill:String = ' '):String
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function trim():String
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function trimStart():String
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function trimEnd():String
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function toUpperCase():String
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function toLowerCase():String
+    [NoDiscard('returns a new string; this one is unchanged')]
     function toLocaleUpperCase():String
     function toLocaleUpperCase(locale:String):String
+    [NoDiscard('returns a new string; this one is unchanged')]
     function toLocaleLowerCase():String
     function toLocaleLowerCase(locale:String):String
     /** Unicode normalization form: `'NFC'`, `'NFD'`, `'NFKC'` or `'NFKD'`. */
+    [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function normalize(form:String = 'NFC'):String
 
     // ---- comparing and converting ----

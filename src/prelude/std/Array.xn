@@ -59,17 +59,24 @@ package xenon {
     function fill(value:T, start:int, end:int):Array<T>
 
     // ---- copies (the array stays unchanged) ----
+    [NoDiscard('returns a new array; this one is unchanged')]
     function slice():Array<T>
     function slice(start:int):Array<T>
     function slice(start:int, end:int):Array<T>
+    [NoDiscard('returns a new array; this one is unchanged')]
     function concat(...others:Array<Array<T>>):Array<T>
+    [NoDiscard('returns a new array; this one is unchanged')]
     function toReversed():Array<T>
+    [NoDiscard('returns a new array; this one is unchanged')]
     function toSorted():Array<T>
     function toSorted(compare:(a:T, b:T) -> Float):Array<T>
+    [NoDiscard('returns a new array; this one is unchanged')]
     function toSpliced(start:int, deleteCount:int, ...items:Array<T>):Array<T>
     /** A copy with the element at `index` replaced (throws a `RangeError` out of range). */
+    [NoDiscard('returns a new array; this one is unchanged')]
     function with(index:int, value:T):Array<T>
     /** One level of nesting removed; the result's elements are untyped. */
+    [NoDiscard('returns a new array; this one is unchanged')]
     function flat():Array<*>
 
     // ---- reading ----
@@ -85,8 +92,11 @@ package xenon {
 
     // ---- callbacks: `(item, index, array)`; shorter parameter lists are fine ----
     function forEach(callback:(item:T, index:int, array:Array<T>) -> Void):void
+    [NoDiscard('returns a new array; this one is unchanged')]
     function map<U>(callback:(item:T, index:int, array:Array<T>) -> U):Array<U>
+    [NoDiscard('returns a new array; this one is unchanged')]
     function flatMap<U>(callback:(item:T, index:int, array:Array<T>) -> Array<U>):Array<U>
+    [NoDiscard('returns a new array; this one is unchanged')]
     function filter(test:(item:T, index:int, array:Array<T>) -> Boolean):Array<T>
     function some(test:(item:T, index:int, array:Array<T>) -> Boolean):Boolean
     function every(test:(item:T, index:int, array:Array<T>) -> Boolean):Boolean

@@ -25,6 +25,116 @@ package xenon {
   }
 
   /**
+   * An attribute class: `[Name(…)]` before a class, method or field creates one, readable at run time
+   * with `Attributes`. Its constructor takes the positional arguments; `name = value` arguments set
+   * public fields or setters afterwards. Arguments are compile-time constants.
+   */
+  public interface IAttribute {
+    /**
+     * Optional (the only interface member an implementation may leave out): an attribute defining it
+     * changes the methods it is used on. When the class is defined, the method is replaced by what
+     * this returns for it; call `method.apply(this, args)` in a `function` expression (whose `this`
+     * is the object the method is called on) to run the original. An instance of the attribute is
+     * created for this when the class is defined (separate from the ones `Attributes` returns).
+     * Nearest the method wraps first: `[A, B]` gives `A.wrap(B.wrap(method))`. On classes and fields
+     * it isn't called.
+     */
+    function wrap(method:Function, name:String):Function
+  }
+
+  /** Where an attribute may be used (see `Usage`). */
+  public enum AttributeTarget { Class, Method, Field }
+
+  /**
+   * On an attribute class: where it may be used (`[Usage(AttributeTarget.Method, AttributeTarget.Field)]`;
+   * without `Usage`, on classes, methods and fields) and whether one declaration may carry it more
+   * than once (`multiple = true`). Read by the compiler only.
+   */
+  public class Usage implements IAttribute {
+    public final targets:Array<AttributeTarget>
+    public var multiple:Boolean = false
+
+    public function Usage(...targets:Array<AttributeTarget>) {
+      this.targets = targets
+    }
+  }
+
+  /** Marks a class, method or field as deprecated: every use elsewhere is warning X0873 with the message. Compile time only. */
+  public class Deprecated implements IAttribute {
+    public final message:String
+
+    public function Deprecated(message:String = '') {
+      this.message = message
+    }
+  }
+
+  /**
+   * The result matters: a statement that drops it (`text.trim()` alone) is warning X0875, with the
+   * message if one is given. On a method: its calls; on a class: calls returning one and `new`.
+   * `void f()` discards on purpose. Compile time only.
+   */
+  [Usage(AttributeTarget.Method, AttributeTarget.Class)]
+  public class NoDiscard implements IAttribute {
+    public final message:String
+
+    public function NoDiscard(message:String = '') {
+      this.message = message
+    }
+  }
+
+  /**
+   * Reads the attributes of classes and their members at run time: `Attributes.of(UserController, Route)`.
+   * Only the class asked about counts (attributes aren't inherited). Each attribute is created on
+   * the first lookup and then kept, so lookups return the same objects.
+   */
+  public static class Attributes {
+    /** Where a class keeps the function creating its attributes (written by the compiler). */
+    public static final KEY:* = Symbol('xenon.attributes')
+    private static final created:* = new WeakMap()
+
+    /** The class's attributes of this kind. */
+    public static function of<T>(type:Class<*>, kind:Class<T>):Array<T> {
+      return select(own(type).type, kind)
+    }
+
+    /** The class's first attribute of this kind, or `null`. */
+    public static function first<T>(type:Class<*>, kind:Class<T>):T? {
+      var all:Array<T> = of(type, kind)
+      return all.length > 0 ? all[0] : null
+    }
+
+    /** The attributes of this kind on a method or field (static or not) of the class. */
+    public static function ofMember<T>(type:Class<*>, member:String, kind:Class<T>):Array<T> {
+      var list:* = own(type).members[member]
+      return list == null ? [] : select(list, kind)
+    }
+
+    /** The class's methods and fields that have attributes. */
+    public static function members(type:Class<*>):Array<String> {
+      return Object.keys(own(type).members)
+    }
+
+    private static function own(type:Class<*>):* {
+      var t:* = type
+      if (!Object.hasOwn(t, KEY)) return { type: [], members: {} }
+      var found:* = created.get(t)
+      if (found == null) {
+        found = t[KEY]()
+        created.set(t, found)
+      }
+      return found
+    }
+
+    private static function select<T>(list:*, kind:Class<T>):Array<T> {
+      var result:Array<T> = []
+      for (var a:* of list) {
+        if (var x:T = a as kind) result.push(x)
+      }
+      return result
+    }
+  }
+
+  /**
    * Steps through a sequence: `while (e.moveNext()) trace(e.current)`. Starts before the first
    * element; `current` is valid after `moveNext()` returned true.
    */

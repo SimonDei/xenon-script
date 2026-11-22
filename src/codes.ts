@@ -337,6 +337,8 @@ export const CODES: Record<string, CodeInfo> = {
     "save()", "await save()"),
 
   // ---- const methods ----
+  X0875: c("result discarded", "The method (or the class of the value) is marked `[NoDiscard]`: its result matters, but this statement drops it. Use the result, or write `void f()` to discard it on purpose.",
+    "text.trim()", "text = text.trim()"),
   X0901: c("change in a const method", "A `const` method doesn't change the object: no field or setter writes through `this`.",
     "public function count():Int const { calls++; return n }", "public function count():Int const { return n }"),
   X0902: c("non-const use in a const method", "A `const` method can only use const methods and getters on `this`."),

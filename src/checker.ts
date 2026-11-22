@@ -2959,9 +2959,11 @@ class BodyChecker {
         return this.block(s, scope);
       case "VarDecl":
         return this.varDecl(s, scope);
-      case "ExprStmt":
-        this.expr(s.expr, scope);
+      case "ExprStmt": {
+        const t = this.expr(s.expr, scope);
+        if (!this.floatingPromise(s.expr, t)) this.discarded(s.expr, t);
         return;
+      }
       case "Return":
         return this.returnStmt(s, scope);
       case "If": {
@@ -3163,6 +3165,33 @@ class BodyChecker {
     if (this.method?.async) d.help("wait for it", [{ span: at, text: "await " }]);
     d.help("or mark it as intentionally not awaited", [{ span: at, text: "void " }]);
     return true;
+  }
+
+  /**
+   * X0875: a statement that drops a result marked `[NoDiscard]`: a call of such a method, a call
+   * returning (or a `new` of) such a class. `void f()` discards on purpose.
+   */
+  private discarded(e: A.Expr, t: Type) {
+    if (e.kind !== "Call" && e.kind !== "New") return;
+    const marked = (attrs: A.Attribute[] | undefined) => attrs?.find((a) => {
+      const resolved = this.env.result.typeResolutions.get(a.name);
+      // The standard library's declarations aren't checked: there the name is enough.
+      return resolved ? resolved.qname === "xenon.NoDiscard" : a.name.name.at(-1)!.name === "NoDiscard";
+    });
+    const method = e.kind === "Call" ? this.calleeDecl(e.callee) : undefined;
+    const n = nonNull(t);
+    const cls = n.kind === "class" ? n.info : undefined;
+    const onMethod = marked(method?.attributes);
+    const found = onMethod ?? marked(cls?.decl.attributes);
+    if (!found) return;
+    const message = found.args[0]?.kind === "String" ? `: ${found.args[0].value}` : "";
+    const name = cls?.decl.name.name;
+    const text = onMethod && method ? `the result of \`${method.name.name}\` shouldn't be discarded`
+      : e.kind === "New" ? `a new \`${name}\` shouldn't be discarded`
+      : `${method ? `\`${method.name.name}\`` : "this call"} returns a \`${name}\`, which shouldn't be discarded`;
+    const d = this.diags.warning("X0875", text + message, e.span, "result unused");
+    d.secondary(found.span, "marked here");
+    d.help("use the result, or discard it on purpose", [{ span: span(e.span.file, e.span.start, e.span.start), text: "void " }]);
   }
 
   private returnStmt(s: A.Stmt & { kind: "Return" }, scope: Scope) {
@@ -4943,6 +4972,8 @@ class BodyChecker {
         const info = this.env.primClass(own.name);
         m = info && findMember(info, callee.name.name);
       }
+      // An array's method: the standard library's `Array<T>` (`list.map(…)`).
+      if (!m && own?.kind === "builtin" && (own.name === "Array" || own.name === "Tuple") && this.env.arrayClass) m = findMember(this.env.arrayClass, callee.name.name);
       if (!m && (objType?.kind === "method" || (objType?.kind === "builtin" && objType.name === "Function"))) m = this.env.functionMember(callee.name.name);
       if (!m && objType?.kind !== "classRef") m = this.env.rootMember(callee.name.name);
     }

@@ -1,0 +1,32 @@
+public class Main {
+  public function Main() {
+    var v = new Vec(1, 2)
+    v.plus(v)                          // X0875 (message)
+    v.length()                         // X0875
+    Vec.zero()                         // X0875: returns a [NoDiscard] class
+    new Handle()                       // X0875: new of a [NoDiscard] class
+    void v.plus(v)                     // on purpose: fine
+    var w = v.plus(v)                  // used: fine
+    v.scale(2)                         // not marked: fine
+    trace(w)
+  }
+}
+
+class Vec {
+  public final x:Float
+  public final y:Float
+  public function Vec(x:Float, y:Float) { this.x = x; this.y = y }
+
+  [NoDiscard('returns a new vector; this one is unchanged')]
+  public function plus(o:Vec):Vec { return new Vec(x + o.x, y + o.y) }
+
+  [NoDiscard]
+  public function length():Float { return Math.sqrt(x * x + y * y) }
+
+  public function scale(f:Float):Vec { return new Vec(x * f, y * f) }
+
+  public static function zero():Handle { return new Handle() }
+}
+
+[NoDiscard('a handle must be closed')]
+class Handle {}

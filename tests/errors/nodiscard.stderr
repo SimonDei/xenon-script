@@ -1,0 +1,55 @@
+warning[X0875]: the result of `plus` shouldn't be discarded: returns a new vector; this one is unchanged
+  --> nodiscard.xn:4:5
+   |
+ 4 |     v.plus(v)                          // X0875 (message)
+   |     ^^^^^^^^^ result unused
+...
+20 |   [NoDiscard('returns a new vector; this one is unchanged')]
+   |    -------------------------------------------------------- marked here
+   |
+help: use the result, or discard it on purpose
+   |
+ 4 |     void v.plus(v)                          // X0875 (message)
+   |     +++++
+
+warning[X0875]: the result of `length` shouldn't be discarded
+  --> nodiscard.xn:5:5
+   |
+ 5 |     v.length()                         // X0875
+   |     ^^^^^^^^^^ result unused
+...
+23 |   [NoDiscard]
+   |    --------- marked here
+   |
+help: use the result, or discard it on purpose
+   |
+ 5 |     void v.length()                         // X0875
+   |     +++++
+
+warning[X0875]: `zero` returns a `Handle`, which shouldn't be discarded: a handle must be closed
+  --> nodiscard.xn:6:5
+   |
+ 6 |     Vec.zero()                         // X0875: returns a [NoDiscard] class
+   |     ^^^^^^^^^^ result unused
+...
+31 | [NoDiscard('a handle must be closed')]
+   |  ------------------------------------ marked here
+   |
+help: use the result, or discard it on purpose
+   |
+ 6 |     void Vec.zero()                         // X0875: returns a [NoDiscard] class
+   |     +++++
+
+warning[X0875]: a new `Handle` shouldn't be discarded: a handle must be closed
+  --> nodiscard.xn:7:5
+   |
+ 7 |     new Handle()                       // X0875: new of a [NoDiscard] class
+   |     ^^^^^^^^^^^^ result unused
+...
+31 | [NoDiscard('a handle must be closed')]
+   |  ------------------------------------ marked here
+   |
+help: use the result, or discard it on purpose
+   |
+ 7 |     void new Handle()                       // X0875: new of a [NoDiscard] class
+   |     +++++
