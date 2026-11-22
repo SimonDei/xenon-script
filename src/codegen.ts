@@ -1147,6 +1147,8 @@ class ModuleGen {
   /** How instance members are reached here: `this`, or `$self` inside `function` expressions. */
   /** Member expressions being assigned (`this.x = …`, `x++`, `[this.a, this.b] = …`). */
   private writeTargets = new Set<A.Expr>();
+  /** `n++` whose value isn't used (a statement, a `for` update): compiled like `++n`. */
+  private valueUnused = new Set<A.Expr>();
   /** Write targets that are read too: `a[i] += 1`, `a[i]++` (their index is checked like a read's). */
   private readWrites = new Set<A.Expr>();
 
@@ -1258,9 +1260,12 @@ class ModuleGen {
         return;
       }
       case "ExprStmt": {
-        const code = this.expr(s.expr).code;
-        // An expression statement must not start with `{` or `function` in JS.
-        this.w.line(/^(\{|function\b)/.test(plain(code)) ? `(${code});` : `${code};`);
+        this.valueUnused.add(s.expr);
+        this.withTemps(() => {
+          const code = this.expr(s.expr).code;
+          // An expression statement must not start with `{` or `function` in JS.
+          return [/^(\{|function\b)/.test(plain(code)) ? `(${code});` : `${code};`];
+        });
         return;
       }
       case "Return":
@@ -1316,6 +1321,7 @@ class ModuleGen {
           init = `${d.decl === "var" ? "let" : "const"} ${this.name(d.name)}${this.ann(d.type)} = ${value}`;
         } else if (s.init) init = this.expr(s.init.expr).code;
         const cond = s.cond ? ` ${this.expr(s.cond).code}` : "";
+        if (s.update) this.valueUnused.add(s.update);
         const update = s.update ? ` ${this.expr(s.update).code}` : "";
         this.nested(`for (${init};${cond};${update})`, s.body);
         return;
@@ -1760,12 +1766,24 @@ class ModuleGen {
         let arg = this.wrap(this.expr(e.arg), P.unary);
         // Avoid `- -x` turning into `--x`.
         if ((e.op === "-" || e.op === "+") && plain(arg).startsWith(e.op)) arg = `(${arg})`;
+        // `-n` on an `Int`: `-n | 0` (`-MIN_VALUE` wraps to itself, as in other languages).
+        if (e.op === "-" && this.intKind(e) === "Int") return { code: `${op}${arg} | 0`, prec: P.bitor };
         return { code: op + arg, prec: P.unary };
       }
       case "Await":
         return { code: `await ${this.wrap(this.expr(e.arg), P.unary)}`, prec: P.unary };
       case "Update": {
         this.writeTargets.add(e.arg);
+        this.readWrites.add(e.arg);
+        const kind = this.intKind(e.arg);
+        if (kind) {
+          // `n++` on an `Int`: `n = (n + 1) | 0`; a postfix value that is used is the old one,
+          // computed back from the new (`(… - 1) | 0` wraps back too).
+          const op = e.op === "++" ? "+" : "-";
+          const set = this.readModifyWrite(e.arg, (read) => this.wrap(this.wrapInt(kind, op, read, "1"), P.assign));
+          if (e.prefix || this.valueUnused.has(e)) return set;
+          return this.wrapInt(kind, op === "+" ? "-" : "+", `(${set.code})`, "1");
+        }
         const arg = this.wrap(this.expr(e.arg), P.postfix);
         return e.prefix ? { code: e.op + arg, prec: P.unary } : { code: arg + e.op, prec: P.postfix };
       }
@@ -1774,6 +1792,16 @@ class ModuleGen {
       case "Assign":
         if (this.check.operatorCalls.has(e)) return this.operatorAssign(e);
         this.writeTargets.add(e.target);
+        if (e.op !== "=") this.readWrites.add(e.target);
+        {
+          // `n += k` on an `Int`: `n = (n + k) | 0` (see `wrapInt`).
+          const kind = (e.op === "+=" || e.op === "-=" || e.op === "*=") ? this.intKind(e.target) : undefined;
+          if (kind && this.intKind(e) !== undefined) {
+            const op = e.op[0] as "+" | "-" | "*";
+            const value = this.wrap(this.expr(e.value), op === "*" ? P.assign : BINARY_JS_PREC[op]! + 1);
+            return this.readModifyWrite(e.target, (read) => this.wrap(this.wrapInt(kind, op, read, value), P.assign));
+          }
+        }
         return { code: `${this.expr(e.target).code} ${e.op} ${this.wrap(this.expr(e.value), P.assign)}`, prec: P.assign };
       case "Conditional":
         return {
@@ -1832,10 +1860,16 @@ class ModuleGen {
 
   /** `a += b` with `operator+` (likewise `-=`, `*=`, `/=`): `a = a['operator+'](b)`, evaluating the target's object/index once. */
   private operatorAssign(e: A.Expr & { kind: "Assign" }): Code {
-    const t = e.target;
     const rhs = this.wrap(this.expr(e.value), P.assign);
     const method = jsString(`operator${e.op.slice(0, -1)}`);
-    const call = (read: string) => `${read}[${method}](${rhs})`;
+    return this.readModifyWrite(e.target, (read) => `${read}[${method}](${rhs})`);
+  }
+
+  /**
+   * `target = combine(target)`, reading the target's object (and index) once: `x = f(x)`,
+   * `($t = obj()).p = f($t.p)`, `a[$index(a, i)] = f(a[i])` (a checked position stays checked).
+   */
+  private readModifyWrite(t: A.Expr, combine: (read: string) => string): Code {
     if (t.kind === "Member") {
       // The property as read and as written (`#x` for a private field or a private setter).
       const objType = this.check.exprTypes.get(t.object);
@@ -1844,18 +1878,46 @@ class ModuleGen {
       const read = this.fieldName(m, t, t.name);
       this.writeTargets.add(t);
       const write = this.fieldName(m, t, t.name);
-      return this.reuse(t.object, (first, again) => ({ code: `${first}.${write} = ${call(`${again}.${read}`)}`, prec: P.assign }));
+      // A static through a subclass (`Dog.created`) is the declaring class's (`Animal.created`).
+      if (ot?.kind === "classRef" && m?.isStatic) {
+        const owner = this.classRef(m.owner);
+        return { code: `${owner}.${write} = ${combine(`${owner}.${read}`)}`, prec: P.assign };
+      }
+      return this.reuse(t.object, (first, again) => ({ code: `${first}.${write} = ${combine(`${again}.${read}`)}`, prec: P.assign }));
     }
     if (t.kind === "Index") {
-      return this.reuse(t.object, (fo, ao) => this.reuse(t.index, (fi, ai) => ({
-        code: `${fo}[${fi}] = ${call(`${ao}[${ai}]`)}`,
+      const checked = this.check.checkedIndexes.has(t);
+      const write = (fo: string, ao: string, fi: string, ai: string): Code => ({
+        code: `${fo}[${checked ? `${this.helper("$index")}(${ao}, ${fi})` : fi}] = ${combine(`${ao}[${ai}]`)}`,
         prec: P.assign,
-      })));
+      });
+      // A literal or a local index is repeated as written (`a[0]`, `a[i]`).
+      const plainIndex = t.index.kind === "Number" || t.index.kind === "String" || (t.index.kind === "Ident" && this.check.resolutions.get(t.index)?.kind === "local");
+      if (plainIndex) {
+        const i = this.expr(t.index).code;
+        return this.reuse(t.object, (fo, ao) => write(fo, ao, i, i));
+      }
+      return this.reuse(t.object, (fo, ao) => this.reuse(t.index, (fi, ai) => write(fo, ao, fi, ai)));
     }
     const read = this.expr(t).code; // a local or `this.x`: repeating it is free
     this.writeTargets.add(t);
     const target = this.expr(t).code;
-    return { code: `${target} = ${call(read)}`, prec: P.assign };
+    return { code: `${target} = ${combine(read)}`, prec: P.assign };
+  }
+
+  /**
+   * `Int` and `UInt` arithmetic wraps to 32 bits, as in C, Java and C#, instead of turning into an
+   * inexact `Float`: `a + b` → `(a + b) | 0`, `a * b` → `Math.imul(a, b)` (exact), `UInt` with `>>> 0`.
+   * `kind`: the result's type when it needs wrapping (`+`, `-`, `*` and negation of integers).
+   */
+  private intKind(e: A.Expr): "Int" | "UInt" | undefined {
+    const t = this.check.exprTypes.get(e);
+    return t?.kind === "prim" && t.literal === undefined && (t.name === "Int" || t.name === "UInt") ? t.name : undefined;
+  }
+
+  private wrapInt(kind: "Int" | "UInt", op: "+" | "-" | "*", l: string, r: string): Code {
+    if (op === "*") return kind === "Int" ? { code: `Math.imul(${l}, ${r})`, prec: P.call } : { code: `Math.imul(${l}, ${r}) >>> 0`, prec: P.shift };
+    return kind === "Int" ? { code: `(${l} ${op} ${r}) | 0`, prec: P.bitor } : { code: `(${l} ${op} ${r}) >>> 0`, prec: P.shift };
   }
 
   /**
@@ -1884,6 +1946,17 @@ class ModuleGen {
     const right = this.expr(e.right);
     // JS forbids mixing `??` with `||`/`&&` without parentheses.
     const mixes = (c: A.Expr) => c.kind === "Binary" && ((op === "??") !== (c.op === "??")) && ["??", "||", "&&"].includes(c.op);
+    // Two number literals whose result is an `Int` can't overflow: `5 - 8` stays as written.
+    const literals = e.left.kind === "Number" && e.right.kind === "Number" && (() => {
+      const [a, b] = [(e.left as { value: number }).value, (e.right as { value: number }).value];
+      const v = op === "+" ? a + b : op === "-" ? a - b : a * b;
+      return v >= -0x80000000 && v <= 0x7fffffff && (this.intKind(e) !== "UInt" || v >= 0);
+    })();
+    const kind = (op === "+" || op === "-" || op === "*") && !literals ? this.intKind(e) : undefined;
+    if (kind) {
+      const inner = op === "*" ? P.assign : prec;
+      return this.wrapInt(kind, op as "+" | "-" | "*", this.wrap(left, inner), this.wrap(right, op === "*" ? P.assign : prec + 1));
+    }
     const l = mixes(e.left) ? `(${left.code})` : this.wrap(left, op === "**" ? P.postfix : prec);
     const r = mixes(e.right) ? `(${right.code})` : this.wrap(right, op === "**" ? prec : prec + 1);
     return { code: `${l} ${op} ${r}`, prec };

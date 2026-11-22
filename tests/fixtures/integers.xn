@@ -1,0 +1,24 @@
+public class Main {
+  private static var count:Int = Int.MAX_VALUE
+
+  public function Main() {
+    var max = Int.MAX_VALUE
+    var one = 1
+    trace(max + one, max * 2, Int.MIN_VALUE - one, -Int.MIN_VALUE)
+    var big = 123456789
+    trace(big * big, big * 3, 2147483647 + 1, 5 - 8)
+    var n = max
+    n += 1
+    var k = max
+    trace(n, k++, k, ++k)
+    Main.count++
+    var list = [max, 2]
+    list[0] *= 3
+    trace(Main.count, list[0])
+    var u:UInt = 0
+    var oneU:UInt = 1
+    u -= oneU
+    trace(u, u + oneU)
+    trace(max + 0.5, 10 / 4, 10 % 3)
+  }
+}
