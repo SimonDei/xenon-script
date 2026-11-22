@@ -1,0 +1,31 @@
+class Res implements IDisposable {
+  public function dispose():void {}
+  public function Res() {}
+  public function use():void {}
+}
+
+class AsyncRes implements IAsyncDisposable {
+  public async function dispose():Promise<void> {}
+  public function AsyncRes() {}
+}
+
+public class Main {
+  public function Main() {
+    using (var a:Res = new Res()) {
+      a.use()
+    }
+    using (final b = new Res(), const c:Res = new Res()) {
+      b.use()
+      c.use()
+    }
+    using final d:Res = new Res()
+    d.use()
+    using (e = new Res()) {
+      e.use()
+    }
+  }
+
+  public async function run():Promise<void> {
+    await using const f = new AsyncRes()
+  }
+}

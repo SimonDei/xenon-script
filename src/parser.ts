@@ -874,6 +874,22 @@ export class Parser {
   }
 
   /** `using x:T = e`, `using (x:T = e, …) body`, `using (expr) body`, each optionally `await`-prefixed. */
+  /**
+   * `using (var x = …)`, `using final x = …`: `using` already declares the variable (always final,
+   * since the value it was given is the one disposed). Reported with a fix-it removing the keyword,
+   * which is skipped so the rest parses as usual.
+   */
+  private skipUsingKeyword(): void {
+    if (!(this.is("var") || this.is("final") || this.is("const"))) return;
+    const kw = this.advance();
+    const text = this.file.text;
+    let end = kw.span.end;
+    while (end < text.length && (text[end] === " " || text[end] === "\t")) end++;
+    this.diags.error("X0809", "`using` already declares the variable", kw.span, "remove this")
+      .note("a `using` variable is always final: it is disposed as the value it was given")
+      .help(`remove \`${kw.value}\``, [{ span: span(this.file, kw.span.start, end), text: "" }]);
+  }
+
   private parseUsing(): A.Stmt {
     const start = this.tok.span.start;
     const isAwait = !!this.eat("await");
@@ -882,6 +898,7 @@ export class Parser {
       const open = this.advance();
       const resources: A.UsingResource[] = [];
       do {
+        this.skipUsingKeyword();
         const rStart = this.tok.span.start;
         if (this.tok.kind === "ident" && (this.is(":", this.peekTok()) || this.is("=", this.peekTok()))) {
           const name = this.ident();
@@ -896,6 +913,7 @@ export class Parser {
       const body = this.parseStatement();
       return { kind: "UsingBlock", isAwait, resources, body, span: this.sp(start) };
     }
+    this.skipUsingKeyword();
     const name = this.ident("a variable name");
     const type = this.eat(":") ? this.parseType() : undefined;
     if (!this.is("=")) this.unexpected("`=` and the resource to dispose later");

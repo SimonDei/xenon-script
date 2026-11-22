@@ -585,6 +585,7 @@ Rules:
 - **Inheritance**: subclass destructors automatically call the parent destructor *after* their own body (C++ order: derived, then base). A subclass without its own destructor inherits the parent's.
 - **Runs at most once**: a second `dispose()` or scope exit is a no-op.
 - `using x:T = expr` requires `T` to be disposable; the type annotation is optional (inferred from the value). The variable is implicitly `final`. `null` is allowed (nothing to dispose).
+- X0809: `using` declares its variables itself, so `using (var x = …)`, `using final x = …` and `using const x = …` are errors (fix-it: remove the keyword; the parser skips it and goes on). Not accepted as alternative spellings: the variable is always final (the value it was given is the one disposed), so the keyword would add nothing.
 - Warning X0801: a disposable created into a plain `var` local that is never disposed, returned or stored ("use `using` or call `dispose()`").
 - Exceptions thrown in destructors during unwinding are combined, as in JS: `SuppressedError` is normalized by `Exception.from` into an `Exception` with both errors in `cause`.
 

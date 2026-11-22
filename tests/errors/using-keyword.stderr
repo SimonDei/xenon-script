@@ -1,0 +1,59 @@
+error[X0809]: `using` already declares the variable
+  --> using-keyword.xn:14:12
+   |
+14 |     using (var a:Res = new Res()) {
+   |            ^^^ remove this
+   |
+   = note: a `using` variable is always final: it is disposed as the value it was given
+help: remove `var`
+   |
+14 -     using (var a:Res = new Res()) {
+14 +     using (a:Res = new Res()) {
+
+error[X0809]: `using` already declares the variable
+  --> using-keyword.xn:17:12
+   |
+17 |     using (final b = new Res(), const c:Res = new Res()) {
+   |            ^^^^^ remove this
+   |
+   = note: a `using` variable is always final: it is disposed as the value it was given
+help: remove `final`
+   |
+17 -     using (final b = new Res(), const c:Res = new Res()) {
+17 +     using (b = new Res(), const c:Res = new Res()) {
+
+error[X0809]: `using` already declares the variable
+  --> using-keyword.xn:17:33
+   |
+17 |     using (final b = new Res(), const c:Res = new Res()) {
+   |                                 ^^^^^ remove this
+   |
+   = note: a `using` variable is always final: it is disposed as the value it was given
+help: remove `const`
+   |
+17 -     using (final b = new Res(), const c:Res = new Res()) {
+17 +     using (final b = new Res(), c:Res = new Res()) {
+
+error[X0809]: `using` already declares the variable
+  --> using-keyword.xn:21:11
+   |
+21 |     using final d:Res = new Res()
+   |           ^^^^^ remove this
+   |
+   = note: a `using` variable is always final: it is disposed as the value it was given
+help: remove `final`
+   |
+21 -     using final d:Res = new Res()
+21 +     using d:Res = new Res()
+
+error[X0809]: `using` already declares the variable
+  --> using-keyword.xn:29:17
+   |
+29 |     await using const f = new AsyncRes()
+   |                 ^^^^^ remove this
+   |
+   = note: a `using` variable is always final: it is disposed as the value it was given
+help: remove `const`
+   |
+29 -     await using const f = new AsyncRes()
+29 +     await using f = new AsyncRes()
