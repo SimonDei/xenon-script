@@ -22,6 +22,6 @@ test("explain renders title, text and example", () => {
   const text = explain("x0308")!;
   expect(text).toStartWith("X0308: mismatched types\n");
   expect(text).toContain("Example:");
-  expect(text).toContain("int(total / 2)");
+  expect(text).toContain("Int(total / 2)");
   expect(explain("X9999")).toBeUndefined();
 });

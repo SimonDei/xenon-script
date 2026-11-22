@@ -136,9 +136,11 @@ export type Resolution =
   | { kind: "function"; decl: A.Method }
   | { kind: "builtin"; name: BuiltinFn };
 
-type BuiltinFn = "trace" | "int" | "uint" | "Float" | "String" | "Boolean";
-const BUILTIN_FNS = new Set<string>(["trace", "int", "uint", "Float", "String", "Boolean"]);
-const CASTS: Record<string, Type> = { int: T.int, uint: T.uint, Float: T.Float, String: T.String, Boolean: T.Boolean };
+type BuiltinFn = "trace" | "Int" | "UInt" | "Float" | "String" | "Bool";
+/** `trace` and the conversions, by every spelling (`int(x)` is `Int(x)`), to their canonical name. */
+const BUILTIN_FN_NAMES: Record<string, BuiltinFn> = { trace: "trace", Int: "Int", UInt: "UInt", Float: "Float", String: "String", Bool: "Bool", int: "Int", uint: "UInt", Boolean: "Bool" };
+const BUILTIN_FNS = new Set<string>(Object.keys(BUILTIN_FN_NAMES));
+const CASTS: Record<string, Type> = { Int: T.int, UInt: T.uint, Float: T.Float, String: T.String, Bool: T.Boolean };
 
 export interface CheckResult {
   /**
@@ -729,7 +731,7 @@ class Env {
   primClass(name: string): ClassInfo | undefined {
     const natives = [...this.classes.values()].filter((c) => isNative(c));
     return natives.find((c) => c.decl.name.name === name) ??
-      (name === "int" || name === "uint" ? natives.find((c) => c.decl.name.name === "Float") : undefined);
+      (name === "Int" || name === "UInt" ? natives.find((c) => c.decl.name.name === "Float") : undefined);
   }
 
 
@@ -945,7 +947,7 @@ class Env {
       };
     }
     if (node.kind === "VoidType") {
-      if (!allowVoid) this.diags.error("X0421", "`void` is only allowed as a return type", node.span);
+      if (!allowVoid) this.diags.error("X0421", "`Void` is only allowed as a return type", node.span);
       return allowVoid ? T.void : T.error;
     }
     const names = node.name.map((n) => n.name);
@@ -1081,7 +1083,7 @@ class Env {
       return false;
     }
     this.diags.error("X0422", `\`${name}\` needs ${want} type argument${want === 1 ? "" : "s"}`, node.span, got === 0 ? "missing type arguments" : `${got} given`)
-      .help(`for example \`${name}<${Array(want).fill("int").join(", ")}>\`${isClass && got === 0 ? "; `new` and `is`/`as` can leave them out" : ""}`);
+      .help(`for example \`${name}<${Array(want).fill("Int").join(", ")}>\`${isClass && got === 0 ? "; `new` and `is`/`as` can leave them out" : ""}`);
     return false;
   }
 
@@ -1198,7 +1200,7 @@ class Env {
       }
       const vk = typeof v === "number" && Number.isInteger(v) ? "number" : typeof v === "string" ? "string" : undefined;
       if (!vk) {
-        this.diags.error("X0811", "enum values must be `int`s or `String`s", m.init?.span ?? m.name.span, `found ${JSON.stringify(v)}`);
+        this.diags.error("X0811", "enum values must be `Int`s or `String`s", m.init?.span ?? m.name.span, `found ${JSON.stringify(v)}`);
         continue;
       }
       if (kind && vk !== kind) {
@@ -1635,7 +1637,7 @@ class Env {
             .note("the operators that can be overloaded are `+`, `-`, `*`, `/` and `==` (which `!=` uses)");
         } else {
           if (sym === "==" && m.returnType && !(m.returnType.kind === "TypeName" && ["Boolean", "Bool"].includes(m.returnType.name.at(-1)!.name))) {
-            this.diags.error("X0372", "`operator==` must return a `Boolean`", m.returnType.span);
+            this.diags.error("X0372", "`operator==` must return a `Bool`", m.returnType.span);
           }
           if (m.modifiers.static) this.diags.error("X0373", `${op} must be an instance method`, m.modifiers.static);
           if (m.accessor) this.diags.error("X0372", `${op} must be a method, not an accessor`, m.name.span);
@@ -1818,7 +1820,7 @@ class Env {
   /** The class whose members a constant has: its own, or the standard library's `String`, `Float` or `Boolean`. */
   private constClass(v: ConstValue): ClassInfo | undefined {
     if (v instanceof ConstObject) return v.cls as ClassInfo;
-    const name = typeof v === "string" ? "String" : typeof v === "number" ? "Float" : typeof v === "boolean" ? "Boolean" : v instanceof RegExp ? "RegExp" : undefined;
+    const name = typeof v === "string" ? "String" : typeof v === "number" ? "Float" : typeof v === "boolean" ? "Bool" : v instanceof RegExp ? "RegExp" : undefined;
     return name ? this.primClass(name) : undefined;
   }
 
@@ -1975,11 +1977,21 @@ class Env {
     return { params, lookup, failed };
   }
 
+  /** The class a typedef names (`int.MAX_VALUE` through `typedef int = Int`), for using it as a value. */
+  typedefClass(scope: FileScope, name: string): ClassInfo | undefined {
+    const td = this.lookupTypedef(scope, name);
+    if (!td || td.params.length > 0) return undefined;
+    const t = this.resolveTypedef(td);
+    if (t.kind === "class" && !t.info.typeParams.length) return t.info;
+    if (t.kind === "prim") return this.primClass(t.name);
+    return undefined;
+  }
+
   constRef(e: A.Expr, owner: ClassInfo, scope: FileScope): Fold | undefined {
     let m: MemberSig | undefined;
     if (e.kind === "Ident") m = findMember(owner, e.name);
     else if (e.kind === "Member" && e.object.kind === "Ident") {
-      const cls = e.object.name === owner.decl.name.name ? owner : this.lookupClass(scope, e.object.name);
+      const cls = e.object.name === owner.decl.name.name ? owner : this.lookupClass(scope, e.object.name) ?? this.typedefClass(scope, e.object.name);
       if (cls) m = findMember(cls, e.name.name);
     }
     if (m) this.usedMembers.add(m);
@@ -2668,9 +2680,9 @@ class BodyChecker {
     // Values a compile-time evaluation can hold: primitives, and objects (of classes with a `constexpr` constructor).
     const constType = (t: Type) => {
       const n = nonNull(t);
-      return (n.kind === "prim" && ["int", "uint", "Float", "String", "Boolean"].includes(n.name)) || n.kind === "class";
+      return (n.kind === "prim" && ["Int", "UInt", "Float", "String", "Bool"].includes(n.name)) || n.kind === "class";
     };
-    const what = "a number, `String`, `Boolean` or an object";
+    const what = "a number, `String`, `Bool` or an object";
     if (type) {
       type.params.forEach((p, i) => {
         if (!constType(p.type)) this.diags.error("X0526", `a \`constexpr\` parameter must be ${what}`, m.params[i]!.type?.span ?? m.params[i]!.name.span, `\`${typeToString(p.type)}\``);
@@ -2702,7 +2714,7 @@ class BodyChecker {
     const bad = (e: A.Expr, what: string, label?: string) => {
       this.diags.error("X0526", `${what} isn't allowed in a \`constexpr\` function`, e.span, label)
         .secondary(m.modifiers.constexpr!, "`constexpr` here")
-        .note("allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `int()`, inline constants, `constexpr` functions (also the standard library's: `Math.floor`, `trim`, `replace`, …), methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`");
+        .note("allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `Int()`, inline constants, `constexpr` functions (also the standard library's: `Math.floor`, `trim`, `replace`, …), methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`");
       return false;
     };
     const ok = (e: A.Expr): boolean => {
@@ -2738,7 +2750,7 @@ class BodyChecker {
         }
         case "Call": {
           const c = e.callee;
-          const allowed = (c.kind === "Ident" && ["int", "uint", "Float", "String", "Boolean"].includes(c.name) && this.env.result.resolutions.get(c)?.kind === "builtin")
+          const allowed = (c.kind === "Ident" && BUILTIN_FNS.has(c.name) && c.name !== "trace" && this.env.result.resolutions.get(c)?.kind === "builtin")
 
             || !!this.env.constexprTarget(c, this.info, this.scope)
             || (c.kind === "Member" && constexprMethod(this.env.result.exprTypes.get(c.object), c.name.name, c) && ok(c.object))
@@ -2796,22 +2808,22 @@ class BodyChecker {
       } else if (!f.reported) {
         this.diags.error("X0523", "inline initializer is not a compile-time constant", f.at, f.reason)
           .secondary(name.span, `\`${name.name}\` is declared \`inline\``)
-          .note("allowed: literals, other inline constants, operators and `int()`/`uint()`/`Float()`/`String()`/`Boolean()`");
+          .note("allowed: literals, other inline constants, operators and `Int()`/`UInt()`/`Float()`/`String()`/`Bool()`");
       }
       return false;
     }
     if (f.value instanceof ConstObject) {
       this.diags.error("X0523", "an inline constant can't hold an object", init.span, "an object built at compile time")
         .secondary(name.span, `\`${name.name}\` is declared \`inline\``)
-        .note("an inline constant is pasted into the code: it must be a number, `String` or `Boolean`; use `static final` for an object");
+        .note("an inline constant is pasted into the code: it must be a number, `String` or `Bool`; use `static final` for an object");
       return false;
     }
     const enumOk = type.kind === "class" && type.info.decl.isEnum && [...(type.info.enumValues?.values() ?? [])].includes(f.value);
     if (!enumOk && !fits(f.value, type)) {
       const d = this.diags.error("X0525", `the value of \`${name.name}\` doesn't fit \`${typeToString(type)}\``, name.span, `evaluates to ${JSON.stringify(f.value)}`);
       if (typeSpan) d.secondary(typeSpan, "declared type");
-      if ((isPrim(type, "int") || isPrim(type, "uint")) && typeof f.value === "number") {
-        const fn = isPrim(type, "int") ? "int" : "uint";
+      if ((isPrim(type, "Int") || isPrim(type, "UInt")) && typeof f.value === "number") {
+        const fn = isPrim(type, "Int") ? "Int" : "UInt";
         d.help(`convert the value with \`${fn}()\``, [
           { span: span(init.span.file, init.span.start, init.span.start), text: `${fn}(` },
           { span: span(init.span.file, init.span.end, init.span.end), text: ")" },
@@ -3100,6 +3112,12 @@ class BodyChecker {
     scope.declare(s.name.name, local);
   }
 
+  /**
+   * The type a variable without an annotation takes from its value: the value's type with literal
+   * types widened (`var n = 0` is an `Int`, not the type `0`). Literals, which have no type of
+   * their own outside a context, get one from their parts: `['a', 'b']` is an `Array<String>`
+   * (a union for mixed elements), `{ x: 1, name: 'a' }` the shape `{ x:Int, name:String }`.
+   */
   private returnStmt(s: A.Stmt & { kind: "Return" }, scope: Scope) {
     const m = this.method;
     if (!m) return;
@@ -3118,7 +3136,7 @@ class BodyChecker {
     if (m.isConstructor || m.ret.kind === "void") {
       this.expr(s.value, scope);
       const d = this.diags.error("X0312", `${m.isConstructor ? "a constructor" : `\`${m.name}\``} can't return a value`, s.value.span);
-      if (m.retSpan) d.secondary(m.retSpan, "declared `void` here");
+      if (m.retSpan) d.secondary(m.retSpan, "declared `Void` here");
       return;
     }
     const origin = m.retSpan && { span: m.retSpan, label: "expected because of this return type" };
@@ -3317,8 +3335,8 @@ class BodyChecker {
     for (const bound of [s.start, s.end]) {
       if (!bound) continue;
       const t = this.valueExpr(bound, outer);
-      if (!isPrim(t, "int") && !isPrim(t, "uint") && !isDynamic(t)) {
-        this.diags.error("X0334", "range bounds must be `int` or `uint`", bound.span, `found \`${typeToString(t)}\``);
+      if (!isPrim(t, "Int") && !isPrim(t, "UInt") && !isDynamic(t)) {
+        this.diags.error("X0334", "range bounds must be `Int` or `UInt`", bound.span, `found \`${typeToString(t)}\``);
       }
     }
     let integerStep = true;
@@ -3331,7 +3349,7 @@ class BodyChecker {
         this.diags.error("X0330", "a range `step` can't be 0", s.step.span, "the step must be positive");
       } else if (step < 0) {
         this.diags.error("X0330", "ranges can't count down", s.step.span, "the step must be positive")
-          .help("use a C-style `for`, e.g. `for (var i:int = 10; i >= 0; i--)`");
+          .help("use a C-style `for`, e.g. `for (var i:Int = 10; i >= 0; i--)`");
       } else integerStep = Number.isInteger(step);
     }
     const a = this.constNumber(s.start);
@@ -3346,7 +3364,7 @@ class BodyChecker {
     } else if (declared && !integerStep && !isPrim(declared, "Float")) {
       this.diags.error("X0330", "a fractional `step` needs a `Float` loop variable", s.step!.span);
     }
-    const element = declared && isPrim(declared, "uint") ? T.uint : T.int;
+    const element = declared && isPrim(declared, "UInt") ? T.uint : T.int;
     this.loopVar(s.variable, element, scope, "range values", "range");
     this.loopBody(() => this.nested(s.body, scope));
   }
@@ -3411,11 +3429,11 @@ class BodyChecker {
       return;
     }
     const t = this.expr(e, scope);
-    if (isPrim(t, "Boolean") || isDynamic(t)) return;
-    const d = this.diags.error("X0310", "condition must be a `Boolean`", e.span, `expected \`Boolean\`, found \`${typeToString(t)}\``);
+    if (isPrim(t, "Bool") || isDynamic(t)) return;
+    const d = this.diags.error("X0310", "condition must be a `Bool`", e.span, `expected \`Bool\`, found \`${typeToString(t)}\``);
     const end = span(e.span.file, e.span.end, e.span.end);
     if (isNumeric(t)) d.help("compare explicitly", [{ span: end, text: " != 0" }]);
-    else if (t.kind === "nullable" && isPrim(t.inner, "Boolean")) d.help("compare with `true` (`null` and `false` both skip)", [{ span: end, text: " == true" }]);
+    else if (t.kind === "nullable" && isPrim(t.inner, "Bool")) d.help("compare with `true` (`null` and `false` both skip)", [{ span: end, text: " == true" }]);
     else if (isPrim(nonNull(t), "String")) {
       // JavaScript's `if (s)` means "not empty" (and not null): the same test, written out.
       d.help("a `String` is true in JavaScript when it isn't empty: compare explicitly", [{ span: end, text: " != ''" }]);
@@ -3592,12 +3610,12 @@ class BodyChecker {
     if (literalOf(expected) !== undefined) {
       // One value fits: no conversion helps.
       d.note(`\`${typeToString(nonNull(expected))}\` is a literal type: it takes only the value ${typeToString(nonNull(expected))}`);
-    } else if ((isPrim(expected, "int") || isPrim(expected, "uint")) && (isNumeric(value) || isPrim(value, "String")) && !sameType(value, expected)) {
-      const fn = isPrim(expected, "int") ? "int" : "uint";
+    } else if ((isPrim(expected, "Int") || isPrim(expected, "UInt")) && (isNumeric(value) || isPrim(value, "String")) && !sameType(value, expected)) {
+      const fn = isPrim(expected, "Int") ? "Int" : "UInt";
       d.help(`convert the value with \`${fn}()\``, wrap(fn));
     } else if (isPrim(expected, "Float") && isPrim(value, "String")) {
       d.help("convert the value with `Float()`", wrap("Float"));
-    } else if (isPrim(expected, "String") && (isNumeric(value) || isPrim(value, "Boolean"))) {
+    } else if (isPrim(expected, "String") && (isNumeric(value) || isPrim(value, "Bool"))) {
       d.help("convert the value with `String()`", wrap("String"));
     } else if (actual.kind === "nullable" && assignable(actual.inner, expected)) {
       const fallback = defaultFor(actual.inner);
@@ -3759,7 +3777,7 @@ class BodyChecker {
   private valueExpr(e: A.Expr, scope: Scope): Type {
     const t = this.expr(e, scope);
     if (t.kind === "void") {
-      this.diags.error("X0311", "this expression has no value", e.span, "returns `void`");
+      this.diags.error("X0311", "this expression has no value", e.span, "returns `Void`");
       return T.error;
     }
     return t;
@@ -3827,7 +3845,7 @@ class BodyChecker {
       return fns[0]!.type;
     }
     if (BUILTIN_FNS.has(name)) {
-      res.set(e, { kind: "builtin", name: name as BuiltinFn });
+      res.set(e, { kind: "builtin", name: BUILTIN_FN_NAMES[name]! });
       return T.Function;
     }
     const globalType = this.env.globalType(name);
@@ -4532,12 +4550,7 @@ class BodyChecker {
    * `Int.MAX_VALUE` (the prelude's `typedef Int = int`), `Bool(x)`. Only non-generic targets.
    */
   private typedefClass(name: string): ClassInfo | undefined {
-    const td = this.env.lookupTypedef(this.scope, name);
-    if (!td || td.params.length > 0) return undefined;
-    const t = this.env.resolveTypedef(td);
-    if (t.kind === "class" && !t.info.typeParams.length) return t.info;
-    if (t.kind === "prim") return this.env.primClass(t.name);
-    return undefined;
+    return this.env.typedefClass(this.scope, name);
   }
 
   /** Bookkeeping for every member reference: setter-only reads and method closures. */
@@ -5018,13 +5031,13 @@ class BodyChecker {
     if (type.kind === "builtin" && type.name === "Function") {
       this.diags.error("X0415", "`Function` can't be instantiated with `new`", t.span)
         .note("`new Function('code')` compiles source text at runtime, like `eval`")
-        .help("write the function as an arrow: `(x:int):int => x * 2`");
+        .help("write the function as an arrow: `(x:Int):Int => x * 2`");
       dynamicArgs();
       return type;
     }
     if (type.kind === "builtin" || isDynamic(type)) return type;
     const d = this.diags.error("X0415", `\`${typeToString(type)}\` can't be instantiated with \`new\``, t.span);
-    if (type.kind === "prim" && type.name in CASTS && type.name !== "int" && type.name !== "uint") {
+    if (type.kind === "prim" && type.name in CASTS && type.name !== "Int" && type.name !== "UInt") {
       d.note("in JavaScript this creates a wrapper object, which is always truthy and never `==` a primitive value")
         .help(`to convert a value, call \`${type.name}(x)\` without \`new\``, [{ span: span(e.span.file, e.span.start, t.span.start), text: "" }]);
     }
@@ -5037,7 +5050,7 @@ class BodyChecker {
     const opSpan = span(e.span.file, e.span.start, e.span.start + e.op.length);
     switch (e.op) {
       case "!":
-        if (!isPrim(t, "Boolean") && !isDynamic(t)) this.opError(opSpan, "`!` needs a `Boolean`", e.arg, t);
+        if (!isPrim(t, "Bool") && !isDynamic(t)) this.opError(opSpan, "`!` needs a `Bool`", e.arg, t);
         return T.Boolean;
       case "-":
       case "+":
@@ -5046,7 +5059,7 @@ class BodyChecker {
           this.opError(opSpan, `cannot apply unary \`${e.op}\` to \`${typeToString(t)}\``, e.arg, t);
           return T.error;
         }
-        return isPrim(t, "uint") && e.op === "-" ? T.int : t;
+        return isPrim(t, "UInt") && e.op === "-" ? T.int : t;
       case "~":
         if (!isNumeric(t) && !isDynamic(t)) this.opError(opSpan, "`~` needs a number", e.arg, t);
         return T.int;
@@ -5281,7 +5294,7 @@ class BodyChecker {
         // One error per expression (the first non-`Boolean` side), and none that follow from it.
         let reported = false;
         for (const [t, side] of [[l, left], [r, right]] as const) {
-          if (!reported && !isPrim(t, "Boolean") && !isDynamic(t)) {
+          if (!reported && !isPrim(t, "Bool") && !isDynamic(t)) {
             reported = true;
             const d = this.diags.error("X0315", `\`${op}\` needs \`Boolean\` operands`, side.span, `this is \`${typeToString(t)}\``);
             const n = nonNull(t);
@@ -5467,7 +5480,7 @@ class BodyChecker {
     if (result && !assignable(result, targetType)) {
       const d = this.diags.error("X0308", "mismatched types", e.span, `\`${e.op}\` produces \`${typeToString(result)}\`, but the target is \`${typeToString(targetType)}\``);
       if (origin) d.secondary(origin.span, origin.label);
-      if (isPrim(targetType, "int") && op === "/") d.help("use `x = int(x / y)` for integer division");
+      if (isPrim(targetType, "Int") && op === "/") d.help("use `x = Int(x / y)` for integer division");
     }
     return targetType;
   }
@@ -5688,9 +5701,9 @@ function runtimeCheck(t: Type): RuntimeCheck | undefined {
       switch (t.name) {
         case "String": return { kind: "typeof", tag: "string" };
         case "Float": return { kind: "typeof", tag: "number" };
-        case "Boolean": return { kind: "typeof", tag: "boolean" };
-        case "int": return { kind: "int" };
-        case "uint": return { kind: "uint" };
+        case "Bool": return { kind: "typeof", tag: "boolean" };
+        case "Int": return { kind: "int" };
+        case "UInt": return { kind: "uint" };
       }
       return undefined;
     case "builtin":
@@ -5714,7 +5727,7 @@ function isInline(m: MemberSig): boolean {
 /** A neutral default for `x ?? …` hints: `0` for numbers, `false` for `Boolean`. */
 function defaultFor(t: Type): string | undefined {
   if (isNumeric(t)) return "0";
-  if (isPrim(t, "Boolean")) return "false";
+  if (isPrim(t, "Bool")) return "false";
   return undefined;
 }
 

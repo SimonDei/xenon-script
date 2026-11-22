@@ -38,7 +38,7 @@ public class Main {
 
 - **A real type system.** `int`, `uint` and `Float` are distinct number types. Generics work on
   classes and functions, typedefs describe object shapes, and union, literal and tuple types
-  (`int | String`, `'utf8' | 'ascii'`, `Tuple<String, int>`) describe what JavaScript APIs really
+  (`Int | String`, `'utf8' | 'ascii'`, `Tuple<String, Int>`) describe what JavaScript APIs really
   take. `T?` marks a value that may be `null`, and null checks and `is` narrow it. Mixing in
   untyped JavaScript is explicit, through `*`.
 - **Errors that explain themselves.** More than 200 error codes, each with a label on the code,
@@ -119,7 +119,7 @@ test suite runs them all.
 The built-in types are declared in XenonScript itself ([`src/prelude/std`](src/prelude/std)),
 need no import, and are checked against the JavaScript runtime by the tests:
 
-- **Values:** `String`, `int`/`uint`/`Float`, `Boolean`, `Array<T>`, `Map<K, V>`, `Set<T>`,
+- **Values:** `String`, `Int`/`UInt`/`Float`, `Bool`, `Array<T>`, `Map<K, V>`, `Set<T>`,
   `Iterator<T>`, `RegExp`, `Date`, `JSON`, `Math`, `Object`, `Function`
 - **Async and the web platform:** `Promise<T>` (including `all`, `any`, `withResolvers`, …), `fetch`,
   `Response`, `Blob`, `File`, `FormData`, `ArrayBuffer`

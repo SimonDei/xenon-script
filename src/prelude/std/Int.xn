@@ -1,0 +1,20 @@
+// Standard library: `Int` (alias `int`), 32-bit signed integers. At runtime they're JavaScript
+// numbers, so the members are `Float`'s (`toFixed`, `toString(radix)`, …) with whole-number
+// results where JavaScript guarantees one. The range constants are `inline`: compile-time
+// literals, since JavaScript has no object holding them. See also `UInt.xn`.
+package xenon {
+  /** Lowercase alias of `Int` (ActionScript's spelling). */
+  public typedef int = Int
+
+  public native('Number') class Int extends Float {
+    private function Int()
+
+    /** The value itself, still an `Int`. */
+    override function valueOf():Int
+
+    /** 2147483647 (2^31 − 1), the largest `Int`. */
+    public static inline const MAX_VALUE:Int = 2147483647
+    /** −2147483648 (−2^31), the smallest `Int`. */
+    public static inline const MIN_VALUE:Int = -2147483648
+  }
+}

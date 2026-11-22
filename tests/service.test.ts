@@ -60,7 +60,7 @@ test("diagnostics: Xenon's (JavaScript imports typed from their `.d.ts`), plus T
   expect(p.diagnostics().get("Main.xn")!.filter((d) => d.source === "typescript").map((d) => d.code)).toEqual(["TS2769"]);
 
   // Typed from the `.d.ts`, Xenon itself sees that the result is a `String`; TypeScript stays quiet on that line.
-  p.set("Main.xn", MAIN.replace("var n:String = readFileSync(true, 'utf8')", "var n:int = readFileSync('Main.xn', 'utf8')"));
+  p.set("Main.xn", MAIN.replace("var n:String = readFileSync(true, 'utf8')", "var n:Int = readFileSync('Main.xn', 'utf8')"));
   expect(p.diagnostics().get("Main.xn")!.map((d) => [d.source, d.code, d.range.start.character])).toEqual([["xenon", "X0308", 16]]);
 
   // A Xenon error: reported once, with its notes and help, and TypeScript stays quiet about the same spot.
@@ -73,9 +73,9 @@ test("diagnostics: Xenon's (JavaScript imports typed from their `.d.ts`), plus T
 test("hover shows Xenon types and documentation, also for JavaScript imports (from their `.d.ts`)", () => {
   const p = project({ "zoo/Animal.xn": ANIMAL, "Main.xn": MAIN });
   const hover = (needle: string, delta = 0) => p.hover("Main.xn", offset(MAIN, needle, delta))?.contents;
-  expect(hover("a.speak", 3)).toBe("```xenon\nfunction Animal.speak(times?:int):String\n```\n\nMakes a sound, `times` times.");
+  expect(hover("a.speak", 3)).toBe("```xenon\nfunction Animal.speak(times?:Int):String\n```\n\nMakes a sound, `times` times.");
   expect(hover("a.speak", 0)).toBe("```xenon\na:Animal\n```");
-  expect(hover("scores.get", 7)).toBe("```xenon\nfunction Map.get(key:String):int?\n```\n\nThe value for `key`, or `null` if there is none.");
+  expect(hover("scores.get", 7)).toBe("```xenon\nfunction Map.get(key:String):Int?\n```\n\nThe value for `key`, or `null` if there is none.");
   expect(hover("new Animal", 5)).toBe("```xenon\nclass zoo.Animal\n```\n\nSomething that lives in the zoo.");
   expect(hover("var a:Animal", 7)).toBe("```xenon\nclass zoo.Animal\n```\n\nSomething that lives in the zoo.");
   expect(hover("path.basename", 6)).toStartWith("```xenon\nfunction path.basename(path:String, suffix?:String):String\n```\n\nReturn the last portion of a path.");
@@ -122,7 +122,7 @@ test("completion: members after a dot, scope names elsewhere", () => {
   // An instance: public members only (and Object's), with Xenon signatures.
   const animal = insert("a.");
   expect(labels(animal)).toEqual(["name", "speak", "toString", "toLocaleString", "valueOf", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable"]);
-  expect(animal.find((i) => i.label === "speak")!.detail).toBe("function Animal.speak(times?:int):String");
+  expect(animal.find((i) => i.label === "speak")!.detail).toBe("function Animal.speak(times?:Int):String");
   expect(labels(insert("Animal."))).toEqual(["count", "create"]);
   expect(labels(insert("scores.ge"))).toContain("get");
   // `*` to Xenon: TypeScript's members.
@@ -198,8 +198,8 @@ test("method hover shows static final and abstract modifiers", () => {
 }
 `;
   const p = project({ "Main.xn": main });
-  expect(p.hover("Main.xn", offset(main, "version", 1))!.contents).toContain("static final function Base.version():int");
-  expect(p.hover("Main.xn", offset(main, "load", 1))!.contents).toContain("abstract function Base.load():void");
+  expect(p.hover("Main.xn", offset(main, "version", 1))!.contents).toContain("static final function Base.version():Int");
+  expect(p.hover("Main.xn", offset(main, "load", 1))!.contents).toContain("abstract function Base.load():Void");
 });
 
 test("a static class cannot be used as a field type", () => {
@@ -305,7 +305,7 @@ test("signature help: parameters, the active argument, overloads", () => {
   };
   const speak = help(ZOO, offset(ZOO, "pet.speak(", 10));
   expect(speak).toEqual({
-    signatures: [{ label: "speak(times?:int):String", documentation: "Makes a sound, `times` times.", parameters: [{ label: [6, 16] }] }],
+    signatures: [{ label: "speak(times?:Int):String", documentation: "Makes a sound, `times` times.", parameters: [{ label: [6, 16] }] }],
     activeSignature: 0,
     activeParameter: 0,
   });
@@ -314,10 +314,10 @@ test("signature help: parameters, the active argument, overloads", () => {
   expect(max.signatures[0]!.label).toBe("max(...values:Array<Float>):Float");
   expect(max.activeParameter).toBe(0);
   // `new Dog(` and, right after a comma with nothing typed yet, still the call.
-  expect(help(ZOO, offset(ZOO, "new Dog()", 8))!.signatures[0]!.label).toBe("new Dog():void");
-  const typing = ZOO.replace("Math.max(1, 2)", "scores(1, )").replace("public function Main() {", "public function Main() {\n    var scores:(a:int, b:String) -> void = (a:int, b:String):void => {}");
+  expect(help(ZOO, offset(ZOO, "new Dog()", 8))!.signatures[0]!.label).toBe("new Dog():Void");
+  const typing = ZOO.replace("Math.max(1, 2)", "scores(1, )").replace("public function Main() {", "public function Main() {\n    var scores:(a:Int, b:String) -> Void = (a:Int, b:String):Void => {}");
   const second = help(typing, offset(typing, "scores(1, ", 10))!;
-  expect([second.signatures[0]!.label, second.activeParameter]).toEqual(["scores(a:int, b:String):void", 1]);
+  expect([second.signatures[0]!.label, second.activeParameter]).toEqual(["scores(a:Int, b:String):Void", 1]);
 });
 
 test("document symbols: classes with their members", () => {
@@ -325,8 +325,8 @@ test("document symbols: classes with their members", () => {
   const outline = p.documentSymbols("zoo/Animal.xn");
   expect(outline.map((s) => [s.name, s.kind])).toEqual([["Animal", "class"]]);
   expect(outline[0]!.children.map((c) => `${c.kind} ${c.name}${c.detail ? " " + c.detail : ""}`)).toEqual([
-    "field name String", "field secret int", "field age int", "field count int",
-    "constructor constructor", "method speak (times?:int):String", "method create ():Animal",
+    "field name String", "field secret Int", "field age Int", "field count Int",
+    "constructor constructor", "method speak (times?:Int):String", "method create ():Animal",
   ]);
   expect(outline[0]!.selectionRange.start).toEqual({ line: 2, character: 15 });
 });
@@ -361,7 +361,7 @@ public class Main {
   expect(items.map((i) => [i.label, i.detail, i.documentation])).toEqual([
     ["to", "to:String", "Who receives it."],
     ["subject", "?subject:String", undefined],
-    ["id", "final id:int", undefined],
+    ["id", "final id:Int", undefined],
   ]);
   p.set("Main.xn", text);
   expect(p.completions("Main.xn", offset(text, "maybe?.") + "maybe?.".length).map((i) => i.label)).toEqual(["to", "subject", "id"]);
@@ -383,13 +383,13 @@ test("hover and definition on a call of an overloaded method: the overload it ch
   const p = project({ "Main.xn": text });
   // The cursor on the method name: 7 characters into `form.append…`, 2 into `.then`.
   const hover = (needle: string) => (p.hover("Main.xn", offset(text, needle, needle.startsWith(".") ? 2 : 7))?.contents as string).split("\n");
-  expect(hover("form.append('a")[1]).toBe("function FormData.append(name:String, value:String):void");
+  expect(hover("form.append('a")[1]).toBe("function FormData.append(name:String, value:String):Void");
   // The 3-parameter overload, documented by the comment above the overload group it belongs to.
   const file = hover("form.append('b");
-  expect(file[1]).toBe("function FormData.append(name:String, value:Blob, fileName:String):void");
+  expect(file[1]).toBe("function FormData.append(name:String, value:Blob, fileName:String):Void");
   expect(file.at(-1)).toStartWith("Adds a file under `name`");
   // Generic overloads as called.
-  expect(hover(".then")[1]).toBe("function Promise.then(onFulfilled:(value:int) -> String):Promise<String>");
+  expect(hover(".then")[1]).toBe("function Promise.then(onFulfilled:(value:Int) -> String):Promise<String>");
   const [a] = p.definition("Main.xn", offset(text, "form.append('a", 7));
   const [b] = p.definition("Main.xn", offset(text, "form.append('b", 7));
   expect(a!.range.start.line).toBeLessThan(b!.range.start.line);
@@ -456,7 +456,7 @@ public class Main {
   // A nested literal has its member's shape; a value position (a call's argument) is ordinary code.
   expect(sorted(at("pos: {  }", 7))).toEqual(["x", "y"]);
   expect(at("f(1,  )", 5).map((i) => i.label)).toContain("rows");
-  expect(at("{ excelRow: 2", 2)[0]!.detail).toBe("excelRow:int");
+  expect(at("{ excelRow: 2", 2)[0]!.detail).toBe("excelRow:Int");
 });
 
 test("in a type annotation, completion lists types only: typedefs too, type parameters and namespace imports", () => {
@@ -488,15 +488,15 @@ public class Main {
 
 test("type positions: annotations, parameters, return types; not object literal values or `? :`", () => {
   const at = (code: string) => isTypePosition(code, code.length);
-  expect([at("var c:"), at("const N:"), at("function f(a:int, b:"), at("function f(...rest:"), at("function f():"), at("x as "), at("x is "), at("new "), at("Array<"), at("(a:int) -> "), at("class A extends ")])
+  expect([at("var c:"), at("const N:"), at("function f(a:Int, b:"), at("function f(...rest:"), at("function f():"), at("x as "), at("x is "), at("new "), at("Array<"), at("(a:Int) -> "), at("class A extends ")])
     .toEqual([true, true, true, true, true, true, true, true, true, true, true]);
   // Shapes: in a typedef (members on their own lines, optional, final, nested) and in an annotation.
-  expect([at("typedef Sheet = {\n  columns:"), at("typedef P<T> = { ?x:"), at("typedef A = { final id:int, b:"), at("typedef A = { b:{ c:"), at("var p:{ x:"), at("f(a:Array<{ x:")])
+  expect([at("typedef Sheet = {\n  columns:"), at("typedef P<T> = { ?x:"), at("typedef A = { final id:Int, b:"), at("typedef A = { b:{ c:"), at("var p:{ x:"), at("f(a:Array<{ x:")])
     .toEqual([true, true, true, true, true, true]);
-  expect([at("var o = { a: 1, b: "), at("f({ key: "), at("var x = ok ? a : "), at("f(a, b"), at("var o:P = { a: "), at("typedef A = { b:int }\nvar o = { c: ")])
+  expect([at("var o = { a: 1, b: "), at("f({ key: "), at("var x = ok ? a : "), at("f(a, b"), at("var o:P = { a: "), at("typedef A = { b:Int }\nvar o = { c: ")])
     .toEqual([false, false, false, false, false, false]);
   // Further type arguments: `Tuple<String, |`, also nested and in a pattern's annotation; not a comparison.
-  expect([at("for (var [a, c]:Tuple<String, "), at("var m:Map<String, Array<int>, "), at("var m:Map<Tuple<int, int>, ")]).toEqual([true, true, true]);
+  expect([at("for (var [a, c]:Tuple<String, "), at("var m:Map<String, Array<Int>, "), at("var m:Map<Tuple<Int, Int>, ")]).toEqual([true, true, true]);
   expect([at("f(a < b, "), at("if (x < 3, ")]).toEqual([false, false]);
 });
 
@@ -506,7 +506,7 @@ test("hover shows the standard library's constexpr members and inline constants 
   const first = (needle: string) => (p.hover("Main.xn", offset(text, needle, 1))!.contents as string).split("\n")[1];
   expect(first("trim")).toBe("constexpr function String.trim():String");
   expect(first("floor")).toBe("static constexpr function Math.floor(x:Float):Float");
-  expect(first("length")).toBe("constexpr function get String.length():int");
+  expect(first("length")).toBe("constexpr function get String.length():Int");
   expect(first("PI")).toBe("static inline const Math.PI:Float");
   expect(first("split")).toBe("function String.split(separator:String):Array<String>");
   expect(first("replace")).toBe("constexpr function String.replace(pattern:String, replacement:String):String");
@@ -532,7 +532,7 @@ public class Main {
   const p = project({ "Main.xn": text });
   const hover = (needle: string, from = 0) => p.hover("Main.xn", text.indexOf(needle, from) + 1)?.contents;
   const push = offset(text, "rows.push");
-  expect(hover("excelRow", push)).toBe("```xenon\nRow.excelRow:int\n```\n\nThe row in the sheet, from 1.");
+  expect(hover("excelRow", push)).toBe("```xenon\nRow.excelRow:Int\n```\n\nThe row in the sheet, from 1.");
   expect(hover("data }", push)).toBe("```xenon\nRow.data:*\n```");
   expect(p.definition("Main.xn", text.indexOf("excelRow", push) + 1)[0]!.range.start.line).toBe(2);
   // A literal without a shape to check against: no member to show.
@@ -552,7 +552,7 @@ test("hover on destructured names shows their types (tuple positions); completio
 `;
   const p = project({ "Main.xn": text });
   const hover = (needle: string) => (p.hover("Main.xn", offset(text, needle, 1))!.contents as string).split("\n")[1];
-  expect([hover("key,"), hover("value]"), hover("name,"), hover("age]")]).toEqual(["key:String", "value:*", "name:String", "age:int"]);
+  expect([hover("key,"), hover("value]"), hover("name,"), hover("age]")]).toEqual(["key:String", "value:*", "name:String", "age:Int"]);
   expect(p.completions("Main.xn", offset(text, "var t:Tu", 8)).map((i) => i.label)).toContain("Tuple");
 });
 
@@ -570,15 +570,15 @@ test("completion offers destructured loop bindings while typing inside the loop"
   const items = p.completions("Main.xn", offset(text, "      box", 10));
   expect(items.filter((i) => ["page", "boxes"].includes(i.label)).map((i) => [i.label, i.detail])).toEqual([
     ["page", "page:String"],
-    ["boxes", "boxes:Array<int>"],
+    ["boxes", "boxes:Array<Int>"],
   ]);
 });
 
-test("go to definition on built-in types opens the standard library's declaration (Tuple, int, Array)", () => {
-  const text = "public class Main {\n  public function Main() {\n    var a:Array<int> = []\n    var n:String = ''\n    var t:Tuple<String, int> = ['a', 1]\n    trace(a, n, t)\n  }\n}\n";
+test("go to definition on built-in types opens the standard library's declaration (Tuple, Int, Array)", () => {
+  const text = "public class Main {\n  public function Main() {\n    var a:Array<Int> = []\n    var n:String = ''\n    var t:Tuple<String, Int> = ['a', 1]\n    trace(a, n, t)\n  }\n}\n";
   const p = project({ "Main.xn": text });
   const target = (needle: string) => p.definition("Main.xn", offset(text, needle, 1)).map((l) => l.path.split("/").at(-1));
-  expect([target("Array<int>"), target("int>"), target("String = ''"), target("Tuple<")]).toEqual([["Array.xn"], ["int.xn"], ["String.xn"], ["Tuple.xn"]]);
+  expect([target("Array<Int>"), target("Int>"), target("String = ''"), target("Tuple<")]).toEqual([["Array.xn"], ["Int.xn"], ["String.xn"], ["Tuple.xn"]]);
   expect(p.hover("Main.xn", offset(text, "Tuple<", 1))!.contents).toContain("An array with one type per position");
 });
 
@@ -594,7 +594,7 @@ test("a project with nullSafety: hover shows T?, and the editor reports null err
 });
 
 test("hover on an unannotated callback parameter shows the type it takes from context", () => {
-  const text = "public class Main {\n  public function Main() {\n    var words:Array<String> = ['a', 'bb']\n    var n:Array<int> = words.map(s => s.length)\n    trace(n)\n  }\n}\n";
+  const text = "public class Main {\n  public function Main() {\n    var words:Array<String> = ['a', 'bb']\n    var n:Array<Int> = words.map(s => s.length)\n    trace(n)\n  }\n}\n";
   const p = project({ "Main.xn": text });
   expect((p.hover("Main.xn", offset(text, "s =>"))!.contents as string).split("\n")[1]).toBe("s:String");
 });

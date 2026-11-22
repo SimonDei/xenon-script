@@ -1004,7 +1004,7 @@ export class Parser {
   private rangeOutsideLoop() {
     if (this.is("..") || this.is("..=")) {
       this.diags.error("X0333", "ranges are only supported in `for (… of …)` loops", this.tok.span)
-        .help("for example `for (var i:int of 0..10) { … }`");
+        .help("for example `for (var i:Int of 0..10) { … }`");
       throw new ParseError("range");
     }
   }

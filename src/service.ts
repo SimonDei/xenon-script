@@ -687,7 +687,7 @@ export class XenonProject {
     return { text: typeToString(t), span };
   }
 
-  /** The standard library's declaration of a built-in type: `int` → `int.xn`, `Tuple<…>` → `Tuple.xn`. */
+  /** The standard library's declaration of a built-in type: `Int` → `Int.xn`, `Tuple<…>` → `Tuple.xn`. */
   private stdClassFor(a: Analysis, t: Type): ClassInfo | undefined {
     const name = t.kind === "prim" ? t.name : t.kind === "builtin" ? t.name : undefined;
     return name ? a.result.check.classes.get(`xenon.${name}`) : undefined;
@@ -1256,7 +1256,7 @@ export class XenonProject {
     }
     add({ label: "trace", kind: "function", detail: "function trace(...values:Array<*>):void" });
     for (const k of KEYWORDS) add({ label: k, kind: "keyword" });
-    for (const t of ["int", "uint", "Float", "String", "Boolean"]) add({ label: t, kind: "class" });
+    for (const t of ["Int", "UInt", "Float", "String", "Bool"]) add({ label: t, kind: "class" });
     return [...items.values()];
   }
 }

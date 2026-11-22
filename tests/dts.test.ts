@@ -43,7 +43,7 @@ test("misuse of a typed import is a compile error; results have their types", ()
 });
 
 test("without a type root, or without types for a package, imports stay `*`", () => {
-  const code = main("import { readFileSync } from 'node:fs'\nimport _ from 'lodash'", "    var n:int = readFileSync('x', 'utf8')\n    trace(n, _.anything(1, 2))");
+  const code = main("import { readFileSync } from 'node:fs'\nimport _ from 'lodash'", "    var n:Int = readFileSync('x', 'utf8')\n    trace(n, _.anything(1, 2))");
   expect(compile(code, false).errors).toEqual([]);
   // `lodash` has no `@types` here: `_` is untyped, `readFileSync` typed.
   expect(compile(code).errors).toEqual(["X0308 6:17 mismatched types"]);
@@ -58,7 +58,7 @@ test("typed classes: `new`, members, subclasses (no `override` needed against a 
     var e:EventEmitter = new Bell()
     e.on('ring', (x:*):void => trace(x, host, bad))
     trace(e.nope)`,
-    "class Bell extends EventEmitter {\n  public function emit(name:*, ...args:Array<*>):Boolean { return true }\n}\n",
+    "class Bell extends EventEmitter {\n  public function emit(name:*, ...args:Array<*>):Bool { return true }\n}\n",
   ));
   expect(errors).toEqual(["X0308 8:19 mismatched types", "X0426 11:13 no member `nope` on `EventEmitter`"]);
 });
@@ -324,12 +324,12 @@ declare var Zipish: Zipish;
 export = Zipish;
 `);
   try {
-    const text = "import Zipish from 'zipish'\n\npublic class Main {\n  public function Main() {\n    var zip:Zipish = new Zipish()\n    var ok:Zipish.Entry = zip.file('a')\n    var plain:Entry = zip.file('a')\n    var wrong:int = zip.file('a')\n    trace(ok.name, plain, wrong)\n  }\n}\n";
+    const text = "import Zipish from 'zipish'\n\npublic class Main {\n  public function Main() {\n    var zip:Zipish = new Zipish()\n    var ok:Zipish.Entry = zip.file('a')\n    var plain:Entry = zip.file('a')\n    var wrong:Int = zip.file('a')\n    trace(ok.name, plain, wrong)\n  }\n}\n";
     const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: join(project, "src") });
     const errors = result.diagnostics.sorted().filter((d) => d.severity === "error");
     expect(errors.map((d) => [d.code, d.labels.find((l) => l.primary)!.message, d.help.map((h) => h.message)])).toEqual([
       ["X0420", "not found", ["it belongs to the import `Zipish`: `Zipish.Entry`"]],
-      ["X0308", "expected `int`, found `Zipish.Entry`", []],
+      ["X0308", "expected `Int`, found `Zipish.Entry`", []],
     ]);
   } finally {
     await rm(project, { recursive: true, force: true });
@@ -387,7 +387,22 @@ test("an imported interface or type alias names its type (`import { ChildProcess
   ]);
   // Named as imported, not `ChildProcessWithoutNullStreams2` (which `spawn` would otherwise declare).
   const found = result.diagnostics.items.filter((d) => d.code === "X0308").map((d) => d.labels.find((l) => l.primary)!.message);
-  expect(found).toEqual(["expected `int`, found `ChildProcessWithoutNullStreams`", "expected `int`, found `Boolean?`"]);
+  expect(found).toEqual(["expected `Int`, found `ChildProcessWithoutNullStreams`", "expected `Int`, found `Bool?`"]);
+});
+
+test("imported interfaces and type aliases are erased from the JavaScript (they have no value at run time)", () => {
+  const { errors, result } = compile(main(
+    `import { spawn, ChildProcessWithoutNullStreams } from 'node:child_process'
+import { SpawnOptions } from 'node:child_process'`,
+    `    var o:SpawnOptions = { cwd: '/' }
+    var p:ChildProcessWithoutNullStreams = spawn('ls', ['-l'])
+    trace(p.pid, o.cwd)`,
+  ));
+  expect(errors).toEqual([]);
+  const js = result.outputs.find((o) => o.path === "Main.js")!.text;
+  expect(js).toContain("import { spawn } from 'node:child_process';");
+  expect(js).not.toContain("ChildProcessWithoutNullStreams");
+  expect(js).not.toContain("SpawnOptions");
 });
 
 test("a callback with parameters fits a rest-parameter function type (`stream.on('data', (chunk:String) => …)`)", () => {
@@ -412,7 +427,7 @@ test("an imported class is the one other signatures return (`import { opendirSyn
   ));
   expect(errors).toEqual(["X0308 6:17 mismatched types"]);
   const found = result.diagnostics.items.find((d) => d.code === "X0308")!.labels.find((l) => l.primary)!.message;
-  expect(found).toBe("expected `int`, found `Dirent`");
+  expect(found).toBe("expected `Int`, found `Dirent`");
 });
 
 test("overloads are chosen by literal types, as TypeScript chooses them (`readdir(dir, { withFileTypes: true })`)", () => {
@@ -425,7 +440,7 @@ test("overloads are chosen by literal types, as TypeScript chooses them (`readdi
   ));
   expect(errors).toEqual(["X0308 9:17 mismatched types"]);
   const found = result.diagnostics.items.find((d) => d.code === "X0308")!.labels.find((l) => l.primary)!.message;
-  expect(found).toBe("expected `int`, found `Promise<Array<Dirent>>`");
+  expect(found).toBe("expected `Int`, found `Promise<Array<Dirent>>`");
 });
 
 test("number literal types from a `.d.ts` choose overloads (`{ version: 2 }`); enums and unions of numbers stay `Float`", async () => {
@@ -470,7 +485,7 @@ test("TypeScript unions are Xenon unions: named ones are typedefs (`BufferEncodi
   expect(errors.map((d) => `${d.code} ${d.message}`)).toEqual([
     "X0308 mismatched types",
     "X0604 no overload of `readFileSync` accepts (String, String)",
-    "X0604 no overload of `readFileSync` accepts (Boolean)",
+    "X0604 no overload of `readFileSync` accepts (Bool)",
   ]);
   // `'buffer'` chose the overload resolving to buffers (`'utf8'` the one with strings).
   expect(errors[0]!.labels.find((l) => l.primary)!.message).toContain("Buffer");

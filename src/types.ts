@@ -1,6 +1,7 @@
 import type { ClassInfo, TypedefInfo } from "./checker.ts";
 
-export type PrimName = "int" | "uint" | "Float" | "String" | "Boolean";
+/** The primitive types, by their canonical names (`int`, `uint` and `Boolean` are prelude typedefs of them). */
+export type PrimName = "Int" | "UInt" | "Float" | "String" | "Bool";
 
 /** Built-in reference types that are not (yet) modelled member by member. */
 export type BuiltinName = "Object" | "Array" | "Function" | "Class" | "Tuple";
@@ -71,11 +72,11 @@ export type Type =
   | { kind: "error" }; // result of an expression that already produced an error
 
 export const T = {
-  int: { kind: "prim", name: "int" } as Type,
-  uint: { kind: "prim", name: "uint" } as Type,
+  int: { kind: "prim", name: "Int" } as Type,
+  uint: { kind: "prim", name: "UInt" } as Type,
   Float: { kind: "prim", name: "Float" } as Type,
   String: { kind: "prim", name: "String" } as Type,
-  Boolean: { kind: "prim", name: "Boolean" } as Type,
+  Boolean: { kind: "prim", name: "Bool" } as Type,
   void: { kind: "void" } as Type,
   null: { kind: "null" } as Type,
   any: { kind: "any" } as Type,
@@ -88,11 +89,12 @@ export const T = {
 
 /** Names the compiler itself knows in type positions. (`Int`, `Bool`, `Void` & co. are prelude typedefs.) */
 export const BUILTIN_TYPES: Record<string, Type> = {
-  int: T.int,
-  uint: T.uint,
+  Int: T.int,
+  UInt: T.uint,
   Float: T.Float,
   String: T.String,
-  Boolean: T.Boolean,
+  Bool: T.Boolean,
+  Void: T.void,
   Object: T.Object,
   Array: T.Array,
   Function: T.Function,
@@ -128,7 +130,7 @@ export function elementOf(t: Type): Type | undefined {
 }
 
 export function isNumeric(t: Type): boolean {
-  return t.kind === "prim" && (t.name === "int" || t.name === "uint" || t.name === "Float");
+  return t.kind === "prim" && (t.name === "Int" || t.name === "UInt" || t.name === "Float");
 }
 
 /** The value of a literal type. */
@@ -140,15 +142,15 @@ export type LiteralValue = boolean | string | number;
  * `float` when written with a fraction or exponent).
  */
 export function literalType(value: LiteralValue, float = false): Type {
-  if (typeof value === "boolean") return { kind: "prim", name: "Boolean", literal: value };
+  if (typeof value === "boolean") return { kind: "prim", name: "Bool", literal: value };
   if (typeof value === "string") return { kind: "prim", name: "String", literal: value };
-  return { kind: "prim", name: float || !Number.isInteger(value) ? "Float" : value >= -0x80000000 && value <= 0x7fffffff ? "int" : value >= 0 && value <= 0xffffffff ? "uint" : "Float", literal: value };
+  return { kind: "prim", name: float || !Number.isInteger(value) ? "Float" : value >= -0x80000000 && value <= 0x7fffffff ? "Int" : value >= 0 && value <= 0xffffffff ? "UInt" : "Float", literal: value };
 }
 
 /** Does the number `v` fit the numeric type `name` (`int` range, `uint` sign)? */
 function numberFits(v: number, name: PrimName): boolean {
-  if (name === "int") return Number.isInteger(v) && v >= -0x80000000 && v <= 0x7fffffff;
-  if (name === "uint") return Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
+  if (name === "Int") return Number.isInteger(v) && v >= -0x80000000 && v <= 0x7fffffff;
+  if (name === "UInt") return Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
   return name === "Float";
 }
 
@@ -220,7 +222,7 @@ export function valueFits(v: unknown, t: Type, plain = false): boolean {
   if (t.kind !== "prim") return false;
   if (t.literal !== undefined) return v === t.literal;
   if (typeof v === "number") return isNumeric(t) && numberFits(v, t.name);
-  return plain && ((typeof v === "string" && t.name === "String") || (typeof v === "boolean" && t.name === "Boolean"));
+  return plain && ((typeof v === "string" && t.name === "String") || (typeof v === "boolean" && t.name === "Bool"));
 }
 
 /** `*` and error types switch checking off. */
@@ -405,7 +407,7 @@ export function assignable(from: Type, to: Type): boolean {
     if (typeof from.literal === "number" && isNumeric(to)) return numberFits(from.literal, to.name);
     if (from.name === to.name) return true;
     // Widening only: int/uint → Float. Everything else needs a cast.
-    return to.name === "Float" && (from.name === "int" || from.name === "uint");
+    return to.name === "Float" && (from.name === "Int" || from.name === "UInt");
   }
   if (to.kind === "class" && to.info.decl.isInterface && (from.kind === "builtin" || from.kind === "prim")) {
     const c = stdClassOf.fn?.(from);

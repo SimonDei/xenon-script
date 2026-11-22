@@ -1,0 +1,17 @@
+// Standard library: members of the primitive `Bool` (alias `Boolean`; JavaScript `Boolean.prototype`).
+// Conversions are written `Bool(x)` (a built-in cast), never `new Boolean(x)`: wrapper
+// objects are always truthy and never `==` a primitive, so the constructor is hidden.
+package xenon {
+  /** Long alias of `Bool` (ActionScript's and JavaScript's spelling). */
+  public typedef Boolean = Bool
+
+  public native('Boolean') class Bool {
+    private function Bool()
+
+    /** `'true'` or `'false'`. */
+    constexpr function toString():String
+
+    /** The primitive value itself. */
+    function valueOf():Boolean
+  }
+}

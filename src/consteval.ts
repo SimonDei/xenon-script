@@ -230,10 +230,10 @@ export function fits(v: ConstValue, t: Type): boolean {
     case "prim":
       if (t.literal !== undefined) return v === t.literal;
       switch (t.name) {
-        case "int": return typeof v === "number" && Number.isInteger(v) && v >= -0x80000000 && v <= 0x7fffffff;
-        case "uint": return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
+        case "Int": return typeof v === "number" && Number.isInteger(v) && v >= -0x80000000 && v <= 0x7fffffff;
+        case "UInt": return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
         case "Float": return typeof v === "number";
-        case "Boolean": return typeof v === "boolean";
+        case "Bool": return typeof v === "boolean";
         case "String": return typeof v === "string" || v === null;
       }
       return false;

@@ -1,0 +1,20 @@
+// Standard library: `UInt` (alias `uint`), 32-bit unsigned integers. At runtime they're
+// JavaScript numbers, so the members are `Float`'s (`toFixed`, `toString(radix)`, …) with
+// whole-number results where JavaScript guarantees one. The range constants are `inline`:
+// compile-time literals, since JavaScript has no object holding them. See also `Int.xn`.
+package xenon {
+  /** Lowercase alias of `UInt` (ActionScript's spelling). */
+  public typedef uint = UInt
+
+  public native('Number') class UInt extends Float {
+    private function UInt()
+
+    /** The value itself, still a `UInt`. */
+    override function valueOf():UInt
+
+    /** 4294967295 (2^32 − 1), the largest `UInt`. */
+    public static inline const MAX_VALUE:UInt = 4294967295
+    /** 0, the smallest `UInt`. */
+    public static inline const MIN_VALUE:UInt = 0
+  }
+}

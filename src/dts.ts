@@ -90,7 +90,7 @@ function numberText(value: number): string {
 /** An optional parameter's default: `Float` 0, a literal itself, `false` for `Boolean`, else `null`. */
 function defaultFor(type: string): string {
   if (type === "Float") return "0";
-  if (type === "Boolean") return "false";
+  if (type === "Bool") return "false";
   if (type === "true" || type === "false" || NUMBER.test(type)) return type; // a literal: its value
   return "null";
 }
@@ -532,7 +532,7 @@ class DeclWriter {
       if (lits.length > MAX_LITERALS) texts.push(kind === F.StringLiteral ? "String" : "Float");
     }
     const bools = parts.filter((x) => x.flags & F.BooleanLiteral);
-    if (bools.length === 2) texts.push("Boolean");
+    if (bools.length === 2) texts.push("Bool");
     for (const x of parts) {
       if (x.flags & F.BooleanLiteral && bools.length === 2) continue;
       if (texts.includes("String") && x.flags & F.StringLiteral) continue;
@@ -602,7 +602,7 @@ class DeclWriter {
     if (t.flags & F.NumberLiteral && !(t.flags & F.EnumLiteral)) return numberText((t as tsModule.NumberLiteralType).value);
     if (t.flags & F.StringLike) return "String";
     if (t.flags & F.NumberLike) return "Float";
-    if (t.flags & F.BooleanLike) return "Boolean";
+    if (t.flags & F.BooleanLike) return "Bool";
     if (t.isUnion()) return this.unionType(t, ret);
     if (t.flags & F.Object) return this.objectType(t as tsModule.ObjectType);
     // An intersection of object types (`ObjectEncodingOptions & { withFileTypes: true }`): one shape
@@ -653,7 +653,7 @@ class DeclWriter {
       case "RegExp": case "Date": case "Function": case "Object": return name;
       case "String": return "String";
       case "Number": return "Float";
-      case "Boolean": return "Boolean";
+      case "Boolean": return "Bool";
       default: return "*";
     }
   }
@@ -697,7 +697,7 @@ class DeclWriter {
     if (own) lines.push(own, "");
     const indexes = this.checker.getIndexInfosOfType(t).filter((i) => i.keyType.flags & (this.ts.TypeFlags.String | this.ts.TypeFlags.Number));
     for (const i of indexes) {
-      const key = i.keyType.flags & this.ts.TypeFlags.String ? "String" : "int";
+      const key = i.keyType.flags & this.ts.TypeFlags.String ? "String" : "Int";
       lines.push(`Indexed by any \`${key}\` key (\`value[key]\`, untyped \`*\`); in TypeScript \`${this.checker.typeToString(i.type)}\`.`);
     }
     const other = props.filter((p) => !IDENT.test(p.name) || KEYWORDS.has(p.name));

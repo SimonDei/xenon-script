@@ -143,8 +143,10 @@ JS output: `out/com/zoo/Dog.js`, an ES module with `export class Dog`, relative 
 |---|---|---|
 | `int`, `uint` | integers (checker-enforced; `int(x)` cast) | number (`int(x)` → `x \| 0`, `uint(x)` → `x >>> 0`) |
 | `Float` | floating-point number (replaces AS3's `Number`) | number |
-| `String`, `Boolean` | | string, boolean |
-| `void` | return type only | — |
+| `String`, `Bool` | | string, boolean |
+| `Void` | return type only | — |
+
+Canonical names (decided 2026-11-21): `Int`, `UInt`, `Bool` and `Void` are the built-in names, used in messages, hovers and the standard library (`std/Int.xn`, `UInt.xn`, `Bool.xn`). ActionScript's spellings stay valid as aliases: `int`, `uint` and `Boolean` are prelude typedefs (`typedef int = Int`), `void` is still a keyword for `Void`; the casts take both spellings (`int(x)` is `Int(x)`, `Boolean(x)` is `Bool(x)`). The rest of this plan was written with the lowercase names.
 | `*` | dynamic/untyped; anything goes, no checks; may be `undefined` | any |
 | `Object` | any non-null object, member access unchecked | object |
 | `Array<T>` | typed array; a bare `Array` is `Array<*>` (any elements) | Array |

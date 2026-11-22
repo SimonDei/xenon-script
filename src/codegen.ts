@@ -485,7 +485,7 @@ class ModuleGen {
     switch (t.kind) {
       case "prim":
         if (t.literal !== undefined) return JSON.stringify(t.literal); // `true`, `"buffer"`
-        return t.name === "String" ? "string" : t.name === "Boolean" ? "boolean" : "number";
+        return t.name === "String" ? "string" : t.name === "Bool" ? "boolean" : "number";
       case "void": return "void";
       case "null": return "null";
       case "union": return t.types.map((m) => (m.kind === "method" ? `(${this.tsType(m)})` : this.tsType(m))).join(" | ");
@@ -1536,7 +1536,12 @@ class ModuleGen {
   private reuse(e: A.Expr, build: (first: string, again: string) => Code): Code {
     const v = this.expr(e);
     const r = e.kind === "Ident" ? this.check.resolutions.get(e) : undefined;
-    const simple = e.kind === "This" || e.kind === "Bool" || e.kind === "String" || e.kind === "Number" || (e.kind === "Ident" && (r?.kind === "local" || r?.kind === "jsImport" || r?.kind === "global" || r?.kind === "function"));
+    // A field of `this` (not a getter) reads the same twice without side effects: `this.#items`.
+    const ownField = (e.kind === "Member" && e.object.kind === "This" && (() => {
+      const t = this.check.exprTypes.get(e.object);
+      return t?.kind === "class" && findMember(t.info, e.name.name)?.kind === "field";
+    })()) || (e.kind === "Ident" && r?.kind === "member" && findMember(r.owner, e.name)?.kind === "field");
+    const simple = ownField || e.kind === "This" || e.kind === "Bool" || e.kind === "String" || e.kind === "Number" || (e.kind === "Ident" && (r?.kind === "local" || r?.kind === "jsImport" || r?.kind === "global" || r?.kind === "function"));
     if (simple) return build(this.wrap(v, P.call), this.wrap(v, P.call));
     if (this.fnTemps) {
       const t = this.temp("$t", true);
@@ -1666,7 +1671,7 @@ class ModuleGen {
         if (r?.kind === "function") return { code: this.tok(e.span, r.decl.modifiers.nativeName ?? e.name), prec: P.primary };
         if (r?.kind === "builtin" && r.name === "trace") return { code: this.tok(e.span, "console.log"), prec: P.call };
         // A cast through an alias (`Bool(x)`) calls the real JS function.
-        if (r?.kind === "builtin") return { code: this.tok(e.span, r.name === "Float" ? "Number" : r.name), prec: P.primary };
+        if (r?.kind === "builtin") return { code: this.tok(e.span, r.name === "Float" || r.name === "Int" || r.name === "UInt" ? "Number" : r.name === "Bool" ? "Boolean" : r.name), prec: P.primary };
         return { code: name, prec: P.primary };
       }
       case "This": return { code: "this", prec: P.primary };
@@ -1792,12 +1797,12 @@ class ModuleGen {
       let arg = this.expr(e.args[0]!);
       // TypeScript only takes numbers in arithmetic: `int('12')` converts a string.
       const t = this.check.exprTypes.get(e.args[0]!);
-      if (this.ts && (r.name === "int" || r.name === "uint") && !(t?.kind === "any" || (t?.kind === "prim" && t.name !== "String" && t.name !== "Boolean"))) {
+      if (this.ts && (r.name === "Int" || r.name === "UInt") && !(t?.kind === "any" || (t?.kind === "prim" && t.name !== "String" && t.name !== "Bool"))) {
         arg = { code: `(${arg.code} as any)`, prec: P.primary };
       }
       switch (r.name) {
-        case "int": return { code: `${this.wrap(arg, P.bitor + 1)} | 0`, prec: P.bitor };
-        case "uint": return { code: `${this.wrap(arg, P.shift + 1)} >>> 0`, prec: P.shift };
+        case "Int": return { code: `${this.wrap(arg, P.bitor + 1)} | 0`, prec: P.bitor };
+        case "UInt": return { code: `${this.wrap(arg, P.shift + 1)} >>> 0`, prec: P.shift };
         case "Float": return { code: `Number(${this.wrap(arg, P.assign)})`, prec: P.call };
       }
     }
