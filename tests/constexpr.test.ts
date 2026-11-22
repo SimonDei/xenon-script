@@ -28,6 +28,43 @@ test("a constexpr method of the own object is folded (constexpr methods are impl
   expect(js).toContain("console.log(3628800, 6, 42, 2, this.#usesThis(1));");
 });
 
+test("consteval calls must fold and the functions are erased from runtime output", () => {
+  const js = compile(`public class Main {
+  public static consteval function square(n:int):int => n * n
+  public static consteval function sumSquares(n:int):int {
+    return square(n) + square(n + 1)
+  }
+
+  public static inline final ANSWER:int = sumSquares(4)
+
+  public function Main() {
+    trace(ANSWER, sumSquares(5))
+  }
+}
+`);
+  expect(js).toContain("console.log(41, 61);");
+  expect(js).not.toContain("square");
+  expect(js).not.toContain("sumSquares");
+});
+
+test("consteval rejects runtime arguments and use as a function value", () => {
+  const result = compileProject([{ path: "Main.xn", text: `public class Main {
+  public static consteval function twice(n:int):int => n * 2
+
+  public function Main() {
+    var n:int = 5
+    trace(twice(n))
+    var f:(int) -> int = twice
+  }
+}
+` }], { main: "Main" });
+  const errors = result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message]);
+  expect(errors).toEqual([
+    ["X0528", "`consteval` call can't be evaluated at compile time"],
+    ["X0528", "a `consteval` function can't be used as a runtime value"],
+  ]);
+});
+
 test("String methods and regex literals fold at compile time, in constexpr functions too", () => {
   const js = compile(`public class Main {
   public static inline final KEY:String = placeholderKey(' Straße & Nr. ')

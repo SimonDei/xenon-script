@@ -717,6 +717,8 @@ class ModuleGen {
     }
     for (const m of decl.members) {
       if (m.kind === "Method" && !m.body && !m.modifiers.abstract) continue;
+      // `consteval` methods exist only in the compile-time evaluator.
+      if (m.kind === "Method" && m.modifiers.consteval) continue;
       // Private inline constants exist only at compile time: every use was replaced by its value.
       if (m.kind === "Field" && m.modifiers.inline && m.modifiers.visibility?.value === "private") continue;
       // Fields stay together; methods and static blocks are separated by blank lines.
@@ -887,6 +889,7 @@ class ModuleGen {
     const create = (list: { node: A.Attribute; create: A.Expr }[]) => `[${list.map((a) => this.attributeValue(a)).join(", ")}]`;
     const own = this.check.attributes.get(decl);
     const members = decl.members.flatMap((m) => {
+      if (m.kind === "Method" && m.modifiers.consteval) return [];
       const list = m.kind === "StaticBlock" ? undefined : this.check.attributes.get(m);
       const key = m.kind === "StaticBlock" ? "" : /^[A-Za-z_$][\w$]*$/.test(m.name.name) ? m.name.name : jsString(m.name.name);
       return m.kind !== "StaticBlock" && list ? [`${key}: ${create(list)}`] : [];

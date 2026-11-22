@@ -5,7 +5,7 @@ import { cover, type SourceFile, type Span, span } from "./source.ts";
 
 class ParseError extends Error {}
 
-const MODIFIERS = new Set(["public", "private", "protected", "internal", "static", "final", "override", "inline", "constexpr", "abstract", "dynamic", "async", "native"]);
+const MODIFIERS = new Set(["public", "private", "protected", "internal", "static", "final", "override", "inline", "constexpr", "consteval", "abstract", "dynamic", "async", "native"]);
 const VISIBILITY = new Set(["public", "private", "protected", "internal"]);
 
 /**
@@ -578,8 +578,9 @@ export class Parser {
       return this.parseDestructor(modifiers, start);
     }
     // `static constexpr LIMIT:int = 10`: a constant written like a C++ `constexpr` variable.
-    if (modifiers.constexpr && this.tok.kind === "ident" && this.is(":", this.peekTok())) {
-      this.diags.error("X0526", "`constexpr` is for functions", modifiers.constexpr, "not a function")
+    const compileTime = modifiers.consteval ?? modifiers.constexpr;
+    if (compileTime && this.tok.kind === "ident" && this.is(":", this.peekTok())) {
+      this.diags.error("X0526", `\`${modifiers.consteval ? "consteval" : "constexpr"}\` is for functions`, compileTime, "not a function")
         .help(`a compile-time constant is \`inline final\`: \`static inline final ${this.tok.value}:…\``);
       throw new ParseError("constexpr field");
     }
@@ -615,7 +616,7 @@ export class Parser {
     const returnType = this.eat(":") ? this.parseType() : undefined;
     const isConstructor = name.name === className && !accessor;
     // A `constexpr` method only reads its object (as in C++): it is `const` whether written or not.
-    const isConst = !!this.eat("const") || (!!modifiers.constexpr && !isConstructor && !modifiers.static);
+    const isConst = !!this.eat("const") || (!!(modifiers.constexpr || modifiers.consteval) && !isConstructor && !modifiers.static);
     let body: A.Block | undefined;
     let exprBody = false;
     if (this.is("{")) body = this.parseBlock();

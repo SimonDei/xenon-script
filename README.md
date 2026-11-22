@@ -111,8 +111,23 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Attributes | `[Route('/users', verb = 'POST')]` on classes, methods and fields (classes implementing `IAttribute`, constant arguments), read with `Attributes.of(…)`; `[Deprecated('…')]` warns at uses, `[NoDiscard]` when a result is dropped; `Class<T>` for class values | [`attributes`](examples/attributes), [`class-values`](examples/class-values) |
 | `nameof` | `nameof(user.email)` is the checked string `'email'`: typos are errors, and renaming the member updates it | |
 | Iteration | `Iterable<T>` / `IEnumerator<T>`, usable with `for … of` (also from JavaScript) | [`enumerable`](examples/enumerable) |
-| Compile time | `inline` constants, `constexpr` functions (the standard library's `Math` and `String` methods too: `'a b'.replace(~/ /g, '')` folds), `const` methods, operator overloading (`operator+`, `-`, `*`, `/`, `==`) | [`inline`](examples/inline), [`const-methods`](examples/const-methods), [`operators`](examples/operators) |
+| Compile time | `inline` constants, `constexpr` functions (runtime fallback when arguments aren't constant), compile-only `consteval` functions (every call must fold), `const` methods, operator overloading (`operator+`, `-`, `*`, `/`, `==`) | [`inline`](examples/inline), [`const-methods`](examples/const-methods), [`operators`](examples/operators) |
 | Strings | `'single quotes'`, templates `$'Hi {name}'`, regex literals `~/^a+/i` | [`basics`](examples/basics) |
+
+`constexpr` may use a runtime fallback when an argument is not constant. `consteval` is stricter:
+every call must be evaluated during compilation, and its value is emitted in place:
+
+```xn
+public static consteval function square(n:int):int => n * n
+
+trace(square(12)) // emits console.log(144)
+
+var n:int = input()
+trace(square(n))  // compile error X0528
+```
+
+`consteval` functions use the same compile-time-safe language subset as `constexpr`, can call each
+other, and do not appear in generated JavaScript or TypeScript.
 
 Every folder in [`examples/`](examples) is a complete program with its expected output, and the
 test suite runs them all.

@@ -55,6 +55,8 @@ export interface Modifiers {
   inline?: Span;
   /** `static constexpr function`: evaluated at compile time when its arguments are constants. */
   constexpr?: Span;
+  /** `static consteval function`: every call must be evaluated at compile time. */
+  consteval?: Span;
   abstract?: Span;
   dynamic?: Span;
   async?: Span;

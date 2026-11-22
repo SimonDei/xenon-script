@@ -232,12 +232,12 @@ function isVoidNode(t: A.TypeNode | undefined): boolean {
 }
 
 /**
- * A method (or a native getter) declared `constexpr`: with a body, or in the standard library,
+ * A method (or a native getter) declared `constexpr` or `consteval`: with a body, or in the standard library,
  * where the JavaScript built-in runs. `decl`: the overload a call uses (natives only have overloads).
  */
 function isConstexpr(m: MemberSig, decl?: A.Method): boolean {
   const d = decl ?? (m.kind === "accessor" ? accessorHalf(m, "get") : m.kind === "method" ? m.decl : undefined);
-  return d?.kind === "Method" && !!d.modifiers.constexpr && (!!d.body || isNative(m.owner));
+  return d?.kind === "Method" && !!(d.modifiers.constexpr || d.modifiers.consteval) && (!!d.body || isNative(m.owner));
 }
 
 /**
@@ -1551,12 +1551,13 @@ class Env {
           .secondary(finalMod, "declared `final` here");
         continue;
       }
-      // A `constexpr` method is implicitly `final`: its calls may already be computed at compile time.
-      const constexprMod = parentHalf?.modifiers.constexpr;
+      // A compile-time method is implicitly `final`: its calls may already be computed at compile time.
+      const constexprMod = parentHalf?.modifiers.consteval ?? parentHalf?.modifiers.constexpr;
       if (constexprMod) {
-        this.diags.error("X0723", `\`${parentName}.${name}\` is \`constexpr\` and can't be overridden`, m.name.span)
-          .secondary(constexprMod, "declared `constexpr` here")
-          .note("a `constexpr` method is implicitly `final`: calls of it may be computed at compile time, so no subclass can replace it");
+        const kind = parentHalf?.modifiers.consteval ? "consteval" : "constexpr";
+        this.diags.error("X0723", `\`${parentName}.${name}\` is \`${kind}\` and can't be overridden`, m.name.span)
+          .secondary(constexprMod, `declared \`${kind}\` here`)
+          .note(`a \`${kind}\` method is implicitly \`final\`: calls of it may be computed at compile time, so no subclass can replace it`);
         continue;
       }
       this.checkSignature(m, info, inherited);
@@ -1744,7 +1745,9 @@ class Env {
         this.diags.error("X0520", "`inline` is only allowed on constants", m.modifiers.inline)
           .note("a function evaluated at compile time is `static constexpr function`");
       }
-      if (m.modifiers.constexpr) this.constexprDecl(m, isNative(info));
+      if (m.modifiers.consteval && m.modifiers.constexpr) this.diags.error("X0526", "`consteval` and `constexpr` can't be used together", m.modifiers.consteval)
+        .secondary(m.modifiers.constexpr, "`constexpr` here");
+      if (m.modifiers.constexpr || m.modifiers.consteval) this.constexprDecl(m, isNative(info));
       if (m.kind === "Field" && m.modifiers.inline) {
         if (!m.modifiers.static) {
           this.diags.error("X0520", "an `inline` field must be `static`", m.modifiers.inline)
@@ -1789,16 +1792,18 @@ class Env {
   /** Resolves `NAME` / `Class.NAME` inside an inline initializer of `owner`. */
   /** X0526: what a `constexpr` declaration must be (its body and types are checked with the body). */
   private constexprDecl(m: A.Member, native: boolean) {
-    const at = m.modifiers.constexpr!;
+    const at = (m.modifiers.consteval ?? m.modifiers.constexpr)!;
+    const kind = m.modifiers.consteval ? "consteval" : "constexpr";
     const bad = (message: string, help?: string) => {
       const d = this.diags.error("X0526", message, at);
       if (help) d.help(help);
     };
-    if (m.kind !== "Method") return bad("`constexpr` is for functions", "a compile-time constant is `static inline final NAME:T = …`");
+    if (m.kind !== "Method") return bad(`\`${kind}\` is for functions`, "a compile-time constant is `static inline final NAME:T = …`");
+    if (m.modifiers.consteval && m.isConstructor) return bad("a constructor can't be `consteval`", "use `constexpr` when the object may be needed at runtime");
     // The standard library's getters (`String.length`) and rest parameters (`Math.max`) run as JavaScript.
-    if (m.isDestructor || (m.accessor && !(native && m.accessor === "get"))) return bad(`${m.isDestructor ? "a destructor" : "a getter or setter"} can't be \`constexpr\``);
-    if (m.modifiers.async || m.modifiers.abstract) bad(`a \`constexpr\` function can't be \`${m.modifiers.async ? "async" : "abstract"}\``);
-    if (m.params.some((p) => p.rest) && !native) bad("a `constexpr` function can't have a rest parameter");
+    if (m.isDestructor || (m.accessor && !(native && m.accessor === "get"))) return bad(`${m.isDestructor ? "a destructor" : "a getter or setter"} can't be \`${kind}\``);
+    if (m.modifiers.async || m.modifiers.abstract) bad(`a \`${kind}\` function can't be \`${m.modifiers.async ? "async" : "abstract"}\``);
+    if (m.params.some((p) => p.rest) && !native) bad(`a \`${kind}\` function can't have a rest parameter`);
   }
 
   /**
@@ -2317,6 +2322,7 @@ interface MethodContext {
   isConstructor: boolean;
   name: string;
   async: boolean;
+  consteval: boolean;
   /** Where `async ` would be inserted by a fix-it. */
   asyncAt: Span;
 }
@@ -2451,11 +2457,12 @@ class BodyChecker {
         // A wrapping attribute on a `constexpr` method: calls with constant arguments are computed
         // when compiling, so the wrapper would only see the others.
         const wrap = findMember(info, "wrap");
-        if (owner.kind === "Method" && owner.modifiers.constexpr && wrap && !wrap.owner.decl.isInterface) {
-          this.diags.error("X0838", `\`${info.decl.name.name}\` wraps the method, which can't be \`constexpr\``, a.name.span, "defines `wrap`")
-            .secondary(owner.modifiers.constexpr, "calls with constant arguments are computed when compiling")
-            .note("the wrapper would run only for calls whose arguments are known at run time")
-            .help("remove `constexpr`, or use an attribute without `wrap`");
+        if (owner.kind === "Method" && (owner.modifiers.consteval || owner.modifiers.constexpr) && wrap && !wrap.owner.decl.isInterface) {
+          const kind = owner.modifiers.consteval ? "consteval" : "constexpr";
+          this.diags.error("X0838", `\`${info.decl.name.name}\` wraps the method, which can't be \`${kind}\``, a.name.span, "defines `wrap`")
+            .secondary((owner.modifiers.consteval ?? owner.modifiers.constexpr)!, owner.modifiers.consteval ? "calls are always computed when compiling" : "calls with constant arguments are computed when compiling")
+            .note(owner.modifiers.consteval ? "the wrapper would never run" : "the wrapper would run only for calls whose arguments are known at run time")
+            .help(`remove \`${kind}\`, or use an attribute without \`wrap\``);
         }
         // Checked like `new Route(args)`; its named values like assignments to its members.
         const create = { kind: "New" as const, callee: a.name, args: a.args, span: a.span };
@@ -2575,7 +2582,7 @@ class BodyChecker {
       if (m.isDestructor) {
         if (!m.body) continue;
         const fnKw = m.span.file.text.indexOf("~", m.span.start);
-        this.method = { ret: T.void, isConstructor: false, name: `~${m.name.name}`, async: !!m.modifiers.async, asyncAt: span(m.span.file, fnKw, fnKw) };
+        this.method = { ret: T.void, isConstructor: false, name: `~${m.name.name}`, async: !!m.modifiers.async, consteval: false, asyncAt: span(m.span.file, fnKw, fnKw) };
         this.disposables = new Map();
         this.declared = [];
         this.block(m.body, scope);
@@ -2596,7 +2603,7 @@ class BodyChecker {
           this.diags.error("X0761", `${m.isConstructor ? "constructors" : "getters and setters"} can't be \`async\``, m.modifiers.async);
         } else bodyRet = this.asyncResult(ret, m.returnType);
       }
-      this.method = { ret: bodyRet, retSpan: m.accessor === "set" ? undefined : m.returnType?.span, isConstructor: m.isConstructor, name: m.name.name, async: !!m.modifiers.async, asyncAt };
+      this.method = { ret: bodyRet, retSpan: m.accessor === "set" ? undefined : m.returnType?.span, isConstructor: m.isConstructor, name: m.name.name, async: !!m.modifiers.async, consteval: !!m.modifiers.consteval, asyncAt };
       m.params.forEach((p, i) => {
         const pType = type?.params[i]?.type ?? (m.accessor === "set" && sig ? sig.type : T.any);
         if (p.init) this.checkAssign(p.init, pType, p.type && { span: p.type.span, label: "parameter type declared here" });
@@ -2608,7 +2615,7 @@ class BodyChecker {
       this.block(m.body, scope);
       this.reportUndisposed();
       this.reportUnusedLocals();
-      if (m.modifiers.constexpr) this.constexprBody(m, type);
+      if (m.modifiers.constexpr || m.modifiers.consteval) this.constexprBody(m, type);
       const close = span(m.body.span.file, m.body.span.end - 1, m.body.span.end);
       const needsValue = !m.isConstructor && m.accessor !== "set" && bodyRet.kind !== "void" && !isDynamic(bodyRet);
       if (needsValue && completes(m.body)) {
@@ -2693,6 +2700,8 @@ class BodyChecker {
    * inline constants, `Math`'s pure functions and constants, and `constexpr` functions (X0526).
    */
   private constexprBody(m: A.Method, type: MethodType | undefined) {
+    const kind = m.modifiers.consteval ? "consteval" : "constexpr";
+    const modifier = (m.modifiers.consteval ?? m.modifiers.constexpr)!;
     // Values a compile-time evaluation can hold: primitives, and objects (of classes with a `constexpr` constructor).
     const constType = (t: Type) => {
       const n = nonNull(t);
@@ -2701,9 +2710,12 @@ class BodyChecker {
     const what = "a number, `String`, `Bool` or an object";
     if (type) {
       type.params.forEach((p, i) => {
-        if (!constType(p.type)) this.diags.error("X0526", `a \`constexpr\` parameter must be ${what}`, m.params[i]!.type?.span ?? m.params[i]!.name.span, `\`${typeToString(p.type)}\``);
+        if (!constType(p.type)) this.diags.error("X0526", `a \`${kind}\` parameter must be ${what}`, m.params[i]!.type?.span ?? m.params[i]!.name.span, `\`${typeToString(p.type)}\``);
       });
-      if (!m.isConstructor && !constType(type.ret)) this.diags.error("X0526", `a \`constexpr\` function must return ${what}`, m.returnType?.span ?? m.name.span, `\`${typeToString(type.ret)}\``);
+      if (!m.isConstructor && !constType(type.ret)) this.diags.error("X0526", `a \`${kind}\` function must return ${what}`, m.returnType?.span ?? m.name.span, `\`${typeToString(type.ret)}\``);
+      if (m.modifiers.consteval && !m.isConstructor && type.ret.kind === "class") {
+        this.diags.error("X0526", "a `consteval` function must return a number, `String` or `Bool`", m.returnType?.span ?? m.name.span, "an object can't replace a runtime call");
+      }
     }
     if (!m.body) return;
     const params = new Set(m.params.map((p) => p.name.name));
@@ -2728,9 +2740,10 @@ class BodyChecker {
       return !!f && !f.isStatic && isConstexpr(f, callee && this.env.result.overloadPicks.get(callee)?.chosen?.decl);
     };
     const bad = (e: A.Expr, what: string, label?: string) => {
-      this.diags.error("X0526", `${what} isn't allowed in a \`constexpr\` function`, e.span, label)
-        .secondary(m.modifiers.constexpr!, "`constexpr` here")
-        .note("allowed: parameters and locals, `this` and its fields, literals, operators, `?:`, conversions like `Int()`, inline constants, `constexpr` functions (also the standard library's: `Math.floor`, `trim`, `replace`, …), methods and constructors, and the statements `if`, `while`, `for`, `switch`, `return`, `break` and `continue`");
+      const allowedCalls = kind === "consteval" ? "`constexpr`/`consteval` functions" : "`constexpr` functions";
+      this.diags.error("X0526", `${what} isn't allowed in a \`${kind}\` function`, e.span, label)
+        .secondary(modifier, `\`${kind}\` here`)
+        .note(`allowed: parameters and locals, \`this\` and its fields, literals, operators, \`?:\`, conversions like \`Int()\`, inline constants, ${allowedCalls} (also the standard library's: \`Math.floor\`, \`trim\`, \`replace\`, …), methods and constructors, and the statements \`if\`, \`while\`, \`for\`, \`switch\`, \`return\`, \`break\` and \`continue\``);
       return false;
     };
     const ok = (e: A.Expr): boolean => {
@@ -4395,11 +4408,19 @@ class BodyChecker {
         this.checkArgs(e, sig, chosen.decl, scope);
         // Before folding: a native `constexpr` call runs the overload chosen here.
         if (overloads && chosen.decl) this.env.result.overloadPicks.set(e.callee, { all: overloads, chosen: { decl: chosen.decl, type: sig } });
-        // A `constexpr` call with constant arguments: evaluated now, its value pasted into the output.
-        if (chosen.decl?.modifiers.constexpr) {
+        // A compile-time call with constant arguments is evaluated now. `constexpr` may remain
+        // a runtime call; `consteval` is an error unless evaluation produced an emitted primitive.
+        if (chosen.decl?.modifiers.constexpr || chosen.decl?.modifiers.consteval) {
           const f = this.constValue(e);
           if (f.ok && isPrimitive(f.value)) this.env.result.inlineValues.set(e, f.value);
-          else if (!f.ok && f.limit) this.diags.error("X0527", f.reason, f.at).note("the call is evaluated at compile time because its arguments are constants");
+          else if (chosen.decl?.modifiers.consteval && !this.method?.consteval) {
+            if (!f.ok && f.limit) {
+              this.diags.error("X0527", f.reason, f.at).note("a `consteval` call is always evaluated at compile time");
+            } else {
+              const d = this.diags.error("X0528", "`consteval` call can't be evaluated at compile time", e.span, f.ok ? "the result can't be emitted as JavaScript" : "the arguments aren't compile-time constants");
+              d.help("pass constant arguments, or change the function to `constexpr`");
+            }
+          } else if (!f.ok && f.limit && chosen.decl?.modifiers.constexpr) this.diags.error("X0527", f.reason, f.at).note("the call is evaluated at compile time because its arguments are constants");
         }
         if (chosen.decl?.name.span.file.prelude && tsDivergent(chosen.decl.returnType)) this.env.result.tsResultCasts.add(e);
         // `b?.valueOf()` / `f?.()`: `null` when the object (or function) is.
@@ -4706,7 +4727,7 @@ class BodyChecker {
     let bodyRet = voidContext ? T.void
       : f.async ? (f.returnType || contextRet ? this.asyncResult(sig.ret, f.returnType, asyncAt) : T.any)
       : sig.ret;
-    this.method = { ret: bodyRet, retSpan: f.returnType?.span, isConstructor: false, name: f.name?.name ?? "function", async: f.async, asyncAt };
+    this.method = { ret: bodyRet, retSpan: f.returnType?.span, isConstructor: false, name: f.name?.name ?? "function", async: f.async, consteval: false, asyncAt };
     this.targets = [];
     this.deferBody = undefined;
     this.beforeSuper = false;
@@ -4786,6 +4807,11 @@ class BodyChecker {
   /** Bookkeeping for every member reference: setter-only reads and method closures. */
   private memberUse(e: A.Expr, m: MemberSig, at: Span) {
     this.env.usedMembers.add(m);
+    if (m.decl.kind === "Method" && m.decl.modifiers.consteval && e !== this.calledCallee) {
+      this.diags.error("X0528", "a `consteval` function can't be used as a runtime value", at, "compile-time functions can't be kept or passed")
+        .help("call it with constant arguments, or change it to `constexpr`");
+      return;
+    }
     // In a const method, only const methods and getters may be used on `this`.
     const onThis = e.kind === "Ident" || (e.kind === "Member" && (e.object.kind === "This" || e.object.kind === "Super"));
     if (this.constMethod && onThis && !m.isStatic && !this.writing && (m.kind === "method" || m.kind === "accessor") && !isConstMember(m)) {

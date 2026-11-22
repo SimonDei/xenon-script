@@ -101,7 +101,7 @@ Working name **XenonScript**, extension `.xn`.
 |---|---|
 | Structure | `package` `import` `class` `interface` `enum` `typedef` `extends` `implements` |
 | Declarations | `function` `var` `const` `final` (`final` is also a modifier) `using` |
-| Modifiers | `public` `private` `protected` `internal` `static` `final` `inline` `abstract` `override` `dynamic` `async` (`const` is also a method suffix) |
+| Modifiers | `public` `private` `protected` `internal` `static` `final` `inline` `constexpr` `consteval` `abstract` `override` `dynamic` `async` (`const` is also a method suffix) |
 | Control flow | `if` `else` `switch` `case` `default` `while` `do` `for` `in` `break` `continue` `return` |
 | Exceptions | `throw` `try` `catch` `finally` |
 | Expressions | `new` `this` `super` `is` `as` `typeof` `delete` `await` |
@@ -124,6 +124,10 @@ Working name **XenonScript**, extension `.xn`.
 **Built-in type names** (predeclared, not keywords; shadowing is a compile error): `int` `uint` `Float` `String` `Boolean` `Object` `Array` `Function` `Class` `RegExp`, plus the dynamic type `*`. **Built-in typedefs** (prelude): `Int` `UInt` `Void` `Bool` `Any` (see A2). **Built-in classes** (prelude): `Exception` `ArgumentException` `TypeException` `RangeException` `StateException` `NotImplementedException` (see A6c). `Error` and the JS error classes are hidden.
 
 **Built-in global functions**: `trace` (→ `console.log`), cast functions `int()` `uint()` `Float()` `String()` `Boolean()`.
+
+`consteval` functions use the same compile-time-safe body and evaluator as `constexpr`, but every
+call must fold to an emitted JavaScript value. They cannot be taken as runtime values and are omitted
+from generated output.
 
 ### A1. File & package structure
 ```actionscript
