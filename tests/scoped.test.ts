@@ -198,3 +198,52 @@ class Res {
   expect(js).not.toContain("#disposed");
   expect(js).toContain("import { $Destroy, $destroy, $noError } from './xenon/Prelude.js';");
 });
+
+test("deferred statements run in reverse order on normal and early exits", async () => {
+  expect(await run(`
+  public function Main() {
+    normal()
+    stop()
+    try {
+      fail()
+    } catch (e:Exception) {
+      log.push(e.message)
+    }
+    trace(log.join(' '))
+  }
+
+  private function normal():void {
+    defer log.push('normal-1')
+    defer {
+      log.push('normal-2')
+    }
+    log.push('normal-body')
+  }
+
+  private function stop():void {
+    defer log.push('return-defer')
+    log.push('return-body')
+    return
+  }
+
+  private function fail():void {
+    defer log.push('throw-defer')
+    throw new Exception('throw-body')
+  }`)).toBe("normal-body normal-2 normal-1 return-body return-defer throw-defer throw-body");
+});
+
+test("deferred statements and scoped locals unwind in registration order", async () => {
+  expect(await run(`
+  public function Main() {
+    work()
+    trace(log.join(' '))
+  }
+
+  private function work():void {
+    var before:Res = new Res('before')
+    defer log.push('defer-before')
+    var after:Res = new Res('after')
+    defer log.push('defer-after')
+    log.push('body')
+  }`)).toBe("body defer-after ~after defer-before ~before");
+});

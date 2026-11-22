@@ -948,11 +948,24 @@ class ModuleGen {
 
   /**
    * Statements of a block. After a local owning a scoped value, the rest of the block runs in a
-   * `try` whose `finally` destroys it: on every exit, in reverse order of declaration.
+   * `try` whose `finally` destroys it: on every exit, in reverse order of declaration. A `defer`
+   * works the same way, its body being the `finally`.
    */
   private stmtList(list: A.Stmt[]) {
     for (let i = 0; i < list.length; i++) {
       const s = list[i]!;
+      if (s.kind === "Defer" && list.slice(i + 1).some((x) => x.kind !== "Empty")) {
+        this.from(s, () => {
+          this.w.line("try {");
+          this.w.indent();
+          this.stmtList(list.slice(i + 1));
+          this.w.dedent();
+          this.w.line("} finally {");
+          this.body(s.body);
+          this.w.line("}");
+        });
+        return;
+      }
       this.stmt(s);
       const owner = s.kind === "VarDecl" ? this.check.scopedLocals.get(s.name) : undefined;
       if (!owner || s.kind !== "VarDecl") continue;
@@ -1418,6 +1431,12 @@ class ModuleGen {
         this.w.line("}");
         return;
       }
+      case "Defer":
+        // Nothing follows it in its block (X0877): it runs right away.
+        this.w.line("{");
+        this.body(s.body);
+        this.w.line("}");
+        return;
       case "Empty":
         return;
     }

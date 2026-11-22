@@ -117,6 +117,7 @@ Working name **XenonScript**, extension `.xn`.
 | `from` | JS import clause: `import x from 'pkg'` |
 | `of` | value loop: `for (var v:T of coll)` (as in JS, `of` stays usable as a name) |
 | `step` | after a range in a loop header: `0..n step 2` |
+| `defer` | at the start of a statement: `defer close()` or `defer { ... }` |
 | `static` block | `static { ... }` inside a class body |
 
 **Built-in type names** (predeclared, not keywords; shadowing is a compile error): `int` `uint` `Float` `String` `Boolean` `Object` `Array` `Function` `Class` `RegExp`, plus the dynamic type `*`. **Built-in typedefs** (prelude): `Int` `UInt` `Void` `Bool` `Any` (see A2). **Built-in classes** (prelude): `Exception` `ArgumentException` `TypeException` `RangeException` `StateException` `NotImplementedException` (see A6c). `Error` and the JS error classes are hidden.
@@ -238,6 +239,7 @@ Block-scoped (`let`/`const` in output) — a deliberate break from AS3's functio
 | Try / catch / finally with **typed catches** | `try {...} catch (e:TypeException) {...} catch (e:RangeException) {...} catch (e:Exception) {...} finally {...}` | one `catch (e)`, `e = Exception.from(e)` (prelude method, see A6c), then `if (e instanceof TypeException) {...} else if ... else throw e` |
 | Await | `var r:* = await fetch(url)` (inside `async` functions) | same |
 | Using block | `using (r:Res = open()) {...}`, `await using (...) {...}` (see A6 destructors) | `{ using r = open(); ... }` |
+| Defer | `defer close()` or `defer { ... }` — runs at the end of the enclosing block, in reverse order; it also runs when the block exits through `return` or `throw` | `try { ... } finally { ... }` |
 
 **Ranges in loops** (Rust-style):
 ```actionscript

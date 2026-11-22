@@ -941,6 +941,11 @@ export class Parser {
 
     if (this.is("using") || (this.is("await") && this.is("using", this.peekTok()))) return this.parseUsing();
 
+    if (this.atDefer()) {
+      this.advance();
+      return { kind: "Defer", body: this.parseStatement(), span: this.sp(start) };
+    }
+
     if (t.kind === "ident" && this.is(":", this.peekTok())) {
       this.fail("labels are not supported yet", cover(t.span, this.peekTok().span));
     }
@@ -949,6 +954,19 @@ export class Parser {
     this.rangeOutsideLoop();
     this.endStatement();
     return { kind: "ExprStmt", expr, span: this.sp(start) };
+  }
+
+  /**
+   * `defer` is contextual: a statement keyword only when a statement follows on the same line
+   * (`defer {`, `defer close()`), so `defer` stays usable as a name (`script.defer = true`, `defer(x)`).
+   */
+  private atDefer(): boolean {
+    if (this.tok.kind !== "ident" || this.tok.value !== "defer") return false;
+    const next = this.peekTok();
+    if (next.nl) return false;
+    if (next.kind === "punct") return next.value === "{";
+    if (next.kind === "keyword") return !["in", "is", "as", "instanceof"].includes(next.value);
+    return next.kind === "ident";
   }
 
   /** `using x:T = e`, `using (x:T = e, …) body`, `using (expr) body`, each optionally `await`-prefixed. */

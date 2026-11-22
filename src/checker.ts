@@ -344,8 +344,12 @@ class Scope {
   private locals = new Map<string, Local>();
   /** Locals narrowed in this scope (`if (x != null) { … }`, `if (x is String) { … }`); `undefined` cancels an outer one. */
   private narrowed?: Map<Local, Type | undefined>;
-  /** A function expression's scope: later writes outside it invalidate narrowing carried across it. */
+  /**
+   * A function expression's scope, or a `defer` body's: it runs later, so writes after its start
+   * invalidate narrowing carried across it.
+   */
   boundaryAt?: number;
+  boundaryKind?: "function" | "defer";
   constructor(
     readonly parent?: Scope,
     private functionWrites: Map<string, { at: number; deferred: boolean }[]> =
@@ -370,20 +374,24 @@ class Scope {
     }
   }
   /** The local's type here: narrowed to non-null if a check says so. `blocked`: a check exists outside a function boundary. */
-  typeOf(local: Local): { type: Type; blocked: boolean } {
+  typeOf(local: Local): { type: Type; blocked: false | "function" | "defer" } {
     let crossedAt: number | undefined;
+    let crossed: "function" | "defer" = "function";
     for (let s: Scope | undefined = this; s; s = s.parent) {
       if (s.narrowed?.has(local)) {
         const narrowed = s.narrowed.get(local);
         const changed = local.captureUnstable || local.writes?.some((write) =>
           write.deferred || (crossedAt !== undefined && write.at > crossedAt));
         if (narrowed && crossedAt !== undefined && local.kind !== "final" && local.kind !== "const" && changed) {
-          return { type: local.type, blocked: true };
+          return { type: local.type, blocked: crossed };
         }
         return { type: narrowed ?? local.type, blocked: false };
       }
       if (s.owns(local)) break;
-      if (s.boundaryAt !== undefined) crossedAt = crossedAt === undefined ? s.boundaryAt : Math.min(crossedAt, s.boundaryAt);
+      if (s.boundaryAt !== undefined) {
+        if (crossedAt === undefined || s.boundaryAt < crossedAt) crossed = s.boundaryKind ?? "function";
+        crossedAt = crossedAt === undefined ? s.boundaryAt : Math.min(crossedAt, s.boundaryAt);
+      }
     }
     return { type: local.type, blocked: false };
   }
@@ -2319,6 +2327,8 @@ class BodyChecker {
   private method?: MethodContext;
   /** Enclosing loops/switches, innermost last (for `break`/`continue`). */
   private targets: ("loop" | "switch")[] = [];
+  /** The `defer` whose body is being checked: `return`, and `break`/`continue` to outside it, can't leave it. */
+  private deferBody?: A.Stmt & { kind: "Defer" };
   /** Definite-assignment state of `final` locals/fields that must be assigned exactly once. */
   private da = new Map<object, DAState>();
   /** Null safety: `var` fields without a value whose type excludes `null` (tracked in `da` like `final` ones). */
@@ -2378,7 +2388,8 @@ class BodyChecker {
   /** Name of the enclosing `const` method: `this` is read-only there (arrows inherit it). */
   private constMethod?: string;
   /** Reads of a variable whose null check is outside the enclosing function expression (for an X0398 note). */
-  private narrowingBlocked = new Set<A.Expr>();
+  /** Reads whose narrowing didn't carry into a function expression or `defer` body (for the note). */
+  private narrowingBlocked = new Map<A.Expr, "function" | "defer">();
   /** The callee of the call being checked (`d?.bark` in `d?.bark()`): a method there isn't taken as a value. */
   private calledCallee?: A.Expr;
   /** The identifier currently used as the object of a member access (`x` in `x.dispose()`). */
@@ -2791,7 +2802,7 @@ class BodyChecker {
         case "ForRange": return !st.variable.pattern && ok(st.start) && (!st.end || ok(st.end)) && (!st.step || ok(st.step)) && stmt(st.body);
         case "Switch": return ok(st.discriminant) && st.cases.every((c) => (!c.test || ok(c.test)) && c.body.every(stmt));
         default: {
-          const what = { Try: "`try`", Throw: "`throw`", ForOf: "`for … of`", ForIn: "`for … in`", FuncDecl: "a local function", UsingDecl: "`using`", UsingBlock: "`using`", DestructDecl: "destructuring", IfVar: "`if (var …)`", WhileVar: "`while (var …)`" }[st.kind] ?? "this statement";
+          const what = { Try: "`try`", Throw: "`throw`", ForOf: "`for … of`", ForIn: "`for … in`", FuncDecl: "a local function", UsingDecl: "`using`", UsingBlock: "`using`", Defer: "`defer`", DestructDecl: "destructuring", IfVar: "`if (var …)`", WhileVar: "`while (var …)`" }[st.kind] ?? "this statement";
           return bad({ span: st.span } as A.Expr, what);
         }
       }
@@ -2937,6 +2948,17 @@ class BodyChecker {
       this.stmt(s, scope);
       if (!completes(s)) reachable = false;
     }
+    this.deferAtEnd(list);
+  }
+
+  /** X0877: `defer` as the last statement of a block: it runs right away. */
+  private deferAtEnd(list: A.Stmt[]) {
+    const last = list.findLast((s) => s.kind !== "Empty");
+    if (last?.kind === "Defer") {
+      this.diags.warning("X0877", "nothing follows this `defer`", span(last.span.file, last.span.start, last.span.start + "defer".length), "runs right away")
+        .note("deferred code runs when its block ends, and the block ends here")
+        .help("move the `defer` before the code it should run after, or remove `defer`");
+    }
   }
 
   private inTarget(kind: "loop" | "switch", fn: () => void) {
@@ -2950,7 +2972,10 @@ class BodyChecker {
 
   private nested(s: A.Stmt, scope: Scope) {
     if (s.kind === "Block") this.block(s, scope);
-    else this.stmt(s, new Scope(scope));
+    else {
+      this.stmt(s, new Scope(scope));
+      this.deferAtEnd([s]); // `if (x) defer f()`
+    }
   }
 
   private stmt(s: A.Stmt, scope: Scope): void {
@@ -3062,11 +3087,19 @@ class BodyChecker {
         return;
       }
       case "Break":
-        if (this.targets.length === 0) this.diags.error("X0340", "`break` outside of a loop or `switch`", s.span);
+        if (this.targets.length === 0) {
+          if (this.deferBody) this.leavesDefer(s, "break");
+          else this.diags.error("X0340", "`break` outside of a loop or `switch`", s.span);
+        }
         return;
       case "Continue":
-        if (!this.targets.includes("loop")) this.diags.error("X0341", "`continue` outside of a loop", s.span);
+        if (!this.targets.includes("loop")) {
+          if (this.deferBody) this.leavesDefer(s, "continue");
+          else this.diags.error("X0341", "`continue` outside of a loop", s.span);
+        }
         return;
+      case "Defer":
+        return this.deferStmt(s, scope);
       case "Empty":
         return;
     }
@@ -3251,9 +3284,51 @@ class BodyChecker {
     d.help("use the result, or discard it on purpose", [{ span: span(e.span.file, e.span.start, e.span.start), text: "void " }]);
   }
 
+  /**
+   * `defer body`: checked where it's written (it sees what's declared before it), but it runs when
+   * the block ends: finals can't be assigned in it, its assignments don't count for what follows,
+   * and narrowing reaches into it only for variables not assigned after it.
+   */
+  private deferStmt(s: A.Stmt & { kind: "Defer" }, scope: Scope) {
+    const body = s.body;
+    if (body.kind === "VarDecl" || body.kind === "FuncDecl" || body.kind === "UsingDecl" || body.kind === "DestructDecl") {
+      const what = body.kind === "FuncDecl" ? "function" : "variable";
+      this.diags.error("X0345", "`defer` needs code to run, not a declaration", body.span, `this ${what} would only exist inside the deferred code`)
+        .help("put the declaration and the code using it in a block: `defer { … }`");
+    }
+    const before = this.snapshot();
+    const saved = { targets: this.targets, deferBody: this.deferBody };
+    this.targets = [];
+    this.deferBody = s;
+    this.loopDepth++; // like a closure: finals declared outside can't be assigned in it
+    try {
+      const inner = new Scope(scope);
+      inner.boundaryAt = s.span.start;
+      inner.boundaryKind = "defer";
+      this.nested(body, inner);
+    } finally {
+      Object.assign(this, saved);
+      this.loopDepth--;
+    }
+    this.da = before;
+    // What it assigns may have changed by the time code after the block runs.
+    this.unnarrowAssignedIn(body, scope);
+  }
+
+  /** X0342: `return`/`break`/`continue` would leave a `defer` body (it runs while the block is ending). */
+  private leavesDefer(s: A.Stmt, what: string) {
+    this.diags.error("X0342", `\`${what}\` can't leave deferred code`, s.span, `\`${what}\` inside \`defer\``)
+      .secondary(span(s.span.file, this.deferBody!.span.start, this.deferBody!.span.start + "defer".length), "deferred here")
+      .note("deferred code runs while its block is already ending: it can't return, or break out of a loop around the block");
+  }
+
   private returnStmt(s: A.Stmt & { kind: "Return" }, scope: Scope) {
     const m = this.method;
     if (!m) return;
+    if (this.deferBody) {
+      this.leavesDefer(s, "return");
+      return;
+    }
     if (m.isConstructor) this.finalFieldsAssigned(s.span, "the constructor can return here");
     if (!s.value) {
       if (!m.isConstructor && m.ret.kind !== "void" && !isDynamic(m.ret)) {
@@ -3719,8 +3794,11 @@ class BodyChecker {
     const fallback = written ? undefined : defaultFor(t.inner); // `n++` can't become `(n ?? 0)++`
     const isField = (e.kind === "Ident" && this.env.result.resolutions.get(e)?.kind === "member") || e.kind === "Member";
     if (isField) d.note("a null check narrows only local variables and parameters (a field can change in between): copy it into a local first");
-    if (this.narrowingBlocked.has(e)) {
-      d.note("a null check outside a function expression doesn't reach into it: the variable could change before the function runs")
+    const blocked = this.narrowingBlocked.get(e);
+    if (blocked) {
+      d.note(blocked === "defer"
+        ? "a null check before `defer` doesn't reach into it: the variable is assigned again before the deferred code runs"
+        : "a null check outside a function expression doesn't reach into it: the variable could change before the function runs")
         .help(`copy it into a \`final\` local after the check: \`final value:${typeToString(t.inner)} = ${spanText(e.span)}\``);
       return t.inner;
     }
@@ -3941,7 +4019,7 @@ class BodyChecker {
       if (local.inline !== undefined) this.env.result.inlineValues.set(e, local.inline);
       if (this.da.has(local)) this.daRead(local, e.span, local.nameSpan, `${this.nonNullLocals.has(local) ? "" : "final "}\`${name}\``);
       const seen = scope.typeOf(local);
-      if (seen.blocked) this.narrowingBlocked.add(e);
+      if (seen.blocked) this.narrowingBlocked.set(e, seen.blocked);
       return seen.type;
     }
     const member = findMember(this.info, name) ?? (hasJsAncestor(this.info) ? undefined : this.env.rootMember(name));
@@ -4620,7 +4698,7 @@ class BodyChecker {
   private fnExpr(f: A.FunctionNode, scope: Scope, context?: MethodType): MethodType {
     const sig = this.fnSigs.get(f) ?? this.fnSignature(f, false, context);
     const contextRet = !f.returnType && context && f.body.kind === "Block";
-    const saved = { method: this.method, targets: this.targets, beforeSuper: this.beforeSuper, superCall: this.superCall, constMethod: this.constMethod };
+    const saved = { method: this.method, targets: this.targets, deferBody: this.deferBody, beforeSuper: this.beforeSuper, superCall: this.superCall, constMethod: this.constMethod };
     if (!f.arrow) this.constMethod = undefined; // a `function` expression has its own `this`
     const asyncAt = span(f.span.file, f.span.start, f.span.start);
     // An async callback where the result is ignored (`setTimeout(async () => { … })`): its body returns nothing.
@@ -4630,6 +4708,7 @@ class BodyChecker {
       : sig.ret;
     this.method = { ret: bodyRet, retSpan: f.returnType?.span, isConstructor: false, name: f.name?.name ?? "function", async: f.async, asyncAt };
     this.targets = [];
+    this.deferBody = undefined;
     this.beforeSuper = false;
     this.superCall = undefined;
     this.loopDepth++; // a closure may run any number of times: outer finals can't be assigned in it
@@ -4639,6 +4718,7 @@ class BodyChecker {
     try {
       const inner = new Scope(scope, assignmentWrites(f.body));
       inner.boundaryAt = f.span.start;
+      inner.boundaryKind = "function";
       if (f.name && !this.fnSigs.has(f)) inner.declare(f.name.name, { type: sig, kind: "const", nameSpan: f.name.span }); // named function expression
       f.params.forEach((p, i) => {
         const pt = sig.params[i]!.type;

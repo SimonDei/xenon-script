@@ -93,6 +93,8 @@ export const CODES: Record<string, CodeInfo> = {
   X0335: c("misplaced spread", "`...` spreads only into calls, array literals and object literals."),
   X0340: c("`break` outside a loop", "`break` leaves the innermost loop or `switch`; there is none here."),
   X0341: c("`continue` outside a loop", "`continue` needs an enclosing loop (`switch` doesn't count)."),
+  X0342: c("jump out of `defer`", "Deferred code runs while its block is ending (after a `return`, a `throw` or the last statement), so it can't `return`, or `break`/`continue` a loop outside it. Loops inside the deferred code can use both."),
+  X0345: c("declaration after `defer`", "`defer` runs a statement or block when the enclosing block ends. A declaration on its own (`defer var x = …`) would only exist inside the deferred code: put it in a block with the code that uses it, `defer { … }`."),
   X0343: c("duplicate case", "Two `case` labels have the same constant value."),
   X0344: c("several defaults", "A `switch` has at most one `default`."),
 
@@ -268,6 +270,7 @@ export const CODES: Record<string, CodeInfo> = {
   X0802: c("not disposable", "`using` needs a value whose class implements `IDisposable` (or `IAsyncDisposable` with `await using`): `using` calls its `dispose()` when the block ends. A class with a destructor needs no `using`: it is destroyed when its scope ends."),
   X0803: c("destructor name", "A destructor is named `~ClassName`."),
   X0804: c("invalid destructor", "Destructors take no parameters, have no return type, are public or protected, and take no other modifiers."),
+  X0805: c("scoped value handed on before `defer`", "`return r` hands a scoped value to the caller and clears the variable, then the block's deferred code runs: code deferred before the `return` can't use `r`. Use it before the `return`, or keep what the deferred code needs in another variable."),
   X0806: c("sync/async destructor mismatch", "A destructor must be async exactly when its parent's is, since they run as a chain."),
   X0807: c("async disposal outside an async function", "An `IAsyncDisposable` value (whose `dispose()` returns a promise) is held with `await using`. A scoped value with an async destructor can only be owned in an `async` function: destroying it is awaited when its scope ends."),
   X0808: c("destructor and IDisposable", "A class is either scoped or manual. A destructor `function ~Name()` makes it scoped: destroyed when the scope owning the value ends. `implements IDisposable` makes it manual: its own `dispose()` method runs when `using` ends or when called. Keep one: move the cleanup into `dispose()` and remove the destructor, or remove `implements IDisposable`.",
@@ -335,12 +338,13 @@ export const CODES: Record<string, CodeInfo> = {
   X0873: c("deprecated", "The class, method or field is marked `[Deprecated('…')]`: its message says what to use instead. Uses inside the deprecated declaration itself aren't reported."),
   X0874: c("promise not awaited", "A statement made a promise and dropped it: if the work fails, nothing sees the error, and nothing waits for it to finish. Wait for it with `await` (in an `async` function), keep it (`var job = save()`), handle failure (`.catch(…)`), or write `void save()` to say it runs on its own on purpose.",
     "save()", "await save()"),
-
-  // ---- const methods ----
   X0875: c("result discarded", "The method (or the class of the value) is marked `[NoDiscard]`: its result matters, but this statement drops it. Use the result, or write `void f()` to discard it on purpose.",
     "text.trim()", "text = text.trim()"),
   X0876: c("invalid `nameof`", "`nameof(x)` is replaced by the name `x` as a string constant, after checking that it exists: it takes one local, parameter, member (`user.email`, `Dog.create`), class or enum member. A member of an untyped value (`*`) can't be checked, so it isn't accepted (write the string).",
     "nameof(user.emial)", "nameof(user.email)"),
+  X0877: c("`defer` at the end of a block", "Deferred code runs when its block ends; with nothing after the `defer`, it runs right away, so `defer` does nothing. It was probably meant to come before the code it should follow."),
+
+  // ---- const methods ----
   X0901: c("change in a const method", "A `const` method doesn't change the object: no field or setter writes through `this`.",
     "public function count():Int const { calls++; return n }", "public function count():Int const { return n }"),
   X0902: c("non-const use in a const method", "A `const` method can only use const methods and getters on `this`."),

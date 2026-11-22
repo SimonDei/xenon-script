@@ -239,6 +239,8 @@ export type Stmt =
   | { kind: "UsingDecl"; isAwait: boolean; name: Ident; type?: TypeNode; init: Expr; span: Span }
   /** `[await] using (a:T = e, …) body` or `using (expr) body`. */
   | { kind: "UsingBlock"; isAwait: boolean; resources: UsingResource[]; body: Stmt; span: Span }
+  /** `defer body`: `body` runs when the enclosing block ends, however it ends (the last `defer` first). */
+  | { kind: "Defer"; body: Stmt; span: Span }
   | VarDecl
   | { kind: "IfVar"; header: HeaderItem[]; then: Stmt; else?: Stmt; span: Span }
   | { kind: "WhileVar"; header: HeaderItem[]; body: Stmt; span: Span }

@@ -1,0 +1,21 @@
+public class Main {
+  public function Main() {
+    defer var value:int = 1                         // X0345
+    defer return                                    // X0342
+    defer break                                     // X0342
+    defer continue                                  // X0342
+    defer trace('last')                             // X0877
+  }
+
+  private function handOff():Res {
+    var r:Res = new Res('r')
+    defer r.touch()
+    return r                                        // X0805
+  }
+}
+
+class Res {
+  public function Res(name:String) {}
+  public function ~Res() {}
+  public function touch():void {}
+}

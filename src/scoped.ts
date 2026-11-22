@@ -17,6 +17,7 @@ import type * as A from "./ast.ts";
 import { chainDestructor, type CheckResult, type ClassInfo, isNative, isScoped } from "./checker.ts";
 import type { DiagnosticBag, DiagnosticBuilder } from "./diagnostics.ts";
 import { type Span, span } from "./source.ts";
+import { mentions } from "./flow.ts";
 import type { Type } from "./types.ts";
 
 /** How a value reaches its context. `branch`: an arm of `?:`/`??`/`||`/`&&`, judged with the whole expression. */
@@ -88,6 +89,8 @@ interface Fn {
 class ScopedChecker {
   private info!: ClassInfo;
   private fn: Fn = { async: false, locals: new Set(), depth: 0 };
+  /** `defer`s whose code runs when the current statement leaves its block (innermost last). */
+  private defers: (A.Stmt & { kind: "Defer" })[] = [];
   /**
    * Why a value created here couldn't be destroyed at a single moment (X0829), or `undefined` where
    * the current statement destroys it at its end: expression statements, `var` and `return`.
@@ -159,8 +162,9 @@ class ScopedChecker {
 
   /** Runs `body` as a function of its own: its locals, its `async`, closures one level deeper. */
   private function(async: boolean, params: A.Param[], body: () => void, closure = false) {
-    const saved = { fn: this.fn, noTemps: this.noTemps };
+    const saved = { fn: this.fn, noTemps: this.noTemps, defers: this.defers };
     this.fn = { async, locals: new Set(), depth: closure ? saved.fn.depth + 1 : 0 };
+    this.defers = [];
     try {
       for (const p of params) {
         this.fn.locals.add(p.name.span);
@@ -174,6 +178,7 @@ class ScopedChecker {
     } finally {
       this.fn = saved.fn;
       this.noTemps = saved.noTemps;
+      this.defers = saved.defers;
     }
   }
 
@@ -193,7 +198,12 @@ class ScopedChecker {
   /* ------------------------------ statements ------------------------------ */
 
   private block(b: A.Block) {
-    for (const s of b.body) this.stmt(s);
+    const n = this.defers.length;
+    for (const s of b.body) {
+      this.stmt(s);
+      if (s.kind === "Defer") this.defers.push(s);
+    }
+    this.defers.length = n;
   }
 
   private stmt(s: A.Stmt): void {
@@ -293,6 +303,8 @@ class ScopedChecker {
         if (s.kind === "UsingBlock") this.stmt(s.body);
         return;
       }
+      case "Defer":
+        return this.stmt(s.body);
       case "Break":
       case "Continue":
       case "Empty":
@@ -375,6 +387,14 @@ class ScopedChecker {
       // `return r`: the caller owns it now; this scope no longer destroys it.
       this.result.scopedReturns.add(s);
       this.result.scopedLocals.get(owner)!.handedOff = true;
+      // The variable is cleared as it's handed on, before deferred code runs.
+      const local = (v as A.Expr & { kind: "Ident" }).name;
+      const deferred = this.defers.find((d) => mentions(d.body as unknown as A.Expr, local));
+      if (deferred) {
+        this.error("X0805", `\`${local}\` is handed on here, but deferred code still uses it`, v.span, "the caller owns it from here")
+          .secondary(span(deferred.span.file, deferred.span.start, deferred.span.start + "defer".length), "runs after the `return`")
+          .note("deferred code runs after `return` has handed the value to the caller, so the variable no longer holds it");
+      }
       return;
     }
     const what = v.kind === "This" ? "`this`" : v.kind === "Ident" && r?.kind === "local" ? `\`${v.name}\`` : "this value";
