@@ -4014,6 +4014,13 @@ class BodyChecker {
           const s = suggest(name, allMemberNames(obj.info));
           if (s) d.help(`a member with a similar name exists: \`${s}\``, [{ span: e.name.span, text: s }]);
           else if (isNative(obj.info)) d.help(`if this JavaScript API exists, use it dynamically: \`(${dynamicReceiver(e.object)} as *).${name}\``);
+          // `if (pet is Dog) pet.bark()` with a field `pet`: `is` narrows locals and parameters only.
+          const field = !wantStatic && (e.object.kind === "Member" || (e.object.kind === "Ident" && this.env.result.resolutions.get(e.object)?.kind === "member"));
+          const sub = field && [...this.env.classes.values()].find((c) => c !== obj.info && isSubclass(c, obj.info) && findMember(c, name));
+          if (sub) {
+            d.note(`\`${sub.decl.name.name}\` has \`${name}\`, but a check like \`is ${sub.decl.name.name}\` doesn't narrow a field: it could change before this use`)
+              .help(`copy it into a local first: \`var ${e.object.kind === "Member" ? `${e.object.name.name} = ${spanText(e.object.span)}` : `${(e.object as { name: string }).name} = this.${(e.object as { name: string }).name}`}\`, then check and use the local`);
+          }
           return T.error;
         }
         if (wantStatic && !m.isStatic && !obj.info.selfInstance) {
@@ -5516,8 +5523,10 @@ class BodyChecker {
   private assigned(target: A.Expr, value: Type | undefined, scope: Scope) {
     if (target.kind !== "Ident") return;
     const local = scope.get(target.name);
-    if (!local || (local.type.kind !== "nullable" && local.type.kind !== "union")) return;
+    if (!local) return;
+    // A new value ends what checks proved about the old one (`a is Dog`, `x != null`).
     scope.unnarrow(local);
+    if (local.type.kind !== "nullable" && local.type.kind !== "union") return;
     if (!value || isDynamic(value) || value.kind === "nullable" || value.kind === "null") return;
     const kept = membersOf(local.type).filter((m) => membersOf(value).some((v) => assignable(v, m)));
     scope.narrow({ local, type: kept.length > 0 ? unionOf(kept) : nonNull(local.type) });
@@ -5540,7 +5549,17 @@ class BodyChecker {
         const target = this.env.result.typeNodeTypes.get(e.type);
         if (!local || !target || isDynamic(target)) return NO_FACTS;
         const cur = this.currentType(local, scope);
-        if (nonNull(cur).kind !== "union") return NO_FACTS;
+        if (nonNull(cur).kind !== "union") {
+          // `a is Dog` on an `Animal` (or a `*`, an `Object`, a `Dog?`): a `Dog` when true. Only towards
+          // a narrower type: `a is IPet` on an `Animal` would lose `Animal`'s members (no intersections).
+          const base = nonNull(cur);
+          const open = isDynamic(base) || (base.kind === "builtin" && base.name === "Object");
+          const narrower = open || (assignable(target, base) && !sameType(target, base));
+          // `x is Box` on a `Box<Int>`-like type would lose the type arguments: only from untyped values.
+          const generic = target.kind === "class" && target.info.typeParams.length > 0 && !open;
+          if (!narrower || generic || (!open && sameType(target, cur))) return NO_FACTS;
+          return { whenTrue: [{ local, type: target }], whenFalse: [] };
+        }
         // `x is String` on an `int | String`: `String` when true, `int` (and `null`) when false.
         const members = membersOf(cur);
         const yes = members.flatMap((m) => (assignable(m, target) ? [m] : assignable(target, m) ? [target] : []));

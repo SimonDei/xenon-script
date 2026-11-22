@@ -1,0 +1,37 @@
+error[X0426]: no member `bark` on `Animal`
+  --> is-narrowing.xn:12:9
+   |
+12 |       a.bark()                                        // X0426: not a `Dog` in the `else`
+   |         ^^^^ unknown member
+
+error[X0426]: no member `brak` on `Dog`
+  --> is-narrowing.xn:15:21
+   |
+15 |     if (x is Dog) x.brak()                            // X0426: an untyped value is checked once narrowed
+   |                     ^^^^ unknown member
+   |
+help: a member with a similar name exists: `bark`
+   |
+15 |     if (x is Dog) x.bark()                            // X0426: an untyped value is checked once narrowed
+   |                     ~~~~
+
+error[X0426]: no member `bark` on `Animal`
+  --> is-narrowing.xn:20:22
+   |
+20 |     if (a is IPet) a.bark()                           // X0426: `IPet` isn't narrower than `Animal`
+   |                      ^^^^ unknown member
+
+error[X0426]: no member `bark` on `Animal`
+  --> is-narrowing.xn:21:25
+   |
+21 |     if (pet is Dog) pet.bark()                        // X0426 with a note: fields aren't narrowed
+   |                         ^^^^ unknown member
+   |
+   = note: `Dog` has `bark`, but a check like `is Dog` doesn't narrow a field: it could change before this use
+help: copy it into a local first: `var pet = this.pet`, then check and use the local
+
+error[X0426]: no member `bark` on `Animal`
+  --> is-narrowing.xn:25:7
+   |
+25 |     a.bark()                                          // X0426: the new value isn't known to be a `Dog`
+   |       ^^^^ unknown member

@@ -1,0 +1,38 @@
+public class Main {
+  private var pet:Animal = new Dog()
+
+  public function Main() {
+    var a:Animal = new Dog()
+    if (a is Dog) a.bark()                            // narrowed inside the `if`
+    if (a is Dog && a.good()) trace('good dog')       // right side of `&&`
+    var name = a is Dog ? a.dogName() : 'animal'      // `?:` branch
+    if (a is Dog) {
+      trace('dog')
+    } else {
+      a.bark()                                        // X0426: not a `Dog` in the `else`
+    }
+    var x:* = a
+    if (x is Dog) x.brak()                            // X0426: an untyped value is checked once narrowed
+    var maybe:Animal? = a
+    if (maybe is Dog) maybe.bark()                    // `is` also excludes `null`
+    var pets:Array<IPet> = [new Dog()]
+    for (var p of pets) if (p is Dog) p.bark()        // interface → class
+    if (a is IPet) a.bark()                           // X0426: `IPet` isn't narrower than `Animal`
+    if (pet is Dog) pet.bark()                        // X0426 with a note: fields aren't narrowed
+    if (!(a is Dog)) return
+    a.bark()                                          // after the early return
+    a = new Animal()
+    a.bark()                                          // X0426: the new value isn't known to be a `Dog`
+    trace(name)
+  }
+}
+
+class Animal {}
+
+interface IPet {}
+
+class Dog extends Animal implements IPet {
+  public function bark():Void { trace('woof') }
+  public function good():Bool { return true }
+  public function dogName():String { return 'rex' }
+}
