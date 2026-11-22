@@ -54,11 +54,13 @@ export type JsBinding =
    * constructor value has the instance type itself (JSZip's `declare var JSZip: JSZip` with
    * `new(): this`), so the instance members are usable through the class name too (`JSZip.loadAsync`).
    */
-  | { kind: "class"; qname: string; selfInstance?: boolean }
+  | { kind: "class"; qname: string; selfInstance?: boolean; typeOnly?: true }
   /** A function or value: a static of the generated holder class. */
   | { kind: "member"; qname: string; member: string }
   /** A type exported by a namespace import, named `Ns.Type` (a structural shape). */
-  | { kind: "typedef"; qname: string };
+  | { kind: "typedef"; qname: string; typeOnly?: true }
+  /** A TypeScript interface or type alias with no declaration generated: untyped, and erased at run time. */
+  | { kind: "type"; typeOnly: true };
 
 export interface JsDeclarations {
   /** Generated `.xn` files (paths below `GENERATED_DIR`). */
@@ -242,7 +244,10 @@ function generate(probes: { file: A.XenonFile; local: string; kind: string; prob
       if (!found || !(isClass(found.sym) || typeOnly(found.sym))) continue;
       // A class is a value too: its JavaScript name is the local binding.
       const declared = isClass(found.sym) ? gen.importedClass(found.sym, p.local) : gen.importedType(found.sym, p.local);
-      if (declared) bindings.set(p.local, { kind: declared.kind, qname: `${path}#${declared.name}` });
+      // An interface or type alias has no value at run time: its import is erased from the JavaScript.
+      const erased = typeOnly(found.sym) ? { typeOnly: true as const } : {};
+      if (declared) bindings.set(p.local, { kind: declared.kind, qname: `${path}#${declared.name}`, ...erased });
+      else if (typeOnly(found.sym)) bindings.set(p.local, { kind: "type", typeOnly: true });
     }
     for (const p of list) {
       const found = symbolOf(p);

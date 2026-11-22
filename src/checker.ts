@@ -179,6 +179,10 @@ export interface CheckResult {
   typedefs: Map<string, TypedefInfo>;
   /** The type of each name a destructuring pattern or an unannotated callback parameter declares (`var [key, value] = entry`, `e => …`), for hover. */
   bindingTypes: Map<A.Ident, Type>;
+  /** Names of JavaScript imports that are TypeScript interfaces or type aliases (no value at run time: not imported by the JavaScript). */
+  typeOnlyImports: Set<A.Ident>;
+  /** The type each value was checked against (arguments, initializers, return values, assignments). */
+  expectedTypes: Map<A.Expr, Type>;
 }
 
 /** A value type, which can't be `null` without `?` even when null safety is off (`int`, `Boolean`, …). */
@@ -384,7 +388,8 @@ class Scope {
  */
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
-    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(),
+    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
+    expectedTypes: new Map(),
   };
   const env = new Env(classes, typedefs, diags, result);
   env.jsBindings = jsBindings;
@@ -533,7 +538,8 @@ class Env {
           // Typed from a `.d.ts`: a class (or module namespace) is a native class under this name.
           const bindings = this.jsBindings?.get(file.file.path);
           const typed = bindings?.get(n.name);
-          const info = typed && this.classes.get(typed.qname);
+          const info = typed && typed.kind !== "type" ? this.classes.get(typed.qname) : undefined;
+          if (typed && typed.kind !== "member" && typed.typeOnly) this.result.typeOnlyImports.add(n);
           // A namespace's exported types, named `Ns.Type` (a native class or a typedef).
           for (const [key, b] of bindings ?? []) {
             if (!key.startsWith(`${n.name}.`)) continue;

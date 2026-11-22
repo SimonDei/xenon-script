@@ -524,7 +524,9 @@ class ModuleGen {
     this.w = swap;
 
     for (const imp of this.file.imports) {
-      if (imp.kind === "JsImport") this.w.line(this.jsImport(imp));
+      if (imp.kind !== "JsImport") continue;
+      const line = this.jsImport(imp);
+      if (line) this.w.line(line);
     }
     const byModule = new Map<string, string[]>();
     for (const dep of this.imports.values()) byModule.set(dep.module, [...(byModule.get(dep.module) ?? []), dep.decl.name.name]);
@@ -542,15 +544,26 @@ class ModuleGen {
     return [...(head.length === 0 ? [] : [...head, { text: "" }]), ...body.entries()];
   }
 
-  private jsImport(imp: A.JsImport): string {
+  /** The import statement for `imp`, or nothing when it only imports TypeScript types (erased from JavaScript). */
+  private jsImport(imp: A.JsImport): string | undefined {
+    // Interfaces and type aliases have no value at run time: JavaScript can't import them, TypeScript imports them as types.
+    const typeOnly = (n: A.Ident) => this.check.typeOnlyImports.has(n);
+    const kept = this.ts ? imp : {
+      ...imp,
+      defaultName: imp.defaultName && !typeOnly(imp.defaultName) ? imp.defaultName : undefined,
+      named: imp.named.filter((n) => !typeOnly(n.alias ?? n.name)),
+    };
+    const erased = kept.defaultName !== imp.defaultName || kept.named.length !== imp.named.length;
+    if (erased && !kept.defaultName && !kept.namespace && kept.named.length === 0) return undefined;
     // A package the page loads as a global: read it (the TypeScript output keeps the import, for its types).
     const global = this.globals[imp.module];
-    if (global !== undefined && !this.ts) return this.globalImport(imp, global);
+    if (global !== undefined && !this.ts) return this.globalImport(kept, global);
     const parts: string[] = [];
-    if (imp.defaultName) parts.push(imp.defaultName.name);
-    if (imp.namespace) parts.push(`* as ${imp.namespace.name}`);
-    if (imp.named.length > 0) {
-      parts.push(`{ ${imp.named.map((n) => (n.alias ? `${n.name.name} as ${n.alias.name}` : n.name.name)).join(", ")} }`);
+    if (kept.defaultName) parts.push(kept.defaultName.name);
+    if (kept.namespace) parts.push(`* as ${kept.namespace.name}`);
+    if (kept.named.length > 0) {
+      const spec = (n: A.JsImport["named"][number]) => (typeOnly(n.alias ?? n.name) ? "type " : "") + (n.alias ? `${n.name.name} as ${n.alias.name}` : n.name.name);
+      parts.push(`{ ${kept.named.map(spec).join(", ")} }`);
     }
     return parts.length === 0 ? `import ${jsString(imp.module)};` : `import ${parts.join(", ")} from ${jsString(imp.module)};`;
   }
