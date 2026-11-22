@@ -12,7 +12,7 @@ package {
     }
 
     public function Main() {
-      var flag:Boolean = id == null
+      var flag:Boolean = id == ''
       trace(this.id)
       if (flag) id = 'a'
       name = 'other'

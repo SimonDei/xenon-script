@@ -10,7 +10,7 @@ import { TS_OPTIONS } from "../src/service.ts";
 export async function compileExampleToTs(dir: string): Promise<OutputFile[]> {
   const config = Bun.file(join(dir, "xenon.json"));
   const project: { nullSafety?: boolean } = (await config.exists()) ? await config.json() : {};
-  const result = compileProject(await readSources(join(dir, "src")), { main: "Main", target: "ts", typeRoot: join(dir, "src"), assets: await readAssets(join(dir, "src")), nullSafety: !!project.nullSafety });
+  const result = compileProject(await readSources(join(dir, "src")), { main: "Main", target: "ts", typeRoot: join(dir, "src"), assets: await readAssets(join(dir, "src")), nullSafety: project.nullSafety });
   const errors = result.diagnostics.items.filter((d) => d.severity === "error");
   if (errors.length > 0) throw new Error(`${dir}: ${errors.map((d) => d.message).join("; ")}`);
   return result.outputs;

@@ -24,7 +24,7 @@ export interface Config {
    * packages, `node:`/`bun:` modules and the source folder's JavaScript files stay outside.
    */
   bundle: boolean;
-  /** Object types exclude `null` unless written `T?` (`--null-safety` / `"nullSafety": true`). */
+  /** Object types exclude `null` unless written `T?` (the default; off with `--no-null-safety` / `"nullSafety": false`). */
   nullSafety: boolean;
   /** Packages the page loads as globals (`"globals": { "pizzip": "PizZip" }`): no import, a read of the global. */
   globals: Record<string, string>;

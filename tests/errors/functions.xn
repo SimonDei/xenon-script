@@ -8,7 +8,7 @@ package {
 
     private function load():Promise<int> {
       var x:int = await load()
-      return null
+      return Promise.resolve(x)
     }
 
     private async function bad():int {

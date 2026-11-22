@@ -48,7 +48,7 @@ export interface CompileOptions {
    * the generator can't handle is left out), so the language server always has virtual files.
    */
   tolerant?: boolean;
-  /** Null safety: object types exclude `null` unless written `T?` (see `types.nullSafety`). */
+  /** Null safety: object types exclude `null` unless written `T?` (see `types.nullSafety`). On unless `false`. */
   nullSafety?: boolean;
   /** Packages the page loads as globals, `{ "pizzip": "PizZip" }` (see `GenerateOptions.globals`). */
   globals?: Record<string, string>;
@@ -68,7 +68,7 @@ export interface CompileResult {
 /** Compiles a whole project held in memory. Never throws for user errors; check `diagnostics`. */
 export function compileProject(sources: SourceInput[], options: CompileOptions): CompileResult {
   const before = nullSafety.on;
-  nullSafety.on = !!options.nullSafety;
+  nullSafety.on = options.nullSafety !== false;
   try {
     return compileWith(sources, options);
   } finally {

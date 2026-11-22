@@ -6,9 +6,10 @@ package {
       var all:Array<Animal> = [new Animal('Generic'), new Dog('Rex', 3), new Puppy('Bit')]
       for (var a:Animal of all) trace(a.describe())
 
-      var rex:Dog = all[1] as Dog
-      rex.name = 'Max'
-      trace(rex.name, rex.tricks, rex.id(), String(rex))
+      if (var rex:Dog = all[1] as Dog) {
+        rex.name = 'Max'
+        trace(rex.name, rex.tricks, rex.id(), String(rex))
+      }
       trace(Dog.created, Puppy.created, all[2] is Dog, all[0] is Dog)
 
       Dog.created++

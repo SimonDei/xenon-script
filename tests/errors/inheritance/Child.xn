@@ -14,7 +14,7 @@ package {
     override public function hiden():void {}
     override public function hidden():void {}
     public function count():void {}
-    override public static function make():Base { return null }
+    override public static function make():Base? { return null }
     public function toString():String { return '' }
     override public var extra:int = 0
 

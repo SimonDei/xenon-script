@@ -24,8 +24,8 @@ package {
       var things:Array = [new Circle(2), new Shape('box'), 'text', 42, 4.5, -3, true, null, seen, [1], ~/x/]
       for (var t:* of things) trace(describe(t))
 
-      var c:Circle = pending as Circle
-      trace(c != null, (pending as Shape) == null, int(c.area() * 100))
+      var c:Circle? = pending as Circle
+      trace(c != null, (pending as Shape) == null, int((c?.area() ?? 0) * 100))
       if (var circle:Circle = things[0] as Circle) trace('first is a circle with r =', circle.r)
 
       // dynamic objects
@@ -36,7 +36,7 @@ package {
 
     private function describe(x:*):String {
       if (x is Circle) return 'Circle'
-      if (x is Shape) return 'Shape ' + (x as Shape).name
+      if (x is Shape) return 'Shape ' + (x as Shape)?.name
       if (x is String) return 'String'
       if (x is uint) return 'uint'
       if (x is int) return 'int'

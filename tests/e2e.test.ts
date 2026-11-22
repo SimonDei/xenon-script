@@ -21,7 +21,7 @@ for (const name of examples) {
 
     // As `xenon build` compiles: JavaScript imports typed from their `.d.ts` files, JavaScript
     // files of the source folder copied along.
-    const result = compileProject(sources, { main, typeRoot: srcRoot, assets: await readAssets(srcRoot), nullSafety: !!project.nullSafety });
+    const result = compileProject(sources, { main, typeRoot: srcRoot, assets: await readAssets(srcRoot), nullSafety: project.nullSafety });
     const errors = result.diagnostics.items.filter((d) => d.severity === "error");
     expect(renderAll(errors, { color: false })).toBe("");
     expect(renderAll(result.declarationErrors, { color: false })).toBe("");

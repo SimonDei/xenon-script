@@ -7,7 +7,7 @@ public class Main {
     var untyped:Function = add
     var nums:Array<int> = [1, 2].map(untyped.bind(null))   // bind gives an untyped Function
     var made:* = new Function('return 1')           // eval in disguise
-    add.call = null                                 // a method
+    add.call = add.call                                // a method
     trace(n, nums, made, untyped.foo)
   }
 }

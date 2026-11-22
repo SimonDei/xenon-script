@@ -21,7 +21,7 @@ package {
       var log:Array = []
       var cfg:Config = { url: '/api', retries: 3, timeoutMs: 1500, onDone: (e) => log.push('done ' + e), headers: { accept: 'json' } }
       cfg.retries++
-      if (cfg.onDone != null) cfg.onDone(cfg.retries)
+      if (var done = cfg.onDone) done(cfg.retries)
       trace(cfg.url, cfg.headers.accept, log.join())
 
       // shaping untyped data (unchecked cast, erased at runtime)
@@ -29,7 +29,7 @@ package {
       trace(loaded.url, loaded.headers.accept)
 
       // recursive shapes and inline types
-      var list:Node = { value: 1, next: { value: 2, next: { value: 3 } } }
+      var list:Node? = { value: 1, next: { value: 2, next: { value: 3 } } }
       var total:int = 0
       while (var n:Node = list) {
         total += n.value

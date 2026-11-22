@@ -23,7 +23,8 @@ Options:
   --color auto|always|never
   --max-errors <n>   (default: 50)
   --deny-warnings    treat warnings as errors
-  --null-safety      object types exclude null unless written T? (String?, Point?)
+  --no-null-safety   object types may be null without a ? (null safety is on by default;
+                     "nullSafety": false in xenon.json does the same)
   --quiet            only print diagnostics
   --no-source-maps   don't write .js.map files (stack traces then show the JavaScript)
   --target js|ts     output JavaScript (default) or typed TypeScript (.ts, no source maps)
@@ -59,7 +60,7 @@ async function loadConfig(args: string[]): Promise<{
     }
     if (!a.startsWith("--")) throw new UsageError(`unexpected argument \`${a}\``);
     const name = a.slice(2);
-    if (["deny-warnings", "quiet", "run", "no-clear", "no-source-maps", "bundle", "null-safety"].includes(name)) flags.set(name, true);
+    if (["deny-warnings", "quiet", "run", "no-clear", "no-source-maps", "bundle", "null-safety", "no-null-safety"].includes(name)) flags.set(name, true);
     else {
       const v = args[++i];
       if (v === undefined) throw new UsageError(`missing value for \`${a}\``);
@@ -103,7 +104,8 @@ async function loadConfig(args: string[]): Promise<{
     sourceMaps: !flags.has("no-source-maps") && project.sourceMaps !== false,
     target,
     bundle,
-    nullSafety: flags.has("null-safety") || !!project.nullSafety,
+    // On unless turned off: `--no-null-safety` or `"nullSafety": false` (`--null-safety` is accepted, the default).
+    nullSafety: flags.has("no-null-safety") ? false : flags.has("null-safety") || project.nullSafety !== false,
     globals: project.globals ?? {},
   };
   const globals = config.globals as unknown;

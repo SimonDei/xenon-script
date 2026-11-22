@@ -6,8 +6,8 @@ public class Main {
     console.table([1], 'a')
     console.time()
     var c:* = new console()
-    var d:console = null
-    console.log = null
+    var d:console? = null
+    console.log = console.info
     trace(c, d, (console as *).write)
   }
 }

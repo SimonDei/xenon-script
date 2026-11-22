@@ -86,7 +86,7 @@ export function locateProject(file: string): { srcRoot: string; main: string; nu
         // a broken xenon.json: the CLI reports it; use the defaults here
       }
       const srcRoot = resolve(dir, json.src ?? "src");
-      if (!relative(srcRoot, file).startsWith("..")) return { srcRoot, main: json.main ?? "Main", ...(json.nullSafety ? { nullSafety: true } : {}) };
+      if (!relative(srcRoot, file).startsWith("..")) return { srcRoot, main: json.main ?? "Main", ...(typeof json.nullSafety === "boolean" ? { nullSafety: json.nullSafety } : {}) };
     }
     if (!srcFolder && basename(dir) === "src") {
       let scripts = false;

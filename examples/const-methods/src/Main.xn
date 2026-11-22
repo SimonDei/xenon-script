@@ -43,7 +43,7 @@ class Inventory implements IReport {
   }
 
   public function priciest():String const {
-    var best:Item = null
+    var best:Item? = null
     for (var i:Item of items) if (best == null || i.price > best.price) best = i
     return best == null ? 'none' : best.name
   }

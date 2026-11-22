@@ -17,7 +17,7 @@ package {
       name = 'Xenon'
       trace(name, name.length, describe(3), describe(1, '!'))
 
-      var maybe:String = null
+      var maybe:String? = null
       trace(maybe ?? 'default', maybe == null, maybe != null)
       var picked:String = half > 2 ? 'big' : 'small'
       trace(picked, !(half > 2), typeof half)

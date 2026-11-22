@@ -1,13 +1,13 @@
 package {
   public class Main {
-    private var parent:Main = null
+    private var parent:Main? = null
 
     public function Main() {
       if (var n:int = count()) trace(n)
-      if (var m:Main = this, m.parent) trace(m)
+      if (var m:Main = parent, m.parent) trace(m)
       var node:Main = this
       while (var node:Main = node.parent) trace(node)
-      if (const c:Main = this) trace(c)
+      if (const c:Main = parent) trace(c)
     }
 
     private function count():int { return 1 }

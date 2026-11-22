@@ -33,7 +33,7 @@ package {
       // generic typedefs, including a recursive one
       var p:Pair<String, int> = { first: 'age', second: 31 }
       var list:Chain<String> = { value: 'a', next: { value: 'b' } }
-      trace(p.first, p.second + 1, list.value + list.next.value)
+      trace(p.first, p.second + 1, list.value + list.next?.value)
 
       // local generic function and swap
       function swap<A, B>(x:Pair<A, B>):Pair<B, A> { return { first: x.second, second: x.first } }

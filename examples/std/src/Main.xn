@@ -338,7 +338,7 @@ package {
     private function regexps():void {
       // `~/…/flags` literals and `new RegExp(text, flags)` are both a RegExp
       var date:RegExp = ~/(\d{4})-(\d{2})/
-      var m:Array<String> = date.exec('on 2024-02-29')
+      var m:Array<String> = date.exec('on 2024-02-29') ?? []
       trace(m[0], m[1], m[2], (m as *).index)             // index, input and groups are untyped extras
       trace(date.exec('nothing') == null, date.test('1999-12'), date.source, date.flags.length)
 
@@ -352,7 +352,7 @@ package {
 
       // copies, optionally with other flags; named groups come through (m as *).groups
       var copy:RegExp = new RegExp(word, 'i')
-      var named:Array<String> = ~/(?<year>\d{4})/.exec('in 1999')
+      var named:Array<String> = ~/(?<year>\d{4})/.exec('in 1999') ?? []
       trace(copy.flags, (named as *).groups.year, 'a-b-c'.split(~/-/).length)
     }
 
@@ -383,7 +383,7 @@ package {
 
       // Map.groupBy builds a Map<K, Array<T>> from a function of each item
       var byLength:Map<int, Array<String>> = Map.groupBy(['a', 'bb', 'cc', 'd'], (w:String, i:int):int => w.length)
-      trace(byLength.get(1).join(''), byLength.get(2).join(''), byLength.size)
+      trace((byLength.get(1) ?? []).join(''), (byLength.get(2) ?? []).join(''), byLength.size)
     }
 
     private function strings():void {
@@ -399,8 +399,8 @@ package {
       trace(t.replaceAll(~/o/g, (m:String):String => m.toUpperCase()))
 
       // regular expressions: match gives the match array or null; matchAll an iterator of matches
-      var m:Array<String> = 'id=42'.match(~/(\w+)=(\d+)/)
-      trace(m[1], m[2], 'no'.match(~/\d/) == null, 'a1b2'.match(~/\d/g).join(','), 'a1b2'.search(~/\d/))
+      var m:Array<String> = 'id=42'.match(~/(\w+)=(\d+)/) ?? []
+      trace(m[1], m[2], 'no'.match(~/\d/) == null, ('a1b2'.match(~/\d/g) ?? []).join(','), 'a1b2'.search(~/\d/))
       for (var hit:Array<String> of 'a1b22'.matchAll(~/\d+/g)) trace(hit[0])
 
       trace('ab'.repeat(3), '7'.padStart(3, '0'), '7'.padEnd(3, '.'), 'Hi'.toUpperCase(), 'b'.localeCompare('a'), 'é'.normalize('NFD').length)

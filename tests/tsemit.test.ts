@@ -87,7 +87,7 @@ export const IShape = Symbol('geo.IShape');
   expect(box).toContain("export class Box<T> implements IShape {");
   expect(box).toContain("#items: Array<T> = [];"); // private: a JavaScript private field
   expect(box).toContain("protected static count: number = 0;");
-  expect(box).toContain("label: string = null;");
+  expect(box).toContain("label: string | null = null;"); // `String?` with null safety (the default)
   expect(box).toContain("constructor(first: T) {");
   expect(box).toContain("map<U>(f: (item: T) => U): Box<U> {");
   expect(box).toContain("return new Box<U>(f(this.#items[0]));");

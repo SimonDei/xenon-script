@@ -1,13 +1,13 @@
 package {
   public class Main {
     private var _v:int = 0
-    private var other:Main = null
+    private var other:Main? = null
 
     public function Main() {
       trace(writeOnly)
       writeOnly = 3
       writeOnly += 1
-      var f:Function = other?.helper
+      var f:Function? = other?.helper
     }
 
     public function set writeOnly(v:int):int { _v = v; return v }

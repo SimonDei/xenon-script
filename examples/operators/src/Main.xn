@@ -38,7 +38,7 @@ package {
 
       // `==` compares by value with `operator==`, `!=` is its negation; null never reaches it
       var same:Vec2 = new Vec2(1, 2)
-      var none:Vec2 = null
+      var none:Vec2? = null
       trace(a == same, a != same, a == d, none == a, none == null, Object.is(a, same))
     }
 

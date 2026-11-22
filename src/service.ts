@@ -327,7 +327,7 @@ export class XenonProject {
     readonly main = "Main",
     /** Where the virtual `.ts` files live (TypeScript resolves npm packages from there upwards). */
     readonly virtualRoot = join(dirname(srcRoot), ".xenon", "ts"),
-    /** The project's compiler settings from `xenon.json` (`nullSafety`). */
+    /** The project's compiler settings from `xenon.json` (`nullSafety`, on unless `false`). */
     readonly settings: { nullSafety?: boolean } = {},
   ) {
     const host: ts.LanguageServiceHost = {

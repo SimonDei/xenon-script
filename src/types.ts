@@ -231,7 +231,7 @@ export function isDynamic(t: Type): boolean {
 }
 
 /**
- * Null safety (`"nullSafety": true`): object types (`String`, classes, shapes, arrays, functions,
+ * Null safety (the default; off with `"nullSafety": false`): object types (`String`, classes, shapes, arrays, functions,
  * `Object`) exclude `null` and `T?` adds it, as it does for `int`. Without it they include `null`,
  * as in ActionScript. Set by `compileProject` for the duration of a compile.
  */

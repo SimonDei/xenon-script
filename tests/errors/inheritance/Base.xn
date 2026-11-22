@@ -10,6 +10,6 @@ package {
     public final function id():String { return '' }
     public function get area():Float { return 0 }
     protected function hidden():void {}
-    public static function make():Base { return null }
+    public static function make():Base? { return null }
   }
 }

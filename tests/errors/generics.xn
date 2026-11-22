@@ -1,8 +1,8 @@
 package {
   public class Main {
     public function Main() {
-      var a:Box = null
-      var b:Box<int, String> = null
+      var a:Box? = null
+      var b:Box<int, String>? = null
       var c:Box<int> = new Box<int>('text')
       var d:Box<String> = new Box(5)
       var e:Box<Float> = new Box<int>(1)
@@ -12,7 +12,7 @@ package {
       if (g is Box<int>) trace('?')
       var h:int = g.map((n) => 'x').get()
       var none:* = pick()
-      var t:String<int> = null
+      var t:String<int>? = null
       trace(h, none, t)
     }
 

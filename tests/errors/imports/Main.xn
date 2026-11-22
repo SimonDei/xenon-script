@@ -13,8 +13,8 @@ package {
 
   public class Main {
     public function Main() {
-      var cat:Cat = null
-      var bird:Bird = null
+      var cat:Cat? = null
+      var bird:Bird? = null
       var fish:Fish = null
     }
   }

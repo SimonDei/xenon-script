@@ -1614,7 +1614,12 @@ class ModuleGen {
     const from = this.check.exprTypes.get(e.expr);
     const to = this.check.exprTypes.get(e) ?? { kind: "any" };
     const down = from?.kind === "any" || (from?.kind === "class" && to.kind === "class" && isSubclass(to.info, from.info));
-    return { code: `(${this.wrap(code, P.rel)} as ${down ? "" : "unknown as "}${this.tok(e.type.span, this.tsType(to))})`, prec: P.primary };
+    // `x as kind` (a `Class<T>` local): the written name is a value, not the type TypeScript gets.
+    // The written type maps to its own text; the `| null` that `as` adds (null safety) stays outside it.
+    const inner = to.kind === "nullable" && e.type.kind !== "NullableType" ? to.inner : to;
+    const orNull = inner !== to ? " | null" : "";
+    const written = this.check.typeChecks.get(e)?.kind === "js" ? this.tsType(to) : this.tok(e.type.span, this.tsType(inner)) + orNull;
+    return { code: `(${this.wrap(code, P.rel)} as ${down ? "" : "unknown as "}${written})`, prec: P.primary };
   }
 
   private typeTest(e: A.Expr & { kind: "TypeOp" }): Code {

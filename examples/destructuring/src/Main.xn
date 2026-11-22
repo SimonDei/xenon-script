@@ -43,7 +43,7 @@ package {
       cache.hits += 1
       var ok:Boolean = true
       ok &&= total > 10
-      var label:String = null
+      var label:String? = null
       label ??= 'none'
       var power:Float = 2
       power **= 10
