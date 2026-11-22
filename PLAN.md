@@ -62,6 +62,16 @@
 - [x] `constexpr` functions: `public static constexpr function kib(n:int):int => n * 1024`. A call with constant arguments is evaluated at compile time and its value pasted into the output (`kib(64)` → `65536`); it also counts as a constant where one is required (`inline final` values, enum members, `case` labels, "does the literal fit" checks). With runtime arguments it is an ordinary call (the function is emitted). Rules (X0526, at the declaration): `static`, parameters and result of a constant type (numbers, `String`, `Boolean`), and a body using only parameters, literals, operators, `?:`, conversions, inline constants, `Math`'s pure functions and constants, and other `constexpr` functions (recursion included). Evaluation stops at 1000 calls deep or 100000 calls (X0527). `inline` stays the keyword for constants (they are pasted); `constexpr` is for functions only (X0526 suggests `static inline final` for `static constexpr NAME:T = …`). The evaluator (`consteval.ts`) now passes calls to its lookup with their argument values, knows `Math`'s pure functions and constants, and evaluates only the chosen branch of `?:`.
 - [x] Literal types (A6b) and `.d.ts` overloads chosen as TypeScript chooses them: `true`/`false`/`'text'`/numbers (`1`, `-1`, `0.5`; TypeScript's number literals too, not enum members) as types (`prim` with a `literal`; a `LiteralType` type node; printed `true`/`'buffer'`, emitted to TypeScript as `true`/`"buffer"`), object literal arguments matched structurally when choosing an overload. The generator (`src/dts.ts`) keeps boolean and string literal types (several of one kind stay their base: `BufferEncoding` is `String`), turns intersections of object types into one shape (`ObjectEncodingOptions & { withFileTypes: true }`), and splits a union parameter Xenon can't write (a shape among other types: `options: {…} | BufferEncoding | null`) into one overload per member (at most 4), so `fs.readdir(dir, { withFileTypes: true })` is a `Promise<Array<Dirent>>`. Imported classes and interfaces (`import { Dirent }`, `import { ChildProcessWithoutNullStreams }`) are declared under the imported name before other signatures use them, so both name one class; a callback with parameters fits a rest-parameter function type (`(chunk:String) => …` for `(...args:Array<*>) -> void`).
 - [x] Union types (A6b): `A | B` and `null` members (`types.ts` `union` kind built by `unionOf`; `UnionType`/`NullType` nodes, `|` not parsed after `is`/`as`/`new`), assignability, members common to all members (X0426/X0428), narrowing generalized from non-null facts to narrowed types (`is`, literal `==`, `!= null`, assignment), completion lists the common members, TypeScript output `A | B`. The `.d.ts` generator writes TypeScript unions as unions (instead of `*`, or of splitting a parameter into overloads): named ones become typedefs (`BufferEncoding`, `PathLike`), kept whole inside larger unions (TypeScript's `origin`), `true | false` is `Boolean`, more than 30 literals of one kind their base type, function members `Function`; so `readdir(dir, 'buffer')` is the `Buffer` overload and `readFileSync(true)` a Xenon error.
+- [x] Step 24: `Class<T>` (see A6d) — `Class<T>` resolves to the builtin `Class` with one argument (bare `Class` stays the untyped class value); class values fit covariantly (`classValueOf`/`classFits` in types.ts; enums and interfaces aren't class values), `unify` infers `T` from a class argument, `x is kind` / `x as kind` with a local `Class<T>` compile to `instanceof kind` (narrowing unions to `T`, `as` gives `T?`), `kind.name` is a `String`, other members and `new` are X0831, X0830 for non-class arguments; TypeScript `(abstract new (...args: any) => T)`. `examples/class-values`, `tests/errors/class-type.xn`
+- [x] Step 25: attributes (see A6e) — `[Name(args, prop = value)]` (several per bracket, several brackets) on classes, methods and fields (`A.Attribute`, parsed before modifiers; X0834 elsewhere: getters/setters, constructors, destructors, interfaces, enums, typedefs, static blocks); `BodyChecker.checkAttributes` checks each as a `new` of a class implementing the prelude's `IAttribute` (X0832/X0833) plus assignments of the named values to public writable members (X0837), constant arguments (X0836), targets and repetition from the class's `[Usage(AttributeTarget.…, multiple = true)]` (read syntactically, `src/attributes.ts`; X0834/X0835); `CheckResult.attributes` → codegen assigns `Class[Attributes.KEY] = () => ({ type: […], members: {…} })` after the class (named values through `Object.assign`); prelude `Attributes.of/first/ofMember/members` (written in Xenon, cached per class in a `WeakMap`, own attributes only); `[Deprecated('…')]` and `Usage` are compile time only: X0873 at uses of deprecated classes and members (LSP `Deprecated` tag, hover shows the message); doc comments are found above attributes. `examples/attributes`, `tests/errors/attributes.xn`. Follow-up (2026-11-21): `IAttribute.wrap(method:Function, name:String):Function`, the one optional interface member (checkImplements skips it; left out of the TypeScript interface, whose weak-type check would reject classes without it): an attribute class defining it wraps the methods it is used on (not classes or fields), nearest attribute first; lazily, on the method's first call (`$wrapLazily` in the prelude), so attribute classes defined later or in an import cycle work; public and static methods are replaced after the class (`C.prototype.m = $wrapLazily(C.prototype.m, (m) => new Logged().wrap(m, "m"))`), a `#private` method's body becomes `#m$raw` behind a forwarding `#m` and a static `#m$wrapped`; X0838 for a wrapping attribute on a `constexpr` method (its calls with constant arguments are folded and would bypass the wrapper; data-only attributes are fine there)
+- [x] Canonical capitalized names: `Int`, `UInt`, `Bool`, `Void` are built in (`PrimName`, `BUILTIN_TYPES`, `typeToString`), `int`/`uint`/`Boolean` prelude typedefs and `void` a keyword alias; std classes renamed (`native('Number') class Int`, `native('Boolean') class Bool`), casts by either spelling (`BUILTIN_FN_NAMES`), `int.MAX_VALUE` folds through the typedef (`Env.typedefClass`); messages, the codes catalog and snapshots use the canonical names (see A2)
+- [x] Type inference for locals (decided 2026-11-21, replacing "Xenon doesn't infer declaration types"): `var`/`final`/`const` without an annotation take their value's type, literal types widened (`var n = 0` → `Int`); array and object literals get one from their parts (`['a']` → `Array<String>`, mixed elements a union, `{ x: 1 }` → the shape `{ x:Int }`; `[]`/`{}` stay `Array`/`Object`); `for (var x of …)` takes the element type and `if (var n = maybe)` the value's non-null type. Only a missing value or `null` leaves a local untyped (X0850, which now also covers fields and parameters, still annotated). Hover shows the inferred types (`bindingTypes`); scoped values in inferred locals are owned as usual (the X0824 "untyped local" case is gone). `tests/errors/local-inference.xn`
+- [x] Null safety on by default (decided 2026-11-22): `compileProject` turns it on unless `nullSafety: false`; `"nullSafety": false` in `xenon.json` or `--no-null-safety` turns it off (`--null-safety` is still accepted), and the language server passes `false` on. Examples were migrated (a `?` on types that hold `null`, `?? []` for `match`/`exec`/`Map.get` results, `if (var x = …)` instead of null checks on fields); test cases written without null safety got the same treatment, except `tests/errors/nullable-legacy` (a project case with `"nullSafety": false`, testing the old mode)
+- [x] `is` narrows every type (2026-11-22), not only unions: after `a is Dog` a local or parameter is a `Dog` where the check proves it (the `if`, the right side of `&&`, `?:` branches, `while` bodies, after an early `return`/`throw`/`break`/`continue`), from a class, an interface, `Object`, `*` (then checked: `x.brak()` is an error) or a nullable type (`is` excludes `null`); only towards a narrower type (`a is IPet` on an `Animal` doesn't narrow), not to a generic class from a typed value (type arguments would be lost); `x is kind` with a `Class<T>` narrows to `T`. Assigning to the local ends any narrowing (before, only nullable and union locals were reset). Fields aren't narrowed: X0426 then notes it when a subclass has the member and suggests a local copy. `tests/errors/is-narrowing.xn`
+- [x] Checked positions (2026-11-22, option B of the design discussion): `a[i]` on an array, a tuple (except a constant position the tuple has) or a `String` compiles to `a[$index(a, i)]`, which throws a `RangeException` ("index 10 is out of range (length 2)") instead of giving `undefined`; the type stays `T`. Reads, `a[i] += …` and `a[i]++` are checked, a plain `a[i] = x` isn't (it may grow the array). `at(i)` (already `T?`) is the way to ask for a position that may not exist. `CheckResult.checkedIndexes`, prelude `$index`; the object is evaluated once (`reuse`, which now also repeats fields of `this` instead of using a temporary). `tests/indexes.test.ts`. Not done: leaving the check out where an index is provably in range (`for (var i of 0..a.length)` — the body could shorten the array)
+- [x] 32-bit integer arithmetic (2026-11-22, option 1 of the design discussion): `+`, `-`, `*` and negation on `Int`/`UInt` wrap like in C, Java and C# instead of becoming inexact `Float`s: `(a + b) | 0`, `Math.imul(a, b)` (exact), `>>> 0` for `UInt`, `-n | 0`; compound assignments and `++`/`--` too (`n = (n + 1) | 0`, read once through `readModifyWrite`, which `operator+=` & co. share; a used postfix value is computed back: `((k = (k + 1) | 0) - 1) | 0`). Two literals whose result fits stay as written (`5 - 8`). `/` (a `Float`), `%` and `Float` arithmetic are unchanged. Fixed on the way: `Dog.created++` for a static inherited from `Animal` updates `Animal.created`. `tests/integers.test.ts`
+- [x] Dropped promises (2026-11-22): warning X0874 for an expression statement whose value is a `Promise` (`save()` with `save` async, `p.then(f)`, `p.finally(f)`): if it fails, nothing sees the error. Not warned: `await …`, a kept promise (`var job = save()`, an argument, a `return`), chains that handle failure (`.catch(…)`, `.then(ok, failed)`), and `void save()`, a new expression (`void` operator: evaluates and discards, type `Void`) that marks it as intentional. Fix-its: add `await` (in `async` functions) or `void`. The destructors and functions examples start their async part with `void run()`. `tests/errors/promises.xn`
+- [x] `[NoDiscard('…')]` (2026-11-22, prelude attribute, compile time only): a statement that drops the result of a marked method, of a call returning a marked class, or a `new` of one, is warning X0875 (with the message; `void f()` discards on purpose, with a fix-it). The standard library marks the methods that return a changed copy instead of changing their object (`String.trim`/`toUpperCase`/`slice`/`replace`/…, `Array.map`/`filter`/`toSorted`/`slice`/`concat`/…), so `name.trim()` alone is caught while `list.sort()` isn't. `calleeDecl` now also finds array methods (argument mismatches point at `Array.xn`'s parameter, as for strings). `tests/errors/nodiscard.xn`
 - [ ] Part D (VS Code extension) and Later items
 
 ## Context
@@ -141,7 +151,7 @@ JS output: `out/com/zoo/Dog.js`, an ES module with `export class Dog`, relative 
 ### A2. Types
 | XenonScript | Meaning | JS |
 |---|---|---|
-| `int`, `uint` | integers (checker-enforced; `int(x)` cast) | number (`int(x)` → `x \| 0`, `uint(x)` → `x >>> 0`) |
+| `Int`, `UInt` | 32-bit integers (checker-enforced; `Int(x)` cast; arithmetic wraps on overflow) | number (`Int(x)` → `x \| 0`, `UInt(x)` → `x >>> 0`, `a + b` → `(a + b) \| 0`, `a * b` → `Math.imul(a, b)`) |
 | `Float` | floating-point number (replaces AS3's `Number`) | number |
 | `String`, `Bool` | | string, boolean |
 | `Void` | return type only | — |
@@ -198,7 +208,8 @@ var a:int = 1               → let a = 1;
 const MAX:int = 10          → const MAX = 10;
 final id:String             → let id; checker allows exactly one assignment before use (definite assignment)
 final id:String = make()    → const id = make();
-var x                       → typed * (compiler warning "untyped variable")
+var n = 0                   → let n = 0;   n is an `Int` (inferred from the value; 2026-11-21)
+var x                       → typed * (compiler warning "untyped variable": no value to infer from)
 var {name, age}:* = obj     → let { name, age } = obj;
 var [first, ...rest]:Array = list
 ```
@@ -609,7 +620,79 @@ export class User {
 ```
 Plain JS can dispose XenonScript objects with `using` or by calling `dispose()`. `using` is passed through to JS directly (Bun supports it), so no lowering is needed.
 
-**Not included** (decided): method overloading (except in `native` declarations, Part G), operator overloading beyond `operator+`, inner/nested classes (use file-private helpers), custom namespaces, metadata tags.
+**Scoped destructors (milestone 15f, done; replaces the rules above for classes without `implements IDisposable`)**
+
+A class with a destructor is destroyed when the variable holding it goes out of scope, like C++ RAII, with no `using` and no `dispose()`. JavaScript can't tell when the last reference to an object is gone (no reference counts, and `FinalizationRegistry` runs at an unpredictable time after the object is unreachable), so "out of scope" is decided at compile time. That is only safe if a value can never outlive its scope, so scoped values can't be stored anywhere. This is the C# `ref struct` approach, not a borrow checker: the restriction belongs to the type, so a function a scoped value is passed to can't keep it either, and no lifetimes are tracked.
+
+*Syntax change.* Destructors are declared with `function`, like constructors and methods:
+```actionscript
+public function ~Res() { trace('closing') }
+public async function ~Conn() { await sock.end() }
+```
+The old form `public ~Res()` is X0810, with a fix-it inserting `function `.
+
+*Three kinds of class:*
+
+| Class | Kind | Behaviour |
+|---|---|---|
+| `function ~Res()` only | **scoped** | Destroyed automatically at the end of its scope. Can't be stored or captured; `return` hands it to the caller. No `dispose()`. |
+| `implements IDisposable` (`IAsyncDisposable`: `dispose():Promise<void>`) and **no destructor** | **manual** | Storable anywhere; the class writes its own `dispose()` (X0787 when missing), which `using` calls (compiled to `[Symbol.dispose]() { this.dispose(); }` on the topmost such class) or code calls directly; X0801 when never disposed. A destructor together with `IDisposable` (own or inherited) is X0808 (decided 2026-11-21: a class is one or the other; earlier the destructor provided `dispose()`). |
+| no destructor | plain | — |
+
+Being scoped is inherited: a subclass of a scoped class is scoped (it can't add `implements IDisposable`: X0828), a subclass of a manual class is manual (and can't declare a destructor: X0808). Hovers say `scoped class`.
+
+*Rules for scoped values* (any expression whose static type is a scoped class; `this` inside a scoped class's methods included):
+- **Owners.** A scoped value is owned by the local it is declared into (`var r = new Res()`, `var r = make()`), by the function that receives it through `return`, or, as a *temporary*, by the statement that creates it without binding it (`new Res().read()`, `make().read()`, `use(new Res())`). Parameters of a scoped type are *borrowed*: usable, never destroyed by the callee.
+- **X0822 — stored.** A scoped value can't be put where it would outlive its scope: a field or static field (also field initializers), an array, `Map` or `Set` element, an object literal property, a property assignment, `throw`. Fields of a scoped type are rejected at the declaration (owned fields, destroyed by the owner's destructor, are a possible later step).
+- **X0823 — captured.** A closure (arrow, `function` expression, local function, method closure `r.read` used as a value) can't use a scoped local, parameter or `this`, since the closure may run after the scope ended.
+- **X0824 — converted.** A scoped value can only be converted to scoped types: not to `*`, `Object`, an interface, a non-scoped parent class, a generic type argument (`Array<Res>`, `Promise<Res>`), a union, or a parameter of a JavaScript function or a native method (`trace(r)` included). Conversion to text (`$'{r}'`, `'x' + r`) is allowed: it doesn't keep the object.
+- **X0825 — returned without ownership.** `return` can hand on only a value the function owns: a scoped local, `new Res(…)` or a call returning one. Returning a parameter, `this` or another borrowed value is an error (both caller scopes would destroy it). An `async` function can't return a scoped value yet (`Promise<Res>` is a generic argument: X0824).
+- **X0826 — reassigned.** A local holding a scoped value can't be assigned again (the old value would have to be destroyed mid-scope; a later step could allow it with that meaning).
+- **X0827 — `using` on a scoped value.** Redundant: it is destroyed at scope end anyway. Fix-it removes `using` (and the parentheses of the block form when the block is the whole scope).
+- **X0829 — temporary that can't be destroyed.** Temporaries are destroyed at the end of their statement, which only expression statements, `var` and `return` statements have. Elsewhere they are rejected: loop headers (`while`, `for`, `for…of`; also `for (var r = new Res(); …)`), conditions (`if`, `switch`, `if (var …)`), `throw`, destructuring and `using` statements, parameter defaults, field initializers and arrow expression bodies. Bind the value to a local first (inside the loop for one per iteration).
+- **Untyped locals.** `var r = new Res()` without a type is `*` (as everywhere in Xenon), which can't hold a scoped value: X0824 with a fix-it adding `:Res`.
+- **X0807 (reused)** — a scoped value with an async destructor can only be owned inside an `async` function (its destruction is awaited).
+
+*Destruction order.* Locals are destroyed at the end of the block that declares them, in reverse order of declaration (C++ order), on every exit: falling off the end, `return`, `break`/`continue`, exceptions. A local declared in a loop body is destroyed at the end of each iteration. A local whose value was handed on by `return` is skipped. The parent destructor runs after the child's, as now; the destructor still runs at most once.
+
+*Errors during destruction* are combined as `using` combines them: if the scope is left by an exception and a destructor throws too, the result is a `SuppressedError` (destructor error, original error), which `Exception.from` already normalizes. A destructor error on a normal exit is thrown as is. Both go through a prelude helper (A8: a helper is justified here, since doing it inline costs ~6 lines per variable).
+
+*JS output.* The destructor is a method under the prelude symbol `$Destroy` (not `Symbol.dispose`, so JS `using` and stray code can't run it; `$` names can't clash with Xenon names). One `try` per scoped local, starting right after its declaration (as built; the sketch below uses the planned names):
+```js
+// var a = new Res('a'); var b = make(); trace(a.read(), b.read())
+const a = new Res("a");
+let $e1 = NO_ERROR;
+try {
+  const b = this.make();
+  let $e2 = NO_ERROR;
+  try {
+    console.log(a.read(), b.read());
+  } catch (e) { throw ($e2 = e); } finally { destroy(b, $e2); }
+} catch (e) { throw ($e1 = e); } finally { destroy(a, $e1); }
+
+// private function make():Res { var r = new Res('made'); if (…) throw …; return r }
+make() {
+  let r = new Res("made");
+  let $e1 = NO_ERROR;
+  try {
+    if (…) throw …;
+    const $r = r; r = null; return $r;       // handed on: destroy(null, …) does nothing
+  } catch (e) { throw ($e1 = e); } finally { destroy(r, $e1); }
+}
+
+// use(new Res()) — a temporary, assigned where it is created so evaluation order is unchanged
+let $t1 = null, $e1 = NO_ERROR;
+try { use(($t1 = new Res())); } catch (e) { throw ($e1 = e); } finally { destroy($t1, $e1); }
+```
+`$destroy(value, error)` (prelude, raw JavaScript appended to the prelude module, since it rethrows non-`Exception` values): does nothing for `null`; calls `value[$Destroy]()`; if that throws and `error` isn't `$noError`, throws a `SuppressedError` (with the same fallback as Bun's `__callDispose` where `SuppressedError` doesn't exist), else rethrows. `$destroyAsync` is the awaited form for async destructors. They are imported on demand like classes. As built: `NO_ERROR`/`destroy` are `$noError`/`$destroy`, the catch parameter is `$c`, a handed-off return is `return ($r = r, r = null, $r);` (a hoisted temporary), and a `var` with temporaries is declared first (`let n;`) and assigned inside the `try`. A scoped class has no `#disposed` guard (the compiler guarantees one call) and no `dispose()`; a manual class has no destructor, only its own `dispose()` and the `[Symbol.dispose]` forwarder. The TypeScript output declares `[$Destroy](): void`.
+
+*Migration.* `IDisposable`'s doc comment changes from "implemented automatically" to the opt-in; `examples/destructors` shows both kinds (scoped `FileHandle`/`Lock`, manual `Connection` with `using`/`dispose()`); `tests/errors/destructors.xn` and `using-keyword.xn` give their resources `implements IDisposable`; `video-library`'s `Calculator` becomes scoped (`using (calc = …)` → `var calc = …`).
+
+*Tests.* Output order for nested scopes, loops (one destruction per iteration), early `return`/`break`/`continue`, exceptions (original error kept; destructor error alone; both → `SuppressedError`), hand-off through two levels of `return`, temporaries in expression statements, async destructors, subclass chains; one `tests/errors` case per code (X0810, X0822–X0829) with secondary labels pointing at the destructor that makes the class scoped; manual classes unchanged (existing tests pass after migration).
+
+*Later, not in this milestone:* owned fields (a scoped value in a field of a scoped class, destroyed by the owner's destructor), reassignment destroying the old value, `async` functions returning scoped values, closures that provably run before the scope ends (`forEach` callbacks).
+
+**Not included** (decided): method overloading (except in `native` declarations, Part G), operator overloading beyond `operator+`, inner/nested classes (use file-private helpers), custom namespaces. (Metadata tags were here; reopened 2026-11-21 as attributes, see A6e.)
 
 ### A6b. Typedefs
 `typedef` gives a name to a type. It is purely compile-time: nothing is emitted to JS.
@@ -689,6 +772,75 @@ Rules ("always Exception, never Error"):
   So errors from npm libraries and rejected promises (`await`) are caught as typed `Exception`s. The original JS error is always in `e.cause`.
 - Compiler-generated failures throw the built-in classes: abstract instantiation → `StateException`, abstract stubs → `NotImplementedException`.
 - Because `Exception` really extends JS `Error`, exceptions thrown from XenonScript into plain JS code behave as normal errors (stack traces, `instanceof Error`, `cause`).
+
+### A6d. `Class<T>` (step 24, done)
+
+A class used as a value (`Dog` in `register(Dog)`) has the internal type `classRef`, printed `Class<Dog>`, but no type can be written for it. Step 24 makes `Class<T>` a type:
+
+- `Class<Dog>` holds `Dog` or a subclass of it (`var t:Class<Animal> = Dog`), like arrays of a class hold its subclasses; `Class<*>` any class. An interface (`Class<IShape>`) holds the classes implementing it; a type parameter is allowed (`Class<T>`, needed for the lookup API). Enums, primitives, typedefs and function types aren't classes: X0830. An enum or interface used as a value isn't a class value either (mismatched types).
+- `T` is inferred from a class passed as an argument: `function first<T>(kind:Class<T>):T?` called as `first(Route)` gives `Route?`.
+- What a `Class<T>` value can do (on purpose little, since the actual class is only known at run time): be passed on and compared (`==`), test values (`x is kind`, which narrows `x` to `T`, compiled to `instanceof`; `x as kind` gives `T?`), and `name` (`String`, JavaScript's `Function.name`). Statics and `new` aren't available through it (X0831: the constructor's parameters are unknown; a factory function type is the alternative).
+- JS output: nothing new: a class reference is the constructor. TypeScript output: `abstract new (...args: any) => T`.
+- Tests: assignability (subclass refs, interfaces, `*`), inference, `is` narrowing, X0830/X0831, TypeScript output accepted.
+
+### A6e. Attributes (step 25, done; needs A6d)
+
+ActionScript's metadata tags, as typed classes (like C# attributes). Decided 2026-11-21: targets are classes, methods and fields for now; attributes are **not inherited** (the simpler choice: a lookup reads only the class asked about; `Attributes.of(Child, …)` doesn't see attributes on `Parent`); runtime lookup plus compiler-known built-ins.
+
+*Syntax.* One or more attributes in brackets before a class or member declaration (and before its modifiers and doc comment's declaration), separated by commas or written as several brackets:
+```actionscript
+[Controller('/users')]
+public class UserController {
+  [Route('/'), Route('/all')]
+  public function list():String { … }
+
+  [Route('/', verb = 'POST')]
+  [Authorize(role = 'admin')]
+  public function create():String { … }
+
+  [Column('user_name')]
+  public var name:String
+}
+```
+Arguments are the attribute class's constructor arguments; `name = value` sets a public writable field or setter afterwards (after all positional arguments). Without arguments the parentheses are optional (`[Authorize]`). Parsing: `[` can't start anything else before a class or member, so there is no ambiguity; inside function bodies attributes aren't allowed (statements may start with an array literal).
+
+*Attribute classes.* Implement the prelude's marker interface `IAttribute` (X0832 when an applied class doesn't; X0833 for a name that isn't a class). `[Usage(targets…, multiple = false)]` on an attribute class (or a parent) declares where it may be used: `AttributeTarget.Class`, `.Method`, `.Field` as separate arguments (`[Usage(AttributeTarget.Method, AttributeTarget.Field)]`; as built, a rest parameter instead of the planned `|`, since enums aren't flags); without `Usage`, all three are allowed. `Usage` itself is read by the compiler only. X0834: an attribute on a target its `Usage` excludes; X0835: an attribute repeated on one declaration without `multiple = true`.
+
+*Arguments are constants* (literals, enum members, `inline` constants, `constexpr` calls, arrays of constants), checked against the constructor like a `new` (X0836 for a non-constant, with the value's span; named arguments: X0837 for a name that isn't a public writable field or setter, mismatched types as usual). So attributes can't run arbitrary code or depend on state, and every mistake is a compile error.
+
+*Built-in: `[Deprecated(message)]`* (prelude, `Usage` all targets). Compile time only, not emitted: every use of the class or member elsewhere is warning X0873 with the message (inside the deprecated declaration itself no warning); the language server marks uses with the LSP `Deprecated` tag (struck through) and shows the message in hovers.
+
+*Lookup API* (prelude `static class Attributes`):
+```actionscript
+Attributes.of<T>(type:Class<*>, kind:Class<T>):Array<T>                   // the class's own attributes of that kind
+Attributes.first<T>(type:Class<*>, kind:Class<T>):T?
+Attributes.ofMember<T>(type:Class<*>, member:String, kind:Class<T>):Array<T>
+Attributes.members(type:Class<*>):Array<String>                            // members that have attributes
+```
+Each attribute object is created once per declaration (cached), so repeated lookups return the same objects. Static and instance members are looked up by name alike (a class can't have both with one name).
+
+*JS output.* Only classes using attributes change: as built, an assignment after the class, `UserController[Attributes.KEY] = () => ({ … })` (the key is a symbol in the prelude's `Attributes`; an assignment rather than a static field, since TypeScript doesn't accept a computed static field with a non-literal key), holding a function that creates them on first lookup (no attribute constructor runs at load time, so import order and cycles don't matter, and unused attributes cost nothing):
+```js
+export class UserController {
+  list() { … }
+  create() { … }
+  static [$attributes] = () => ({
+    type: [new Controller("/users")],
+    members: {
+      list: [new Route("/"), new Route("/all")],
+      create: [$set(new Route("/"), { verb: "POST" }), $set(new Authorize(), { role: "admin" })],
+      name: [new Column("user_name")],
+    },
+  });
+}
+```
+Named values use `Object.assign(new Route("/"), { verb: "POST" })` directly (it returns its target and runs setters; no `$set` helper was needed). The lookup reads the class's own field only (`Object.hasOwn`, since static fields are inherited in JavaScript and attributes aren't), creates the attributes on first use and keeps them in a `WeakMap` per class. Attribute classes compile like any class. Members are keyed by their Xenon name (a private method's attributes are under `step`, not `#step`). TypeScript output: the field typed `() => { type: IAttribute[]; members: Record<string, IAttribute[]> }`, the API generic as declared.
+
+*Language server.* Hover on an attribute shows its class and constructor; completion of attribute names inside `[` before declarations (classes implementing `IAttribute`); go to definition; semantic highlighting of attribute names as decorators.
+
+*Tests.* Parsing (one/several brackets, comma lists, with/without parentheses, doc comments before and after), each error code with secondary labels at the `Usage` declaration, constant folding of arguments, output only for classes with attributes, lookup at run time (identity across lookups, no constructor run before the first lookup, subclass doesn't see the parent's), `Deprecated` warnings and the LSP tag, TypeScript output accepted, and an example (`examples/attributes`: a small router as in the design discussion).
+
+*Later, not in these steps:* attributes on parameters, accessors and interfaces; inherited attributes (`Usage(inherited = true)`); attributes readable by the compiler from user code (macros).
 
 ### A7. Semicolons (ASI)
 Statements end with `;` or a newline, following JS's ASI rules: restricted productions (`return`, `break`, `continue`, `throw`, postfix `++`/`--` cannot be followed by a line break before their operand), and a statement continues onto the next line when the next token can't start a new statement. The lexer records "newline before token" on each token so the parser can apply this.

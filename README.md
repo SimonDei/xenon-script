@@ -36,7 +36,7 @@ public class Main {
 
 ## Highlights
 
-- **A real type system.** `int`, `uint` and `Float` are distinct number types. Generics work on
+- **A real type system.** `Int`, `UInt` and `Float` are distinct number types (integer arithmetic wraps at 32 bits, as in Java or C#). Generics work on
   classes and functions, typedefs describe object shapes, and union, literal and tuple types
   (`Int | String`, `'utf8' | 'ascii'`, `Tuple<String, Int>`) describe what JavaScript APIs really
   take. `T?` marks a value that may be `null`, and null checks and `is` narrow it. Mixing in
@@ -93,12 +93,13 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Properties | `function get color()` / `function set color(v)`; the setter may be narrower (`private set`) | [`interfaces`](examples/interfaces) |
 | Interfaces | `interface IShape { function area():Float }`, checked `implements` | [`interfaces`](examples/interfaces) |
 | Variables | `var` (compiles to `let`), `final` and `const` (assigned once: `const`), `inline final` (pasted as its value) | [`basics`](examples/basics) |
-| Types | `int`, `uint`, `Float`, `String`, `Boolean`, `Array<T>`, `*` (untyped) | [`types`](examples/types) |
+| Types | `Int`, `UInt`, `Float`, `String`, `Bool`, `Void`, `Array<T>`, `*` (untyped); ActionScript's `int`, `uint`, `Boolean`, `void` as aliases; local variables take their value's type (`var names = ['a']` is an `Array<String>`) | [`types`](examples/types) |
 | Unions and literals | `int \| String`, `typedef Encoding = 'utf8' \| 'ascii'`; narrowed by `is`, `==` and null checks | [`types`](examples/types) |
 | Tuples | `Tuple<String, int>`: one type per position, `var [key, value] = pair`; `Object.entries` and map entries are tuples | [`tuples`](examples/tuples) |
 | Type checks | `(expr : Type)`: checked at compile time, gone at runtime; the value is typed against `Type` (`(['a', 1] : Tuple<String, int>)`, `([] : Array<int>)`) | [`types`](examples/types) |
 | Nullable types | `int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
-| Null safety (opt-in) | `"nullSafety": true`: object types exclude `null` too (`String` vs `String?`), fields and locals need a value before use, `as` gives `T?` | [`null-safety`](examples/null-safety) |
+| Null safety (on by default; `"nullSafety": false` turns it off) | object types exclude `null` too (`String` vs `String?`), fields and locals need a value before use, `as` gives `T?` | [`null-safety`](examples/null-safety) |
+| Checked indexes | `list[i]` and `text[i]` throw a `RangeException` when `i` is out of range instead of giving `undefined`; `list.at(i)` gives `T?` | |
 | Generics | `class Box<T>`, `function first<T>(items:Array<T>):T?` | [`generics`](examples/generics) |
 | Typedefs | `typedef Point = { x:Float, y:Float, ?label:String }`, aliases | [`typedefs`](examples/typedefs) |
 | Enums | `enum Color { Red, Green }`, string enums | [`enums`](examples/enums) |
@@ -106,8 +107,9 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Control flow | ranges `for (var n:int of 0..10)`, `0..=10 step 5`, `for … of`, `switch` | [`control`](examples/control) |
 | Destructuring | `var [first, , third, ...tail] = list`, `var { name, address: { city } } = user` | [`destructuring`](examples/destructuring) |
 | Exceptions | `Exception` and its subclasses; anything JavaScript throws is normalized | [`exceptions`](examples/exceptions) |
-| Resources | destructors `~Connection() { … }`, `using` / `await using` | [`destructors`](examples/destructors) |
-| Iteration | `IEnumerable<T>` / `IEnumerator<T>`, usable with `for … of` (also from JavaScript) | [`enumerable`](examples/enumerable) |
+| Resources | destructors `function ~Connection() { … }`: destroyed when their scope ends (scoped classes), or `implements IDisposable` with a `dispose()` method for `using` / `await using` | [`destructors`](examples/destructors) |
+| Attributes | `[Route('/users', verb = 'POST')]` on classes, methods and fields (classes implementing `IAttribute`, constant arguments), read with `Attributes.of(…)`; `[Deprecated('…')]` warns at uses, `[NoDiscard]` when a result is dropped; `Class<T>` for class values | [`attributes`](examples/attributes), [`class-values`](examples/class-values) |
+| Iteration | `Iterable<T>` / `IEnumerator<T>`, usable with `for … of` (also from JavaScript) | [`enumerable`](examples/enumerable) |
 | Compile time | `inline` constants, `constexpr` functions (the standard library's `Math` and `String` methods too: `'a b'.replace(~/ /g, '')` folds), `const` methods, operator overloading (`operator+`, `-`, `*`, `/`, `==`) | [`inline`](examples/inline), [`const-methods`](examples/const-methods), [`operators`](examples/operators) |
 | Strings | `'single quotes'`, templates `$'Hi {name}'`, regex literals `~/^a+/i` | [`basics`](examples/basics) |
 
