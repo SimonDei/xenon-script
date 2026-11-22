@@ -1,0 +1,34 @@
+// `Class<T>`: classes as typed values. A `Class<Animal>` holds `Animal` or a subclass; `x is kind`
+// tests against the class it holds, and `T` is inferred from a class passed as an argument.
+public class Main {
+  public function Main() {
+    var animals:Array<Animal> = [new Dog(), new Cat(), new Dog()]
+    var kind:Class<Animal> = Dog
+    trace(kind.name, kind == Dog)
+    trace(count(animals, Dog), count(animals, Cat))
+    var d:Dog? = first(animals, Dog)
+    trace(d?.bark())
+    var any:Class<*> = Main
+    var shape:Class<IShape> = Square
+    trace(shape.name, any.name)
+  }
+
+  private function count(list:Array<Animal>, kind:Class<Animal>):int {
+    var n:int = 0
+    for (var a:Animal of list) if (a is kind) n++
+    return n
+  }
+
+  private function first<T>(list:Array<Animal>, kind:Class<T>):T? {
+    for (var a:Animal of list) {
+      if (var found:T = a as kind) return found
+    }
+    return null
+  }
+}
+
+class Animal {}
+class Dog extends Animal { public function bark():String { return 'woof' } }
+class Cat extends Animal {}
+interface IShape {}
+class Square implements IShape {}

@@ -486,7 +486,8 @@ class ModuleGen {
           case "Tuple": return `[${t.args.map((a) => this.tsType(a)).join(", ")}]`;
           case "Function": return "Function";
           case "Object": return "Record<string, any>"; // a dynamic object: any property may be read
-          case "Class": return "any";
+          // A class value: anything `new` can create a `T` with (abstract classes included).
+          case "Class": return t.args[0] ? `(abstract new (...args: any) => ${this.tsType(t.args[0])})` : "any";
         }
         return "any";
       case "class": {

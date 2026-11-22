@@ -421,7 +421,7 @@ export function assignable(from: Type, to: Type): boolean {
   }
   if (to.kind === "builtin") {
     if (to.name === "Function") return from.kind === "method" || (from.kind === "builtin" && from.name === "Function");
-    if (to.name === "Class") return from.kind === "classRef" || (from.kind === "builtin" && from.name === "Class");
+    if (to.name === "Class") return classFits(from, to.args[0]);
     if (from.kind !== "builtin") return false;
     // A tuple is an array: it fits `Array<*>`, and `Array<T>` when every element is a `T`.
     if (to.name === "Array" && from.name === "Tuple") {
@@ -530,6 +530,29 @@ export function memberTypeIn(info: ClassInfo, args: Type[], owner: ClassInfo, ty
 }
 
 /**
+ * The class a class value holds: `Dog` for the value `Dog` (a `classRef`), `T` for a `Class<T>`
+ * (`*` for a bare `Class`). Enums and interfaces aren't classes at run time: undefined.
+ */
+export function classValueOf(t: Type): Type | undefined {
+  if (t.kind === "classRef") {
+    if (t.info.decl.isEnum || t.info.decl.isInterface) return undefined;
+    return { kind: "class", info: t.info, ...(t.info.typeParams.length ? { args: t.info.typeParams.map(() => T.any) } : {}) };
+  }
+  if (t.kind === "builtin" && t.name === "Class") return t.args[0] ?? T.any;
+  return undefined;
+}
+
+/** Does a class value fit `Class<want>`? Covariant: `Class<Dog>` fits `Class<Animal>` (it is only read). */
+function classFits(from: Type, want: Type | undefined): boolean {
+  const got = classValueOf(from);
+  if (!got) return false;
+  if (!want || isDynamic(want) || isDynamic(got)) return true;
+  if (want.kind === "typeParam" || got.kind === "typeParam") return got.kind === "typeParam" && want.kind === "typeParam" && got.param === want.param;
+  if (want.kind === "class" && got.kind === "class") return isSubclass(got.info, want.info);
+  return false;
+}
+
+/**
  * Infers type parameters (`vars`) by matching a pattern type against an actual type, recording
  * the first binding found for each parameter in `out`.
  */
@@ -564,6 +587,12 @@ export function unify(pattern: Type, actual: Type, vars: Set<TypeParamInfo>, out
       return;
     }
     case "builtin":
+      // `Class<T>` from a class value: `first(Route)` makes `T` a `Route`.
+      if (pattern.name === "Class" && pattern.args[0]) {
+        const held = classValueOf(actual);
+        if (held && !(actual.kind === "builtin" && actual.args.length === 0)) unify(pattern.args[0], held, vars, out);
+        return;
+      }
       if (actual.kind === "builtin" && actual.name === pattern.name) pattern.args.forEach((p, i) => actual.args[i] && unify(p, actual.args[i]!, vars, out));
       // `Array<T>` from a tuple: `T` is the union of its elements.
       else if (pattern.name === "Array" && pattern.args[0] && tupleElements(actual)) unify(pattern.args[0], elementOf(actual)!, vars, out);

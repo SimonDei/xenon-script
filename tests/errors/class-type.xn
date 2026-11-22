@@ -1,0 +1,21 @@
+public class Main {
+  public function Main() {
+    var a:Class<Animal> = Dog                 // fine: a subclass
+    var b:Class<Dog> = Animal                 // X0308: not a subclass
+    var c:Class<Dog> = a                      // X0308: Class<Animal> isn't a Class<Dog>
+    var d:Class<int> = Dog                    // X0830
+    var e:Class<Color> = Dog                  // X0830
+    var f:Class<*> = Color                    // X0308: an enum isn't a class
+    var g:Class<*> = IPet                     // X0308: neither is an interface
+    trace(a.name, a.create())                 // X0831 (create)
+    var h:* = new a()                         // X0831
+    var i:Class<Animal, Dog> = Dog            // X0422
+  }
+}
+
+class Animal {
+  public static function create():Animal { return new Animal() }
+}
+class Dog extends Animal {}
+enum Color { Red }
+interface IPet {}

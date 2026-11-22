@@ -9,7 +9,7 @@ import { cover, type SourceFile, type Span, span, spanText } from "./source.ts";
 import { suggest } from "./suggest.ts";
 import {
   arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, arrayOf, elementOf, isDynamic, isNullable, isNumeric, isPrim, nonNull, nullableOf,
-  bind, eraseParams, memberTypeIn, stdClassOf, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
+  bind, classValueOf, eraseParams, memberTypeIn, stdClassOf, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
   supertypeArgs, T, type Type, type TypeParamInfo, typeToString, unify,
   requiredParams, literalType, literalOf, widen, unionOf, membersOf, valueFits, type UnionType, tupleOf, tupleElements, nullSafety,
 } from "./types.ts";
@@ -986,6 +986,21 @@ class Env {
         return T.error;
       }
       return arrayOf(node.args[0] ? this.resolveType(node.args[0], scope, false, tparams) : T.any);
+    }
+    // `Class<Dog>`: a class value holding `Dog` or a subclass (a bare `Class` holds any class).
+    if (name === "Class" && node.args.length > 0) {
+      if (node.args.length > 1) {
+        this.diags.error("X0422", "`Class` takes 1 type argument, the class it holds", node.span, `${node.args.length} given`);
+        return T.error;
+      }
+      const held = this.resolveType(node.args[0]!, scope, false, tparams);
+      const ok = held.kind === "any" || held.kind === "typeParam" || held.kind === "error" || (held.kind === "class" && !held.info.decl.isEnum);
+      if (!ok) {
+        this.diags.error("X0830", `\`${typeToString(held)}\` isn't a class`, node.args[0]!.span, "`Class<…>` holds classes")
+          .note("a `Class<T>` value is a class: an enum, a primitive, a typedef or a function type can't be one");
+        return { kind: "builtin", name: "Class", args: [] };
+      }
+      return { kind: "builtin", name: "Class", args: [held] };
     }
     const builtin = BUILTIN_TYPES[name];
     if (builtin && node.args.length > 0) this.diags.error("X0423", `\`${name}\` doesn't take type arguments`, node.span);
@@ -3791,6 +3806,13 @@ class BodyChecker {
           return root ? this.rootMemberUse(e, root) : T.any;
         }
         if (obj.name === "Function") return this.functionMemberUse(e, obj);
+        // A typed class value: only its `name` (the actual class, and so its statics, is known at run time).
+        if (obj.name === "Class" && obj.args.length > 0) {
+          if (name === "name") return T.String;
+          this.diags.error("X0831", `\`${name}\` isn't available through a \`${typeToString(obj)}\``, e.name.span, "the class is only known at run time")
+            .note("a `Class<T>` value can be passed on, compared, tested against (`x is kind`) and asked for its `name`; its statics depend on the actual class");
+          return T.error;
+        }
         return T.any;
       }
       case "nullable": // (unwrapped by `member`)
@@ -4800,7 +4822,10 @@ class BodyChecker {
       if (local && t.args.length === 0) {
         local.used = true;
         const lt = local.type;
-        if (!isDynamic(lt) && !(lt.kind === "builtin" && (lt.name === "Class" || lt.name === "Function")) && lt.kind !== "classRef") {
+        if (lt.kind === "builtin" && lt.name === "Class" && lt.args.length > 0) {
+          this.diags.error("X0831", `\`new\` isn't available through a \`${typeToString(lt)}\``, t.span, "its constructor's parameters are unknown")
+            .help("pass a function creating the value instead (`() -> T`), or use an untyped `Class` for a dynamic `new`");
+        } else if (!isDynamic(lt) && !(lt.kind === "builtin" && (lt.name === "Class" || lt.name === "Function")) && lt.kind !== "classRef") {
           this.diags.error("X0415", `\`${name}\` is a \`${typeToString(lt)}\` and can't be instantiated with \`new\``, t.span);
         }
         dynamicArgs();
@@ -4954,6 +4979,15 @@ class BodyChecker {
     // JS classes (imports and globals such as `Response`, `Map`) are tested with `instanceof`.
     if (t.kind === "TypeName" && t.name.length === 1 && t.args.length === 0) {
       const name = t.name[0]!.name;
+      // `x is kind` / `x as kind` with a local holding a class (`kind:Class<T>`): `instanceof` that class.
+      const local = !this.scope.classes.has(name) && !this.scope.typedefs.has(name) ? scope.get(name) : undefined;
+      const held = local && classValueOf(local.type);
+      if (local && held) {
+        local.used = true;
+        this.env.result.typeChecks.set(e, { kind: "js", name });
+        this.env.result.typeNodeTypes.set(t, held);
+        return e.op === "is" ? T.Boolean : isDynamic(held) ? T.any : nullableOf(held);
+      }
       if (!this.scope.classes.has(name) && !(name in BUILTIN_TYPES) && (this.env.isJsImport(this.scope, name) || this.env.isGlobal(this.scope, name))) {
         this.env.result.typeChecks.set(e, { kind: "js", name });
         return e.op === "is" ? T.Boolean : T.any;
