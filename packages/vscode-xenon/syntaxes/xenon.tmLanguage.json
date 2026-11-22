@@ -536,11 +536,11 @@
       "patterns": [
         {
           "name": "entity.name.function.call.xenon",
-          "match": "(?<=[\\w$)\\]]\\.|\\?\\.)(?:package|import|class|interface|enum|typedef|extends|implements|function|var|const|final|using|public|private|protected|internal|static|inline|abstract|override|dynamic|async|native|constexpr|if|else|switch|case|default|while|do|for|in|break|continue|return|throw|try|catch|finally|new|this|super|is|as|typeof|delete|await|true|false|null|undefined|void|namespace|use|with|yield|let|goto)\\b(?=\\s*\\()"
+          "match": "(?<=[\\w$)\\]]\\.|\\?\\.)(?:package|import|class|interface|enum|typedef|extends|implements|function|var|const|final|using|public|private|protected|internal|static|inline|abstract|override|dynamic|async|native|constexpr|if|else|switch|case|default|while|do|for|in|break|continue|return|defer|throw|try|catch|finally|new|this|super|is|as|typeof|delete|await|true|false|null|undefined|void|namespace|use|with|yield|let|goto)\\b(?=\\s*\\()"
         },
         {
           "name": "variable.other.property.xenon",
-          "match": "(?<=[\\w$)\\]]\\.|\\?\\.)(?:package|import|class|interface|enum|typedef|extends|implements|function|var|const|final|using|public|private|protected|internal|static|inline|abstract|override|dynamic|async|native|constexpr|if|else|switch|case|default|while|do|for|in|break|continue|return|throw|try|catch|finally|new|this|super|is|as|typeof|delete|await|true|false|null|undefined|void|namespace|use|with|yield|let|goto)\\b"
+          "match": "(?<=[\\w$)\\]]\\.|\\?\\.)(?:package|import|class|interface|enum|typedef|extends|implements|function|var|const|final|using|public|private|protected|internal|static|inline|abstract|override|dynamic|async|native|constexpr|if|else|switch|case|default|while|do|for|in|break|continue|return|defer|throw|try|catch|finally|new|this|super|is|as|typeof|delete|await|true|false|null|undefined|void|namespace|use|with|yield|let|goto)\\b"
         },
         {
           "name": "storage.modifier.const.xenon",
@@ -556,7 +556,7 @@
         },
         {
           "name": "keyword.control.flow.xenon",
-          "match": "\\b(?:return|throw|await)\\b"
+          "match": "\\b(?:return|defer|throw|await)\\b"
         },
         {
           "name": "keyword.control.exception.xenon",

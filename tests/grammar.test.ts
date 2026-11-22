@@ -102,6 +102,8 @@ const cases: [string, string, string, number?][] = [
   ["trace(x ?? y, a?.b, ...rest)", "?.", "keyword.operator.optional.xenon"],
   ["trace(x ?? y, a?.b, ...rest)", "...", "keyword.operator.spread.xenon"],
   ["if (x == undefined) return", "undefined", "constant.language.undefined.xenon"],
+  ["defer cleanup()", "defer", "keyword.control.flow.xenon"],
+  ["trace(worker.defer())", "defer", "entity.name.function.call.xenon"],
   ["var let:int = 1", "let", "invalid.illegal.reserved.xenon"],
   // member reads are properties (themes colour `variable`, as for JavaScript); calls and types aren't
   ["if (!res.ok) trace(res?.statusText, res.headers.get('x'))", "ok", "variable.other.property.xenon"],
