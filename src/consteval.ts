@@ -124,6 +124,12 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
       return fold(c.value ? e.then : e.else, lookup);
     }
     case "Call": {
+      // `nameof(user.email)`: the name (the checker makes sure it exists).
+      if (e.callee.kind === "Ident" && e.callee.name === "nameof" && e.args.length === 1) {
+        const a = e.args[0]!;
+        if (a.kind === "Ident") return { ok: true, value: a.name };
+        if (a.kind === "Member") return { ok: true, value: a.name.name };
+      }
       if (e.callee.kind === "Ident" && e.callee.name in CASTS && e.args.length === 1 && e.args[0]!.kind !== "Spread") {
         const f = fold(e.args[0]!, lookup);
         if (!f.ok) return f;

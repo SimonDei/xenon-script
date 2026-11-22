@@ -191,6 +191,24 @@ class Page {
   expect(p.diagnostics().get("Main.xn")!.map((d) => d.code)).toEqual(["X0873"]);
 });
 
+test("nameof: references and hover see the name inside (renaming the member updates it)", () => {
+  const main = `public class Main {
+  public function Main() {
+    var user = new User('a')
+    trace(nameof(user.email), nameof(User.email), user.email)
+  }
+}
+class User {
+  public final email:String
+  public function User(email:String) { this.email = email }
+}
+`;
+  const p = project({ "Main.xn": main });
+  const lines = p.references("Main.xn", offset(main, "email:String", 1)).map((l) => `${l.range.start.line}:${l.range.start.character}`);
+  expect(lines).toEqual(["3:22", "3:42", "3:55", "7:15", "8:44"]);
+  expect(p.hover("Main.xn", offset(main, "User.email", 6))!.contents).toContain("User.email:String");
+});
+
 test("method hover shows static final and abstract modifiers", () => {
   const main = `public abstract class Base {
   public static final function version():int => 1

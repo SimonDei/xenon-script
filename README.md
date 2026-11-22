@@ -109,6 +109,7 @@ bun /path/to/xenon/src/cli.ts watch --run  # rebuild and restart on every change
 | Exceptions | `Exception` and its subclasses; anything JavaScript throws is normalized | [`exceptions`](examples/exceptions) |
 | Resources | destructors `function ~Connection() { … }`: destroyed when their scope ends (scoped classes), or `implements IDisposable` with a `dispose()` method for `using` / `await using` | [`destructors`](examples/destructors) |
 | Attributes | `[Route('/users', verb = 'POST')]` on classes, methods and fields (classes implementing `IAttribute`, constant arguments), read with `Attributes.of(…)`; `[Deprecated('…')]` warns at uses, `[NoDiscard]` when a result is dropped; `Class<T>` for class values | [`attributes`](examples/attributes), [`class-values`](examples/class-values) |
+| `nameof` | `nameof(user.email)` is the checked string `'email'`: typos are errors, and renaming the member updates it | |
 | Iteration | `Iterable<T>` / `IEnumerator<T>`, usable with `for … of` (also from JavaScript) | [`enumerable`](examples/enumerable) |
 | Compile time | `inline` constants, `constexpr` functions (the standard library's `Math` and `String` methods too: `'a b'.replace(~/ /g, '')` folds), `const` methods, operator overloading (`operator+`, `-`, `*`, `/`, `==`) | [`inline`](examples/inline), [`const-methods`](examples/const-methods), [`operators`](examples/operators) |
 | Strings | `'single quotes'`, templates `$'Hi {name}'`, regex literals `~/^a+/i` | [`basics`](examples/basics) |

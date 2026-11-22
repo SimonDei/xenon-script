@@ -534,6 +534,7 @@ class ScopedChecker {
         this.visit(e.object, "receiver");
         return this.visit(e.index, "use");
       case "Call":
+        if (this.result.inlineValues.has(e)) return; // `nameof(r)`: a name, nothing is used
         if (e.callee.kind === "Member") {
           this.visit(e.callee.object, "receiver");
         } else if (e.callee.kind !== "Ident" && e.callee.kind !== "Super") this.visit(e.callee, "use");

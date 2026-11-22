@@ -3149,6 +3149,63 @@ class BodyChecker {
     return widen(own);
   }
 
+  /** `nameof` is the operator unless the program declares something of that name. */
+  private isNameofOperator(scope: Scope): boolean {
+    return !scope.get("nameof") && !findMember(this.info, "nameof") && !this.scope.classes.has("nameof") && !this.env.functions.has("nameof");
+  }
+
+  /**
+   * `nameof(user.email)`: the name of a local, parameter, member, class or enum member as a string
+   * constant (`'email'`), checked like a use of it (so a typo is an error, and renaming it updates
+   * it) but never evaluated. The name is the one in the source (a private field's `title`, not `#title`).
+   */
+  private nameof(e: A.Expr & { kind: "Call" }, scope: Scope): Type {
+    const arg = e.args.length === 1 ? e.args[0]! : undefined;
+    const bad = (message: string, at: Span, label: string) => {
+      this.diags.error("X0876", message, at, label)
+        .note("`nameof` takes a local, a parameter, a member (`user.email`, `Dog.create`), a class or an enum member");
+      for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
+      return T.String;
+    };
+    if (!arg) return bad("`nameof` takes exactly one name", e.span, `${e.args.length} given`);
+    if (arg.kind !== "Ident" && arg.kind !== "Member") return bad("`nameof` takes a name, not an expression", arg.span, "not a name");
+    // `nameof(User.email)`: an instance member named through its class (nothing is accessed).
+    const dotted = (x: A.Expr): string | undefined => x.kind === "Ident" ? x.name : x.kind === "Member" ? (dotted(x.object) && `${dotted(x.object)}.${x.name.name}`) : undefined;
+    const className = arg.kind === "Member" ? dotted(arg.object) : undefined;
+    const named = className && !(arg.kind === "Member" && arg.object.kind === "Ident" && scope.get(arg.object.name)) ? this.env.lookupClass(this.scope, className) : undefined;
+    if (arg.kind === "Member" && named) {
+      if (arg.object.kind === "Ident") this.env.result.resolutions.set(arg.object, { kind: "class", info: named });
+      {
+        const m = findMember(named, arg.name.name);
+        // Recorded for hover, references and rename: an instance member as if read from an instance.
+        this.record(arg.object, m && !m.isStatic ? { kind: "class", info: named } : { kind: "classRef", info: named });
+        if (m) this.record(arg, m.type);
+        if (!m) {
+          this.diags.error("X0426", `no member \`${arg.name.name}\` on \`${named.decl.name.name}\``, arg.name.span, "unknown member");
+          return T.String;
+        }
+        this.env.result.inlineValues.set(e, arg.name.name);
+        return T.String;
+      }
+    }
+    const saved = this.calledCallee;
+    this.calledCallee = arg; // a method named here isn't taken as a value
+    const t = this.expr(arg, scope);
+    this.calledCallee = saved;
+    this.env.result.methodClosures.delete(arg);
+    if (arg.kind === "Member") {
+      const objType = this.env.result.exprTypes.get(arg.object);
+      if (objType && isDynamic(objType) && t.kind !== "error") {
+        this.diags.error("X0876", "`nameof` can't check a member of an untyped value", arg.name.span, `\`${spanText(arg.object.span)}\` is \`*\``)
+          .help(`write the name as a string: \`'${arg.name.name}'\``);
+        return T.String;
+      }
+    }
+    const name = arg.kind === "Ident" ? arg.name : arg.name.name;
+    this.env.result.inlineValues.set(e, name);
+    return T.String;
+  }
+
   /**
    * X0874: a promise made by a statement and then dropped (`save()` where `save` is async): if it
    * fails, nothing sees the error. Awaiting it, keeping it, `void save()` (on purpose) and chains
@@ -4206,6 +4263,7 @@ class BodyChecker {
   private call(e: A.Expr & { kind: "Call" }, scope: Scope): Type {
     const expected = this.takeExpected();
     if (e.callee.kind === "Super") return this.superCallExpr(e, scope);
+    if (e.callee.kind === "Ident" && e.callee.name === "nameof" && this.isNameofOperator(scope)) return this.nameof(e, scope);
     const savedCallee = this.calledCallee;
     this.calledCallee = e.callee;
     let callee = this.expr(e.callee, scope);

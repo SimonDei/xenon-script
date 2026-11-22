@@ -339,6 +339,8 @@ export const CODES: Record<string, CodeInfo> = {
   // ---- const methods ----
   X0875: c("result discarded", "The method (or the class of the value) is marked `[NoDiscard]`: its result matters, but this statement drops it. Use the result, or write `void f()` to discard it on purpose.",
     "text.trim()", "text = text.trim()"),
+  X0876: c("invalid `nameof`", "`nameof(x)` is replaced by the name `x` as a string constant, after checking that it exists: it takes one local, parameter, member (`user.email`, `Dog.create`), class or enum member. A member of an untyped value (`*`) can't be checked, so it isn't accepted (write the string).",
+    "nameof(user.emial)", "nameof(user.email)"),
   X0901: c("change in a const method", "A `const` method doesn't change the object: no field or setter writes through `this`.",
     "public function count():Int const { calls++; return n }", "public function count():Int const { return n }"),
   X0902: c("non-const use in a const method", "A `const` method can only use const methods and getters on `this`."),

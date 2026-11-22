@@ -1,0 +1,34 @@
+error[X0426]: no member `emial` on `User`
+ --> nameof.xn:9:23
+  |
+9 |     trace(nameof(user.emial))                         // X0426: a typo is an error
+  |                       ^^^^^ unknown member
+  |
+help: a member with a similar name exists: `email`
+  |
+9 |     trace(nameof(user.email))                         // X0426: a typo is an error
+  |                       ~~~~~
+
+error[X0876]: `nameof` can't check a member of an untyped value
+  --> nameof.xn:11:22
+   |
+11 |     trace(nameof(dyn.email))                          // X0876: can't be checked
+   |                      ^^^^^ `dyn` is `*`
+   |
+help: write the name as a string: `'email'`
+
+error[X0876]: `nameof` takes a name, not an expression
+  --> nameof.xn:12:18
+   |
+12 |     trace(nameof(count + 1))                          // X0876: not a name
+   |                  ^^^^^^^^^ not a name
+   |
+   = note: `nameof` takes a local, a parameter, a member (`user.email`, `Dog.create`), a class or an enum member
+
+error[X0876]: `nameof` takes exactly one name
+  --> nameof.xn:13:11
+   |
+13 |     trace(nameof())                                   // X0876: exactly one
+   |           ^^^^^^^^ 0 given
+   |
+   = note: `nameof` takes a local, a parameter, a member (`user.email`, `Dog.create`), a class or an enum member

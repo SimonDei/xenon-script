@@ -1,0 +1,30 @@
+public class Main {
+  public static inline final FIELD:String = nameof(User.email)   // a constant: fine
+  private var title:String = 'x'
+
+  public function Main() {
+    var user = new User('a@b.c')
+    var count = 3
+    trace(nameof(count), nameof(user.email), nameof(this.title), nameof(User), nameof(User.create), nameof(Color.Red), nameof(user.save), FIELD)
+    trace(nameof(user.emial))                         // X0426: a typo is an error
+    var dyn:* = user
+    trace(nameof(dyn.email))                          // X0876: can't be checked
+    trace(nameof(count + 1))                          // X0876: not a name
+    trace(nameof())                                   // X0876: exactly one
+    var r = new Res()
+    trace(nameof(r))                                  // a scoped value isn't used: fine
+  }
+}
+
+class User {
+  public final email:String
+  public function User(email:String) { this.email = email }
+  public static function create():User { return new User('') }
+  public function save():Void {}
+}
+
+enum Color { Red, Green }
+
+class Res {
+  public function ~Res() {}
+}
