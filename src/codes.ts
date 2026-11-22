@@ -263,12 +263,11 @@ export const CODES: Record<string, CodeInfo> = {
 
   // ---- destructors ----
   X0800: c("invalid destructor placement", "A class has at most one destructor; interfaces have none."),
-  X0801: c("disposable never disposed", "The object has a destructor, which only runs through `using` or `dispose()`.",
+  X0801: c("disposable never disposed", "The object's class implements `IDisposable`, so it is cleaned up only when `dispose()` is called: by `using` or by hand.",
     "var f:File = new File('a')", "using f:File = new File('a')"),
-  X0802: c("not disposable", "`using` needs a value whose class has a destructor `~Name()`."),
+  X0802: c("not disposable", "`using` needs a value whose class implements `IDisposable` (or `IAsyncDisposable` with `await using`): `using` calls its `dispose()` when the block ends. A class with a destructor needs no `using`: it is destroyed when its scope ends."),
   X0803: c("destructor name", "A destructor is named `~ClassName`."),
   X0804: c("invalid destructor", "Destructors take no parameters, have no return type, are public or protected, and take no other modifiers."),
-  X0805: c("`dispose()` clash", "A destructor provides `dispose()`; the class can't declare its own."),
   X0806: c("sync/async destructor mismatch", "A destructor must be async exactly when its parent's is, since they run as a chain."),
   X0807: c("async resource without `await using`", "A value with an async destructor is held with `await using`."),
   X0808: c("IDisposable implemented by hand", "Declare a destructor instead; it provides `dispose()` and works with `using`."),

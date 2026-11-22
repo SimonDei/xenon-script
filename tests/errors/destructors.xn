@@ -17,25 +17,36 @@ package {
 
 class Plain {}
 
-class Res {
+class Res implements IDisposable {
   public function touch():void {}
-  public ~Res() {}
+  public function dispose():void {}
 }
 
-class Sock {
-  public async ~Sock() {}
+class Sock implements IAsyncDisposable {
+  public async function dispose():Promise<void> {}
 }
 
 class Bad {
-  private ~Bad(x:int):void {}
-  public ~Other() {}
+  private function ~Bad(x:int):void {}
+  public function ~Other() {}
+}
+
+class AsyncBase {
+  public async function ~AsyncBase() {}
+}
+
+class SyncChild extends AsyncBase {
+  public function ~SyncChild() {}
+}
+
+class Both implements IDisposable {
+  public function ~Both() {}
   public function dispose():void {}
 }
 
-class SyncChild extends Sock {
-  public ~SyncChild() {}
+class ResChild extends Res {
+  public function ~ResChild() {}
 }
 
-class Manual implements IDisposable {
-  public function dispose():void {}
+class Missing implements IDisposable {
 }

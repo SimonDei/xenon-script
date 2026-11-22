@@ -1,5 +1,6 @@
 working | unlock | close second.lock | close first
 close data.txt | caught disk on fire
-close early.txt | in block | unlock | close b.lock | close a | expression form
+touch made.txt | got made.txt | touch temp.txt | close temp.txt | touch part0 | close part0 | touch part1 | close part1
+close socket early | in block | close socket b | close socket a | expression form
 true false
-connected | disconnected
+connected | close made.txt | disconnected

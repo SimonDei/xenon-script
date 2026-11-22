@@ -1,0 +1,69 @@
+public class Main {
+  private var held:Res                                  // X0822: field
+  public static var list:Array<Res> = []                // X0824: type argument
+
+  public function Main() {
+    var r:Res = new Res('a')
+    var b:Res = r                                       // borrowed: fine
+    var inferred = new Res('u')                         // inferred as `Res`: owned, fine
+    var o:Object = r                                    // X0824: conversion
+    Main.list.push(r)                                   // X0824: generic parameter
+    trace(r)                                            // X0824: untyped parameter
+    trace($'{r.name} and {r}')                          // text: fine
+    var items:Array<*> = [r]                            // X0822: array element
+    var bag:* = { res: r }                              // X0822: object literal
+    this.held = r                                       // X0822: field
+    var later:() -> void = () => r.touch()              // X0823: closure
+    var m:() -> void = r.touch                          // X0823: method closure
+    r = new Res('again')                                // X0826: reassigned
+    using u:Res = new Res('u')                          // X0827: using
+    while (new Res('w').ok()) {}                        // X0829: loop header
+    if (new Res('c').ok()) {}                           // X0829: condition
+    var picked:Res = Math.random() > 0.5 ? new Res('n') : b   // X0825: mixed
+    keep(new Res('temp'))                               // temporary: fine
+    var n:int = new Res('t').name.length                // temporary: fine
+  }
+
+  private function keep(r:Res):void {
+    r.touch()
+  }
+
+  private function give(r:Res):Res {
+    return r                                            // X0825: parameter
+  }
+
+  private function make():Res {
+    var made:Res = new Res('made')
+    return made                                         // handed on: fine
+  }
+
+  private async function later():Promise<Res> {
+    return new Res('x')                                 // X0824: async
+  }
+
+  private function sync():void {
+    var c:Conn = new Conn()                             // X0807: async destructor
+  }
+
+  private function defaults(r:Res = new Res('d')):void {}  // X0829: parameter default
+}
+
+class Res {
+  public final name:String
+  public function Res(name:String) { this.name = name }
+  public function ~Res() {}
+  public function touch():void {}
+  public function ok():Boolean { return true }
+  public function self():Res { return this }           // X0825: `this`
+  public function later():void {
+    var f:() -> void = () => touch()                    // X0823: `this` in a closure
+  }
+}
+
+class Conn {
+  public async function ~Conn() {}
+}
+
+class Escape extends Res implements IDisposable {     // X0828
+  public function Escape() { super('e') }
+}

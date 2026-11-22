@@ -503,12 +503,11 @@ export class Parser {
     if (this.is("function")) return this.parseMethod(modifiers, start, className);
 
     if (this.is("~")) {
-      this.advance();
-      const name = this.ident("the class name after `~`");
-      const params = this.parseParams();
-      const returnType = this.eat(":") ? this.parseType() : undefined;
-      const body = this.parseBlock();
-      return { kind: "Method", modifiers, name, isConstructor: false, isDestructor: true, params, returnType, isConst: false, body, span: this.sp(start) };
+      // The old form `public ~Name()`: destructors are declared with `function`, like constructors.
+      const tilde = this.tok.span;
+      this.diags.error("X0810", "a destructor is declared with `function`", tilde, "expected `function` before `~`")
+        .help("add `function`", [{ span: span(this.file, tilde.start, tilde.start), text: "function " }]);
+      return this.parseDestructor(modifiers, start);
     }
     // `static constexpr LIMIT:int = 10`: a constant written like a C++ `constexpr` variable.
     if (modifiers.constexpr && this.tok.kind === "ident" && this.is(":", this.peekTok())) {
@@ -519,9 +518,20 @@ export class Parser {
     this.unexpected("a field or method declaration");
   }
 
+  /** `function ~Name() { … }`, from the `~` (after its modifiers and `function`). */
+  private parseDestructor(modifiers: A.Modifiers, start: number): A.Method {
+    this.expect("~");
+    const name = this.ident("the class name after `~`");
+    const params = this.parseParams();
+    const returnType = this.eat(":") ? this.parseType() : undefined;
+    const body = this.parseBlock();
+    return { kind: "Method", modifiers, name, isConstructor: false, isDestructor: true, params, returnType, isConst: false, body, span: this.sp(start) };
+  }
+
   /** `function name<T>(…):R { … }` (or without a body), after its modifiers. */
   private parseMethod(modifiers: A.Modifiers, start: number, className: string): A.Method {
     this.advance();
+    if (this.is("~")) return this.parseDestructor(modifiers, start);
     let accessor: "get" | "set" | undefined;
     if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword")) {
       accessor = this.advance().value as "get" | "set";

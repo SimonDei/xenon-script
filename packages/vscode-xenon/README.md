@@ -16,7 +16,7 @@ Language support for XenonScript (`.xn` files): syntax highlighting, plus a lang
   get no diagnostics. It runs with **Bun**,
   which must be installed (`xenon.bunPath` if it isn't on the `PATH`).
 - **Grammar** `syntaxes/xenon.tmLanguage.json`: keywords and modifiers, declarations (classes,
-  interfaces, enums, typedefs, functions, getters/setters, `operator+`, destructors `~Name()`,
+  interfaces, enums, typedefs, functions, getters/setters, `operator+`, destructors `function ~Name()`,
   `native('JsName')`), types (built-ins, `Int`/`Bool`/… aliases, `*` after `:`, function types
   `(Int) -> Void`), `'…'` strings and `$'…{expr}…'` templates (expressions inside are highlighted,
   nested strings included), `~/regex/flags`, numbers (`1_000`, `0xFF`, `0..10` as a range),

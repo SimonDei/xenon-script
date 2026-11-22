@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import ts from "typescript";
 import type * as A from "./ast.ts";
-import { type CheckResult, type ClassInfo, findMember, type TypedefInfo, type MemberSig, readDecl, type Resolution, visibilityOf } from "./checker.ts";
+import { type CheckResult, type ClassInfo, findMember, isScoped, type TypedefInfo, type MemberSig, readDecl, type Resolution, visibilityOf } from "./checker.ts";
 import { generatedOffsetAt, type Mapping, type OutputFile, sourceOffsetAt } from "./codegen.ts";
 import { compileProject, type CompileResult, PRELUDE, type SourceInput } from "./compiler.ts";
 import { KEYWORDS } from "./lexer.ts";
@@ -219,6 +219,8 @@ function classText(info: ClassInfo): string {
     d.modifiers.static ? "static" : "",
     d.modifiers.abstract ? "abstract" : "",
     d.modifiers.final ? "final" : "",
+    // Not a keyword: a class with a destructor and no `implements IDisposable` (destroyed at scope end).
+    !d.isInterface && isScoped(info) ? "scoped" : "",
   ].filter(Boolean).join(" ");
   const prefix = modifiers ? `${modifiers} ` : "";
   const what = d.isInterface ? `${prefix}interface` : d.isEnum ? `${prefix}enum` : `${prefix}class`;

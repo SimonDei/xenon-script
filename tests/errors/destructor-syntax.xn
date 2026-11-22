@@ -1,0 +1,11 @@
+class Res {
+  public ~Res() {}
+}
+
+class Conn {
+  public async ~Conn() {}
+}
+
+public class Main {
+  public function Main() {}
+}

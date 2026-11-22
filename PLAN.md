@@ -19,6 +19,7 @@
 - [x] Step 15a: abstract classes — `abstract` classes/members (rules X0710–X0718), missing implementations with an `override` stubs fix-it, abstract classes may defer interface members, `new.target` guard (synthesized constructor when needed) and `NotImplementedException` stubs in the output; bodiless non-abstract methods are now an error; `new` on a local holding a class gives `*`
 - [x] Step 15b: typedefs — aliases, structural shapes (optional/`final` members, recursion through members, class instances fit structurally), function types (contravariant params, covariant return, contextual typing of arrows), inline `{…}`/`(…) -> T` types, excess/missing-member checks on literals, unchecked `as`, `is` rejected; typedef files emit nothing
 - [x] Step 15c: destructors — `~Name()` / `async ~Name()` → `[Symbol.dispose]`/`[Symbol.asyncDispose]` with a once-only `#disposed` flag and the parent destructor chained in `finally`, implicit `dispose()`, prelude `IDisposable`/`IAsyncDisposable` (implemented automatically, manual implementation rejected), `using` declarations and `using (…)` blocks (type optional: inferred from the value), X0801 for disposables that are never disposed or handed on; prelude file is now `src/prelude/Prelude.xn` (module `xenon/Prelude.js`)
+- [x] Step 15f: scoped destructors (see A6 "Scoped destructors") — destructors are declared `function ~Name()` (X0810 for the old form, with a fix-it); a class with a destructor is *scoped*: destroyed at the end of the scope owning the value, by a `try`/`finally` per owning local and per temporary (`src/scoped.ts` decides ownership after the body checker: `CheckResult.scopedLocals`/`scopedTemps`/`scopedReturns`; codegen `stmtList`/`destroyAfter`/`withTemps`), `return` hands a value to the caller; the destructor is `[$Destroy]()` (prelude symbol, no guard, no `dispose()`); the prelude's raw-JS `$destroy`/`$destroyAsync` keep both errors as a `SuppressedError`. Scoped values can't be stored (X0822), captured (X0823), converted/held in other types or untyped locals (X0824), returned without ownership (X0825), reassigned (X0826), used with `using` (X0827), created where nothing can destroy them (X0829); X0828 for `implements IDisposable` under a scoped parent; X0807 also for owning an async-destructor value outside an `async` function. `IDisposable` is no longer added automatically: a class implementing it writes its own `dispose()` (X0787 otherwise) and can't have a destructor (X0808), `using` calls `dispose()` through a generated `[Symbol.dispose]` forwarder; X0805 is gone. X0861 is skipped for scoped locals (guards); hovers say `scoped class`. Tests: `tests/scoped.test.ts` (run order, hand-off, temporaries, error combining, async, subclasses), `tests/errors/scoped.xn`, `destructor-syntax.xn`, `examples/destructors` shows both kinds
 - [x] Step 15d: const methods — `:T const` on methods and getters, no writes through `this` (X0901), only const members used on `this`/`super` (X0902), arrows inherit the restriction, `function` expressions don't, overrides and interface implementations must stay const, invalid placements X0903; static fields remain writable
 - [x] Step 15e: `operator+` — instance method `['operator+']`, static dispatch on the left operand (strings still concatenate), right operand checked against the parameter, `+=` lowered with object/index evaluated once, inherited/overridable/abstract/interface, visibility and const rules at the use site, X0371–X0373; also `Vector<T>[i]` is now typed `T`
 - [x] Step 16: enums — `enum Name { A, B = 2 }` / string enums → `Object.freeze({…})`, auto-numbering, constant values (X0811–X0817), nominal typing, `values()` → `Object.values(E)`, `x is/as Enum` checks raw values, switch exhaustiveness warning (X0814), enum members in `inline` constants; enums and interface symbols are emitted before classes in a module
@@ -536,10 +537,10 @@ Rules:
 
 **Destructors**:
 ```actionscript
-public class User {
+public class User {   // 15f: scoped (destroyed at scope end); a manual class implements IDisposable with dispose() instead
   private final conn:Connection
   public function User(id:String) { conn = Db.open(id) }
-  public ~User() { conn.close(); trace('user released') }        // async variant: public async ~User() { await conn.end() }
+  public function ~User() { conn.close(); trace('user released') }   // async variant: public async function ~User() { await conn.end() }
 }
 
 function save():void {
@@ -579,8 +580,9 @@ Parsing: `using` followed by `(` is the block statement; otherwise it's the decl
 JavaScript is garbage-collected and never destroys objects at a predictable moment, so destructors use JS **explicit resource management** (`using`, `Symbol.dispose`; supported by Bun and TypeScript 5.2+). They are deterministic: they run when a `using` scope ends or when `dispose()` is called, **not** when the GC collects the object.
 
 Rules:
-- At most one destructor per class, named `~ClassName`, no parameters, no return type, `public` (default) or `protected` (then only `using` and subclasses can trigger it). Not `static`, `abstract`, `final` or `inline`.
-- `async ~User()` makes an async destructor. Such values must be held with `await using` inside an `async` function, and explicit disposal is `await u.dispose()`.
+- *(15f: every class with a destructor is scoped, see below; `using`/`dispose()` belong to classes that implement `IDisposable` with their own `dispose()` and have no destructor. The rules about implicit `dispose()`, X0805 and the `#disposed` guard below are superseded.)*
+- At most one destructor per class, declared `function ~ClassName()`, no parameters, no return type, `public` (default) or `protected` (then only `using` and subclasses can trigger it). Not `static`, `abstract`, `final` or `inline`.
+- `async function ~User()` makes an async destructor. Such values must be held with `await using` inside an `async` function, and explicit disposal is `await u.dispose()`.
 - A class with a destructor gets an implicit `public function dispose():void` (or `Promise<void>`), so `dispose` can't be declared as a normal member there. Classes with destructors are assignable to the built-in interfaces `IDisposable` / `IAsyncDisposable`.
 - **Inheritance**: subclass destructors automatically call the parent destructor *after* their own body (C++ order: derived, then base). A subclass without its own destructor inherits the parent's.
 - **Runs at most once**: a second `dispose()` or scope exit is a no-op.
@@ -768,7 +770,8 @@ Tests: `tests/*.test.ts` (unit per stage), golden e2e over `examples/<name>/` (c
 15. **Interfaces** – `interface`, `implements`, runtime `is` support.
 15e. **Operator `+` overloading** – `function operator+(…)`, static dispatch, `+=` lowering, X0370/X0371.
 15d. **Const methods** – `const` suffix on methods and getters, override/interface rules, X0901/X0902.
-15c. **Destructors** – `~Name()` / `async ~Name()`, `using` / `await using` declarations and C#-style `using (...) { }` blocks, implicit `dispose()`, base-destructor chaining, once-only guard, `IDisposable`, X0801 warning.
+15c. **Destructors** – `~Name()` / `async ~Name()` (15f: `function ~Name()`), `using` / `await using` declarations and C#-style `using (...) { }` blocks, implicit `dispose()`, base-destructor chaining, once-only guard, `IDisposable`, X0801 warning.
+15f. **Scoped destructors** – `function ~Name()` syntax, destruction at scope end with `try`/`finally` + prelude `destroy`, X0810/X0822–X0829, `IDisposable` as opt-in for manual disposal, migration of examples and tests.
 15a. **Abstract classes** – `abstract` classes/members, instantiation and unimplemented-member checks with stub fix-it, `new.target` guard and `NotImplementedException` stubs in output.
 15b. **Typedefs** – `typedef` aliases, structural shapes with optional/final members, function types, structural assignability, excess-property check on object literals, typedef imports, and the auto-imported prelude with `Int` `UInt` `Void` `Bool` `Any`.
 16. **Enums**.

@@ -1,0 +1,266 @@
+error[X0822]: a field can't hold a scoped `Res`
+  --> scoped.xn:2:20
+   |
+ 2 |   private var held:Res                                  // X0822: field
+   |                    ^^^ a field outlives any scope
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: scoped values are destroyed when the scope owning them ends, so they can't be kept in fields
+help: to keep `Res` values beyond a scope, give it no destructor and implement `IDisposable` instead: its own `dispose()`, called by `using` or by hand
+
+error[X0824]: a scoped `Res` can't be kept inside another type
+  --> scoped.xn:3:26
+   |
+ 3 |   public static var list:Array<Res> = []                // X0824: type argument
+   |                          ^^^^^^^^^^ this type would keep it
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: only a variable, a parameter or a return value can hold a scoped value: they end with their scope
+help: to keep `Res` values beyond a scope, give it no destructor and implement `IDisposable` instead: its own `dispose()`, called by `using` or by hand
+
+error[X0824]: a scoped `Res` can't be passed on as `Object`
+  --> scoped.xn:9:20
+   |
+ 9 |     var o:Object = r                                    // X0824: conversion
+   |                    ^ converted to `Object`
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: only `Res` (or a scoped parent class) can hold it: anything else could keep it after its scope ended
+help: to keep `Res` values beyond a scope, give it no destructor and implement `IDisposable` instead: its own `dispose()`, called by `using` or by hand
+
+error[X0824]: a scoped `Res` can't be passed on as an untyped parameter
+  --> scoped.xn:11:11
+   |
+11 |     trace(r)                                            // X0824: untyped parameter
+   |           ^ passed to untyped code
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: only `Res` (or a scoped parent class) can hold it: anything else could keep it after its scope ended
+help: to keep `Res` values beyond a scope, give it no destructor and implement `IDisposable` instead: its own `dispose()`, called by `using` or by hand
+
+error[X0822]: a scoped `Res` can't be stored in an array
+  --> scoped.xn:13:27
+   |
+13 |     var items:Array<*> = [r]                            // X0822: array element
+   |                           ^ it would outlive its scope
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: scoped values are destroyed when the scope owning them ends, so nothing may keep them
+help: to keep `Res` values beyond a scope, give it no destructor and implement `IDisposable` instead: its own `dispose()`, called by `using` or by hand
+
+error[X0822]: a scoped `Res` can't be stored in an object
+  --> scoped.xn:14:24
+   |
+14 |     var bag:* = { res: r }                              // X0822: object literal
+   |                        ^ it would outlive its scope
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: scoped values are destroyed when the scope owning them ends, so nothing may keep them
+help: to keep `Res` values beyond a scope, give it no destructor and implement `IDisposable` instead: its own `dispose()`, called by `using` or by hand
+
+error[X0822]: a scoped `Res` can't be stored in a field or property
+  --> scoped.xn:15:17
+   |
+15 |     this.held = r                                       // X0822: field
+   |                 ^ it would outlive its scope
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: scoped values are destroyed when the scope owning them ends, so nothing may keep them
+help: to keep `Res` values beyond a scope, give it no destructor and implement `IDisposable` instead: its own `dispose()`, called by `using` or by hand
+
+error[X0823]: `r` is a scoped `Res` and can't be used in a closure
+  --> scoped.xn:16:34
+   |
+16 |     var later:() -> void = () => r.touch()              // X0823: closure
+   |                                  ^ captured here
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: the closure could run after the scope ended and its value was destroyed
+help: use the value outside the closure, or pass what the closure needs instead (`var name:String = r.name`)
+
+error[X0823]: a method of a scoped `Res` can't be used as a value
+  --> scoped.xn:17:24
+   |
+17 |     var m:() -> void = r.touch                          // X0823: method closure
+   |                        ^^^^^^^ this function value keeps its object
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: the function could be called after the object was destroyed
+help: call the method here instead
+
+error[X0826]: `r` holds a scoped value and can't be assigned again
+  --> scoped.xn:18:5
+   |
+18 |     r = new Res('again')                                // X0826: reassigned
+   |     ^^^^^^^^^^^^^^^^^^^^ reassigned here
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: its value is destroyed when its scope ends; another value would be left undestroyed, or this one destroyed too early
+help: declare a new variable for the other value
+
+error[X0827]: `Res` is scoped: `using` isn't needed
+  --> scoped.xn:19:19
+   |
+19 |     using u:Res = new Res('u')                          // X0827: using
+   |                   ^^^^^^^^^^^^ destroyed when its scope ends anyway
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+help: declare it with `var`
+   |
+19 |     var u:Res = new Res('u')                          // X0827: using
+   |     ~~~~
+
+error[X0829]: a scoped `Res` can't be created in a loop header
+  --> scoped.xn:20:12
+   |
+20 |     while (new Res('w').ok()) {}                        // X0829: loop header
+   |            ^^^^^^^^^^^^ nothing here can destroy it
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: a loop header runs many times; there's no single point where its values could be destroyed
+help: create it in a `var` first (inside the loop for a value per iteration): it is destroyed when that variable's block ends
+
+error[X0829]: a scoped `Res` can't be created in a condition
+  --> scoped.xn:21:9
+   |
+21 |     if (new Res('c').ok()) {}                           // X0829: condition
+   |         ^^^^^^^^^^^^ nothing here can destroy it
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+help: create it in a `var` first (inside the loop for a value per iteration): it is destroyed when that variable's block ends
+
+error[X0825]: this `Res` is created on one branch and borrowed on another
+  --> scoped.xn:22:22
+   |
+22 |     var picked:Res = Math.random() > 0.5 ? new Res('n') : b   // X0825: mixed
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ owned or not depending on the branch
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: a scoped value is destroyed by its owner; here the owner would depend on which branch ran
+help: use an `if`/`else` with a separate variable on each branch
+
+error[X0825]: `r` can't be returned: this function doesn't own it
+  --> scoped.xn:32:12
+   |
+32 |     return r                                            // X0825: parameter
+   |            ^ borrowed, not owned here
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: whoever passed it in still owns it and destroys it at the end of their scope; returning it would destroy it twice
+help: return a `Res` created here (`new Res(…)` or a call returning one), or return nothing
+
+error[X0824]: an `async` function can't return a scoped `Res` yet
+  --> scoped.xn:41:12
+   |
+41 |     return new Res('x')                                 // X0824: async
+   |            ^^^^^^^^^^^^ would be kept in a `Promise`
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+   = note: the promise would hold the value after this function's scope ended
+help: to keep `Res` values beyond a scope, give it no destructor and implement `IDisposable` instead: its own `dispose()`, called by `using` or by hand
+
+error[X0807]: `Conn` has an async destructor: only an `async` function can own one
+  --> scoped.xn:45:18
+   |
+45 |     var c:Conn = new Conn()                             // X0807: async destructor
+   |                  ^^^^^^^^^^ created in a function that isn't async
+...
+64 |   public async function ~Conn() {}
+   |                          ---- this destructor makes `Conn` scoped
+   |
+   = note: destroying it is awaited when its scope ends
+
+error[X0829]: a scoped `Res` can't be created in a parameter default
+  --> scoped.xn:48:37
+   |
+48 |   private function defaults(r:Res = new Res('d')):void {}  // X0829: parameter default
+   |                                     ^^^^^^^^^^^^ nothing here can destroy it
+...
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+   |
+help: create it inside the function body instead
+
+error[X0825]: `this` can't be returned: this function doesn't own it
+  --> scoped.xn:57:39
+   |
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+...
+57 |   public function self():Res { return this }           // X0825: `this`
+   |                                       ^^^^ borrowed, not owned here
+   |
+   = note: the caller already holds this object; returning it would let two scopes destroy it
+help: return a `Res` created here (`new Res(…)` or a call returning one), or return nothing
+
+error[X0823]: `this` is a scoped `Res` and can't be used in a closure
+  --> scoped.xn:59:30
+   |
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+...
+59 |     var f:() -> void = () => touch()                    // X0823: `this` in a closure
+   |                              ^^^^^ `touch` reads `this` here
+   |
+   = note: the closure could run after the scope ended and its value was destroyed
+help: use the value outside the closure, or pass what the closure needs instead (`var name:String = r.name`)
+
+error[X0787]: `Escape` doesn't implement `dispose`
+  --> scoped.xn:67:7
+   |
+67 | class Escape extends Res implements IDisposable {     // X0828
+   |       ^^^^^^ missing 1 interface member
+   |
+  ::: <xenon prelude>/xenon/Prelude.xn:19:14
+   |
+19 |     function dispose():void
+   |              ------- required by `IDisposable`
+   |
+help: add the missing members (the stubs throw `NotImplementedException`)
+   |
+ + |   public function dispose():Void { throw new NotImplementedException() }
+69 | }
+
+error[X0828]: `Escape` can't implement `IDisposable`: its parent `Res` is scoped
+  --> scoped.xn:67:37
+   |
+54 |   public function ~Res() {}
+   |                    --- this destructor makes `Res` scoped
+...
+67 | class Escape extends Res implements IDisposable {     // X0828
+   |                                     ^^^^^^^^^^^
+   |
+   = note: a subclass of a scoped class is scoped too: a value of the parent type is destroyed when its scope ends
+help: remove `implements IDisposable`

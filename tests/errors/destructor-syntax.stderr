@@ -1,0 +1,21 @@
+error[X0810]: a destructor is declared with `function`
+ --> destructor-syntax.xn:2:10
+  |
+2 |   public ~Res() {}
+  |          ^ expected `function` before `~`
+  |
+help: add `function`
+  |
+2 |   public function ~Res() {}
+  |          +++++++++
+
+error[X0810]: a destructor is declared with `function`
+ --> destructor-syntax.xn:6:16
+  |
+6 |   public async ~Conn() {}
+  |                ^ expected `function` before `~`
+  |
+help: add `function`
+  |
+6 |   public async function ~Conn() {}
+  |                +++++++++

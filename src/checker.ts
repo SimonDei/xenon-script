@@ -1,6 +1,7 @@
 import type * as A from "./ast.ts";
 import type { DiagnosticBag, DiagnosticBuilder, Edit } from "./diagnostics.ts";
 import type { JsBinding } from "./dts.ts";
+import { checkScoped } from "./scoped.ts";
 import { type Budget, type ConstLookup, ConstObject, type ConstValue, fits, type Fold, fold, isPrimitive, callNative, run } from "./consteval.ts";
 import { assignedNames, assignmentWrites, breaksOut, completes, mentions } from "./flow.ts";
 import { GLOBAL_HINTS, JS_GLOBALS, TYPED_GLOBALS } from "./globals.ts";
@@ -183,6 +184,18 @@ export interface CheckResult {
   typeOnlyImports: Set<A.Ident>;
   /** The type each value was checked against (arguments, initializers, return values, assignments). */
   expectedTypes: Map<A.Expr, Type>;
+  /** Locals owning a scoped value, by declared name: destroyed at the end of their block (src/scoped.ts). */
+  scopedLocals: Map<A.Ident, ScopedOwner>;
+  /** Scoped values created by a statement without being bound: destroyed at the end of the statement. */
+  scopedTemps: Map<A.Expr, ScopedOwner>;
+  /** `return r` statements handing an owned local on to the caller (it isn't destroyed here). */
+  scopedReturns: Set<A.Stmt>;
+}
+
+/** How a scoped value is destroyed: awaited for an async destructor; `handedOff` when some `return` passes it on. */
+export interface ScopedOwner {
+  async: boolean;
+  handedOff?: boolean;
 }
 
 /** A value type, which can't be `null` without `?` even when null safety is off (`int`, `Boolean`, …). */
@@ -389,7 +402,7 @@ class Scope {
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
     qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
-    expectedTypes: new Map(),
+    expectedTypes: new Map(), scopedLocals: new Map(), scopedTemps: new Map(), scopedReturns: new Set(),
   };
   const env = new Env(classes, typedefs, diags, result);
   env.jsBindings = jsBindings;
@@ -422,6 +435,7 @@ export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typ
   for (const info of infos) env.checkImplements(info);
   for (const info of infos) env.checkAbstractImplemented(info);
   for (const info of infos) if (!info.decl.isInterface && !info.decl.isEnum && !isNative(info)) new BodyChecker(env, info, scopes.get(info.file)!).run();
+  checkScoped(files, result, diags);
   for (const scope of scopes.values()) env.reportUnusedImports(scope);
   for (const info of infos) env.reportUnusedPrivates(info);
 
@@ -1219,9 +1233,9 @@ class Env {
     }
     const vis = m.modifiers.visibility;
     if (vis && vis.value !== "public" && vis.value !== "protected") {
-      this.diags.error("X0804", "destructors are `public` or `protected`", vis.span).note("`dispose()` gets the same visibility");
+      this.diags.error("X0804", "destructors are `public` or `protected`", vis.span);
     }
-    // Destructors default to public (unlike other members), so `dispose()` can be called;
+    // Destructors default to public (unlike other members);
     // an invalid visibility was reported above and is treated as public from here on.
     if (!vis || (vis.value !== "public" && vis.value !== "protected")) m.modifiers.visibility = { value: "public", span: m.name.span };
     info.dtor = { decl: m, async: !!m.modifiers.async };
@@ -1232,8 +1246,6 @@ class Env {
    * `IDisposable`/`IAsyncDisposable` interfaces they implement, and the rules tying them together.
    */
   wireDestructors(info: ClassInfo) {
-    const iSync = this.classes.get("xenon.IDisposable");
-    const iAsync = this.classes.get("xenon.IAsyncDisposable");
     const inherited = info.parent ? chainDestructor(info.parent) : undefined;
     const own = info.dtor;
     if (own) {
@@ -1243,29 +1255,24 @@ class Env {
           .note("the parent destructor runs right after this one");
         own.async = inherited.async; // reported; avoid follow-up interface mismatches
       }
-      const ret: Type = own.async ? this.promiseOf(T.void) : T.void;
-      const userDispose = info.members.get("dispose");
-      if (userDispose) {
-        this.diags.error("X0805", "a class with a destructor already has `dispose()`", userDispose.decl.name.span)
-          .secondary(own.decl.name.span, "the destructor provides `dispose()`");
-      }
-      info.members.set("dispose", {
-        name: "dispose", owner: info, decl: own.decl, isStatic: false, kind: "method",
-        type: { kind: "method", params: [], ret },
-      });
-      const iface = own.async ? iAsync : iSync;
-      if (iface && !inherited && !info.interfaces.includes(iface)) info.interfaces.push(iface);
-    } else if (inherited && info.members.has("dispose")) {
-      this.diags.error("X0805", "this class inherits a destructor, which provides `dispose()`", info.members.get("dispose")!.decl.name.span)
-        .secondary(inherited.decl.name.span, "inherited destructor");
     }
-    const chain = own ?? inherited;
-    for (const [iface, async] of [[iSync, false], [iAsync, true]] as const) {
-      const node = info.decl.implements[info.interfaces.indexOf(iface!)];
-      if (iface && info.interfaces.includes(iface) && (!chain || chain.async !== async) && node) {
-        this.diags.error("X0808", `implement \`${iface.decl.name.name}\` by declaring a destructor`, node.span)
-          .help(`add \`${async ? "async " : ""}~${info.decl.name.name}() { … }\`; it provides \`dispose()\` and works with \`using\``);
-      }
+    if (info.decl.isInterface || !isManualDisposable(info)) return;
+    // A class is scoped (a destructor: destroyed when its scope ends) or manual (`IDisposable`: its
+    // own `dispose()`, called by `using` or by hand), never both.
+    const name = info.decl.name.name;
+    const node = info.decl.implements.find((_, i) => info.interfaces[i] && isManualDisposable(info.interfaces[i]!));
+    if (own) {
+      const from = node ? undefined : [...superclasses(info)].find((c) => isManualDisposable(c));
+      const d = this.diags.error("X0808", `\`${name}\` can't have a destructor and implement \`IDisposable\``, own.decl.name.span, "a destructor makes the class scoped");
+      if (node) d.secondary(node.span, "`IDisposable` makes it manual");
+      else if (from) d.secondary(from.decl.name.span, `\`IDisposable\` comes from \`${from.decl.name.name}\``);
+      d.note("a scoped class is destroyed when its scope ends; a manual one when `dispose()` is called (by `using` or by hand). A class is one or the other")
+        .help(node ? "move the destructor's code into `dispose()` and remove the destructor, or remove `implements IDisposable`" : "move the destructor's code into an override of `dispose()`");
+    } else if (inherited && node) {
+      this.diags.error("X0828", `\`${name}\` can't implement \`IDisposable\`: its parent \`${inherited.owner.decl.name.name}\` is scoped`, node.span)
+        .secondary(inherited.decl.name.span, `this destructor makes \`${inherited.owner.decl.name.name}\` scoped`)
+        .note("a subclass of a scoped class is scoped too: a value of the parent type is destroyed when its scope ends")
+        .help("remove `implements IDisposable`");
     }
   }
 
@@ -2057,13 +2064,27 @@ export function findMember(info: ClassInfo, name: string): MemberSig | undefined
 function disposeKind(t: Type, env: Env): "sync" | "async" | "none" | "dynamic" {
   if (isDynamic(t) || t.kind === "null") return "dynamic";
   if (t.kind !== "class") return "none";
-  const d = chainDestructor(t.info);
-  if (d) return d.async ? "async" : "sync";
+  // A scoped class: `using` is redundant, reported by src/scoped.ts (X0827).
+  if (chainDestructor(t.info)) return "dynamic";
   const iSync = env.classes.get("xenon.IDisposable");
   const iAsync = env.classes.get("xenon.IAsyncDisposable");
   if (iAsync && isSubclass(t.info, iAsync)) return "async";
   if (iSync && isSubclass(t.info, iSync)) return "sync";
   return "none";
+}
+
+/** Opted into manual disposal: implements `IDisposable` or `IAsyncDisposable` (directly, through an interface or a parent). */
+export function isManualDisposable(info: ClassInfo): boolean {
+  for (const t of supertypes(info)) if (t.qname === "xenon.IDisposable" || t.qname === "xenon.IAsyncDisposable") return true;
+  return false;
+}
+
+/**
+ * A scoped class: it has a destructor (its own or inherited) and doesn't opt into manual disposal.
+ * Its instances are destroyed at the end of the scope that owns them (src/scoped.ts).
+ */
+export function isScoped(info: ClassInfo): boolean {
+  return !!chainDestructor(info) && !isManualDisposable(info);
 }
 
 /** The destructor a class runs: its own or the nearest inherited one. */
@@ -2942,7 +2963,7 @@ class BodyChecker {
     }
     const local: Local = { type, kind: s.decl, nameSpan: s.name.span, typeSpan: s.type.span };
     this.declared.push({ local, name: s.name });
-    if (s.init?.kind === "New" && type.kind === "class" && chainDestructor(type.info)) {
+    if (s.init?.kind === "New" && type.kind === "class" && isManualDisposable(type.info) && !chainDestructor(type.info)) {
       this.disposables.set(local, { name: s.name, disposed: false, escaped: false, type: type.info.decl.name.name });
     }
     if (s.inline && s.decl !== "var" && s.init) {
@@ -3291,6 +3312,7 @@ class BodyChecker {
 
   /** Checks that `e` can be stored where `expected` is wanted; reports X0308 with fix-its otherwise. */
   private checkAssign(e: A.Expr, expected: Type, origin?: { span: Span; label: string }, scope = new Scope()) {
+    this.env.result.expectedTypes.set(e, expected);
     // Already checked while inferring a generic call: just compare.
     const pre = this.preTyped.get(e);
     if (pre) {
@@ -4109,9 +4131,9 @@ class BodyChecker {
     const at = typeNode?.span ?? init.span;
     if (kind === "none") {
       const d = this.diags.error("X0802", `\`${typeToString(type)}\` can't be used with \`using\``, at, "not disposable");
-      if (type.kind === "class") d.help(`give \`${type.info.decl.name.name}\` a destructor: \`~${type.info.decl.name.name}() { … }\``);
+      if (type.kind === "class") d.help(`let \`${type.info.decl.name.name}\` implement \`IDisposable\`: a \`dispose()\` method that \`using\` calls`);
     } else if (kind === "async" && !isAwait) {
-      this.diags.error("X0807", `\`${typeToString(type)}\` has an async destructor and needs \`await using\``, at)
+      this.diags.error("X0807", `\`${typeToString(type)}\` has an async \`dispose()\` (\`IAsyncDisposable\`) and needs \`await using\``, at)
         .help("add `await`", [{ span: span(stmt.file, stmt.start, stmt.start), text: "await " }]);
     }
     if (isAwait && !this.method?.async) {
@@ -4130,6 +4152,9 @@ class BodyChecker {
     }
     for (const { local, name, fn } of this.declared) {
       if (local.used || name.name.startsWith("_")) continue;
+      // A scoped value held only for its destructor (`var lock:Lock = new Lock()`, a C++-style guard).
+      const t = local.type.kind === "nullable" ? local.type.inner : local.type;
+      if (!fn && t.kind === "class" && isScoped(t.info)) continue;
       this.diags.warning("X0861", `${fn ? "local function" : "variable"} \`${name.name}\` is never used`, name.span, "never read")
         .help("remove it, or prefix the name with `_` if that's intended", [{ span: span(name.span.file, name.span.start, name.span.start), text: "_" }]);
     }

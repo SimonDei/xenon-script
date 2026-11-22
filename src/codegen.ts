@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import type * as A from "./ast.ts";
-import { accessorHalf, type CheckResult, chainDestructor, type ClassInfo, findMember, isNative, jsNameOf, type MemberSig, type RuntimeCheck, type TypedefInfo, visibilityOf } from "./checker.ts";
+import { accessorHalf, type CheckResult, chainDestructor, type ClassInfo, findMember, isManualDisposable, isNative, jsNameOf, type MemberSig, type RuntimeCheck, type TypedefInfo, visibilityOf } from "./checker.ts";
 import { bind, isSubclass, nonNull, subst, supertypes, type Type } from "./types.ts";
 import { constToJs } from "./consteval.ts";
 import { buildSourceMap, type LineOrigin, originOf } from "./sourcemap.ts";
@@ -349,6 +349,49 @@ const TS_NATIVE: Record<string, string> = { Iterator: "IteratorObject", NodeList
  * `getEnumerator()` in the TypeScript output's types, so they fit `Iterable<T>` there too. At
  * runtime calls go through `Enumerable.enumerate`.
  */
+/**
+ * Destruction of scoped values (src/scoped.ts), appended to the prelude module: the method key
+ * destructors are compiled to, and the helpers a scope's `finally` calls. `error` is what is leaving
+ * the scope (`$noError` on a normal exit); a destructor failing during an exception keeps both
+ * errors as a `SuppressedError`, as JavaScript's `using` does.
+ */
+function scopedHelpers(ts: boolean): string {
+  const any = ts ? ": any" : "";
+  return `/** The method destructors of scoped classes are compiled to. */
+export const $Destroy${ts ? ": unique symbol" : ""} = Symbol("xenon.destroy");
+/** Passed to \`$destroy\` when a scope ends without an exception. */
+export const $noError${ts ? ": unique symbol" : ""} = Symbol("xenon.noError");
+/** Destroys a scoped value at the end of its scope (nothing for \`null\`: a value handed on by \`return\`). */
+export function $destroy(value${any}, error${ts ? ": unknown" : ""})${ts ? ": void" : ""} {
+  if (value == null) return;
+  if (error === $noError) return value[$Destroy]();
+  try {
+    value[$Destroy]();
+  } catch (e) {
+    throw $suppressed(e, error);
+  }
+}
+/** \`$destroy\` for async destructors. */
+export async function $destroyAsync(value${any}, error${ts ? ": unknown" : ""})${ts ? ": Promise<void>" : ""} {
+  if (value == null) return;
+  if (error === $noError) return await value[$Destroy]();
+  try {
+    await value[$Destroy]();
+  } catch (e) {
+    throw $suppressed(e, error);
+  }
+}
+function $suppressed(error${ts ? ": unknown" : ""}, suppressed${ts ? ": unknown" : ""})${ts ? ": Error" : ""} {
+  const message = "An error was suppressed during disposal";
+  if (typeof SuppressedError === "function") return new SuppressedError(error, suppressed, message);
+  const e${any} = new Error(message);
+  e.name = "SuppressedError";
+  e.error = error;
+  e.suppressed = suppressed;
+  return e;
+}`;
+}
+
 const TS_ENUMERABLE_GLOBALS = `declare global {
   interface Array<T> { getEnumerator(): IEnumerator<T>; }
   interface String { getEnumerator(): IEnumerator<string>; }
@@ -375,6 +418,16 @@ class ModuleGen {
   readonly tokens: Span[] = [];
   /** Typedefs imported for TypeScript annotations: module → names. */
   private typeImports = new Map<string, Set<string>>();
+  /** The prelude's scope helpers this module uses (`$destroy`, …). */
+  private helpers = new Set<string>();
+  /** Temporaries of the statement being generated that own a scoped value (src/scoped.ts); null when none can. */
+  private stmtTemps: { name: string; async: boolean }[] | null = null;
+
+  /** A scope helper of the prelude, imported on demand (the prelude itself defines them). */
+  private helper(name: "$Destroy" | "$noError" | "$destroy" | "$destroyAsync" | "$wrapLazily" | "$index"): string {
+    if (!this.file.file.prelude) this.helpers.add(name);
+    return name;
+  }
 
   constructor(
     private module: string,
@@ -521,6 +574,10 @@ class ModuleGen {
       this.w.line();
       this.w.line(TS_ENUMERABLE_GLOBALS);
     }
+    if (this.file.file.prelude) {
+      this.w.line();
+      this.w.line(scopedHelpers(this.ts));
+    }
     this.w = swap;
 
     for (const imp of this.file.imports) {
@@ -534,6 +591,12 @@ class ModuleGen {
       let rel = posix.relative(posix.dirname(this.module), module);
       if (!rel.startsWith(".")) rel = "./" + rel;
       this.w.line(`import { ${names.sort().join(", ")} } from ${jsString(rel)};`);
+    }
+    if (this.helpers.size > 0) {
+      const prelude = this.check.classes.get("xenon.Exception")!.module;
+      let rel = posix.relative(posix.dirname(this.module), prelude);
+      if (!rel.startsWith(".")) rel = "./" + rel;
+      this.w.line(`import { ${[...this.helpers].sort().join(", ")} } from ${jsString(rel)};`);
     }
     for (const [module, names] of this.typeImports) {
       let rel = posix.relative(posix.dirname(this.module), module);
@@ -625,10 +688,6 @@ class ModuleGen {
     this.w.line(`${exported ? "export " : ""}class ${this.name(decl.name)}${this.typeParams(decl.typeParams)}${ext}${impl} {`);
     this.w.indent();
     let prev: A.Member | undefined;
-    if (info.dtor) {
-      this.w.line("#disposed = false;");
-      prev = decl.members.find((m) => m.kind === "Field") ?? decl.members[0];
-    }
     const guard = decl.modifiers.abstract ? this.abstractGuard(decl) : undefined;
     if (guard && !decl.members.some((m) => m.kind === "Method" && m.isConstructor)) {
       // An abstract class without a constructor still needs the guard; arguments go to the parent.
@@ -650,6 +709,7 @@ class ModuleGen {
       this.from(m, () => this.member(info, decl, m, guard));
     }
     this.enumerableIterator(info);
+    this.disposeBridge(info, !!prev);
     this.w.dedent();
     this.w.line("}");
     // Mark the prototype for every interface this class implements (super-interfaces included);
@@ -704,7 +764,7 @@ class ModuleGen {
   private member(info: ClassInfo, decl: A.ClassDecl, m: A.Member, guard: string | undefined) {
     if (m.kind === "Field") this.field(m, info);
     else if (m.kind === "Method" && m.isDestructor) {
-      this.destructor(info, m);
+      this.scopedDestructor(info, m);
     } else if (m.kind === "Method" && !m.body) {
       this.abstractStub(decl, m);
     } else if (m.kind === "Method") {
@@ -797,22 +857,104 @@ class ModuleGen {
     this.w.line("if (this.#disposed) return;");
     this.w.line("this.#disposed = true;");
     this.w.dedent();
+    this.w.line("});");
+  }
+
+  /**
+   * `IDisposable`: JavaScript's `using` (which `using` compiles to) calls `[Symbol.dispose]()`, so the
+   * topmost class implementing it forwards that to `dispose()` (overrides included).
+   */
+  private disposeBridge(info: ClassInfo, after: boolean) {
+    if (isNative(info) || info.decl.isInterface || !isManualDisposable(info)) return;
+    if (info.parent && isManualDisposable(info.parent)) return; // inherited
+    const async = [...supertypes(info)].some((t) => t.qname === "xenon.IAsyncDisposable");
+    if (after) this.w.line();
+    this.w.line(async
+      ? `[Symbol.asyncDispose]()${this.ts ? ": Promise<void>" : ""} { return this.dispose(); }`
+      : `[Symbol.dispose]()${this.ts ? ": void" : ""} { this.dispose(); }`);
+  }
+
+  /**
+   * A scoped class's destructor: `[$Destroy]()`, called exactly once by the scope owning the object
+   * (so no guard), then the parent's, also after an early `return` or an exception.
+   */
+  private scopedDestructor(info: ClassInfo, m: A.Method) {
+    const async = !!m.modifiers.async;
+    const key = this.helper("$Destroy");
+    const parent = info.parent ? chainDestructor(info.parent) : undefined;
+    this.w.line(`${async ? "async " : ""}[${key}]()${this.ts ? (async ? ": Promise<void>" : ": void") : ""} {`);
     if (parent) {
       this.w.indent();
       this.w.line("try {");
       this.functionBody(m.body!);
       this.w.line("} finally {");
-      this.w.line(`  ${async ? "await " : ""}super[${sym}]();`);
+      this.w.line(`  ${async ? "await " : ""}super[${key}]();`);
       this.w.line("}");
       this.w.dedent();
     } else {
       this.functionBody(m.body!);
     }
     this.w.line("}");
-    if (!parent) {
-      this.w.line();
-      this.w.line(async ? `dispose() { return this[${sym}](); }` : `dispose() { this[${sym}](); }`);
+  }
+
+  /**
+   * Statements of a block. After a local owning a scoped value, the rest of the block runs in a
+   * `try` whose `finally` destroys it: on every exit, in reverse order of declaration.
+   */
+  private stmtList(list: A.Stmt[]) {
+    for (let i = 0; i < list.length; i++) {
+      const s = list[i]!;
+      this.stmt(s);
+      const owner = s.kind === "VarDecl" ? this.check.scopedLocals.get(s.name) : undefined;
+      if (!owner || s.kind !== "VarDecl") continue;
+      const name = s.name.name;
+      this.from(s, () => this.destroyAfter(name, owner.async, () => this.stmtList(list.slice(i + 1))));
+      return;
     }
+  }
+
+  /** Runs `body` in a `try` that destroys `value` at its end, keeping an error leaving it. */
+  private destroyAfter(value: string, async: boolean, body: () => void) {
+    const err = this.temp("$e");
+    this.w.line(`let ${err}${this.ts ? ": unknown" : ""} = ${this.helper("$noError")};`);
+    this.w.line("try {");
+    this.w.indent();
+    body();
+    this.w.dedent();
+    const destroy = `${async ? "await " : ""}${this.helper(async ? "$destroyAsync" : "$destroy")}(${value}, ${err});`;
+    this.w.line(`} catch ($c) { throw (${err} = $c); } finally { ${destroy} }`);
+  }
+
+  /**
+   * Generates one statement's line(s) with `gen`; when its expression created temporaries owning
+   * scoped values, they are declared first and destroyed when the statement ends (the last created
+   * first). `hoist`: a declaration to make before them (`let n;` when `gen` assigns a `var`).
+   */
+  private withTemps(gen: () => string[], hoist?: () => string) {
+    const saved = this.stmtTemps;
+    const temps: { name: string; async: boolean }[] = [];
+    this.stmtTemps = temps;
+    let lines: string[];
+    try {
+      lines = gen();
+    } finally {
+      this.stmtTemps = saved;
+    }
+    if (temps.length === 0) {
+      for (const l of lines) this.w.line(l);
+      return false;
+    }
+    this.w.line(`let ${temps.map((t) => `${t.name}${this.ts ? ": any" : ""} = null`).join(", ")};`);
+    if (hoist) this.w.line(hoist());
+    const nest = (i: number): void => {
+      if (i === temps.length) {
+        for (const l of lines) this.w.line(l);
+        return;
+      }
+      this.destroyAfter(temps[i]!.name, temps[i]!.async, () => nest(i + 1));
+    };
+    nest(0);
+    return true;
   }
 
   /** `if (new.target === Shape) throw new StateException('Shape is abstract');` */
@@ -885,7 +1027,7 @@ class ModuleGen {
     const rest = explicitSuper ? b.body.slice(1) : b.body;
     if (explicitSuper) this.stmt(b.body[0]!);
     const at = this.w.mark();
-    for (const s of rest) this.stmt(s);
+    this.stmtList(rest);
     this.w.dedent();
     const decls: string[] = [];
     if (this.fnTemps.length > 0) decls.push(this.tempDecl());
@@ -955,7 +1097,7 @@ class ModuleGen {
 
   private blockBody(b: A.Block) {
     this.w.indent();
-    for (const s of b.body) this.stmt(s);
+    this.stmtList(b.body);
     this.w.dedent();
   }
 
@@ -963,7 +1105,7 @@ class ModuleGen {
   private body(b: A.Stmt) {
     if (b.kind === "Block") return this.blockBody(b);
     this.w.indent();
-    this.stmt(b);
+    this.stmtList([b]);
     this.w.dedent();
   }
 
@@ -998,9 +1140,16 @@ class ModuleGen {
         return;
       case "VarDecl": {
         if (s.inline) return; // inline constants are pasted at every use
-        const kw = s.decl === "var" ? "let" : s.decl === "const" ? "const" : s.init ? "const" : "let";
-        const init = s.init ? this.expr(s.init).code : s.decl === "var" ? defaultValue(s.type) : undefined;
-        this.w.line(`${kw} ${this.name(s.name)}${this.ann(s.type)}${init === undefined ? "" : ` = ${init}`};`);
+        // A local whose value some `return` hands on is cleared there (see `Return`), so it can't be `const`.
+        const kw = s.decl === "var" || this.check.scopedLocals.get(s.name)?.handedOff ? "let" : s.decl === "const" ? "const" : s.init ? "const" : "let";
+        let init: string | undefined;
+        // With temporaries the declaration comes first (`let n;`) and the statement assigns it.
+        this.withTemps(() => {
+          init = s.init ? this.expr(s.init).code : s.decl === "var" ? defaultValue(s.type) : undefined;
+          return this.stmtTemps!.length > 0
+            ? [`${s.name.name} = ${init};`]
+            : [`${kw} ${this.name(s.name)}${this.ann(s.type)}${init === undefined ? "" : ` = ${init}`};`];
+        }, () => `let ${this.name(s.name)}${this.ann(s.type)};`);
         return;
       }
       case "ExprStmt": {
@@ -1010,7 +1159,14 @@ class ModuleGen {
         return;
       }
       case "Return":
-        this.w.line(s.value ? `return ${this.expr(s.value).code};` : "return;");
+        if (s.value && this.check.scopedReturns.has(s)) {
+          // `return r`: handed to the caller, so the `finally` of `r`'s scope must not destroy it.
+          const r = (s.value as A.Expr & { kind: "Ident" }).name;
+          const t = this.temp("$r", true);
+          this.w.line(`return (${t} = ${this.expr(s.value).code}, ${r} = null, ${t});`);
+          return;
+        }
+        this.withTemps(() => [s.value ? `return ${this.expr(s.value).code};` : "return;"]);
         return;
       case "If": {
         this.w.line(`if (${this.expr(s.cond).code}) {`);
@@ -1100,7 +1256,7 @@ class ModuleGen {
           const braces = c.body.some((x) => x.kind === "VarDecl" || x.kind === "UsingDecl" || x.kind === "DestructDecl" || x.kind === "FuncDecl");
           this.w.line(braces ? `${label} {` : label);
           this.w.indent();
-          for (const x of c.body) this.stmt(x);
+          this.stmtList(c.body);
           this.w.dedent();
           if (braces) this.w.line("}");
         }
@@ -1146,8 +1302,7 @@ class ModuleGen {
         this.w.line("{");
         this.w.indent();
         this.w.line(`${s.isAwait ? "await " : ""}using ${decls.join(", ")};`);
-        if (s.body.kind === "Block") for (const x of s.body.body) this.stmt(x);
-        else this.stmt(s.body);
+        this.stmtList(s.body.kind === "Block" ? s.body.body : [s.body]);
         this.w.dedent();
         this.w.line("}");
         return;
@@ -1182,7 +1337,7 @@ class ModuleGen {
       const only = s.catches[0]!;
       if (s.catches.length === 1 && isCatchAll(only)) {
         this.w.line(`let ${this.name(only.name)} = ${exc}.from(${raw});`);
-        for (const x of only.body.body) this.stmt(x);
+        this.stmtList(only.body.body);
       } else {
         const value = this.temp("$exc");
         this.w.line(`const ${value} = ${exc}.from(${raw});`);
@@ -1197,7 +1352,7 @@ class ModuleGen {
           }
           this.w.indent();
           this.w.line(`let ${this.name(c.name)} = ${value};`);
-          for (const x of c.body.body) this.stmt(x);
+          this.stmtList(c.body.body);
           this.w.dedent();
           head = "else";
           if (catchAll) break;

@@ -12,12 +12,16 @@ package xenon {
   /** `Null<int>` is `int?`: an `int` that may also be `null`. (`Null<String>` is just `String`.) */
   public typedef Null<T> = T?
 
-  /** Implemented automatically by every class with a destructor `~Name()`. */
+  /**
+   * A value cleaned up by hand: `using` calls `dispose()` when its block ends (or call it yourself).
+   * Such a class has no destructor; a class with a destructor is scoped instead (destroyed when the
+   * scope owning the value ends). A class is one or the other.
+   */
   public interface IDisposable {
     function dispose():void
   }
 
-  /** Implemented automatically by every class with an async destructor `async ~Name()`. */
+  /** `IDisposable` with an async `dispose()`: `await using`, `await x.dispose()`. */
   public interface IAsyncDisposable {
     function dispose():Promise<void>
   }

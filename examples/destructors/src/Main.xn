@@ -1,58 +1,74 @@
 package {
   public class Main {
-    public static var log:Array = []
+    public static var log:Array<String> = []
 
     public function Main() {
       scoped()
-      trace(Main.log.join(' | '))
-      Main.log = []
+      flush()
 
       try {
-        using f:FileHandle = new FileHandle('data.txt')
+        var f:FileHandle = new FileHandle('data.txt')
         throw new StateException('disk on fire')
       } catch (e:StateException) {
-        Main.log.push('caught ' + e.message)
+        log.push('caught ' + e.message)
       }
-      trace(Main.log.join(' | '))
-      Main.log = []
+      flush()
 
-      var early:FileHandle = new FileHandle('early.txt')
+      var opened:FileHandle = open('made.txt')   // `open` hands its value on: destroyed at the end of Main()
+      log.push('got ' + opened.name)
+      new FileHandle('temp.txt').touch()         // a temporary: destroyed when the statement ends
+      for (var i:int of 0..2) {
+        var part:FileHandle = new FileHandle('part' + i)
+        part.touch()
+      }                                          // one destruction per iteration
+      flush()
+
+      // Manual disposal: classes implementing `IDisposable` (no destructor) can be kept anywhere.
+      var early:Socket = new Socket('early')
       early.dispose()
-      early.dispose()                      // second call: no-op
-      using (a:FileHandle = new FileHandle('a'), b:Lock = new Lock('b')) {
-        Main.log.push('in block')
+      early.dispose()                            // second call: no-op
+      using (a:Socket = new Socket('a'), b:Socket = new Socket('b')) {
+        log.push('in block')
       }
-      using (early) Main.log.push('expression form')
-      trace(Main.log.join(' | '))
+      using (early) log.push('expression form')
+      flush()
       var thing:* = early
-      var other:* = Main.log
+      var other:* = log
       trace(thing is IDisposable, other is IDisposable)
 
       run()
     }
 
     private function scoped():void {
-      using first:FileHandle = new FileHandle('first')
-      using second:Lock = new Lock('second')
-      Main.log.push('working')
-    }                                       // second, then first
+      var first:FileHandle = new FileHandle('first')
+      var second:Lock = new Lock('second')
+      log.push('working')
+    }                                           // second (unlock, then close), then first
+
+    private function open(name:String):FileHandle {
+      var handle:FileHandle = new FileHandle(name)
+      handle.touch()
+      return handle                             // the caller owns it now: not destroyed here
+    }
 
     private async function run():Promise<void> {
-      await using conn:Connection = new Connection()
-      Main.log = ['connected']
+      var conn:Connection = new Connection()     // async destructor: awaited when run() ends
+      log.push('connected')
     }
   }
 }
 
+/** Scoped: destroyed when the scope owning it ends. */
 class FileHandle {
-  private final name:String
+  public final name:String
   public function FileHandle(name:String) { this.name = name }
-  public ~FileHandle() { Main.log.push('close ' + name) }
+  public function touch():void { Main.log.push('touch ' + name) }
+  public function ~FileHandle() { Main.log.push('close ' + name) }
 }
 
 class Lock extends FileHandle {
   public function Lock(name:String) { super(name + '.lock') }
-  public ~Lock() {
+  public function ~Lock() {
     Main.log.push('unlock')
     if (Main.log.length > 0) return         // the parent destructor still runs
     Main.log.push('not reached')
@@ -60,9 +76,21 @@ class Lock extends FileHandle {
 }
 
 class Connection {
-  public async ~Connection() {
+  public async function ~Connection() {
     await Promise.resolve()
     Main.log.push('disconnected')
     trace(Main.log.join(' | '))
+  }
+}
+
+/** Manual: no destructor; `using` (or a call) runs its `dispose()`. */
+class Socket implements IDisposable {
+  private final name:String
+  private var closed:Boolean = false
+  public function Socket(name:String) { this.name = name }
+  public function dispose():void {
+    if (closed) return
+    closed = true
+    Main.log.push('close socket ' + name)
   }
 }
