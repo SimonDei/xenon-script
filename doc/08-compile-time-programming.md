@@ -121,8 +121,9 @@ nameof(user.email) // 'email'
 nameof(User.save)  // 'save'
 ```
 
-It is a compile-time operator unless a program declaration shadows that name. A typo is an error,
-and member renaming/refactoring updates the expression.
+`nameof` is a reserved compile-time operator. A typo is an error, and member
+renaming/refactoring updates the expression. A class may still declare or call a member named
+`nameof` through a receiver, such as `service.nameof()`.
 
 Untyped `*` members cannot be checked by `nameof`; use a string literal at that boundary.
 

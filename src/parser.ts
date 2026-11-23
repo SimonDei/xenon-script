@@ -1508,6 +1508,10 @@ export class Parser {
             return { kind: "Bool", value: t.value === "true", span: t.span };
           case "null": this.advance(); return { kind: "Null", span: t.span };
           case "undefined": this.advance(); return { kind: "Undefined", span: t.span };
+          case "nameof": {
+            this.advance();
+            return { kind: "Nameof", args: this.parseArgs(), span: this.sp(start) };
+          }
           case "new": {
             this.advance();
             const callee = this.parseType(false);

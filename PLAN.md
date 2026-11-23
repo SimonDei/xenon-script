@@ -72,7 +72,7 @@
 - [x] 32-bit integer arithmetic (2026-11-22, option 1 of the design discussion): `+`, `-`, `*` and negation on `Int`/`UInt` wrap like in C, Java and C# instead of becoming inexact `Float`s: `(a + b) | 0`, `Math.imul(a, b)` (exact), `>>> 0` for `UInt`, `-n | 0`; compound assignments and `++`/`--` too (`n = (n + 1) | 0`, read once through `readModifyWrite`, which `operator+=` & co. share; a used postfix value is computed back: `((k = (k + 1) | 0) - 1) | 0`). Two literals whose result fits stay as written (`5 - 8`). `/` (a `Float`), `%` and `Float` arithmetic are unchanged. Fixed on the way: `Dog.created++` for a static inherited from `Animal` updates `Animal.created`. `tests/integers.test.ts`
 - [x] Dropped promises (2026-11-22): warning X0874 for an expression statement whose value is a `Promise` (`save()` with `save` async, `p.then(f)`, `p.finally(f)`): if it fails, nothing sees the error. Not warned: `await …`, a kept promise (`var job = save()`, an argument, a `return`), chains that handle failure (`.catch(…)`, `.then(ok, failed)`), and `void save()`, a new expression (`void` operator: evaluates and discards, type `Void`) that marks it as intentional. Fix-its: add `await` (in `async` functions) or `void`. The destructors and functions examples start their async part with `void run()`. `tests/errors/promises.xn`
 - [x] `[NoDiscard('…')]` (2026-11-22, prelude attribute, compile time only): a statement that drops the result of a marked method, of a call returning a marked class, or a `new` of one, is warning X0875 (with the message; `void f()` discards on purpose, with a fix-it). The standard library marks the methods that return a changed copy instead of changing their object (`String.trim`/`toUpperCase`/`slice`/`replace`/…, `Array.map`/`filter`/`toSorted`/`slice`/`concat`/…), so `name.trim()` alone is caught while `list.sort()` isn't. `calleeDecl` now also finds array methods (argument mismatches point at `Array.xn`'s parameter, as for strings). `tests/errors/nodiscard.xn`
-- [x] `nameof(x)` (2026-11-22, as in C#): the name of a local, parameter, member (`user.email`, also an instance member through its class: `User.email`), class or enum member as a string constant, checked like a use (a typo is an error; references, rename and hover see it) but never evaluated; the source name (`title` for a private `#title`). A constant everywhere (inline constants, attribute arguments, `case` labels; folded in consteval too). X0876 for a missing or extra argument, an expression, or a member of an untyped value. Not a keyword: a program's own `nameof` wins. `tests/errors/nameof.xn`
+- [x] `nameof(x)` (2026-11-22, as in C#): the name of a local, parameter, member (`user.email`, also an instance member through its class: `User.email`), class or enum member as a string constant, checked like a use (a typo is an error; references, rename and hover see it) but never evaluated; the source name (`title` for a private `#title`). A constant everywhere (inline constants, attribute arguments, `case` labels; folded in consteval too). X0876 for a missing or extra argument, an expression, or a member of an untyped value. `nameof` is a reserved expression keyword; member names such as `obj.nameof()` remain allowed. `tests/errors/nameof.xn`
 - [ ] Part D (VS Code extension) and Later items
 
 ## Context
@@ -104,7 +104,7 @@ Working name **XenonScript**, extension `.xn`.
 | Modifiers | `public` `private` `protected` `internal` `static` `final` `inline` `constexpr` `consteval` `abstract` `override` `dynamic` `async` (`const` is also a method suffix) |
 | Control flow | `if` `else` `switch` `case` `default` `while` `do` `for` `in` `break` `continue` `return` |
 | Exceptions | `throw` `try` `catch` `finally` |
-| Expressions | `new` `this` `super` `is` `as` `typeof` `delete` `await` |
+| Expressions | `new` `this` `super` `is` `as` `typeof` `delete` `await` `nameof` |
 | Literals | `true` `false` `null` `undefined` (compatibility only — every use produces warning X0840, see A2) |
 | Types | `void` |
 | Reserved for future use | `namespace` `use` `with` `yield` `let` `goto` |
@@ -118,7 +118,6 @@ Working name **XenonScript**, extension `.xn`.
 | `of` | value loop: `for (var v:T of coll)` (as in JS, `of` stays usable as a name) |
 | `step` | after a range in a loop header: `0..n step 2` |
 | `defer` | at the start of a statement: `defer close()` or `defer { ... }` |
-| `nameof` | compile-time operator: `nameof(user.email)` (shadowable by a declaration) |
 | `static` block | `static { ... }` inside a class body |
 
 **Built-in type names** (predeclared, not keywords; shadowing is a compile error): `int` `uint` `Float` `String` `Boolean` `Object` `Array` `Function` `Class` `RegExp`, plus the dynamic type `*`. **Built-in typedefs** (prelude): `Int` `UInt` `Void` `Bool` `Any` (see A2). **Built-in classes** (prelude): `Exception` `ArgumentException` `TypeException` `RangeException` `StateException` `NotImplementedException` (see A6c). `Error` and the JS error classes are hidden.

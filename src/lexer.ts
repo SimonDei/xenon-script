@@ -32,7 +32,7 @@ export const KEYWORDS = new Set([
   // exceptions
   "throw", "try", "catch", "finally",
   // expressions
-  "new", "this", "super", "is", "as", "typeof", "delete", "await",
+  "new", "this", "super", "is", "as", "typeof", "delete", "await", "nameof",
   // literals
   "true", "false", "null", "undefined",
   // types
@@ -44,8 +44,6 @@ export const KEYWORDS = new Set([
 /** Words with syntax meaning only in particular positions, while remaining usable as identifiers. */
 export const CONTEXTUAL_KEYWORDS = new Set([
   "get", "set", "operator", "from", "of", "step", "defer",
-  // A compile-time operator unless a local, member, class or package-level function shadows it.
-  "nameof",
 ]);
 
 /** Punctuators, longest first so the greedy match is correct. */

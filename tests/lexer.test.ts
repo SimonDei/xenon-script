@@ -12,10 +12,10 @@ function tokens(text: string) {
 const kv = (ts: Token[]) => ts.map((t) => `${t.kind}:${t.value}`);
 
 test("keywords, identifiers and contextual keywords", () => {
-  const { toks } = tokens("public final class Foo get set from of step operator");
+  const { toks } = tokens("public final class Foo nameof get set from of step operator");
   expect(kv(toks)).toEqual([
     "keyword:public", "keyword:final", "keyword:class", "ident:Foo",
-    "ident:get", "ident:set", "ident:from", "ident:of", "ident:step", "ident:operator",
+    "keyword:nameof", "ident:get", "ident:set", "ident:from", "ident:of", "ident:step", "ident:operator",
   ]);
 });
 

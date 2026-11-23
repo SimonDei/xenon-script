@@ -3212,17 +3212,12 @@ class BodyChecker {
     return widen(own);
   }
 
-  /** `nameof` is the operator unless the program declares something of that name. */
-  private isNameofOperator(scope: Scope): boolean {
-    return !scope.get("nameof") && !findMember(this.info, "nameof") && !this.scope.classes.has("nameof") && !this.env.functions.has("nameof");
-  }
-
   /**
    * `nameof(user.email)`: the name of a local, parameter, member, class or enum member as a string
    * constant (`'email'`), checked like a use of it (so a typo is an error, and renaming it updates
    * it) but never evaluated. The name is the one in the source (a private field's `title`, not `#title`).
    */
-  private nameof(e: A.Expr & { kind: "Call" }, scope: Scope): Type {
+  private nameof(e: A.Expr & { kind: "Nameof" }, scope: Scope): Type {
     const arg = e.args.length === 1 ? e.args[0]! : undefined;
     const bad = (message: string, at: Span, label: string) => {
       this.diags.error("X0876", message, at, label)
@@ -3989,6 +3984,8 @@ class BodyChecker {
       }
       case "Call":
         return this.call(e, scope);
+      case "Nameof":
+        return this.nameof(e, scope);
       case "New":
         return this.newExpr(e, scope);
       case "Unary":
@@ -4405,7 +4402,6 @@ class BodyChecker {
   private call(e: A.Expr & { kind: "Call" }, scope: Scope): Type {
     const expected = this.takeExpected();
     if (e.callee.kind === "Super") return this.superCallExpr(e, scope);
-    if (e.callee.kind === "Ident" && e.callee.name === "nameof" && this.isNameofOperator(scope)) return this.nameof(e, scope);
     const savedCallee = this.calledCallee;
     this.calledCallee = e.callee;
     let callee = this.expr(e.callee, scope);

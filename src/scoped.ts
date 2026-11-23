@@ -555,13 +555,15 @@ class ScopedChecker {
         this.visit(e.object, "receiver");
         return this.visit(e.index, "use");
       case "Call":
-        if (this.result.inlineValues.has(e)) return; // `nameof(r)`: a name, nothing is used
+        if (this.result.inlineValues.has(e)) return;
         if (e.callee.kind === "Member") {
           this.visit(e.callee.object, "receiver");
         } else if (e.callee.kind !== "Ident" && e.callee.kind !== "Super") this.visit(e.callee, "use");
         else if (e.callee.kind === "Ident") this.ident(e.callee);
         for (const a of e.args) this.visit(a.kind === "Spread" ? a.arg : a, a.kind === "Spread" ? "store" : "arg", "spread");
         return;
+      case "Nameof":
+        return; // Checked without evaluating its target.
       case "New":
         for (const a of e.args) this.visit(a.kind === "Spread" ? a.arg : a, a.kind === "Spread" ? "store" : "arg", "spread");
         return;

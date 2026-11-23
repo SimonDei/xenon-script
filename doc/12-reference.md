@@ -77,6 +77,7 @@ read-only with respect to `this`.
 | `typeof` | Produces the JavaScript runtime type tag of a value. |
 | `delete` | Deletes a property from a dynamic/`*` or `Object` value. |
 | `await` | Pauses an async function until a promise settles and produces its value. |
+| `nameof` | Produces the checked source name of a local, parameter, class, member, or enum member as a string constant. |
 | `true` | The true `Boolean` literal. |
 | `false` | The false `Boolean` literal. |
 | `null` | The null/no-value literal and the value handled by nullable types. |
@@ -107,9 +108,11 @@ syntax.
 | `of` | `for … of` |
 | `step` | range-loop stride |
 | `defer` | statement scheduled for block end |
-| `nameof` | compile-time symbol-name operator unless shadowed |
 
 Outside its special position, a contextual word can remain an identifier.
+
+`nameof` is reserved at expression level, so it cannot be declared as a local or bare function
+name. Like other keywords, it remains valid as a member name (`obj.nameof()`).
 
 ## Primitive and built-in type notation
 

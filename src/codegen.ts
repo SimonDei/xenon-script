@@ -1828,6 +1828,9 @@ class ModuleGen {
       }
       case "Function":
         return this.fn(e);
+      case "Nameof":
+        if (this.ts) return { code: "(undefined as any)", prec: P.primary };
+        throw new Error(`codegen: unresolved nameof expression`);
       case "DestructAssign":
         return { code: `${this.pattern(e.pattern)} = ${this.wrap(this.expr(e.value), P.assign)}`, prec: P.assign };
       case "Error":

@@ -302,6 +302,8 @@ export type Expr =
   | { kind: "Member"; object: Expr; name: Ident; optional: boolean; span: Span }
   | { kind: "Index"; object: Expr; index: Expr; optional: boolean; span: Span }
   | { kind: "Call"; callee: Expr; args: Expr[]; optional: boolean; span: Span }
+  /** `nameof(target)`: checked source-level name, folded to a string constant. */
+  | { kind: "Nameof"; args: Expr[]; span: Span }
   | { kind: "New"; callee: TypeNode; args: Expr[]; span: Span }
   | { kind: "Unary"; op: string; arg: Expr; span: Span }
   | { kind: "Update"; op: "++" | "--"; prefix: boolean; arg: Expr; span: Span }
