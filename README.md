@@ -126,11 +126,12 @@ the important edge cases.
 | Nullable types | `Int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
 | Null safety (on by default; `"nullSafety": false` turns it off) | object types exclude `null` too (`String` vs `String?`), fields and locals need a value before use, `as` gives `T?` | [`null-safety`](examples/null-safety) |
 | Checked indexes | `list[i]` and `text[i]` throw a `RangeException` when `i` is out of range instead of giving `undefined`; `list.at(i)` gives `T?` | |
-| Generics | `class Box<T>`, `function first<T>(items:Array<T>):T?` | [`generics`](examples/generics) |
+| Generics | `class Box<T>`, `function first<T>(items:Array<T>):T?`; a class's type parameter can have a default (`class Event<T = EventTarget>`: a bare `Event` is `Event<EventTarget>`) | [`generics`](examples/generics) |
 | Typedefs | `typedef Point = { x:Float, y:Float, ?label:String }`, aliases | [`typedefs`](examples/typedefs) |
 | Enums | `enum Color { Red, Green }`, string enums | [`enums`](examples/enums) |
 | Functions | arrows with lexical `this`, closures, `async`/`await`, function types `(a:Int) -> Int`, expression bodies `function area():Float => w * h` | [`functions`](examples/functions), [`closures`](examples/closures) |
 | Control flow | ranges `for (var n:Int of 0..10)`, `0..=10 step 5`, `for … of`, `switch`, and LIFO `defer` cleanup | [`control`](examples/control) |
+| Object literals | methods and accessors in the literal, written like a class's: `{ count: 0, function get double():Int { return this.count * 2 }, function bump():Void { … } }` (`this` is the object; checked against a typedef when there is one); handy for Alpine components | |
 | Destructuring | `var [first, , third, ...tail] = list`, `var { name, address: { city } } = user` | [`destructuring`](examples/destructuring) |
 | Exceptions | `Exception` and its subclasses; anything JavaScript throws is normalized | [`exceptions`](examples/exceptions) |
 | Resources | destructors `function ~Connection() { … }`: destroyed when their scope ends (scoped classes), or `implements IDisposable` with a `dispose()` method for `using` / `await using` | [`destructors`](examples/destructors) |
@@ -252,7 +253,8 @@ and the language server:
 - hover with XenonScript types and doc comments (including the overload a call uses)
 - go to definition, also into the standard library (built-in types included) and `.d.ts` files
 - completion that knows the context: only types in a type annotation (`xlsx.` lists the package's
-  types), the expected shape's keys inside an object literal, members after `.`
+  types), the expected shape's keys inside an object literal, members after `.`; it keeps working in
+  a half-typed object literal (a missing `,` or a JavaScript-style `get x()` is reported, not fatal)
 - signature help, find references, rename (a class's file too) and the outline
 - semantic highlighting for object keys and shape members
 

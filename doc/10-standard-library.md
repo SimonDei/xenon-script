@@ -122,8 +122,23 @@ public class Store extends EventTarget {
 }
 ```
 
-`EventTarget.addEventListener`, `removeEventListener`, and `dispatchEvent` are typed. Event listeners
-receive `Event`; cast to a more specific future declaration or dynamic type when needed.
+`EventTarget.addEventListener`, `removeEventListener`, and `dispatchEvent` are typed. A listener
+receives an `Event`, and the type argument says what its `target` and `currentTarget` are:
+
+```actionscript
+input.addEventListener('input', (e:Event<HTMLInputElement>):Void => {
+  var field:HTMLInputElement? = e.target
+  if (field != null) {
+    trace(field.value)
+  }
+})
+```
+
+`Event<T = EventTarget>`: a bare `Event` is `Event<EventTarget>`. `T` states what you expect (the
+checker can't know which element the listener was added to). The two properties are `T?`, because
+they are `null` before and after dispatch, and on an event you create yourself. Listeners are
+declared as `(event:Event<*>) -> Void`, so a listener can take any `Event<T>`; an untyped
+`e => …` has a dynamic `e.target`.
 
 `Event` exposes phases, target/currentTarget, cancellation, propagation, and `composedPath`.
 
@@ -144,13 +159,27 @@ if (var element:Element = root) {
 Declared DOM families include:
 
 - `Node`
-- `Element`
+- `Element`, and `HTMLElement` and `HTMLInputElement` below it
 - `Document`
 - `NodeList<T>`
 - `HTMLCollection`
+- `FileList`
 - `DOMParser`
 - `XMLSerializer`
-- `EventTarget` and `Event`
+- `EventTarget` and `Event<T>`
+
+`HTMLInputElement` covers `value`, `checked`, `files` (a `FileList?`), the constraint properties
+(`min`, `max`, `required`, `validity`, …) and the selection methods. `form`, `list` and `validity` are
+loosely typed until their classes exist.
+
+```actionscript
+function chosen(input:HTMLInputElement):Array<File> {
+  if (var files:FileList = input.files) {
+    return Array.from(files)
+  }
+  return []
+}
+```
 
 The DOM is browser-only. Constructing/testing the available DOM classes in a runtime without the DOM
 can fail even though XenonScript type checking succeeds.

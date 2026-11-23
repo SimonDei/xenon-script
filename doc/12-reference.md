@@ -101,7 +101,7 @@ syntax.
 
 | Word | Context |
 |---|---|
-| `get`, `set` | member accessors |
+| `get`, `set` | member accessors, in classes and object literals (`function get name()`) |
 | `operator` | operator method names |
 | `from` | JavaScript import clause |
 | `of` | `for … of` |
@@ -139,6 +139,7 @@ static inline final LIMIT:Int = 10
 public final class Name<T> extends Parent<T> implements Interface<T>
 public abstract class Base
 public interface Contract<T>
+public class Event<T = EventTarget>
 public typedef Shape<T> = { value:T }
 public enum Kind { A, B = 4 }
 
@@ -149,6 +150,17 @@ public function get property():T
 public function set property(value:T):Void
 public function operator+(other:This):This
 public function ~Resource()
+```
+
+Methods and accessors of an object literal use the same words:
+
+```actionscript
+var component = {
+  count: 0,
+  function get double():Int { return this.count * 2 },
+  function set value(n:Int):Void { this.count = n },
+  async function load():Promise<Void> { … }
+}
 ```
 
 ## Control-flow patterns
@@ -195,7 +207,7 @@ Not currently implemented:
 - generator functions using `yield`
 - labels for nested `break`/`continue`
 - first-class `Range` values
-- type-parameter bounds
+- type-parameter bounds (a class's type parameter can have a default, `<T = EventTarget>`)
 - generic methods with full user-defined constraints
 - transitive `const T` read-only types
 - owned scoped fields and reassignment-time destruction

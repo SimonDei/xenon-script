@@ -111,7 +111,7 @@ The extension in [`../packages/vscode-xenon`](../packages/vscode-xenon) provides
 
 - syntax and semantic highlighting
 - live diagnostics and quick fixes
-- completion
+- completion that knows its context (types in annotations, the expected shape's keys in an object literal, members after `.`), also inside half-typed code
 - hover and signature help
 - go to definition
 - references and rename
