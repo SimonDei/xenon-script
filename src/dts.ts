@@ -186,6 +186,18 @@ export function jsDeclarations(files: A.XenonFile[], root: string, reserved: Set
   return result;
 }
 
+/**
+ * Whether two paths name the same file as TypeScript reports them: on Windows it uses `/` where
+ * `path.join` writes `\\`, and drive letters differ in case (`C:` / `c:`).
+ */
+export function samePath(a: string, b: string, platform: string = process.platform): boolean {
+  const normalize = (path: string) => {
+    const slash = path.replace(/\\/g, "/");
+    return platform === "win32" ? slash.toLowerCase() : slash;
+  };
+  return normalize(a) === normalize(b);
+}
+
 function generate(probes: { file: A.XenonFile; local: string; kind: string; probe: string }[], text: string, root: string, reserved: Set<string>, read: Set<string>): JsDeclarations {
   const ts = typescript();
   const options = tsOptions();
@@ -195,10 +207,10 @@ function generate(probes: { file: A.XenonFile; local: string; kind: string; prob
   host.getDefaultLibLocation = () => dirname(defaultLibFilePath(ts, options));
   const { getSourceFile, fileExists, readFile } = host;
   host.getCurrentDirectory = () => root;
-  host.fileExists = (f) => f === probePath || fileExists.call(host, f);
-  host.readFile = (f) => (f === probePath ? text : readFile.call(host, f));
+  host.fileExists = (f) => samePath(f, probePath) || fileExists.call(host, f);
+  host.readFile = (f) => (samePath(f, probePath) ? text : readFile.call(host, f));
   host.getSourceFile = (f, lang, ...rest) => {
-    if (f === probePath) return ts.createSourceFile(f, text, lang);
+    if (samePath(f, probePath)) return ts.createSourceFile(f, text, lang);
     // Every declaration file read is a dependency of the result; a missing one is never cached.
     read.add(f);
     const time = mtime(f);
@@ -211,7 +223,7 @@ function generate(probes: { file: A.XenonFile; local: string; kind: string; prob
   };
   const program = ts.createProgram([probePath], options, host);
   const checker = program.getTypeChecker();
-  const probeFile = program.getSourceFile(probePath)!;
+  const probeFile = program.getSourceFiles().find((file) => samePath(file.fileName, probePath))!;
   const locals = new Map<string, tsModule.Identifier>();
   const visit = (n: tsModule.Node) => {
     // The local names: `import { readFileSync as __xenon3 }` has `readFileSync` too, which doesn't match.

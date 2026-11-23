@@ -493,3 +493,13 @@ test("TypeScript unions are Xenon unions: named ones are typedefs (`BufferEncodi
   expect(notes).toContain("options:BufferEncoding | ReadFileSyncOptionsWithStringEncoding");
   expect(notes).toContain("path:Float | PathLike");
 });
+
+test("samePath: Windows paths match however TypeScript spells them", async () => {
+  const { samePath } = await import("../src/dts.ts");
+  // TypeScript reports `C:/proj/x.ts` where `path.join` gave `c:\proj\x.ts`.
+  expect(samePath("C:/Users/me/proj/__xenon_imports__.ts", "c:\\Users\\me\\proj\\__xenon_imports__.ts", "win32")).toBe(true);
+  expect(samePath("C:/a/x.ts", "C:/a/y.ts", "win32")).toBe(false);
+  // Elsewhere paths are case-sensitive.
+  expect(samePath("/home/me/proj/x.ts", "/home/me/proj/x.ts", "linux")).toBe(true);
+  expect(samePath("/home/me/Proj/x.ts", "/home/me/proj/x.ts", "linux")).toBe(false);
+});
