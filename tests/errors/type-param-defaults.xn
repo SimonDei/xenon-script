@@ -1,0 +1,22 @@
+// Type parameter defaults: `class Box<T = String>` lets a use leave the argument out.
+class Box<T = String, U = Int> {
+  public var value:T;
+  public function Box(value:T) { this.value = value; }
+}
+
+// X0878: a parameter after one with a default needs a default too
+class Pair<A = String, B> {
+}
+
+// only a class or interface type parameter can have a default
+typedef Wrapper<T = Int> = { value:T }
+
+public class Main {
+  public function Main() {
+    var a:Box = new Box('x');                    // Box<String, Int>
+    var b:Box<Float> = new Box(1.5);             // Box<Float, Int>
+    var c:Box<Float, Bool, Int>;                 // X0422: too many
+    var d:Box<Int> = new Box('x');               // X0308: Box<String, Int> is not a Box<Int, Int>
+    trace(a.value.length, b, c, d);
+  }
+}

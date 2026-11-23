@@ -432,7 +432,7 @@ export class Parser {
   private parseClass(modifiers: A.Modifiers, start: number): A.ClassDecl {
     this.expect("class");
     const name = this.ident("a class name");
-    const typeParams = this.typeParamList();
+    const typeParams = this.typeParamList(true);
     let ext: A.TypeNode | undefined;
     const impls: A.TypeNode[] = [];
     if (this.eat("extends")) ext = this.parseType();
@@ -499,7 +499,7 @@ export class Parser {
   private parseInterface(modifiers: A.Modifiers, start: number): A.ClassDecl {
     this.expect("interface");
     const name = this.ident("an interface name");
-    const typeParams = this.typeParamList();
+    const typeParams = this.typeParamList(true);
     const supers: A.TypeNode[] = [];
     if (this.eat("extends")) {
       do supers.push(this.parseType());
@@ -723,13 +723,19 @@ export class Parser {
   }
 
   /** `<T, U>` after a class/interface/typedef/method/function name (no bounds). */
-  private typeParamList(): A.Ident[] | undefined {
+  private typeParamList(allowDefaults = false): A.TypeParam[] | undefined {
     if (!this.is("<")) return undefined;
     const open = this.advance();
-    const params: A.Ident[] = [];
+    const params: A.TypeParam[] = [];
     do {
-      params.push(this.ident("a type parameter name"));
+      const param: A.TypeParam = this.ident("a type parameter name");
       if (this.is("extends")) this.fail("type parameter bounds are not supported", this.tok.span, "write just the name");
+      if (this.is("=")) {
+        if (!allowDefaults) this.fail("only a class or interface type parameter can have a default", this.tok.span, "write just the name");
+        this.advance();
+        param.default = this.parseType();
+      }
+      params.push(param);
     } while (this.eat(","));
     this.splitClosingAngle();
     this.expectClose(">", open);

@@ -1,0 +1,38 @@
+error[X0878]: type parameter `B` needs a default: `A` before it has one
+ --> type-param-defaults.xn:8:24
+  |
+8 | class Pair<A = String, B> {
+  |            -           ^
+  |            |
+  |            this one has a default
+
+error[X0100]: only a class or interface type parameter can have a default
+  --> type-param-defaults.xn:12:19
+   |
+12 | typedef Wrapper<T = Int> = { value:T }
+   |                   ^ write just the name
+
+error[X0422]: `Box` takes at most 2 type arguments
+  --> type-param-defaults.xn:18:11
+   |
+18 |     var c:Box<Float, Bool, Int>;                 // X0422: too many
+   |           ^^^^^^^^^^^^^^^^^^^^^ 3 given
+   |
+help: for example `Box<Int, Int>`
+
+error[X0308]: mismatched types
+  --> type-param-defaults.xn:19:22
+   |
+19 |     var d:Box<Int> = new Box('x');               // X0308: Box<String, Int> is not a Box<Int, Int>
+   |           --------   ^^^^^^^^^^^^ expected `Box<Int, Int>`, found `Box<String, Int>`
+   |           |
+   |           expected because of this type
+
+error[X0510]: `c` is used before it is assigned
+  --> type-param-defaults.xn:20:30
+   |
+18 |     var c:Box<Float, Bool, Int>;                 // X0422: too many
+   |         - declared here without a value
+...
+20 |     trace(a.value.length, b, c, d);
+   |                              ^

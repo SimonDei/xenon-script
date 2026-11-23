@@ -469,8 +469,13 @@ class ModuleGen {
   }
 
   /** `<T, U>` for declared type parameters (TypeScript output only). */
-  private typeParams(params: A.Ident[] | undefined): string {
-    return this.ts && params?.length ? `<${params.map((p) => this.name(p)).join(", ")}>` : "";
+  private typeParams(params: A.Ident[] | undefined, info?: ClassInfo): string {
+    if (!this.ts || !params?.length) return "";
+    const withDefault = (p: A.Ident) => {
+      const d = info?.typeParams.find((q) => q.name === p.name)?.default;
+      return d ? `${this.name(p)} = ${this.tsType(d)}` : this.name(p);
+    };
+    return `<${params.map(withDefault).join(", ")}>`;
   }
 
   /** A Xenon type in TypeScript. `top`: a typedef's own body (not its name). */
@@ -500,6 +505,13 @@ class ModuleGen {
           const name = jsNameOf(info);
           // Declared from a `.d.ts`: TypeScript knows the type under the local import name only.
           if (info.file.file.generated) return this.importedNames().has(name) ? name : "any";
+          // TypeScript's `Event` isn't generic: `Event<Input>` is an `Event` whose targets are an `Input`.
+          if (name === "Event" && t.args?.length) {
+            const target = t.args[0]!;
+            if (target.kind === "class" && jsNameOf(target.info) === "EventTarget") return "Event";
+            const shown = this.tsType(target);
+            return `(Event & { target: ${shown} | null; currentTarget: ${shown} | null })`;
+          }
           return (TS_NATIVE[name] ?? name) + args;
         }
         return this.classRef(info) + args;
@@ -678,14 +690,14 @@ class ModuleGen {
       return;
     }
     if (decl.isInterface) {
-      if (this.ts) this.interfaceType(decl, exported);
+      if (this.ts) this.interfaceType(decl, exported, info);
       // Interfaces exist at runtime only as a marker symbol for `x is IShape`.
       this.w.line(`${exported ? "export " : ""}const ${this.ts ? decl.name.name : this.name(decl.name)} = Symbol(${jsString(info.qname)});`);
       return;
     }
     const ext = decl.extends ? ` extends ${this.superType(decl.extends)}` : "";
     const impl = this.ts && decl.implements.length > 0 ? ` implements ${decl.implements.map((n) => this.superType(n)).join(", ")}` : "";
-    this.w.line(`${exported ? "export " : ""}class ${this.name(decl.name)}${this.typeParams(decl.typeParams)}${ext}${impl} {`);
+    this.w.line(`${exported ? "export " : ""}class ${this.name(decl.name)}${this.typeParams(decl.typeParams, info)}${ext}${impl} {`);
     this.w.indent();
     let prev: A.Member | undefined;
     const guard = decl.modifiers.abstract ? this.abstractGuard(decl) : undefined;
@@ -745,9 +757,9 @@ class ModuleGen {
   }
 
   /** TypeScript: an interface's members as an `interface` (next to the runtime marker of the same name). */
-  private interfaceType(decl: A.ClassDecl, exported: boolean) {
+  private interfaceType(decl: A.ClassDecl, exported: boolean, info: ClassInfo) {
     const ext = decl.implements.length > 0 ? ` extends ${decl.implements.map((n) => this.superType(n)).join(", ")}` : "";
-    this.w.line(`${exported ? "export " : ""}interface ${this.name(decl.name)}${this.typeParams(decl.typeParams)}${ext} {`);
+    this.w.line(`${exported ? "export " : ""}interface ${this.name(decl.name)}${this.typeParams(decl.typeParams, info)}${ext} {`);
     this.w.indent();
     for (const m of decl.members) {
       if (m.kind !== "Method") continue;

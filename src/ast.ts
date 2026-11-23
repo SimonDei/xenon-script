@@ -5,6 +5,11 @@ export interface Ident {
   span: Span;
 }
 
+/** A declared type parameter; a class's may have a default: `class Event<T = EventTarget>`. */
+export interface TypeParam extends Ident {
+  default?: TypeNode;
+}
+
 /* ---------------------------- types ---------------------------- */
 
 export interface ShapeMemberNode {
@@ -129,8 +134,8 @@ export type Member = Field | Method | StaticBlock;
 export interface ClassDecl {
   kind: "Class";
   attributes?: Attribute[];
-  /** `class Box<T, U>` */
-  typeParams?: Ident[];
+  /** `class Box<T, U>`, `class Event<T = EventTarget>` */
+  typeParams?: TypeParam[];
   /** `interface`: no bodies or fields; `implements` then lists the interfaces it extends. */
   isInterface?: boolean;
   /** `enum`: members are synthesized static `const` fields (in order), plus a static `values()`. */

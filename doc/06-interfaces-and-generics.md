@@ -59,6 +59,22 @@ var lengthBox:Box<Int> = textBox.map((text:String):Int => text.length)
 
 Generic types erase to ordinary JavaScript classes and functions.
 
+A class or interface type parameter can have a default, used when a type leaves the argument out.
+The parameters with defaults come last:
+
+```actionscript
+class Event<T = EventTarget> {
+  public var target:T?
+}
+
+var plain:Event = new Event('saved')                  // Event<EventTarget>
+var typed:Event<HTMLInputElement> = new Event('input') // the target is an HTMLInputElement
+```
+
+`new Box(5)` still infers `T` from its arguments; the default fills in what the arguments and the
+expected type leave open. Methods and typedefs cannot give their type parameters defaults, and a
+parameter after one with a default needs a default too (X0878).
+
 ## Type parameters in structural types
 
 ```actionscript

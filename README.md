@@ -167,9 +167,9 @@ need no import, and are checked against the JavaScript runtime by the tests:
   `Iterator<T>`, `RegExp`, `Date`, `JSON`, `Math`, `Object`, `Function`
 - **Async and the web platform:** `Promise<T>` (including `all`, `any`, `withResolvers`, …), `fetch`,
   `Response`, `Blob`, `File`, `FormData`, `ArrayBuffer`
-- **Events:** `EventTarget` (extend it for events of your own), `Event`
-- **Browser DOM:** `Node` (extends `EventTarget`), `Element` and `Document` (extend `Node`), `DOMParser`, `XMLSerializer`,
-  `NodeList<T>`, `HTMLCollection`; browser-only,
+- **Events:** `EventTarget` (extend it for events of your own), `Event<T = EventTarget>` (`T` is the type of `target`/`currentTarget`: `Event<HTMLInputElement>`)
+- **Browser DOM:** `Node` (extends `EventTarget`), `Element` and `Document` (extend `Node`), `HTMLElement`, `HTMLInputElement`, `DOMParser`, `XMLSerializer`,
+  `NodeList<T>`, `HTMLCollection`, `FileList`; browser-only,
   and their names stay free for your own classes (`class Node` in your program shadows the DOM's)
 - **Globals:** `console`, timers, `queueMicrotask`, `structuredClone`, `encodeURIComponent` & co.,
   `atob`/`btoa`

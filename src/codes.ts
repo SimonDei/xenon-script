@@ -259,6 +259,7 @@ export const CODES: Record<string, CodeInfo> = {
 
   // ---- generics ----
   X0796: c("duplicate type parameter", "A type parameter list names the same parameter twice."),
+  X0878: c("type parameter without a default after one with a default", "Arguments are given in order, so once a type parameter has a default (`class Event<T = EventTarget>`), the ones after it need defaults too: a use that leaves one out must be able to leave out all the rest."),
   X0797: c("type argument can't be inferred", "Type arguments of generic calls and `new` are inferred from the arguments (or the expected type). When nothing determines one, pass an argument that does, assign the result to a typed variable, or write the arguments for `new`.",
     "var b:* = new Box()", "var b:Box<Int> = new Box()"),
   X0798: c("`null` as a type", "`null` is a type only as a member of a union: `Int | Bool | null`. A single type that may be null is written `T?`.",

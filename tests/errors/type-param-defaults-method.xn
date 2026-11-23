@@ -1,0 +1,4 @@
+public class Main {
+  public function Main() {}
+  public function f<T = Int>(x:T):T { return x; }   // a method's type parameter can't have a default
+}

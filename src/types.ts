@@ -9,6 +9,8 @@ export type BuiltinName = "Object" | "Array" | "Function" | "Class" | "Tuple";
 /** A type parameter (`T` in `class Box<T>` or `function map<U>()`), compared by identity. */
 export interface TypeParamInfo {
   name: string;
+  /** A class's `<T = EventTarget>`: the argument when a use leaves it out (set after the classes are known). */
+  default?: Type;
 }
 
 export interface MethodType {

@@ -2,7 +2,8 @@
 // browser (`Node extends EventTarget`), and objects of your own (`new EventTarget()`, or a class
 // extending it). Available in Bun and in browsers.
 //
-// Typing: a listener receives an `Event`; use `as` for a more specific event class. `options` is
+// Typing: a listener receives an `Event<*>`, so a listener can take any `Event<T>` (`(e:Event<HTMLInputElement>) => …`;
+// an untyped `e => …` has a dynamic `e.target`); use `as` for a more specific event class. `options` is
 // `true` for capture, or `{ capture, once, passive, signal }` (`signal`: an `AbortSignal`, which
 // removes the listener when aborted). Not declared: listener objects with `handleEvent`.
 package xenon {
@@ -14,13 +15,13 @@ package xenon {
     function EventTarget()
 
     /** Calls `listener` for each event of `type` (`'click'`, `'change'`, or a name of your own). */
-    function addEventListener(type:String, listener:(event:Event) -> Void):void
-    function addEventListener(type:String, listener:(event:Event) -> Void, capture:Boolean):void
-    function addEventListener(type:String, listener:(event:Event) -> Void, options:AddEventListenerOptions):void
+    function addEventListener(type:String, listener:(event:Event<*>) -> Void):void
+    function addEventListener(type:String, listener:(event:Event<*>) -> Void, capture:Boolean):void
+    function addEventListener(type:String, listener:(event:Event<*>) -> Void, options:AddEventListenerOptions):void
     /** Removes a listener added with the same `type`, function and `capture`. */
-    function removeEventListener(type:String, listener:(event:Event) -> Void):void
-    function removeEventListener(type:String, listener:(event:Event) -> Void, capture:Boolean):void
-    function removeEventListener(type:String, listener:(event:Event) -> Void, options:{ ?capture:Boolean }):void
+    function removeEventListener(type:String, listener:(event:Event<*>) -> Void):void
+    function removeEventListener(type:String, listener:(event:Event<*>) -> Void, capture:Boolean):void
+    function removeEventListener(type:String, listener:(event:Event<*>) -> Void, options:{ ?capture:Boolean }):void
     /** Calls the listeners of `event.type` now; `false` if one of them called `preventDefault()` on a cancelable event. */
     function dispatchEvent(event:Event):Boolean
   }

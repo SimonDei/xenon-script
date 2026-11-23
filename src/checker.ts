@@ -441,6 +441,7 @@ export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typ
   }
 
   const infos = [...classes.values()];
+  for (const info of infos) env.resolveParamDefaults(info, scopes.get(info.file)!);
   for (const info of infos) env.resolveParent(info, scopes.get(info.file)!);
   for (const info of infos) env.checkHierarchy(info);
   for (const info of infos) env.collectMembers(info, scopes.get(info.file)!);
@@ -1078,22 +1079,32 @@ class Env {
 
   /** `Box<int>`: checks the argument count and resolves the arguments. */
   private genericClass(node: A.TypeNode & { kind: "TypeName" }, info: ClassInfo, scope: FileScope, tparams: TypeParamScope | undefined, allowRaw: boolean): Type {
+    // `Event` for `Event<EventTarget>`: the arguments left out take their defaults.
+    const given = node.args.length;
+    const required = info.typeParams.findIndex((p) => p.default);
+    // A bare name where `new`/`is`/`as` may infer stays open: `new Box(5)` decides `T` from the argument (the defaults fill what it leaves).
+    if (required >= 0 && given >= required && given < info.typeParams.length && !(allowRaw && given === 0)) {
+      const args = node.args.map((a) => this.resolveType(a, scope, false, tparams));
+      for (const p of info.typeParams.slice(given)) args.push(subst(p.default ?? T.any, bind(info.typeParams.slice(0, args.length), args)));
+      return this.classType(node, info, args);
+    }
     if (info.typeParams.length > 0 && node.args.length === 0 && allowRaw) return this.classType(node, info);
-    if (!this.checkArgCount(node, info.decl.name.name, info.typeParams.length, true)) return this.classType(node, info);
+    if (!this.checkArgCount(node, info.decl.name.name, info.typeParams.length, true, required >= 0 ? required : info.typeParams.length)) return this.classType(node, info);
     // `Promise<void>` (an async function without a result) is the one place `void` is a type argument.
     const allowVoid = info === this.promiseClass;
     return this.classType(node, info, node.args.map((a) => this.resolveType(a, scope, allowVoid, tparams)));
   }
 
   /** X0422/X0423: the number of type arguments must match the declaration. */
-  private checkArgCount(node: A.TypeNode & { kind: "TypeName" }, name: string, want: number, isClass: boolean): boolean {
+  private checkArgCount(node: A.TypeNode & { kind: "TypeName" }, name: string, want: number, isClass: boolean, min = want): boolean {
     const got = node.args.length;
-    if (got === want) return true;
+    if (got === want || (got >= min && got < want)) return true;
     if (want === 0) {
       this.diags.error("X0423", `\`${name}\` doesn't take type arguments`, node.span);
       return false;
     }
-    this.diags.error("X0422", `\`${name}\` needs ${want} type argument${want === 1 ? "" : "s"}`, node.span, got === 0 ? "missing type arguments" : `${got} given`)
+    const count = min < want ? (min === 0 ? `at most ${want} type argument${want === 1 ? "" : "s"}` : `${min} to ${want} type arguments`) : `${want} type argument${want === 1 ? "" : "s"}`;
+    this.diags.error("X0422", `\`${name}\` ${min === 0 && min < want ? "takes" : "needs"} ${count}`, node.span, got === 0 ? "missing type arguments" : `${got} given`)
       .help(`for example \`${name}<${Array(want).fill("Int").join(", ")}>\`${isClass && got === 0 ? "; `new` and `is`/`as` can leave them out" : ""}`);
     return false;
   }
@@ -1102,6 +1113,15 @@ class Env {
   missingImportHint(d: DiagnosticBuilder, name: string) {
     const other = [...this.classes.values()].find((c) => !c.filePrivate && c.decl.name.name === name);
     if (other) d.help(`a class with this name exists in package \`${other.pkg}\`; add \`import ${other.qname};\``);
+  }
+
+  /** `class Event<T = EventTarget>`: resolves the defaults, which may name the parameters before them. */
+  resolveParamDefaults(info: ClassInfo, scope: FileScope) {
+    const nodes = info.decl.typeParams ?? [];
+    info.typeParams.forEach((param) => {
+      const node = nodes.find((n) => n.name === param.name)?.default;
+      if (node) param.default = this.resolveType(node, scope, false, paramScope(info.typeParams.slice(0, info.typeParams.indexOf(param))));
+    });
   }
 
   resolveParent(info: ClassInfo, scope: FileScope) {
@@ -4890,6 +4910,8 @@ class BodyChecker {
       this.preTyped.set(a, t);
       unify(pattern, t, set, out);
     });
+    // A class's `<T = EventTarget>`: what neither the arguments nor the expected type decide.
+    for (const v of vars) if (!out.has(v) && v.default) out.set(v, subst(v.default, out));
     const missing = vars.filter((v) => !out.has(v));
     if (missing.length > 0) {
       this.diags.error("X0797", `can't infer the type of ${missing.map((v) => `\`${v.name}\``).join(", ")}`, at, "type arguments are inferred from the arguments")
@@ -5235,6 +5257,7 @@ class BodyChecker {
         const own = ownType(info);
         const out = new Map<TypeParamInfo, Type>();
         if (expected) unify(own, expected, new Set(info.typeParams), out);
+        for (const p of info.typeParams) if (!out.has(p) && p.default) out.set(p, subst(p.default, out));
         const missing = info.typeParams.filter((p) => !out.has(p));
         if (missing.length > 0) {
           this.diags.error("X0797", `can't infer the type of ${missing.map((v) => `\`${v.name}\``).join(", ")}`, t.span)
@@ -5260,7 +5283,7 @@ class BodyChecker {
           }));
           const pick = this.pickOverload(all, e.args, scope, t.span, `new ${info.decl.name.name}`);
           if (pick) this.checkArgs(e, pick.type, pick.decl, scope);
-          if (generic) type = { kind: "class", info, args: info.typeParams.map(() => T.any) };
+          if (generic) type = { kind: "class", info, args: info.typeParams.map((p) => p.default ?? T.any) };
           return type;
         }
         if (generic) {

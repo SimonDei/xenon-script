@@ -1,0 +1,13 @@
+// Browser: the DOM's `FileList`, the files an `<input type="file">` holds (`input.files`) or a drop
+// delivers. Browser-only: Bun has no DOM.
+// Use it with `for (var f:File of list)`, `list.length`/`list.item(i)`, or `Array.from(list)` for array
+// methods and for a `Array<File>`.
+package xenon {
+  public native class FileList implements Iterable<File> {
+    private function FileList()
+
+    function get length():int
+    /** The file at `index`, or `null` past the end. */
+    function item(index:int):File?
+  }
+}

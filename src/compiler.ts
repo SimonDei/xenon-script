@@ -270,9 +270,15 @@ function checkMain(classes: Map<string, ClassInfo>, main: string, files: SourceF
 }
 
 /** Type parameters of a class/typedef; a repeated name is reported and dropped. */
-function uniqueParams(params: A.Ident[] | undefined, diags: DiagnosticBag): { name: string }[] {
+function uniqueParams(params: A.TypeParam[] | undefined, diags: DiagnosticBag): { name: string }[] {
   const seen = new Set<string>();
+  let defaulted: A.TypeParam | undefined;
   return (params ?? []).flatMap((p) => {
+    if (p.default) defaulted ??= p;
+    else if (defaulted) {
+      diags.error("X0878", `type parameter \`${p.name}\` needs a default: \`${defaulted.name}\` before it has one`, p.span)
+        .secondary(defaulted.span, "this one has a default");
+    }
     if (seen.has(p.name)) {
       diags.error("X0796", `type parameter \`${p.name}\` is declared twice`, p.span);
       return [];

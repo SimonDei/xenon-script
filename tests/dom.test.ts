@@ -372,3 +372,69 @@ test("XMLSerializer: a parsed and changed document back to XML text (and the Typ
   const ts = compileProject([{ path: "Main.xn", text: code }], { main: "Main", target: "ts" });
   expect(typeCheck(ts.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
 });
+
+const inputCode = `public class Main {
+  public function Main() {}
+
+  /** A listener for one element: \`Event<HTMLInputElement>\` types the target. */
+  public static function watch(input:HTMLInputElement, log:Array<String>):Void {
+    input.addEventListener('input', (e:Event<HTMLInputElement>):Void => {
+      var field:HTMLInputElement? = e.target
+      if (field != null) log.push($'{field.type}:{field.value}:{field.checked}:{e.currentTarget == field}')
+    })
+  }
+
+  /** An untyped listener: a plain \`Event\` (its \`target\` is an \`EventTarget?\`). */
+  public static function plain(el:Element, log:Array<String>):Void {
+    el.addEventListener('click', (e:Event):Void => { var t:EventTarget? = e.target; log.push(e.type + ':' + (t != null)) })
+    el.addEventListener('click', e => log.push('untyped:' + e.type))
+  }
+
+  public static function fill(input:HTMLInputElement, text:String):Int {
+    input.value = text
+    input.disabled = false
+    input.maxLength = 10
+    input.setSelectionRange(1, 3)
+    return (input.selectionStart ?? -1) * 10 + (input.selectionEnd ?? -1)
+  }
+
+  public static function count(input:HTMLInputElement):Int {
+    var files:FileList? = input.files
+    if (files == null) return -1
+    var n:Int = 0
+    for (var f:File of files) n += f.name.length
+    return n + Array.from(files).length * 100
+  }
+}
+`;
+
+test("HTMLInputElement and Event<T>: typed targets, runs against a DOM (and the TypeScript output checks)", async () => {
+  const result = compileProject([{ path: "Main.xn", text: inputCode }], { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  const source = result.outputs.find((o) => o.path === "Main.js")!.text;
+  const window = new Window();
+  try {
+    const Main = new Function(`${source.replace(/^export /m, "").replace(/\/\/# sourceMappingURL.*$/m, "")}; return Main;`)();
+    const input = window.document.createElement("input");
+    const log: string[] = [];
+    Main.watch(input, log);
+    Main.plain(input, log);
+    input.value = "hello";
+    input.dispatchEvent(new window.Event("input"));
+    input.dispatchEvent(new window.Event("click"));
+    expect(log).toEqual(["text:hello:false:true", "click:true", "untyped:click"]);
+    expect(Main.fill(input, "abcdef")).toBe(13);
+    expect(input.value).toBe("abcdef");
+    expect(Main.count(input)).toBe(input.files == null ? -1 : 0); // a text input has no file list (happy-dom: an empty one)
+    const file = window.document.createElement("input");
+    file.type = "file";
+    expect(Main.count(file)).toBe(0);
+  } finally {
+    await window.happyDOM.close();
+  }
+  const { typeCheck } = await import("./tsemit.ts");
+  const { join } = await import("node:path");
+  const ts = compileProject([{ path: "Main.xn", text: inputCode }], { main: "Main", target: "ts" });
+  expect(ts.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  expect(typeCheck(ts.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
+});
