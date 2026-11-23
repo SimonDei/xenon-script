@@ -108,6 +108,7 @@ syntax.
 | `of` | `for … of` |
 | `step` | range-loop stride |
 | `defer` | statement scheduled for block end |
+| `out` | marks a covariant type parameter: `Producer<out T>` |
 
 Outside its special position, a contextual word can remain an identifier.
 
@@ -127,6 +128,8 @@ A | B
 'literal' | 'other'
 (A, B) -> R
 { field:T, ?optional:T?, final readonly:T }
+Producer<out T>
+Consumer<in T>
 ```
 
 Use the uppercase forms in new code. The lowercase spellings `int`, `uint`, `Boolean`, and `void`

@@ -126,7 +126,7 @@ the important edge cases.
 | Nullable types | `Int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
 | Null safety (on by default; `"nullSafety": false` turns it off) | object types exclude `null` too (`String` vs `String?`), fields and locals need a value before use, `as` gives `T?` | [`null-safety`](examples/null-safety) |
 | Checked indexes | `list[i]` and `text[i]` throw a `RangeException` when `i` is out of range instead of giving `undefined`; `list.at(i)` gives `T?` | |
-| Generics | `class Box<T>`, `function first<T>(items:Array<T>):T?`; a class's type parameter can have a default (`class Event<T = EventTarget>`: a bare `Event` is `Event<EventTarget>`) | [`generics`](examples/generics) |
+| Generics | `class Box<T>` stays invariant; `out T` enables covariance and `in T` contravariance. Classes, interfaces, typedefs and functions support generic inference/defaults | [`generics`](examples/generics) |
 | Typedefs | `typedef Point = { x:Float, y:Float, ?label:String }`, aliases | [`typedefs`](examples/typedefs) |
 | Enums | `enum Color { Red, Green }`, string enums | [`enums`](examples/enums) |
 | Functions | arrows with lexical `this`, closures, `async`/`await`, function types `(a:Int) -> Int`, expression bodies `function area():Float => w * h` | [`functions`](examples/functions), [`closures`](examples/closures) |

@@ -8,6 +8,7 @@ export interface Ident {
 /** A declared type parameter; a class's may have a default: `class Event<T = EventTarget>`. */
 export interface TypeParam extends Ident {
   default?: TypeNode;
+  variance?: "in" | "out";
 }
 
 /* ---------------------------- types ---------------------------- */

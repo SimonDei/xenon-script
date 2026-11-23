@@ -43,7 +43,7 @@ export const KEYWORDS = new Set([
 
 /** Words with syntax meaning only in particular positions, while remaining usable as identifiers. */
 export const CONTEXTUAL_KEYWORDS = new Set([
-  "get", "set", "operator", "from", "of", "step", "defer",
+  "get", "set", "operator", "from", "of", "step", "defer", "out",
 ]);
 
 /** Punctuators, longest first so the greedy match is correct. */

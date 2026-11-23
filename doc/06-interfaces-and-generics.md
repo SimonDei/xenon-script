@@ -57,6 +57,44 @@ var textBox:Box<String> = new Box('hello')
 var lengthBox:Box<Int> = textBox.map((text:String):Int => text.length)
 ```
 
+## Generic variance
+
+Generic parameters are invariant unless a declaration marks their direction:
+
+```actionscript
+public interface Producer<out T> {
+  function produce():T
+}
+
+public interface Consumer<in T> {
+  function accept(value:T):Void
+}
+```
+
+`out` is covariance: `Producer<Dog>` fits `Producer<Animal>`. `in` is contravariance:
+`Consumer<Animal>` fits `Consumer<Dog>`.
+
+```actionscript
+var producer:Producer<Animal> = dogProducer
+var dogConsumer:Consumer<Dog> = animalConsumer
+```
+
+Variance is erased at runtime. The checker validates declarations recursively:
+
+- `out T` may be returned, read from final/get-only properties, and nested in covariant outputs.
+- `in T` may be accepted as a parameter or nested in contravariant inputs.
+- mutable properties and unannotated type parameters are invariant.
+- nested generic variance composes through inheritance and interfaces.
+
+Variance can be used on generic classes, interfaces, and typedefs:
+
+```actionscript
+public typedef Mapper<in I, out O> = (value:I) -> O
+```
+
+Function types already follow the same rule: parameter types are contravariant and return types are
+covariant.
+
 Generic types erase to ordinary JavaScript classes and functions.
 
 A class or interface type parameter can have a default, used when a type leaves the argument out.

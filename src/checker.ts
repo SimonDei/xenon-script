@@ -451,6 +451,7 @@ export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typ
   for (const info of infos) env.wireDestructors(info);
   for (const info of infos) if (info.decl.isEnum) env.computeEnum(info);
   for (const td of typedefs.values()) env.resolveTypedef(td);
+  env.validateVariance(infos, typedefs);
   for (const file of files) env.collectFunctions(file, scopes.get(file)!);
   for (let i = 0; i < env.pendingShapeMembers.length; i++) env.pendingShapeMembers[i]!.type();
   for (const info of infos) env.checkOverrides(info);
@@ -874,6 +875,80 @@ class Env {
     else if (t.kind === "nullable" && t.inner.kind === "union") t = { kind: "nullable", inner: { ...t.inner, alias: shown } };
     td.state = t;
     return t;
+  }
+
+  /** Validates declaration-site variance after all member signatures and typedef bodies are known. */
+  validateVariance(infos: ClassInfo[], typedefs: Map<string, TypedefInfo>) {
+    type Polarity = -1 | 0 | 1;
+    const multiply = (a: Polarity, b: Polarity): Polarity => (a * b) as Polarity;
+    const occurrences = (t: Type, param: TypeParamInfo, polarity: Polarity, found = new Set<Polarity>()): Set<Polarity> => {
+      if (t.kind === "typeParam") {
+        if (t.param === param) found.add(polarity);
+        return found;
+      }
+      switch (t.kind) {
+        case "nullable": return occurrences(t.inner, param, polarity, found);
+        case "union":
+          t.types.forEach((x) => occurrences(x, param, polarity, found));
+          return found;
+        case "class":
+          t.args?.forEach((a, i) => {
+            const v = t.info.typeParams[i]?.variance;
+            const p: Polarity = v === "out" ? 1 : v === "in" ? -1 : 0;
+            occurrences(a, param, multiply(polarity, p), found);
+          });
+          return found;
+        case "builtin":
+          t.args.forEach((a) => occurrences(a, param, 0, found)); // built-in containers are mutable/invariant
+          return found;
+        case "method":
+          t.params.forEach((p) => occurrences(p.type, param, multiply(polarity, -1), found));
+          occurrences(t.ret, param, multiply(polarity, 1), found);
+          return found;
+        case "shape":
+          for (const m of t.members.values()) occurrences(m.type(), param, m.readonly ? polarity : 0, found);
+          return found;
+      }
+      return found;
+    };
+    const validate = (params: TypeParamInfo[], visit: (param: TypeParamInfo, use: Set<Polarity>) => Set<Polarity>) => {
+      for (const param of params) {
+        if (param.variance === "invariant") continue;
+        const use = visit(param, new Set<Polarity>());
+        const invalid = param.variance === "out" ? use.has(-1) || use.has(0) : use.has(1) || use.has(0);
+        if (!invalid) continue;
+        const spanAt = param.span;
+        if (spanAt) this.diags.error("X0799", `type parameter \`${param.name}\` violates its \`${param.variance}\` variance`, spanAt, "used on both sides or on the opposite side");
+      }
+    };
+    for (const info of infos) {
+      validate(info.typeParams, (param, use) => {
+        if (info.parent) info.parentArgs.forEach((a, i) => {
+          const v = info.parent!.typeParams[i]?.variance;
+          occurrences(a, param, v === "out" ? 1 : v === "in" ? -1 : 0, use);
+        });
+        info.interfaces.forEach((target, n) => (info.interfaceArgs[n] ?? []).forEach((a, i) => {
+          const v = target.typeParams[i]?.variance;
+          occurrences(a, param, v === "out" ? 1 : v === "in" ? -1 : 0, use);
+        }));
+        for (const member of info.members.values()) {
+          if (member.owner !== info) continue;
+          const output: Polarity = (member.kind === "field" || member.kind === "accessor")
+            ? (member.readonly ? 1 : 0)
+            : 0;
+          if (member.kind === "method") {
+            const method = member.type.kind === "method" ? member.type : undefined;
+            method?.params.forEach((p) => occurrences(p.type, param, -1, use));
+            if (method) occurrences(method.ret, param, 1, use);
+          } else occurrences(member.type, param, output, use);
+        }
+        return use;
+      });
+    }
+    for (const td of typedefs.values()) {
+      const target = this.resolveTypedef(td);
+      validate(td.params, (param, use) => occurrences(target, param, 1, use));
+    }
   }
 
   isJsImport(scope: FileScope, name: string): boolean {
@@ -2094,7 +2169,7 @@ class Env {
           return [];
         }
         seen.add(p.name);
-        return [{ name: p.name }];
+        return [{ name: p.name, variance: "invariant" as const }];
       });
       this.fnParams.set(m, ps);
     }

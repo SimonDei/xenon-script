@@ -547,6 +547,10 @@
           "match": "\\bconst\\b(?=\\s*(?:\\{|;|$|//))"
         },
         {
+          "name": "storage.modifier.variance.xenon",
+          "match": "(?:(?<=<)|(?<=,))\\s*(?:in|out)\\b"
+        },
+        {
           "name": "keyword.control.conditional.xenon",
           "match": "\\b(?:if|else|switch|case|default)\\b"
         },

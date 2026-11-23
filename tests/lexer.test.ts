@@ -32,6 +32,12 @@ test("property reference operator", () => {
   ]);
 });
 
+test("generic variance annotations", () => {
+  expect(kv(tokens("<in T, out U>").toks)).toEqual([
+    "punct:<", "keyword:in", "ident:T", "punct:,", "ident:out", "ident:U", "punct:>",
+  ]);
+});
+
 test("spread vs range", () => {
   expect(kv(tokens("...xs a..b").toks)).toEqual(["punct:...", "ident:xs", "ident:a", "punct:..", "ident:b"]);
 });

@@ -419,7 +419,7 @@ export class Parser {
     if (this.is("interface")) return this.parseInterface(modifiers, start);
     if (this.eat("typedef")) {
       const name = this.ident("a typedef name");
-      const typeParams = this.typeParamList();
+      const typeParams = this.typeParamList(false, true);
       this.expect("=");
       const type = this.parseType();
       this.endStatement();
@@ -432,7 +432,7 @@ export class Parser {
   private parseClass(modifiers: A.Modifiers, start: number): A.ClassDecl {
     this.expect("class");
     const name = this.ident("a class name");
-    const typeParams = this.typeParamList(true);
+    const typeParams = this.typeParamList(true, true);
     let ext: A.TypeNode | undefined;
     const impls: A.TypeNode[] = [];
     if (this.eat("extends")) ext = this.parseType();
@@ -499,7 +499,7 @@ export class Parser {
   private parseInterface(modifiers: A.Modifiers, start: number): A.ClassDecl {
     this.expect("interface");
     const name = this.ident("an interface name");
-    const typeParams = this.typeParamList(true);
+    const typeParams = this.typeParamList(true, true);
     const supers: A.TypeNode[] = [];
     if (this.eat("extends")) {
       do supers.push(this.parseType());
@@ -724,12 +724,17 @@ export class Parser {
   }
 
   /** `<T, U>` after a class/interface/typedef/method/function name (no bounds). */
-  private typeParamList(allowDefaults = false): A.TypeParam[] | undefined {
+  private typeParamList(allowDefaults = false, allowVariance = false): A.TypeParam[] | undefined {
     if (!this.is("<")) return undefined;
     const open = this.advance();
     const params: A.TypeParam[] = [];
     do {
+      let variance: A.TypeParam["variance"];
+      if (allowVariance && (this.is("in") || this.isIdent("out"))) {
+        variance = this.advance().value === "in" ? "in" : "out";
+      }
       const param: A.TypeParam = this.ident("a type parameter name");
+      if (variance) param.variance = variance;
       if (this.is("extends")) this.fail("type parameter bounds are not supported", this.tok.span, "write just the name");
       if (this.is("=")) {
         if (!allowDefaults) this.fail("only a class or interface type parameter can have a default", this.tok.span, "write just the name");

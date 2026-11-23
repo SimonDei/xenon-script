@@ -1,4 +1,5 @@
 import type { ClassInfo, TypedefInfo } from "./checker.ts";
+import type { Span } from "./source.ts";
 
 /** The primitive types, by their canonical names (`int`, `uint` and `Boolean` are prelude typedefs of them). */
 export type PrimName = "Int" | "UInt" | "Float" | "String" | "Bool";
@@ -9,8 +10,17 @@ export type BuiltinName = "Object" | "Array" | "Function" | "Class" | "Tuple";
 /** A type parameter (`T` in `class Box<T>` or `function map<U>()`), compared by identity. */
 export interface TypeParamInfo {
   name: string;
+  variance: "invariant" | "in" | "out";
+  span?: Span;
   /** A class's `<T = EventTarget>`: the argument when a use leaves it out (set after the classes are known). */
   default?: Type;
+}
+
+function argumentFits(actual: Type, expected: Type, variance: TypeParamInfo["variance"]): boolean {
+  if (sameType(actual, expected) || isDynamic(actual) || isDynamic(expected)) return true;
+  if (variance === "out") return assignable(actual, expected);
+  if (variance === "in") return assignable(expected, actual);
+  return sameArg(actual, expected);
 }
 
 export interface MethodType {
@@ -423,7 +433,8 @@ export function assignable(from: Type, to: Type): boolean {
     // Generic types are invariant: compare the arguments as seen from the target class.
     const seen = supertypeArgs(from.info, from.args ?? [], to.info);
     // `*` as a type argument is a wildcard on either side: `Box<int>` fits `Box<*>` and back.
-    return !seen || seen.length === 0 || to.args.every((a, i) => sameArg(a, seen[i] ?? T.any));
+    return !seen || seen.length === 0 || to.args.every((a, i) =>
+      argumentFits(seen[i] ?? T.any, a, to.info.typeParams[i]?.variance ?? "invariant"));
   }
   if (to.kind === "builtin") {
     if (to.name === "Function") return from.kind === "method" || (from.kind === "builtin" && from.name === "Function");

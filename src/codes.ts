@@ -266,6 +266,7 @@ export const CODES: Record<string, CodeInfo> = {
     "var b:* = new Box()", "var b:Box<Int> = new Box()"),
   X0798: c("`null` as a type", "`null` is a type only as a member of a union: `Int | Bool | null`. A single type that may be null is written `T?`.",
     "var x:null = null", "var x:Int? = null"),
+  X0799: c("invalid variance position", "A covariant `out T` may occur only in output positions; a contravariant `in T` only in input positions. Mutable members are invariant, and nested generic variance composes."),
 
   // ---- destructors ----
   X0800: c("invalid destructor placement", "A class has at most one destructor; interfaces have none."),

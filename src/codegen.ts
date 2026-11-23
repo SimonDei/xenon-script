@@ -469,11 +469,12 @@ class ModuleGen {
   }
 
   /** `<T, U>` for declared type parameters (TypeScript output only). */
-  private typeParams(params: A.Ident[] | undefined, info?: ClassInfo): string {
+  private typeParams(params: A.TypeParam[] | A.Ident[] | undefined, info?: ClassInfo): string {
     if (!this.ts || !params?.length) return "";
-    const withDefault = (p: A.Ident) => {
-      const d = info?.typeParams.find((q) => q.name === p.name)?.default;
-      return d ? `${this.name(p)} = ${this.tsType(d)}` : this.name(p);
+    const withDefault = (p: A.TypeParam | A.Ident) => {
+      const declared = info?.typeParams.find((q) => q.name === p.name);
+      const variance = "variance" in p && p.variance ? `${p.variance} ` : "";
+      return declared?.default ? `${variance}${this.name(p)} = ${this.tsType(declared.default)}` : `${variance}${this.name(p)}`;
     };
     return `<${params.map(withDefault).join(", ")}>`;
   }

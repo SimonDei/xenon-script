@@ -7,7 +7,7 @@ import { type JsDeclarations, jsDeclarations } from "./dts.ts";
 import { BUILTIN_TYPES, nullSafety } from "./types.ts";
 import { parseFile } from "./parser.ts";
 import { preludeFiles } from "./prelude/files.ts" with { type: "macro" };
-import { SourceFile } from "./source.ts";
+import { SourceFile, type Span } from "./source.ts";
 
 /** Package of the built-in prelude; reserved for the compiler. */
 export const PRELUDE_PACKAGE = "xenon";
@@ -270,7 +270,7 @@ function checkMain(classes: Map<string, ClassInfo>, main: string, files: SourceF
 }
 
 /** Type parameters of a class/typedef; a repeated name is reported and dropped. */
-function uniqueParams(params: A.TypeParam[] | undefined, diags: DiagnosticBag): { name: string }[] {
+function uniqueParams(params: A.TypeParam[] | undefined, diags: DiagnosticBag): { name: string; variance: "invariant" | "in" | "out"; span: Span }[] {
   const seen = new Set<string>();
   let defaulted: A.TypeParam | undefined;
   return (params ?? []).flatMap((p) => {
@@ -284,6 +284,6 @@ function uniqueParams(params: A.TypeParam[] | undefined, diags: DiagnosticBag): 
       return [];
     }
     seen.add(p.name);
-    return [{ name: p.name }];
+    return [{ name: p.name, variance: p.variance ?? "invariant", span: p.span }];
   });
 }
