@@ -117,7 +117,7 @@ export type RuntimeCheck =
   | { kind: "interface"; info: ClassInfo } // x?.[IShape] === true
   | { kind: "enum"; info: ClassInfo } // Object.values(Direction).includes(x)
   | { kind: "js"; name: string } // x instanceof Response (JS import or global)
-  | { kind: "typeof"; tag: "string" | "number" | "boolean" | "function" }
+  | { kind: "typeof"; tag: "string" | "number" | "boolean" | "function" | "symbol" }
   | { kind: "iterable" } // typeof x?.[Symbol.iterator] === 'function': `is Iterable` (arrays, strings, … have no marker)
   | { kind: "int" } // Number.isInteger(x)
   | { kind: "uint" } // Number.isInteger(x) && x >= 0
@@ -4423,6 +4423,14 @@ class BodyChecker {
         }
         break;
       case "classRef":
+        if (callee.info.qname === "xenon.Symbol") {
+          if (e.args.length > 1 || e.args[0]?.kind === "Spread") {
+            this.diags.error("X0601", "`Symbol()` takes at most one description argument", e.span);
+          }
+          const description = e.args[0];
+          if (description && description.kind !== "Spread") this.checkAssign(description, T.String);
+          return { kind: "class", info: callee.info };
+        }
         this.diags.error("X0380", `\`${callee.info.decl.name.name}(x)\` casts are not supported`, e.span)
           .help(`use \`x as ${callee.info.decl.name.name}\`, which gives \`null\` if the value has another type`);
         for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
@@ -5951,6 +5959,7 @@ function testable(t: Type): string {
 function runtimeCheck(t: Type): RuntimeCheck | undefined {
   switch (t.kind) {
     case "class":
+      if (t.info.qname === "xenon.Symbol") return { kind: "typeof", tag: "symbol" };
       if (t.info.decl.isEnum) return { kind: "enum", info: t.info };
       if (t.info.qname === "xenon.Iterable") return { kind: "iterable" };
       return t.info.decl.isInterface ? { kind: "interface", info: t.info } : { kind: "class", info: t.info };

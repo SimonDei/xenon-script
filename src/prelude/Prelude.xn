@@ -89,7 +89,7 @@ package xenon {
    */
   public static class Attributes {
     /** Where a class keeps the function creating its attributes (written by the compiler). */
-    public static final KEY:* = Symbol('xenon.attributes')
+    public static final KEY:Symbol = Symbol('xenon.attributes')
     private static final created:* = new WeakMap()
 
     /** The class's attributes of this kind. */

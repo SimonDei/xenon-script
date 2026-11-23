@@ -1,0 +1,34 @@
+// JavaScript's primitive Symbol value and global `Symbol` factory.
+// `Symbol(description)` creates a unique symbol; `new Symbol()` is invalid.
+package xenon {
+  public native class Symbol {
+    private function Symbol()
+
+    // ---- global registry ----
+    static function for(key:String):Symbol
+    static function keyFor(symbol:Symbol):String?
+
+    // ---- well-known symbols ----
+    static final asyncDispose:Symbol
+    static final asyncIterator:Symbol
+    static final dispose:Symbol
+    static final hasInstance:Symbol
+    static final isConcatSpreadable:Symbol
+    static final iterator:Symbol
+    static final match:Symbol
+    static final matchAll:Symbol
+    static final replace:Symbol
+    static final search:Symbol
+    static final species:Symbol
+    static final split:Symbol
+    static final toPrimitive:Symbol
+    static final toStringTag:Symbol
+    static final unscopables:Symbol
+
+    // ---- instance behavior ----
+    function get description():String?
+    function toString():String
+    override function valueOf():Symbol
+    function [Symbol.toPrimitive](hint:String):Symbol
+  }
+}

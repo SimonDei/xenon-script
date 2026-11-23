@@ -611,10 +611,11 @@ export class Parser {
       if (!this.isIdent("Symbol")) this.unexpected("`Symbol`");
       this.advance();
       this.expect(".");
-      if (!this.isIdent("iterator")) this.unexpected("`iterator`");
+      const key = this.tok;
+      if (key.kind !== "ident" && key.kind !== "keyword") this.unexpected("a Symbol property name");
       this.advance();
       const close = this.expect("]");
-      name = { name: "[Symbol.iterator]", span: cover(open.span, close.span) };
+      name = { name: `[Symbol.${key.value}]`, span: cover(open.span, close.span) };
     } else name = this.memberName(); // keywords allowed, as in JS (`function catch(…)`)
     // `function operator+(…)`: an operator method; the symbol is part of the name.
     if (name.name === "operator" && this.tok.kind === "punct" && !this.is("(") && !this.tok.nl) {

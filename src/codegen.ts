@@ -122,7 +122,7 @@ function defaultValue(type?: A.TypeNode): string {
 
 /** JS name of a method; operator methods use a computed name: `['operator+']`. */
 function methodName(name: string): string {
-  if (name === "[Symbol.iterator]") return name;
+  if (name.startsWith("[Symbol.")) return name;
   return name.startsWith("operator") && name.length > "operator".length ? `[${jsString(name)}]` : name;
 }
 
@@ -343,7 +343,7 @@ function resolveTokens(entries: { text: string; origin?: LineOrigin }[], tokens:
 
 /** TypeScript names of the standard library's native classes, where they differ. */
 /** Native classes TypeScript names differently: its generic `NodeList` is `NodeListOf<T>`. */
-const TS_NATIVE: Record<string, string> = { Iterator: "IteratorObject", NodeList: "NodeListOf" };
+const TS_NATIVE: Record<string, string> = { Iterator: "IteratorObject", NodeList: "NodeListOf", Symbol: "symbol" };
 
 /**
  * Destruction of scoped values (src/scoped.ts), appended to the prelude module: the method key

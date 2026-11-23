@@ -23,9 +23,11 @@ package xenon {
     /** Prefer `Object.hasOwn(o, key)`, which also works for objects without a prototype. */
     function hasOwnProperty(key:String):Boolean
     function hasOwnProperty(index:Float):Boolean
+    function hasOwnProperty(key:Symbol):Boolean
     /** Is this object somewhere in `object`'s prototype chain? */
     function isPrototypeOf(object:*):Boolean
     function propertyIsEnumerable(key:String):Boolean
+    function propertyIsEnumerable(key:Symbol):Boolean
 
     // ---- reading ----
     /** The own enumerable property names. */
@@ -39,8 +41,12 @@ package xenon {
     /** Does `object` have `key` itself, not through its prototype? Safer than `key in object`. */
     static function hasOwn(object:Object, key:String):Boolean
     static function hasOwn(object:Object, index:Float):Boolean
+    static function hasOwn(object:Object, key:Symbol):Boolean
     /** The descriptor (`{ value, writable, enumerable, configurable }` or `{ get, set, … }`), `undefined` when missing. */
     static function getOwnPropertyDescriptor(object:Object, key:String):*
+    static function getOwnPropertyDescriptor(object:Object, key:Symbol):*
+    /** All own symbol-keyed properties, in insertion order. */
+    static function getOwnPropertySymbols(object:Object):Array<Symbol>
     /** `SameValue`: like `==`, but `NaN` equals `NaN` and `0` differs from `-0`. */
     static function is(a:*, b:*):Boolean
 

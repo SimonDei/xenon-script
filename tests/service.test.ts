@@ -133,6 +133,27 @@ test("completion: members after a dot, scope names elsewhere", () => {
   expect(scope).toEqual(expect.arrayContaining(["Animal", "Main", "Exception", "Map", "setTimeout", "readFileSync", "path", "document", "trace", "while", "defer", "operator", "nameof", "consteval"]));
 });
 
+test("Symbol creates typed primitive values and exposes well-known symbols", () => {
+  const result = compileProject([{ path: "Main.xn", text: `public class Main {
+  public function Main() {
+    var token:Symbol = Symbol('token')
+    trace(token.description, token.toString(), Symbol.for('key') is Symbol)
+    trace(Symbol.iterator, Symbol.dispose, Symbol.keyFor(Symbol.for('key')))
+  }
+}
+` }], { main: "Main", target: "js" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
+  const js = result.outputs.find((o) => o.path === "Main.js")!.text;
+  expect(js).toContain("typeof Symbol");
+});
+
+test("new Symbol is rejected", () => {
+  const result = compileProject([{ path: "Main.xn", text: "public class Main { public function Main() { var value:* = new Symbol() } }\n" }], { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([
+    ["X0415", "`Symbol` can't be instantiated with `new`"],
+  ]);
+});
+
 test("a static class cannot be instantiated", () => {
   const result = compileProject([
     { path: "State.xn", text: "public static final class State {}\n" },

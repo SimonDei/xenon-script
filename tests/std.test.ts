@@ -34,6 +34,7 @@ const SAMPLES: Record<string, unknown[]> = {
   // `next` lives on the concrete iterators, not on Iterator.prototype
   RegExp: [/ab+/gi, new RegExp('x', 'dy')],
   Iterator: [[1, 2, 3].values(), new Set([4, 5]).values(), new Map([[1, 2]]).keys()],
+  Symbol: [Symbol("sample")],
   CSSStyleProperties: [dom.document.createElement("div").style],
   CharacterData: [dom.document.createTextNode("text")],
 };
@@ -112,7 +113,7 @@ for (const file of stdFiles) {
         problems.push(`${jsName}: no such global`);
         continue;
       }
-      const proto = (ctor as { prototype?: Record<string, unknown> }).prototype ?? {};
+      const proto = (ctor as { prototype?: Record<PropertyKey, unknown> }).prototype ?? {};
       // Overloads share one JS function: compare its arity with the longest overload.
       const arity = new Map<string, number>();
       for (const m of decl.members) {
@@ -125,6 +126,8 @@ for (const file of stdFiles) {
         if (m.kind !== "Method" && m.kind !== "Field") continue;
         if (m.modifiers.inline) continue; // compile-time constant: no runtime counterpart (the checker folds and range-checks it)
         const name = m.name.name;
+        const wellKnown = /^\[Symbol\.([A-Za-z_$][\w$]*)\]$/.exec(name);
+        const runtimeName: PropertyKey = wellKnown ? (Symbol as any)[wellKnown[1]!] as symbol : name;
         const isStatic = !!m.modifiers.static;
         const where = `${decl.name.name}.${isStatic ? "" : "prototype."}${name}`;
         if (m.kind === "Method" && m.isConstructor) {
@@ -132,17 +135,17 @@ for (const file of stdFiles) {
           if (typeof ctor !== "function") problems.push(`${decl.name.name}: constructor declared, but \`${jsName}\` is not a class`);
           continue;
         }
-        const target = isStatic ? ctor : proto;
-        const onSample = !isStatic && (SAMPLES[decl.name.name] ?? []).some((v) => name in Object(v));
+        const target = (isStatic ? ctor : proto) as Record<PropertyKey, unknown>;
+        const onSample = !isStatic && (SAMPLES[decl.name.name] ?? []).some((v) => runtimeName in Object(v));
         if (file.startsWith("dom/") && HAPPY_DOM_GAPS.has(where)) continue;
         // Browser CSS properties are engine-dependent; happy-dom exposes only a subset on its style object.
         if (decl.name.name === "CSSStyleProperties" && m.kind === "Method" && m.accessor && !onSample) continue;
-        if (!(name in target) && !onSample) {
+        if (!(runtimeName in target) && !onSample) {
           problems.push(`${where}: missing at runtime`);
           continue;
         }
         if (m.kind === "Method" && !m.accessor) {
-          const fn = target[name] ?? (SAMPLES[decl.name.name] ?? []).map((v) => (Object(v) as Record<string, unknown>)[name]).find((f) => f !== undefined);
+          const fn = target[runtimeName] ?? (SAMPLES[decl.name.name] ?? []).map((v) => (Object(v) as Record<PropertyKey, unknown>)[runtimeName]).find((f) => f !== undefined);
           if (typeof fn !== "function") problems.push(`${where}: declared as a method, but is a ${typeof fn}`);
           else {
             const declared = arity.get(`${isStatic}:${name}`)!;
@@ -162,8 +165,8 @@ for (const file of stdFiles) {
         if (m.kind === "Method" && (m.accessor === "set" || m.params.some((p) => !p.init && !p.rest))) continue;
         for (const sample of samples) {
           const value = m.kind === "Method" && !m.accessor
-            ? ((Object(sample) as Record<string, (this: unknown) => unknown>)[name] as (this: unknown) => unknown).call(sample)
-            : (Object(sample) as Record<string, unknown>)[name];
+            ? ((Object(sample) as Record<PropertyKey, (this: unknown) => unknown>)[runtimeName] as (this: unknown) => unknown).call(sample)
+            : (Object(sample) as Record<PropertyKey, unknown>)[runtimeName];
           if (!matches(ret, value)) problems.push(`${where}: returned ${JSON.stringify(value)} for ${JSON.stringify(sample)}`);
         }
       }

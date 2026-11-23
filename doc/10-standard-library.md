@@ -91,6 +91,10 @@ can produce `NaN` getters at runtime.
 `Object` supplies `keys`, `values`, `entries`, `hasOwn`, copying, freezing, and prototype operations.
 Generic static methods such as `Object.freeze(value)` preserve the input type.
 
+`Symbol` models JavaScript's primitive symbol factory: `Symbol('description')`, registry methods
+`Symbol.for`/`Symbol.keyFor`, well-known protocol symbols such as `Symbol.iterator`, and primitive
+members such as `description`, `toString()` and `valueOf()`.
+
 Instance members including `toString`, `valueOf`, and property tests are available on ordinary
 XenonScript classes, interfaces, shapes, natives, and Object-like values.
 

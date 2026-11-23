@@ -22,7 +22,7 @@ test("token mappings cover the same text on both sides", async () => {
         const src = o.source!.text.slice(m.source, m.source + m.sourceLength);
         const gen = o.text.slice(m.generated, m.generated + m.generatedLength);
         // Names are copied; types, `trace` and constructors are spelled differently in TypeScript.
-        const renamed = ["trace", "int", "uint", "Float", "String", "Boolean", "Array", "Object", "Iterator", "Void", "Int"];
+        const renamed = ["trace", "int", "uint", "Float", "String", "Boolean", "Symbol", "Array", "Object", "Iterator", "Void", "Int"];
         if (/^[A-Za-z_$][\w$]*$/.test(src) && !renamed.includes(src) && gen !== "constructor") {
           expect(gen).toBe(src);
           names++;
