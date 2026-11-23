@@ -269,6 +269,7 @@ cd packages/vscode-xenon && bun install && bun run package && code --install-ext
 ## Development
 
 ```bash
+bun run build:dist                      # portable dist/: xenon.js, runtime preload and TypeScript libraries
 bun test                                # unit, end-to-end, snapshot, language server and grammar tests
 bun run typecheck                       # TypeScript check of the compiler
 UPDATE=1 bun test tests/errors.test.ts  # rewrite the diagnostic snapshots

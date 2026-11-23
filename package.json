@@ -8,6 +8,7 @@
     "xenon": "src/cli.ts"
   },
   "scripts": {
+    "build:dist": "bun scripts/build-dist.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "xenon": "bun src/cli.ts"
