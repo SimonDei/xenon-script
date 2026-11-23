@@ -727,3 +727,22 @@ ${getter}
     expect(p.completions("Main.xn", offset(text, "state.\n", 6)).map((i) => i.label)).toContain("nameOf");
   }
 });
+
+test("semantic tokens paint plain keys as properties, not methods and accessors of a literal (the grammar colours those as functions)", () => {
+  const text = `public class Main {
+  public function Main() {
+    var o = {
+      rows: 1,
+      function get total():int { return 1 },
+      function init():Void { },
+      handler: function():Void { }
+    }
+    trace(o)
+  }
+}
+`;
+  const p = project({ "Main.xn": text });
+  const lines = text.split("\n");
+  const painted = p.semanticTokens("Main.xn").map((t) => lines[t.line]!.slice(t.character, t.character + t.length));
+  expect(painted).toEqual(["rows", "handler"]);
+});

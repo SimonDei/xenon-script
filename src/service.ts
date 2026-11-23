@@ -656,8 +656,9 @@ export class XenonProject {
     };
     const visit = (n: Node) => {
       if (n.kind === "Prop") {
-        const key = (n as A.ObjectProp & { kind: "Prop" }).key;
-        if (!("kind" in key)) add(key, []);
+        // `function name() {…}` in a literal keeps the grammar's function colour (like its accessors); `name: …` is a property.
+        const { key, method } = n as A.ObjectProp & { kind: "Prop" };
+        if (!("kind" in key) && !method) add(key, []);
       } else if (n.kind === "ShapeType") {
         for (const m of (n as A.TypeNode & { kind: "ShapeType" }).members) add(m.name, ["declaration"]);
       }
