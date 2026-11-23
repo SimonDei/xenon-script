@@ -109,6 +109,7 @@ syntax.
 | `step` | range-loop stride |
 | `defer` | statement scheduled for block end |
 | `out` | marks a covariant type parameter: `Producer<out T>` |
+| `extends` after a type parameter | constrains the parameter: `T extends Comparable<T>` |
 
 Outside its special position, a contextual word can remain an identifier.
 
@@ -215,8 +216,7 @@ Not currently implemented:
 - generator functions using `yield`
 - labels for nested `break`/`continue`
 - first-class `Range` values
-- type-parameter bounds (a class's type parameter can have a default, `<T = EventTarget>`)
-- generic methods with full user-defined constraints
+- intersection constraints for one parameter (use a combining interface or structural type)
 - transitive `const T` read-only types
 - owned scoped fields and reassignment-time destruction
 - closures proved safe to call only before a scoped owner ends

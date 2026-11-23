@@ -474,7 +474,11 @@ class ModuleGen {
     const withDefault = (p: A.TypeParam | A.Ident) => {
       const declared = info?.typeParams.find((q) => q.name === p.name);
       const variance = "variance" in p && p.variance ? `${p.variance} ` : "";
-      return declared?.default ? `${variance}${this.name(p)} = ${this.tsType(declared.default)}` : `${variance}${this.name(p)}`;
+      const resolved = "constraint" in p && p.constraint ? this.check.typeNodeTypes.get(p.constraint) : undefined;
+      const constraintType = resolved ?? declared?.constraint;
+      const constraint = constraintType ? this.tsType(constraintType) : undefined;
+      const bound = constraint ? ` extends ${constraint}` : "";
+      return declared?.default ? `${variance}${this.name(p)}${bound} = ${this.tsType(declared.default)}` : `${variance}${this.name(p)}${bound}`;
     };
     return `<${params.map(withDefault).join(", ")}>`;
   }
@@ -528,7 +532,9 @@ class ModuleGen {
       case "method": {
         if (!top && t.typedef) return this.typedefRef(t.typedef, t.aliasArgs);
         const params = t.params.map((p, i) => `${p.rest ? "..." : ""}${p.name || `p${i}`}${p.optional ? "?" : ""}: ${this.tsType(p.type)}`);
-        const tps = t.typeParams?.length ? `<${t.typeParams.map((p) => p.name).join(", ")}>` : "";
+        const tps = t.typeParams?.length
+          ? `<${t.typeParams.map((p) => `${p.name}${p.constraint ? ` extends ${this.tsType(p.constraint)}` : ""}`).join(", ")}>`
+          : "";
         return `${tps}(${params.join(", ")}) => ${this.tsType(t.ret)}`;
       }
       case "shape": {

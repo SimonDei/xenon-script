@@ -57,6 +57,51 @@ var textBox:Box<String> = new Box('hello')
 var lengthBox:Box<Int> = textBox.map((text:String):Int => text.length)
 ```
 
+## Generic constraints
+
+Use `extends` to require every argument for a type parameter to have a particular upper bound:
+
+```actionscript
+public class Cage<T extends Animal> {
+  public final value:T
+
+  public function Cage(value:T) {
+    this.value = value
+  }
+
+  public function name():String => value.name
+}
+```
+
+The constraint applies to explicit arguments, inferred constructor and call arguments, inherited
+generic types, and defaults:
+
+```actionscript
+var dog:Cage<Dog> = new Cage(new Dog()) // valid
+var text:Cage<String>                   // error: String is not an Animal
+```
+
+Inside the declaration, `T` exposes the members guaranteed by its bound. Constraints may reference
+the declaration's other parameters and may be self-referential inside a concrete generic type:
+
+```actionscript
+public interface Comparable<T> {
+  function compareTo(other:T):Int
+}
+
+function sortItem<T extends Comparable<T>>(value:T):Int => value.compareTo(value)
+```
+
+Classes, interfaces, typedefs, methods, and local functions support constraints. A parameter can
+combine variance, a constraint, and a default in that order:
+
+```actionscript
+class Cache<out T extends Resource = DefaultResource> {}
+```
+
+Each parameter currently supports one upper bound. If several capabilities are required, declare
+an interface that combines them and use that interface as the bound.
+
 ## Generic variance
 
 Generic parameters are invariant unless a declaration marks their direction:

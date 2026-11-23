@@ -7,6 +7,7 @@ export interface Ident {
 
 /** A declared type parameter; a class's may have a default: `class Event<T = EventTarget>`. */
 export interface TypeParam extends Ident {
+  constraint?: TypeNode;
   default?: TypeNode;
   variance?: "in" | "out";
 }
@@ -108,7 +109,7 @@ export interface Method {
   modifiers: Modifiers;
   name: Ident;
   /** `function map<U>(…)` */
-  typeParams?: Ident[];
+  typeParams?: TypeParam[];
   accessor?: "get" | "set";
   isConstructor: boolean;
   /** `~Name()` — runs on `dispose()` / at the end of a `using` scope. */
@@ -154,7 +155,7 @@ export interface TypedefDecl {
   kind: "Typedef";
   modifiers: Modifiers;
   name: Ident;
-  typeParams?: Ident[];
+  typeParams?: TypeParam[];
   type: TypeNode;
   span: Span;
 }
@@ -276,7 +277,7 @@ export interface FunctionNode {
   arrow: boolean;
   async: boolean;
   name?: Ident;
-  typeParams?: Ident[];
+  typeParams?: TypeParam[];
   params: Param[];
   returnType?: TypeNode;
   /** Arrow functions may have an expression body. */

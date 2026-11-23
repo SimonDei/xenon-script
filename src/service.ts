@@ -195,7 +195,7 @@ function docComment(file: SourceFile, start: number): string | undefined {
 }
 
 function signature(t: MethodType, name: string): string {
-  const tps = t.typeParams?.length ? `<${t.typeParams.map((p) => p.name).join(", ")}>` : "";
+  const tps = t.typeParams?.length ? `<${t.typeParams.map((p) => `${p.variance === "invariant" ? "" : `${p.variance} `}${p.name}${p.constraint ? ` extends ${typeToString(p.constraint)}` : ""}`).join(", ")}>` : "";
   const ps = t.params.map((p) => `${p.rest ? "..." : ""}${p.name}${p.optional ? "?" : ""}:${typeToString(p.type)}`);
   return `${name}${tps}(${ps.join(", ")}):${typeToString(t.ret)}`;
 }
@@ -224,7 +224,7 @@ function classItem(c: ClassInfo): CompletionItem {
 /** `typedef Column = { key:String, index:int, … }`, shortened to a line. */
 function typedefText(td: TypedefInfo): string {
   const target = spanText(td.decl.type.span).replace(/\s+/g, " ").replace(/\{ /g, "{ ");
-  const tps = td.params.length ? `<${td.params.map((p) => p.name).join(", ")}>` : "";
+  const tps = td.params.length ? `<${td.params.map((p) => `${p.variance === "invariant" ? "" : `${p.variance} `}${p.name}${p.constraint ? ` extends ${typeToString(p.constraint)}` : ""}`).join(", ")}>` : "";
   const text = `typedef ${td.decl.name.name}${tps} = ${target}`;
   return text.length > 100 ? `${text.slice(0, 99)}…` : text;
 }
@@ -240,7 +240,7 @@ function classText(info: ClassInfo): string {
   ].filter(Boolean).join(" ");
   const prefix = modifiers ? `${modifiers} ` : "";
   const what = d.isInterface ? `${prefix}interface` : d.isEnum ? `${prefix}enum` : `${prefix}class`;
-  const tps = info.typeParams.length ? `<${info.typeParams.map((p) => p.name).join(", ")}>` : "";
+  const tps = info.typeParams.length ? `<${info.typeParams.map((p) => `${p.variance === "invariant" ? "" : `${p.variance} `}${p.name}${p.constraint ? ` extends ${typeToString(p.constraint)}` : ""}${p.default ? ` = ${typeToString(p.default)}` : ""}`).join(", ")}>` : "";
   const ext = info.parent ? ` extends ${info.parent.decl.name.name}` : "";
   const impl = info.interfaces.length ? ` ${d.isInterface ? "extends" : "implements"} ${info.interfaces.map((i) => i.decl.name.name).join(", ")}` : "";
   return `${what} ${info.qname.replace(/^.*#/, "")}${tps}${ext}${impl}`;
@@ -1192,7 +1192,10 @@ export class XenonProject {
       if (!items.has(item.label)) items.set(item.label, item);
     };
     for (const n of nodesAt(ast, offset)) {
-      for (const p of (n as { typeParams?: A.Ident[] }).typeParams ?? []) add({ label: p.name, kind: "typeParameter", detail: `type parameter ${p.name}` });
+      for (const p of (n as { typeParams?: A.TypeParam[] }).typeParams ?? []) {
+        const constraint = p.constraint ? ` extends ${spanText(p.constraint.span)}` : "";
+        add({ label: p.name, kind: "typeParameter", detail: `type parameter ${p.name}${constraint}` });
+      }
     }
     for (const t of ["Int", "UInt", "Float", "String", "Bool", "Void"]) add({ label: t, kind: "class" });
     add({ label: "Tuple", kind: "class", detail: "Tuple<A, B, …>: an array with one type per position" });

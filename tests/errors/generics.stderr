@@ -92,7 +92,7 @@ error[X0426]: no member `length` on type parameter `T`
 30 |   public function bad(x:T):int { return x.length + x }
    |                                           ^^^^^^ unknown member
    |
-   = note: a type parameter can be any type, so it has no members; type parameter bounds are not supported
+   = note: type parameter `T` has no upper bound
 
 error[X0420]: cannot find type `T`
   --> generics.xn:31:33

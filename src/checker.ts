@@ -473,6 +473,7 @@ class Env {
   jsBindings?: Map<string, Map<string, JsBinding>>;
   /** Shape members whose types are resolved after all signatures (reports errors inside shapes). */
   readonly pendingShapeMembers: ShapeMember[] = [];
+  private readonly checkedConstraintOwners = new Set<TypeParamInfo>();
   /** Members referenced anywhere (for the unused-private-member warning). */
   readonly usedMembers = new Set<MemberSig>();
   /** Files with syntax errors (unused-code warnings are skipped there). */
@@ -484,7 +485,9 @@ class Env {
   collectFunctions(file: A.XenonFile, scope: FileScope) {
     if (!file.file.prelude) return;
     for (const m of file.functions) {
-      const tparams = paramScope(this.typeParamsOf(m));
+      const own = this.typeParamsOf(m);
+      this.resolveParamConstraints(m.typeParams, own, scope);
+      const tparams = paramScope(own);
       const ret = m.returnType ? this.resolveType(m.returnType, scope, true, tparams) : T.void;
       const list = this.functions.get(m.name.name) ?? [];
       list.push({ decl: m, type: this.methodType(m, scope, ret, tparams) });
@@ -866,6 +869,7 @@ class Env {
     }
     if (td.state) return td.state;
     td.state = "busy";
+    this.resolveParamConstraints(td.decl.typeParams, td.params, this.scopes.get(td.file)!);
     // Only the prelude may alias `void` (`typedef Void = void`); uses are checked in `resolveType`.
     let t = this.resolveType(td.decl.type, this.scopes.get(td.file)!, td.file.file.prelude, paramScope(td.params));
     if (td.state !== "busy") return td.state; // a cycle was reported while resolving
@@ -1124,6 +1128,7 @@ class Env {
       if (!this.checkArgCount(node, td.decl.name.name, td.params.length, false)) return target;
       if (td.params.length === 0) return target;
       const args = node.args.map((a) => this.resolveType(a, scope, false, tparams));
+      this.checkTypeArgs(td.params, args, node.span, node.args);
       const t = subst(target, bind(td.params, args));
       const shown = td.displayName ?? td.decl.name.name;
       if (t.kind === "union") return { ...t, alias: shown, aliasArgs: args };
@@ -1163,13 +1168,16 @@ class Env {
     if (required >= 0 && given >= required && given < info.typeParams.length && !(allowRaw && given === 0)) {
       const args = node.args.map((a) => this.resolveType(a, scope, false, tparams));
       for (const p of info.typeParams.slice(given)) args.push(subst(p.default ?? T.any, bind(info.typeParams.slice(0, args.length), args)));
+      this.checkTypeArgs(info.typeParams, args, node.span, node.args);
       return this.classType(node, info, args);
     }
     if (info.typeParams.length > 0 && node.args.length === 0 && allowRaw) return this.classType(node, info);
     if (!this.checkArgCount(node, info.decl.name.name, info.typeParams.length, true, required >= 0 ? required : info.typeParams.length)) return this.classType(node, info);
     // `Promise<void>` (an async function without a result) is the one place `void` is a type argument.
     const allowVoid = info === this.promiseClass;
-    return this.classType(node, info, node.args.map((a) => this.resolveType(a, scope, allowVoid, tparams)));
+    const args = node.args.map((a) => this.resolveType(a, scope, allowVoid, tparams));
+    this.checkTypeArgs(info.typeParams, args, node.span, node.args);
+    return this.classType(node, info, args);
   }
 
   /** X0422/X0423: the number of type arguments must match the declaration. */
@@ -1192,12 +1200,59 @@ class Env {
     if (other) d.help(`a class with this name exists in package \`${other.pkg}\`; add \`import ${other.qname};\``);
   }
 
-  /** `class Event<T = EventTarget>`: resolves the defaults, which may name the parameters before them. */
+  /** Resolves constraints and defaults, which may refer to the declaration's own parameters. */
   resolveParamDefaults(info: ClassInfo, scope: FileScope) {
     const nodes = info.decl.typeParams ?? [];
+    this.resolveParamConstraints(nodes, info.typeParams, scope);
     info.typeParams.forEach((param) => {
       const node = nodes.find((n) => n.name === param.name)?.default;
       if (node) param.default = this.resolveType(node, scope, false, paramScope(info.typeParams.slice(0, info.typeParams.indexOf(param))));
+    });
+    this.checkTypeArgs(info.typeParams, info.typeParams.map((p) => p.default ?? T.any), info.decl.name.span);
+  }
+
+  /** Resolves declared constraints once, with the whole parameter list in scope. */
+  resolveParamConstraints(nodes: A.TypeParam[] | undefined, params: TypeParamInfo[], scope: FileScope, outer?: TypeParamScope) {
+    const all = paramScope(outer ? [...outer.values()] : [], params);
+    for (const param of params) {
+      const node = nodes?.find((p) => p.name === param.name);
+      if (!node?.constraint || param.constraint) continue;
+      param.constraintSpan = node.constraint.span;
+      param.constraint = this.resolveType(node.constraint, scope, false, all);
+    }
+    if (params[0] && !this.checkedConstraintOwners.has(params[0])) {
+      this.checkedConstraintOwners.add(params[0]);
+      const own = new Set(params);
+      const reported = new Set<TypeParamInfo>();
+      for (const start of params) {
+        const path: TypeParamInfo[] = [];
+        const seen = new Set<TypeParamInfo>();
+        let current: TypeParamInfo | undefined = start;
+        while (current && current.constraint?.kind === "typeParam" && own.has(current.constraint.param) && !seen.has(current)) {
+          path.push(current);
+          seen.add(current);
+          current = current.constraint.param;
+        }
+        if (!current || !seen.has(current) || reported.has(current)) continue;
+        const cycle = path.slice(path.findIndex((p) => p === current)).concat(current);
+        cycle.forEach((p) => reported.add(p));
+        const spanAt = current.span;
+        if (spanAt) this.diags.error("X0881", `generic constraint cycle: ${cycle.map((p) => `\`${p.name}\``).join(" extends ")}`, spanAt, "cyclic upper bounds")
+          .help("constrain at least one parameter by a concrete type or interface");
+      }
+    }
+  }
+
+  /** Validates concrete or inferred arguments against substituted upper bounds. */
+  checkTypeArgs(params: TypeParamInfo[], args: Type[], at: Span, argNodes?: A.TypeNode[]) {
+    const map = bind(params, args);
+    params.forEach((param, i) => {
+      if (!param.constraint) return;
+      const actual = args[i] ?? T.any;
+      const expected = subst(param.constraint, map);
+      if (isDynamic(actual) || assignable(actual, expected)) return;
+      const d = this.diags.error("X0880", `type argument \`${typeToString(actual)}\` does not satisfy constraint \`${typeToString(expected)}\``, argNodes?.[i]?.span ?? at, `expected a \`${typeToString(expected)}\``);
+      if (param.constraintSpan) d.secondary(param.constraintSpan, `\`${param.name}\` is constrained here`);
     });
   }
 
@@ -2154,6 +2209,7 @@ class Env {
       return { name: p.name.name, type, optional: !!p.init, rest: p.rest };
     });
     const own = this.typeParamsOf(m);
+    this.resolveParamConstraints(m.typeParams, own, scope, tparams);
     return own.length > 0 ? { kind: "method", params, ret, typeParams: own } : { kind: "method", params, ret };
   }
 
@@ -2169,7 +2225,7 @@ class Env {
           return [];
         }
         seen.add(p.name);
-        return [{ name: p.name, variance: "invariant" as const }];
+        return [{ name: p.name, variance: "invariant" as const, span: p.span }];
       });
       this.fnParams.set(m, ps);
     }
@@ -2270,8 +2326,22 @@ function signatureDiffs(impl: MemberSig, req: MemberSig): string[] {
     return diffs;
   }
   const a = impl.type as MethodType;
-  const b = alignTypeParams(req.type as MethodType, a);
+  const requested = req.type as MethodType;
+  const b = alignTypeParams(requested, a);
   if ((a.typeParams?.length ?? 0) !== (b.typeParams?.length ?? 0)) diffs.push(`${a.typeParams?.length ?? 0} type parameter(s) instead of ${b.typeParams?.length ?? 0}`);
+  if ((a.typeParams?.length ?? 0) === (requested.typeParams?.length ?? 0)) {
+    const requestedParams = requested.typeParams ?? [];
+    const implementationParams = a.typeParams ?? [];
+    const rename = new Map(requestedParams.map((p, i) => [p, { kind: "typeParam", param: implementationParams[i]! } as Type]));
+    requestedParams.forEach((required, i) => {
+      const implemented = implementationParams[i]!;
+      if (!implemented.constraint) return;
+      const requiredConstraint = required.constraint ? subst(required.constraint, rename) : undefined;
+      if (!requiredConstraint || !assignable(requiredConstraint, implemented.constraint)) {
+        diffs.push(`type parameter \`${implemented.name}\` has a stricter constraint`);
+      }
+    });
+  }
   if (a.params.length !== b.params.length) diffs.push(`${a.params.length} parameter(s) instead of ${b.params.length}`);
   a.params.forEach((p, i) => {
     const q = b.params[i];
@@ -4393,8 +4463,17 @@ class BodyChecker {
       case "void":
         return T.error;
       case "typeParam":
+        if (obj.param.constraint) {
+          const seen = new Set<TypeParamInfo>();
+          let bound: Type = obj;
+          while (bound.kind === "typeParam" && bound.param.constraint && !seen.has(bound.param)) {
+            seen.add(bound.param);
+            bound = bound.param.constraint;
+          }
+          if (bound.kind !== "typeParam") return this.memberOn(e, bound);
+        }
         this.diags.error("X0426", `no member \`${name}\` on type parameter \`${obj.param.name}\``, e.name.span, "unknown member")
-          .note("a type parameter can be any type, so it has no members; type parameter bounds are not supported");
+          .note(`type parameter \`${obj.param.name}\` has no upper bound`);
         return T.error;
       case "shape": {
         const m = obj.members.get(name);
@@ -4932,6 +5011,7 @@ class BodyChecker {
   private fnSignature(f: A.FunctionNode, named: boolean, context?: MethodType): MethodType {
     const own = this.env.typeParamsOf(f);
     const saved = this.tparams;
+    this.env.resolveParamConstraints(f.typeParams, own, this.scope, saved);
     if (own.length > 0) this.tparams = new Map([...saved, ...own.map((p) => [p.name, p] as const)]);
     try {
       const sig = this.fnSignatureInner(f, named, context);
@@ -5145,6 +5225,7 @@ class BodyChecker {
         .help("pass arguments that determine it, or assign the result to a variable with a type");
       for (const v of missing) out.set(v, T.any);
     }
+    this.env.checkTypeArgs(vars, vars.map((v) => out.get(v) ?? T.any), at);
     return {
       sig: { kind: "method", params: sig.params.map((p) => ({ ...p, type: subst(p.type, out) })), ret: subst(sig.ret, out) },
       bindings: out,
@@ -5490,6 +5571,7 @@ class BodyChecker {
           this.diags.error("X0797", `can't infer the type of ${missing.map((v) => `\`${v.name}\``).join(", ")}`, t.span)
             .help(`write the type arguments: \`new ${info.decl.name.name}<…>()\``);
         }
+        this.env.checkTypeArgs(info.typeParams, info.typeParams.map((p) => out.get(p) ?? p.default ?? T.any), t.span);
         type = { kind: "class", info, args: info.typeParams.map((p) => out.get(p) ?? T.any) };
       }
       if (ctor.kind === "declared") {

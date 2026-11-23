@@ -12,6 +12,9 @@ export interface TypeParamInfo {
   name: string;
   variance: "invariant" | "in" | "out";
   span?: Span;
+  /** Upper bound declared as `T extends Base`. */
+  constraint?: Type;
+  constraintSpan?: Span;
   /** A class's `<T = EventTarget>`: the argument when a use leaves it out (set after the classes are known). */
   default?: Type;
 }
@@ -393,8 +396,11 @@ export function assignable(from: Type, to: Type): boolean {
   // `int?` takes `null`, `int` and `int?`; an `int?` fits only where `null` fits too.
   if (to.kind === "nullable") return from.kind === "null" || assignable(nonNull(from), to.inner);
   if (from.kind === "nullable") return isNullable(to) && to.kind !== "typeParam" && assignable(from.inner, to);
-  // Type parameters are opaque: a `T` fits only `T` (and `Object`); only `T` and `null` fit a `T`.
-  if (from.kind === "typeParam") return (to.kind === "typeParam" && to.param === from.param) || (to.kind === "builtin" && to.name === "Object");
+  // A type parameter fits its own identity, `Object`, and everything guaranteed by its upper bound.
+  if (from.kind === "typeParam") {
+    if ((to.kind === "typeParam" && to.param === from.param) || (to.kind === "builtin" && to.name === "Object")) return true;
+    return !!from.param.constraint && constraintAssignable(from.param.constraint, to, new Set([from.param]));
+  }
   if (to.kind === "typeParam") return from.kind === "null";
   if ((to.kind === "shape" || to.kind === "method") && from.kind !== "null") {
     const set = comparing.get(from) ?? new Set<Type>();
@@ -455,6 +461,14 @@ export function assignable(from: Type, to: Type): boolean {
   return false;
 }
 
+function constraintAssignable(from: Type, to: Type, seen: Set<TypeParamInfo>): boolean {
+  if (from.kind !== "typeParam") return assignable(from, to);
+  if (to.kind === "typeParam" && from.param === to.param) return true;
+  if (seen.has(from.param) || !from.param.constraint) return false;
+  seen.add(from.param);
+  return constraintAssignable(from.param.constraint, to, seen);
+}
+
 /**
  * Type arguments match: the same type, with `*` as a wildcard on either side, also nested
  * (`Iterable<Tuple<String, int>>` fits `Iterable<Tuple<*, int>>`).
@@ -497,13 +511,26 @@ export function subst(t: Type, map: Map<TypeParamInfo, Type>): Type {
     }
     case "class": return t.args?.length ? { ...t, args: t.args.map((a) => subst(a, map)) } : t;
     case "builtin": return t.args.length ? { ...t, args: t.args.map((a) => subst(a, map)) } : t;
-    case "method":
+    case "method": {
+      const remaining = t.typeParams?.filter((p) => !map.has(p));
+      const renamed = remaining?.map((p) => ({
+        ...p,
+        ...(p.constraint ? { constraint: subst(p.constraint, map) } : {}),
+      }));
+      const effective = renamed?.length
+        ? new Map<TypeParamInfo, Type>([
+            ...map,
+            ...remaining!.map((p, i) => [p, { kind: "typeParam", param: renamed[i]! } as Type] as const),
+          ])
+        : map;
       return {
         ...t,
-        params: t.params.map((p) => ({ ...p, type: subst(p.type, map) })),
-        ret: subst(t.ret, map),
+        params: t.params.map((p) => ({ ...p, type: subst(p.type, effective) })),
+        ret: subst(t.ret, effective),
+        ...(renamed?.length ? { typeParams: renamed } : t.typeParams?.length ? { typeParams: [] } : {}),
         ...(t.aliasArgs ? { aliasArgs: t.aliasArgs.map((a) => subst(a, map)) } : {}),
       };
+    }
     case "shape": {
       const members = new Map<string, ShapeMember>();
       for (const [k, m] of t.members) {

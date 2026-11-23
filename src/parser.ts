@@ -723,7 +723,7 @@ export class Parser {
     return { kind: "TypeName", name, args, span: this.sp(start) };
   }
 
-  /** `<T, U>` after a class/interface/typedef/method/function name (no bounds). */
+  /** `<T extends Base, U = Default>` after a class/interface/typedef/method/function name. */
   private typeParamList(allowDefaults = false, allowVariance = false): A.TypeParam[] | undefined {
     if (!this.is("<")) return undefined;
     const open = this.advance();
@@ -735,7 +735,7 @@ export class Parser {
       }
       const param: A.TypeParam = this.ident("a type parameter name");
       if (variance) param.variance = variance;
-      if (this.is("extends")) this.fail("type parameter bounds are not supported", this.tok.span, "write just the name");
+      if (this.eat("extends")) param.constraint = this.parseType();
       if (this.is("=")) {
         if (!allowDefaults) this.fail("only a class or interface type parameter can have a default", this.tok.span, "write just the name");
         this.advance();
@@ -1607,7 +1607,7 @@ export class Parser {
     const start = this.tok.span.start;
     const isAsync = !!this.eat("async");
     let name: A.Ident | undefined;
-    let typeParams: A.Ident[] | undefined;
+    let typeParams: A.TypeParam[] | undefined;
     let params: A.Param[];
     if (arrow) {
       if (this.tok.kind === "ident") {
