@@ -1405,6 +1405,10 @@ class Env {
         const impl = findClassMember(info, req.name);
         if (!impl) {
           if (builtinEnumerable && req.owner === this.enumerable) continue;
+          if (req.owner === this.enumerable) {
+            if (req.name === "getEnumerator") continue;
+            if (req.name === "[Symbol.iterator]" && findClassMember(info, "getEnumerator")) continue;
+          }
           // `IAttribute.wrap` is optional: only attributes that wrap methods define it.
           if (req.owner.qname === "xenon.IAttribute" && req.name === "wrap") continue;
           missing.push(req);
@@ -3545,7 +3549,7 @@ class BodyChecker {
     } else if (t.kind === "prim" || t.kind === "null" || t.kind === "classRef" || t.kind === "method" ||
       (t.kind === "builtin" && t.name !== "Array") || (t.kind === "class" && !hasJsAncestor(t.info))) {
       const d = this.diags.error("X0391", `\`${typeToString(t)}\` is not iterable`, s.iterable.span);
-      if (t.kind === "class") d.help(`implement \`Iterable<T>\` in \`${t.info.decl.name.name}\`: \`function getEnumerator():IEnumerator<T>\``);
+      if (t.kind === "class") d.help(`implement \`Iterable<T>\` in \`${t.info.decl.name.name}\`: \`function [Symbol.iterator]():Iterator<T>\` (or Xenon's \`getEnumerator():IEnumerator<T>\` adapter)`);
       element = T.error;
     }
     this.loopVar(s.variable, element, scope, "elements");

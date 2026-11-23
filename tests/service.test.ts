@@ -148,6 +148,25 @@ test("a static class cannot be instantiated", () => {
   ]);
 });
 
+test("an iterable can implement the JavaScript Symbol.iterator protocol directly", () => {
+  const result = compileProject([
+    { path: "Numbers.xn", text: `public class Numbers implements Iterable<int> {
+  public function [Symbol.iterator]():Iterator<int> => [1, 2].values()
+}
+` },
+    { path: "Main.xn", text: `public class Main {
+  public function Main() {
+    for (var number:int of new Numbers()) trace(number)
+  }
+}
+` },
+  ], { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  const js = result.outputs.find((o) => o.path === "Numbers.js" || o.path === "Main.js")?.text ?? result.outputs.map((o) => o.text).join("\n");
+  expect(js).toContain("[Symbol.iterator]()");
+  expect(js).toContain("return [1, 2].values()");
+});
+
 test("class hover shows declaration modifiers", () => {
   const main = "public class Main {\n  public function Main() { trace(State) }\n}\n";
   const p = project({

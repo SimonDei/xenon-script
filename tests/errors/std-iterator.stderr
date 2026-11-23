@@ -18,7 +18,7 @@ error[X0308]: mismatched types
  --> std-iterator.xn:7:23
   |
 7 |     var text:String = step.value
-  |              ------   ^^^^^^^^^^ expected `String`, found `Int`
+  |              ------   ^^^^^^^^^^ expected `String`, found `Int?`
   |              |
   |              expected because of this type
   |
@@ -49,9 +49,9 @@ error[X0308]: mismatched types
 10 |     trace(ids.values().take('2'), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
    |                             ^^^ expected `Int`, found `String`
    |
-  ::: <xenon prelude>/xenon/Iterator.xn:31:25
+  ::: <xenon prelude>/xenon/Iterator.xn:32:25
    |
-31 |     function take(limit:int):Iterator<T>
+32 |     function take(limit:int):Iterator<T>
    |                         --- parameter declared here
    |
 help: convert the value with `Int()`
@@ -73,9 +73,9 @@ error[X0308]: mismatched types
 10 |     trace(ids.values().take('2'), ids.values().length, ids.values().filter((n:int):int => n), it, strings, text, doubled)
    |                                                                            ^^^^^^^^^^^^^^^^ expected `(value:Int, index:Int) -> Bool`, found `(n:Int) -> Int`
    |
-  ::: <xenon prelude>/xenon/Iterator.xn:29:26
+  ::: <xenon prelude>/xenon/Iterator.xn:30:26
    |
-29 |     function filter(test:(value:T, index:int) -> Boolean):Iterator<T>
+30 |     function filter(test:(value:T, index:int) -> Boolean):Iterator<T>
    |                          ------------------------------- parameter declared here
 
 error[X0604]: no overload of `from` accepts (Int)

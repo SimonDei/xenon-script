@@ -151,6 +151,9 @@ package xenon {
    * iterable, so JavaScript code can loop over it too.
    */
   public interface Iterable<T> {
+    /** The official JavaScript iterable protocol; consumers call this with zero arguments. */
+    function [Symbol.iterator]():Iterator<T>
+    /** Xenon's enumerator adapter. A class may implement either this or `[Symbol.iterator]`. */
     function getEnumerator():IEnumerator<T>
   }
 
@@ -224,8 +227,8 @@ class IteratorEnumerator<T> implements IEnumerator<T> {
 
   public function moveNext():Boolean {
     var step:IteratorResult<T> = source.next()
-    if (step.done) return false
-    value = step.value
+    if (step.done == true) return false
+    value = (step.value as *)
     return true
   }
 

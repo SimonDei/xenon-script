@@ -5,8 +5,8 @@
 // run when it is consumed.
 // Not declared: `Iterator.concat` (too new), `return()` / `throw()`.
 package xenon {
-  /** What `next()` returns: `done` is true once the iterator is finished (then `value` is `null`). */
-  public typedef IteratorResult<T> = { done:Boolean, value:T }
+  /** A JavaScript iterator step. `value` is optional after completion. */
+  public typedef IteratorResult<T> = { ?done:Boolean, ?value:T }
 
   public native class Iterator<T> implements Iterable<T> {
     // `Iterator` can't be constructed directly (it throws); get one from `values()`, `Iterator.from(…)`, …
@@ -19,6 +19,7 @@ package xenon {
 
     /** Advances the iterator: `{ done:false, value }` for the next value, then `{ done:true }`. */
     function next():IteratorResult<T>
+    function next(value:*):IteratorResult<T>
 
     /** All remaining values, as an array. */
     function toArray():Array<T>

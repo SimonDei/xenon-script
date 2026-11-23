@@ -122,6 +122,7 @@ function defaultValue(type?: A.TypeNode): string {
 
 /** JS name of a method; operator methods use a computed name: `['operator+']`. */
 function methodName(name: string): string {
+  if (name === "[Symbol.iterator]") return name;
   return name.startsWith("operator") && name.length > "operator".length ? `[${jsString(name)}]` : name;
 }
 
@@ -766,8 +767,6 @@ class ModuleGen {
     const ext = decl.implements.length > 0 ? ` extends ${decl.implements.map((n) => this.superType(n)).join(", ")}` : "";
     this.w.line(`${exported ? "export " : ""}interface ${this.name(decl.name)}${this.typeParams(decl.typeParams)}${ext} {`);
     this.w.indent();
-    // `for … of` works on every enumerable: classes get a `[Symbol.iterator]` (see `enumerableIterator`).
-    if (decl.name.name === "Iterable" && this.file.file.prelude) this.w.line("[Symbol.iterator](): Iterator<T>;");
     for (const m of decl.members) {
       if (m.kind !== "Method") continue;
       this.from(m, () => {
@@ -777,7 +776,8 @@ class ModuleGen {
         // `IAttribute.wrap` is optional (see the prelude); TypeScript rejects classes implementing an
         // interface of only optional members that have none of them, so it isn't declared there.
         else if (!(this.file.file.prelude && decl.name.name === "IAttribute" && m.name.name === "wrap")) {
-          this.w.line(`${name}${this.typeParams(m.typeParams)}(${this.params(m.params, true)})${this.ann(m.returnType) || ": void"};`);
+          const optional = this.file.file.prelude && decl.name.name === "Iterable" && m.name.name === "getEnumerator" ? "?" : "";
+          this.w.line(`${name}${optional}${this.typeParams(m.typeParams)}(${this.params(m.params, true)})${this.ann(m.returnType) || ": void"};`);
         }
       });
     }
@@ -809,6 +809,7 @@ class ModuleGen {
   private enumerableIterator(info: ClassInfo) {
     const e = this.check.classes.get("xenon.Iterable");
     if (!e || info.decl.isInterface || !isSubclass(info, e) || (info.parent && isSubclass(info.parent, e))) return;
+    if (info.members.has("[Symbol.iterator]")) return;
     this.w.line();
     this.w.line("*[Symbol.iterator]() {");
     this.w.indent();

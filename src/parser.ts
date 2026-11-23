@@ -605,7 +605,17 @@ export class Parser {
     if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword")) {
       accessor = this.advance().value as "get" | "set";
     }
-    let name = this.memberName(); // keywords allowed, as in JS (`function catch(…)`)
+    let name: A.Ident;
+    if (this.is("[")) {
+      const open = this.advance();
+      if (!this.isIdent("Symbol")) this.unexpected("`Symbol`");
+      this.advance();
+      this.expect(".");
+      if (!this.isIdent("iterator")) this.unexpected("`iterator`");
+      this.advance();
+      const close = this.expect("]");
+      name = { name: "[Symbol.iterator]", span: cover(open.span, close.span) };
+    } else name = this.memberName(); // keywords allowed, as in JS (`function catch(…)`)
     // `function operator+(…)`: an operator method; the symbol is part of the name.
     if (name.name === "operator" && this.tok.kind === "punct" && !this.is("(") && !this.tok.nl) {
       const sym = this.advance();

@@ -110,8 +110,9 @@ Enum values are nominal in the Xenon type system and can be tested with `is`/`as
 
 ## Iteration protocols
 
-`Iterable<T>` and `IEnumerator<T>` describe values usable with `for … of`. The standard collections,
-strings, maps, sets, iterators, `NodeList`, and `HTMLCollection` implement the protocol.
+`Iterable<T>` follows JavaScript's iterable protocol: `[Symbol.iterator]()` returns an
+`Iterator<T>`. The standard collections, strings, maps, sets, iterators, `NodeList`, and
+`HTMLCollection` implement it.
 
 ```actionscript
 for (var entry:Tuple<String, Int> of scores) {
@@ -120,7 +121,22 @@ for (var entry:Tuple<String, Int> of scores) {
 }
 ```
 
-Your own enumerable class can implement the protocol or be declared as a typed JavaScript import.
+Implement it directly with the official JavaScript method:
+
+```actionscript
+public class Numbers implements Iterable<Int> {
+  public function [Symbol.iterator]():Iterator<Int> {
+    return [1, 2, 3].values()
+  }
+}
+```
+
+For Xenon-style `moveNext()`/`current` traversal, `IEnumerator<T>` and the backwards-compatible
+`getEnumerator():IEnumerator<T>` adapter remain available. A class implementing
+`getEnumerator()` receives a generated `[Symbol.iterator]()` method, so JavaScript APIs and
+`for … of` can consume it too. `Iterator<T>` implements both JavaScript's `next()` protocol and
+Xenon's iterable interface; `IteratorResult<T>` mirrors the protocol's optional `done` and `value`
+properties.
 
 ## `Class<T>`
 
