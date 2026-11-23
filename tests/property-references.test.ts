@@ -70,3 +70,17 @@ test("property references reject static members and incompatible function types"
   ], { main: "Main" });
   expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.code)).toEqual(["X0608", "X0308", "X0426"]);
 });
+
+test("PropertyReference emits a real TypeScript function type", () => {
+  const result = compileProject([
+    { path: "Main.xn", text: `public class Main {
+  public final name:String = ''
+  public function Main() {}
+  public function read():PropertyReference<Main, String> => Main::name
+}` },
+  ], { main: "Main", target: "ts" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  const ts = result.outputs.find((file) => file.path === "Main.ts")!.text;
+  expect(ts).toContain("read(): (owner: Main) => string");
+  expect(ts).not.toContain("PropertyReference<");
+});

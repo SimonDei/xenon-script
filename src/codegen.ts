@@ -544,6 +544,9 @@ class ModuleGen {
    */
   private typedefRef(td: TypedefInfo, args: Type[] | undefined): string {
     if (td.file.file.generated) return "any"; // a `.d.ts` type: TypeScript reads the original
+    if (td.file.file.prelude && td.decl.name.name === "PropertyReference" && args?.length === 2) {
+      return `(owner: ${this.tsType(args[0]!)}) => ${this.tsType(args[1]!)}`;
+    }
     if (td.file !== this.file && !td.file.file.prelude) {
       const module = moduleOf(td.file);
       this.typeImports.set(module, (this.typeImports.get(module) ?? new Set()).add(td.decl.name.name));
