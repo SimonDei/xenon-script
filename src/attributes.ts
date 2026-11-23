@@ -106,7 +106,9 @@ export function checkDeprecated(files: A.XenonFile[], result: CheckResult, diags
   };
   for (const [node, info] of result.typeResolutions) cls(info, node.span);
   for (const e of result.exprTypes.keys()) {
-    if (e.kind === "Member") {
+    if (e.kind === "PropertyReference") {
+      member(result.propertyReferences.get(e), e.name.span);
+    } else if (e.kind === "Member") {
       const t = result.exprTypes.get(e.object);
       const obj = t && nonNull(t);
       if (obj?.kind === "class" || obj?.kind === "classRef") member(findMember(obj.info, e.name.name), e.name.span);

@@ -106,6 +106,35 @@ returns a stable, cached bound method, so two reads of the same method produce t
 A closure may read outer locals. Outer `final`/`const` values receive special assignment rules, and
 null checks crossing a closure boundary are intentionally conservative.
 
+## Unbound property references
+
+`Type::member` creates a typed function without capturing an instance:
+
+```actionscript
+var readName:(User) -> String = User::name
+var save:(User, String) -> Bool = User::save
+
+var names:Array<String> = users.map(User::name)
+```
+
+Fields and getters become reader functions whose first parameter is the receiver. Methods become
+receiver-first functions followed by the method's parameters. Calls still dispatch virtually through
+the supplied value, so an override runs normally.
+
+```actionscript
+readName(user)
+save(user, 'next value')
+```
+
+The reference is checked for visibility and member existence. Static members do not have an instance
+receiver and therefore cannot use `::`.
+
+Use `nameof` when an API needs the checked JavaScript property name rather than a reader:
+
+```actionscript
+nameof(User::name) // 'name'
+```
+
 ## `defer`
 
 `defer` registers a statement to run when its enclosing block ends:

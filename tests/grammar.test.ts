@@ -116,6 +116,7 @@ const cases: [string, string, string, number?][] = [
   ["public static consteval function kib(n:int):int => n * 1024", "consteval", "storage.modifier.xenon"],
   ["trace(nameof(user.email), obj.nameof())", "nameof", "keyword.operator.expression.xenon"],
   ["trace(nameof(user.email), obj.nameof())", "nameof", "entity.name.function.call.xenon", 1],
+  ["var read:(User) -> String = User::name", "::", "keyword.operator.optional.xenon"],
   // keywords as member names: called, they are method calls like any other (`p.catch(f)`)
   ["trace(nums.with(0, 99), p.catch(f), x?.default)", "with", "entity.name.function.call.xenon"],
   ["trace(nums.with(0, 99), p.catch(f), x?.default)", "catch", "entity.name.function.call.xenon"],

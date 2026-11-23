@@ -564,6 +564,10 @@ export class XenonProject {
         if (m && pick) return { ...ofMember({ ...m, decl: pick.decl, type: pick.type }, node.span), doc: this.overloadDoc(check, parent as A.Expr, pick.decl), decl: pick.decl.name.span };
         return m && ofMember(m, node.span);
       }
+      if (parent.kind === "PropertyReference" && parent.name === node) {
+        const m = check.propertyReferences.get(parent as A.Expr & { kind: "PropertyReference" });
+        return m && ofMember(m, node.span);
+      }
       if ((parent.kind === "Field" || parent.kind === "Method") && parent.name === node) {
         const owner = [...check.classes.values()].find((c) => c.decl.members.includes(parent as A.Member));
         const m = owner && (parent.kind === "Method" && (parent as A.Method).isConstructor ? undefined : owner.members.get((node as A.Ident).name));
@@ -1027,8 +1031,27 @@ export class XenonProject {
     let start = offset;
     while (start > 0 && /[\w$]/.test(text[start - 1]!)) start--;
     if (text[start - 1] === ".") return this.typeCompletions(path, text, start) ?? this.memberCompletions(path, text, start, offset);
+    if (text.slice(start - 2, start) === "::") return this.propertyReferenceCompletions(path, text, start, offset);
     if (isTypePosition(text, start)) return this.typeNameCompletions(path, offset);
     return this.keyCompletions(path, text, start, offset) ?? this.scopeCompletions(path, offset);
+  }
+
+  /** `User::`: visible instance members, synthesized as receiver-first functions. */
+  private propertyReferenceCompletions(path: string, text: string, nameStart: number, offset: number): CompletionItem[] {
+    const patched = nameStart === offset ? text.slice(0, offset) + PLACEHOLDER + text.slice(offset) : text;
+    const a = patched === text ? this.analyze() : this.compile([...this.sources].map(([p, source]) => ({ path: p, text: p === path ? patched : source })));
+    const ast = this.astOf(a, path);
+    const ref = ast && nodesAt(ast, nameStart).findLast((n) => n.kind === "PropertyReference") as (A.Expr & { kind: "PropertyReference" }) | undefined;
+    if (!ref) return [];
+    const resolution = a.result.check.resolutions.get(ref.owner);
+    if (resolution?.kind !== "class") return [];
+    const enclosing = this.enclosingClass(a, ast!, nameStart);
+    return this.collect([resolution.info], (m) => !m.isStatic && this.visible(m, enclosing)).map((m) => ({
+      label: m.name,
+      kind: memberKind(m),
+      detail: memberText(m),
+      documentation: docComment(m.decl.span.file, m.decl.span.start),
+    }));
   }
 
   /**

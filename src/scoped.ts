@@ -551,6 +551,8 @@ class ScopedChecker {
       case "Member":
         this.visit(e.object, "receiver");
         return this.methodClosure(e, e.object);
+      case "PropertyReference":
+        return; // The type is not evaluated and no receiver is captured.
       case "Index":
         this.visit(e.object, "receiver");
         return this.visit(e.index, "use");

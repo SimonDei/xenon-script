@@ -119,11 +119,13 @@ Locale-dependent, random, or array-returning APIs stay at runtime.
 ```actionscript
 nameof(user.email) // 'email'
 nameof(User.save)  // 'save'
+nameof(User::name) // 'name'
 ```
 
 `nameof` is a reserved compile-time operator. A typo is an error, and member
-renaming/refactoring updates the expression. A class may still declare or call a member named
-`nameof` through a receiver, such as `service.nameof()`.
+renaming/refactoring updates the expression. It accepts ordinary checked names and typed unbound
+property references (`Type::member`) through the same member-resolution path. A class may still
+declare or call a member named `nameof` through a receiver, such as `service.nameof()`.
 
 Untyped `*` members cannot be checked by `nameof`; use a string literal at that boundary.
 

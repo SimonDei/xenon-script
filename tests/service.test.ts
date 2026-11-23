@@ -124,6 +124,8 @@ test("completion: members after a dot, scope names elsewhere", () => {
   expect(labels(animal)).toEqual(["name", "speak", "toString", "toLocaleString", "valueOf", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable"]);
   expect(animal.find((i) => i.label === "speak")!.detail).toBe("function Animal.speak(times?:Int):String");
   expect(labels(insert("Animal."))).toEqual(["count", "create"]);
+  expect(labels(insert("Animal::"))).toEqual(expect.arrayContaining(["name", "speak"]));
+  expect(labels(insert("Animal::"))).not.toContain("create");
   expect(labels(insert("scores.ge"))).toContain("get");
   // `*` to Xenon: TypeScript's members.
   expect(labels(insert("path."))).toContain("basename");
@@ -235,7 +237,7 @@ test("nameof: references and hover see the name inside (renaming the member upda
   const main = `public class Main {
   public function Main() {
     var user = new User('a')
-    trace(nameof(user.email), nameof(User.email), user.email)
+    trace(nameof(user.email), nameof(User.email), user.email, nameof(User::email), User::email)
   }
 }
 class User {
@@ -245,8 +247,9 @@ class User {
 `;
   const p = project({ "Main.xn": main });
   const lines = p.references("Main.xn", offset(main, "email:String", 1)).map((l) => `${l.range.start.line}:${l.range.start.character}`);
-  expect(lines).toEqual(["3:22", "3:42", "3:55", "7:15", "8:44"]);
+  expect(lines).toEqual(["3:22", "3:42", "3:55", "3:75", "3:89", "7:15", "8:44"]);
   expect(p.hover("Main.xn", offset(main, "User.email", 6))!.contents).toContain("User.email:String");
+  expect(p.hover("Main.xn", offset(main, "User::email", 6))!.contents).toContain("User.email:String");
 });
 
 test("method hover shows static final and abstract modifiers", () => {

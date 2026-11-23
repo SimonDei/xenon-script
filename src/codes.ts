@@ -185,6 +185,7 @@ export const CODES: Record<string, CodeInfo> = {
     "trace(dog._name)", "trace(dog.name)"),
   X0604: c("no overload matches", "None of the native member's signatures accepts these arguments; the notes list them."),
   X0607: c("method closure through `?.`", "A method used as a value is bound to its object, which `?.` may not have."),
+  X0608: c("invalid property reference", "`Type::member` makes an unbound, receiver-first property or method reference. The left side is a class or interface, and the member must be an instance member visible here."),
 
   // ---- inheritance ----
   X0700: c("can't be extended", "Only classes can be extended (not interfaces, enums or other types)."),

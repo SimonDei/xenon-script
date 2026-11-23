@@ -26,6 +26,12 @@ test("numbers and ranges", () => {
   ]);
 });
 
+test("property reference operator", () => {
+  expect(kv(tokens("User::name Array::map").toks)).toEqual([
+    "ident:User", "punct:::", "ident:name", "ident:Array", "punct:::", "ident:map",
+  ]);
+});
+
 test("spread vs range", () => {
   expect(kv(tokens("...xs a..b").toks)).toEqual(["punct:...", "ident:xs", "ident:a", "punct:..", "ident:b"]);
 });

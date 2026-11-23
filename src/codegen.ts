@@ -1828,6 +1828,16 @@ class ModuleGen {
       }
       case "Function":
         return this.fn(e);
+      case "PropertyReference": {
+        const m = this.check.propertyReferences.get(e);
+        if (!m) {
+          if (this.ts) return { code: "(undefined as any)", prec: P.primary };
+          throw new Error("codegen: unresolved property reference");
+        }
+        const prop = this.fieldName(m, e, e.name);
+        if (m.kind === "method") return { code: `($receiver, ...$args) => $receiver.${prop}(...$args)`, prec: P.assign };
+        return { code: `($receiver) => $receiver.${prop}`, prec: P.assign };
+      }
       case "Nameof":
         if (this.ts) return { code: "(undefined as any)", prec: P.primary };
         throw new Error(`codegen: unresolved nameof expression`);

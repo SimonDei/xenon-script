@@ -606,6 +606,7 @@ export class Parser {
       accessor = this.advance().value as "get" | "set";
     }
     let name: A.Ident;
+    if (!className && !this.is("[") && this.tok.kind === "keyword") this.unexpected("a function name");
     if (this.is("[")) {
       const open = this.advance();
       if (!this.isIdent("Symbol")) this.unexpected("`Symbol`");
@@ -1439,6 +1440,9 @@ export class Parser {
         } else {
           expr = { kind: "Member", object: expr, name: this.memberName(), optional: true, span: this.sp(start) };
         }
+      } else if (this.is("::")) {
+        this.advance();
+        expr = { kind: "PropertyReference", owner: expr, name: this.memberName(), span: this.sp(start) };
       } else if (this.is("(") && !this.tok.nl) {
         expr = { kind: "Call", callee: expr, args: this.parseArgs(), optional: false, span: this.sp(start) };
       } else if (this.is("[") && !this.tok.nl) {

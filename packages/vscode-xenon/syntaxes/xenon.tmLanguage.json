@@ -652,7 +652,7 @@
         },
         {
           "name": "keyword.operator.optional.xenon",
-          "match": "\\?\\."
+          "match": "\\?\\.|::"
         },
         {
           "name": "keyword.operator.assignment.compound.xenon",

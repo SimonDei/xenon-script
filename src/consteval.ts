@@ -59,7 +59,7 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
     case "Nameof": {
       const target = e.args.length === 1 ? e.args[0] : undefined;
       if (target?.kind === "Ident") return { ok: true, value: target.name };
-      if (target?.kind === "Member") return { ok: true, value: target.name.name };
+      if (target?.kind === "Member" || target?.kind === "PropertyReference") return { ok: true, value: target.name.name };
       return notConst(e, "`nameof` needs one name");
     }
     case "TypeCheck": return fold(e.expr, lookup);

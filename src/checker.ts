@@ -163,6 +163,8 @@ export interface CheckResult {
   typeChecks: Map<A.Expr, RuntimeCheck>;
   /** Instance methods used as values (not called): codegen binds them to their object, cached per instance. */
   methodClosures: Set<A.Expr>;
+  /** Resolved class member of each `Type::member` expression. */
+  propertyReferences: Map<A.Expr & { kind: "PropertyReference" }, MemberSig>;
   /** `a + b` / `a -= b` & co. that call `a['operator+'](b)`, and `a == b` / `a != b` that call `operator==` (the operator is the node's). */
   operatorCalls: Set<A.Expr>;
   /**
@@ -420,7 +422,7 @@ class Scope {
  */
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
-    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
+    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), propertyReferences: new Map(), operatorCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
     expectedTypes: new Map(), scopedLocals: new Map(), scopedTemps: new Map(), scopedReturns: new Set(), attributes: new Map(), checkedIndexes: new Set(),
   };
   const env = new Env(classes, typedefs, diags, result);
@@ -3226,6 +3228,11 @@ class BodyChecker {
       return T.String;
     };
     if (!arg) return bad("`nameof` takes exactly one name", e.span, `${e.args.length} given`);
+    if (arg.kind === "PropertyReference") {
+      this.record(arg, this.propertyReference(arg, scope));
+      this.env.result.inlineValues.set(e, arg.name.name);
+      return T.String;
+    }
     if (arg.kind !== "Ident" && arg.kind !== "Member") return bad("`nameof` takes a name, not an expression", arg.span, "not a name");
     // `nameof(User.email)`: an instance member named through its class (nothing is accessed).
     const dotted = (x: A.Expr): string | undefined => x.kind === "Ident" ? x.name : x.kind === "Member" ? (dotted(x.object) && `${dotted(x.object)}.${x.name.name}`) : undefined;
@@ -3701,7 +3708,7 @@ class BodyChecker {
       }
     }
     // Generic calls and `new` can infer type arguments from the expected type.
-    if (e.kind === "Call" || e.kind === "New") this.expected = expected;
+    if (e.kind === "Call" || e.kind === "New" || e.kind === "PropertyReference") this.expected = expected;
     if (e.kind === "Object" && expected.kind === "shape") {
       this.objectAgainstShape(e, expected, scope);
       this.record(e, expected);
@@ -3942,6 +3949,8 @@ class BodyChecker {
         }
         return t;
       }
+      case "PropertyReference":
+        return this.propertyReference(e, scope);
       case "Index": {
         const obj = this.valueExpr(e.object, scope);
         const idx = this.valueExpr(e.index, scope);
@@ -4187,6 +4196,77 @@ class BodyChecker {
   }
 
   /** Member access `obj.name`. */
+  /** `Type::member`: an unbound receiver-first function, never a captured instance. */
+  private propertyReference(e: A.Expr & { kind: "PropertyReference" }, scope: Scope): Type {
+    const expected = this.takeExpected();
+    const dotted = (x: A.Expr): string | undefined =>
+      x.kind === "Ident" ? x.name : x.kind === "Member" ? `${dotted(x.object) ?? ""}${dotted(x.object) ? "." : ""}${x.name.name}` : undefined;
+    const className = dotted(e.owner);
+    const info = className ? this.env.lookupClass(this.scope, className) : undefined;
+    if (!info) {
+      this.diags.error("X0608", "left side of `::` is not a class or interface", e.owner.span, "expected a type name")
+        .help("write an instance's bound member as `value.member`, or use a class name before `::`");
+      return T.error;
+    }
+    this.record(e.owner, { kind: "classRef", info });
+    this.env.result.resolutions.set(e.owner, { kind: "class", info });
+
+    const m = findMember(info, e.name.name);
+    if (!m) {
+      this.diags.error("X0426", `no member \`${e.name.name}\` on \`${info.decl.name.name}\``, e.name.span, "unknown member");
+      return T.error;
+    }
+    if (m.isStatic) {
+      this.diags.error("X0608", `\`${info.decl.name.name}.${m.name}\` is static`, e.span, "no instance receiver to supply")
+        .help(`use the bound class member directly: \`${info.decl.name.name}.${m.name}\``);
+      return T.error;
+    }
+    this.env.checkAccess(readDecl(m), m.owner, this.info, e.name.span);
+    this.env.usedMembers.add(m);
+    this.env.result.propertyReferences.set(e, m);
+
+    let args = info.typeParams.map(() => T.any);
+    if (expected?.kind === "method") {
+      const receiver = expected.params[0]?.type;
+      const concrete = receiver && nonNull(receiver);
+      if (concrete?.kind === "class" && concrete.info === info) args = concrete.args ?? args;
+    }
+    const primitive = ([
+      ["Int", T.int], ["UInt", T.uint], ["Float", T.Float], ["String", T.String], ["Bool", T.Boolean],
+    ] as const).find(([name]) => this.env.primClass(name) === info)?.[1];
+    const receiver: Type = primitive ?? (info === this.env.arrayClass ? arrayOf(args[0] ?? T.any) : { kind: "class", info, args });
+    const memberType = memberTypeIn(info, args, m.owner, m.type);
+    if (m.kind === "field" || m.kind === "accessor") {
+      if (m.kind === "accessor" && !accessorHalves(m).includes("get") && m.delegate !== "get") {
+        this.diags.error("X0506", `\`${m.name}\` has a setter but no getter`, e.name.span, "can't form a reader");
+        return T.error;
+      }
+      return { kind: "method", params: [{ name: "receiver", type: receiver, optional: false, rest: false }], ret: memberType };
+    }
+
+    const forms = m.overloads?.map((o) => ({ decl: o.decl, type: memberTypeIn(info, args, m.owner, o.type) as MethodType })) ?? [{ decl: m.decl, type: memberType as MethodType }];
+    let chosen = forms[0]!;
+    if (expected?.kind === "method") {
+      const matches = forms.filter((f) => assignable({
+        kind: "method",
+        params: [{ name: "receiver", type: receiver, optional: false, rest: false }, ...f.type.params],
+        ret: f.type.ret,
+        typeParams: f.type.typeParams,
+      }, expected));
+      if (matches.length === 1) chosen = matches[0]!;
+      else if (matches.length === 0 && forms.length > 1) {
+        const d = this.diags.error("X0604", `no overload of \`${m.name}\` matches the reference type`, e.name.span, "none has this receiver and parameters");
+        forms.forEach((f) => d.note(`\`${typeToString(f.type)}\``));
+      }
+    }
+    return {
+      kind: "method",
+      params: [{ name: "receiver", type: receiver, optional: false, rest: false }, ...chosen.type.params],
+      ret: chosen.type.ret,
+      typeParams: chosen.type.typeParams,
+    };
+  }
+
   private member(e: A.Expr & { kind: "Member" }, scope: Scope): Type {
     if (e.object.kind === "Super") return this.superMember(e);
     this.memberObject = e.object;

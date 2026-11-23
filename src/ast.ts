@@ -300,6 +300,8 @@ export type Expr =
   | { kind: "Object"; props: ObjectProp[]; span: Span }
   | { kind: "Spread"; arg: Expr; span: Span }
   | { kind: "Member"; object: Expr; name: Ident; optional: boolean; span: Span }
+  /** `Type::member`: an unbound member value whose first parameter is the receiver. */
+  | { kind: "PropertyReference"; owner: Expr; name: Ident; span: Span }
   | { kind: "Index"; object: Expr; index: Expr; optional: boolean; span: Span }
   | { kind: "Call"; callee: Expr; args: Expr[]; optional: boolean; span: Span }
   /** `nameof(target)`: checked source-level name, folded to a string constant. */

@@ -199,6 +199,7 @@ conditional    ? :
 spread/range   ...  ..  ..=
 type           is  as  typeof
 other          delete  await  nameof
+references     Type::member
 ```
 
 ## Current boundaries
