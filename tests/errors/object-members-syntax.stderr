@@ -1,0 +1,54 @@
+error[X0100]: an accessor in an object literal starts with `function`
+ --> object-members-syntax.xn:5:7
+  |
+5 |       get total():Int { return 1; },
+  |       ^^^^^^^^^ missing `function`
+  |
+help: write `function get total`
+  |
+5 |       function get total():Int { return 1; },
+  |       +++++++++
+
+error[X0100]: `get` comes after `function`
+ --> object-members-syntax.xn:6:7
+  |
+6 |       get function size():Int { return 2; }
+  |       ^^^^^^^^^^^^ wrong order
+  |
+help: write `function get`
+  |
+6 |       function get size():Int { return 2; }
+  |       ~~~~~~~~~~~~
+
+error[X0100]: expected `,` between the members of an object literal
+ --> object-members-syntax.xn:7:7
+  |
+7 |       function init():Void { }
+  |       ^^^^^^^^ missing `,` before this
+  |
+help: add `,`
+  |
+6 |       get function size():Int { return 2; },
+  |                                            +
+
+error[X0100]: expected `,` between the members of an object literal
+ --> object-members-syntax.xn:8:7
+  |
+8 |       set query(v:String):Void { }
+  |       ^^^ missing `,` before this
+  |
+help: add `,`
+  |
+7 |       function init():Void { },
+  |                               +
+
+error[X0100]: an accessor in an object literal starts with `function`
+ --> object-members-syntax.xn:8:7
+  |
+8 |       set query(v:String):Void { }
+  |       ^^^^^^^^^ missing `function`
+  |
+help: write `function set query`
+  |
+8 |       function set query(v:String):Void { }
+  |       +++++++++

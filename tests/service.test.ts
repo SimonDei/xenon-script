@@ -698,3 +698,32 @@ public class Main {
   // `c.total` resolves through the literal without errors.
   expect(p.diagnostics().get("Main.xn")!.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
 });
+
+test("completion after `state.` inside an object literal's getter, also while the literal has syntax errors", () => {
+  const member = (getter: string) => `public class State {
+  public function nameOf(r:String):String { return r }
+}
+
+public class Main {
+  private final state:State = new State()
+  public function Main() {
+    var o = {
+      search: '',
+${getter}
+      function label(row:String):String { return '' }
+    }
+    trace(o)
+  }
+}
+`;
+  for (const getter of [
+    "      function get rows():String {\n        return state.\n      },", // fine
+    "      function get rows():String {\n        return state.\n      }", // no comma before the next member
+    "      get rows():String {\n        return state.\n      }", // JavaScript's way round: reported, still parsed
+    "      get function rows():String {\n        return state.\n      },",
+  ]) {
+    const text = member(getter);
+    const p = project({ "Main.xn": text });
+    expect(p.completions("Main.xn", offset(text, "state.\n", 6)).map((i) => i.label)).toContain("nameOf");
+  }
+});

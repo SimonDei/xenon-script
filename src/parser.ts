@@ -1625,14 +1625,47 @@ export class Parser {
     return next.kind === "ident" || next.kind === "keyword";
   }
 
+  /**
+   * `get area():T {…}` or `get function area():T {…}`: an accessor written the JavaScript way. Nothing is
+   * consumed here.
+   */
+  private misplacedAccessor(): { accessor: "get" | "set"; reversed: boolean } | undefined {
+    if (!(this.isIdent("get") || this.isIdent("set"))) return undefined;
+    const next = this.peekTok();
+    const afterName = this.tokens[this.i + 2];
+    const named = (t: Token | undefined) => !!t && (t.kind === "ident" || t.kind === "keyword");
+    const accessor = this.tok.value as "get" | "set";
+    if (this.is("function", next) && named(afterName)) return { accessor, reversed: true };
+    if (named(next) && !this.is("function", next) && !!afterName && this.is("(", afterName)) return { accessor, reversed: false };
+    return undefined;
+  }
+
+  /** Reports a misplaced accessor with a fix, and parses it anyway so the editor keeps the literal's types. */
+  private parseMisplacedAccessor(found: { accessor: "get" | "set"; reversed: boolean }): A.ObjectProp {
+    const word = this.advance();
+    const next = this.tok;
+    if (found.reversed) {
+      this.diags.error("X0100", `\`${word.value}\` comes after \`function\``, cover(word.span, next.span), "wrong order")
+        .help(`write \`function ${word.value}\``, [{ span: cover(word.span, next.span), text: `function ${word.value}` }]);
+      this.advance(); // `function`
+    } else {
+      this.diags.error("X0100", `an accessor in an object literal starts with \`function\``, cover(word.span, next.span), "missing `function`")
+        .help(`write \`function ${word.value} ${next.value}\``, [{ span: span(this.file, word.span.start, word.span.start), text: "function " }]);
+    }
+    return this.parseObjectFunction(found.accessor, word.span.start);
+  }
+
   /** A method or accessor of an object literal: `[async] function [get|set] name(params)[:T] { … }`. */
-  private parseObjectFunction(): A.ObjectProp {
-    const start = this.tok.span.start;
-    const isAsync = !!this.eat("async");
-    this.expect("function");
-    let accessor: "get" | "set" | undefined;
-    if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword")) {
-      accessor = this.advance().value as "get" | "set";
+  private parseObjectFunction(preset?: "get" | "set", from?: number): A.ObjectProp {
+    const start = from ?? this.tok.span.start;
+    let accessor = preset;
+    let isAsync = false;
+    if (!preset) {
+      isAsync = !!this.eat("async");
+      this.expect("function");
+      if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword")) {
+        accessor = this.advance().value as "get" | "set";
+      }
     }
     const key = this.memberName();
     const typeParams = this.typeParamList();
@@ -1664,12 +1697,22 @@ export class Parser {
         props.push({ kind: "Prop", key: { kind: "StringKey", value: key }, value: this.parseAssign(), span: this.sp(pStart) });
       } else if (this.startsObjectFunction()) {
         props.push(this.parseObjectFunction());
+      } else if (this.misplacedAccessor()) {
+        props.push(this.parseMisplacedAccessor(this.misplacedAccessor()!));
       } else {
         const name = this.memberName();
         if (this.eat(":")) props.push({ kind: "Prop", key: name, value: this.parseAssign(), span: this.sp(pStart) });
         else props.push({ kind: "Shorthand", name, span: this.sp(pStart) });
       }
-      if (!this.eat(",")) break;
+      if (this.eat(",")) continue;
+      // A member on the next line without the comma: say so and carry on, so the rest of the literal still parses.
+      if (!this.is("}") && this.tok.nl && (this.tok.kind === "ident" || this.tok.kind === "keyword" || this.tok.kind === "string" || this.is("[") || this.is("..."))) {
+        const at = span(this.file, this.prevEnd, this.prevEnd);
+        this.diags.error("X0100", "expected `,` between the members of an object literal", this.tok.span, "missing `,` before this")
+          .help("add `,`", [{ span: at, text: "," }]);
+        continue;
+      }
+      break;
     }
     this.expectClose("}", open);
     return { kind: "Object", props, span: this.sp(start) };

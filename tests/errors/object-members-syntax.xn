@@ -1,0 +1,12 @@
+public class Main {
+  public function Main() {
+    var o = {
+      rows: [1],
+      get total():Int { return 1; },
+      get function size():Int { return 2; }
+      function init():Void { }
+      set query(v:String):Void { }
+    };
+    trace(o);
+  }
+}
