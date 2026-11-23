@@ -163,7 +163,9 @@ export function nodesAt(file: A.XenonFile, offset: number): Node[] {
   let level: Node[] = childNodes([file.imports, file.decls, file.privateDecls, file.functions]);
   for (;;) {
     const inside = level.filter((n) => n.span.start <= offset && offset < n.span.end);
-    const next = inside.at(-1) ?? level.find((n) => n.span.end === offset && n.span.start < offset);
+    // The narrowest wins (the last among equals): a method's name lies inside its function's span.
+    const next = inside.reduce<Node | undefined>((best, n) => (!best || n.span.end - n.span.start <= best.span.end - best.span.start ? n : best), undefined)
+      ?? level.find((n) => n.span.end === offset && n.span.start < offset);
     if (!next) return chain;
     chain.push(next);
     level = childNodes(next);
@@ -584,8 +586,9 @@ export class XenonProject {
         return info && ofClass(info, node.span);
       }
       // `{ excelRow: 1 }` / `{ data }` in a literal checked against a shape: the shape's member.
-      if ((parent.kind === "Prop" && (parent as A.ObjectProp & { kind: "Prop" }).key === node) || parent.kind === "Shorthand") {
-        const literal = chain.at(-3);
+      const isKey = (parent.kind === "Prop" || parent.kind === "Accessor") && (parent as A.ObjectProp & { kind: "Prop" | "Accessor" }).key === node;
+      if (isKey || parent.kind === "Shorthand") {
+        const literal = chain.findLast((n) => n.kind === "Object");
         const t = literal?.kind === "Object" ? check.exprTypes.get(literal as A.Expr) : undefined;
         const shape = t?.kind === "nullable" ? t.inner : t;
         const s = shape?.kind === "shape" ? shapeMember(shape, (node as A.Ident).name) : undefined;
@@ -593,7 +596,7 @@ export class XenonProject {
           const owner = shape.typedef ? `${shape.typedef.decl.name.name}.` : "";
           return { text: `${owner}${shapeMemberText(s.member)}`, doc: s.node && docComment(s.node.span.file, s.node.span.start), span: node.span, decl: s.node?.name.span };
         }
-        if (parent.kind === "Prop") return undefined;
+        if (isKey) return undefined;
       }
       // `{ name }`: the property is a variable or member in scope.
       if (parent.kind === "Shorthand") {
@@ -1053,6 +1056,7 @@ export class XenonProject {
     const given = new Set(obj.props.flatMap((p) => {
       if (p.span.start === nameStart) return []; // the key being typed
       if (p.kind === "Shorthand") return [p.name.name];
+      if (p.kind === "Accessor") return [p.key.name];
       return p.kind === "Prop" && !("kind" in p.key) ? [p.key.name] : [];
     }));
     return this.shapeCompletions(shape)

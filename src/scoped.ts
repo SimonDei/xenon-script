@@ -542,7 +542,8 @@ class ScopedChecker {
           } else if (p.kind === "Shorthand") {
             const cls = scopedClass(this.type({ kind: "Ident", name: p.name.name, span: p.name.span }));
             if (cls) this.scopedValue({ kind: "Ident", name: p.name.name, span: p.name.span }, "store", cls, "stored in an object");
-          } else this.visit(p.arg, "store", "spread into an object");
+          } else if (p.kind === "Accessor") this.visit(p.fn, "use");
+          else this.visit(p.arg, "store", "spread into an object");
         }
         return;
       case "Spread":

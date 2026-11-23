@@ -1164,6 +1164,12 @@ class ModuleGen {
     return "$self";
   }
 
+  /** `name(…) {…}`, `async name(…) {…}`, `get name() {…}`: a method or accessor of an object literal, written from a function. */
+  private objectFunction(kind: string, key: A.Ident, f: A.FunctionNode): string {
+    const code = this.fn(f).code; // `function(…) {…}` or `async function(…) {…}`
+    return code.replace(/^(async )?function/, (_, async: string | undefined) => `${async ?? ""}${kind}${this.tok(key.span, key.name)}`);
+  }
+
   /** Code for a function expression, arrow function or local function declaration. */
   private fn(f: A.FunctionNode): Code {
     const saved = { w: this.w, temps: this.temps, fnTemps: this.fnTemps };
@@ -1720,6 +1726,12 @@ class ModuleGen {
             }
             return p.name.name;
           }
+          if (p.kind === "Accessor") {
+            // A setter can't have a return type annotation in TypeScript.
+            const fn = p.accessor === "set" ? { ...p.fn, returnType: undefined } : p.fn;
+            return this.objectFunction(`${p.accessor} `, p.key, fn);
+          }
+          if (p.method && p.value.kind === "Function") return this.objectFunction("", p.key as A.Ident, p.value);
           const key = "name" in p.key ? p.key.name : p.key.kind === "StringKey" ? jsString(p.key.value) : `[${this.expr(p.key.expr).code}]`;
           return `${key}: ${this.wrap(this.expr(p.value), P.assign)}`;
         });

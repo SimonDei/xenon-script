@@ -670,3 +670,31 @@ test("completion after a spread's receiver in a statement that doesn't parse yet
   const p = project({ "Main.xn": text });
   expect(p.completions("Main.xn", offset(text, "[...words.", 10)).map((i) => i.label)).toContain("concat");
 });
+
+test("hover and completion work for methods and accessors in object literals", () => {
+  const text = `typedef Box = { width:int, final area:int, name:String, ?note:String }
+
+public class Main {
+  public function Main() {
+    var b:Box = {
+      width: 1,
+      function get area():int { return 2; },
+      name: 'x',
+
+    };
+    var c = { function init():Void { }, function get total():int { return 1; } };
+    trace(b, c.total)
+  }
+}
+`;
+  const p = project({ "Main.xn": text });
+  // Hovering a getter's name shows the shape member it implements.
+  expect(p.hover("Main.xn", offset(text, "get area", 6))?.contents).toContain("Box.final area:Int");
+  // Completion of keys leaves out what a method or accessor already gave.
+  const keys = p.completions("Main.xn", offset(text, "name: 'x',\n", 12)).map((i) => i.label);
+  expect(keys).toContain("note");
+  expect(keys).not.toContain("area");
+  expect(keys).not.toContain("width");
+  // `c.total` resolves through the literal without errors.
+  expect(p.diagnostics().get("Main.xn")!.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+});

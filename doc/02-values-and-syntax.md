@@ -80,6 +80,26 @@ var moved = { ...p, x: 20 }
 var all:Array<Int> = [...scores, 13]
 ```
 
+An object literal can have methods and accessors, written like a class's with the `function` keyword:
+
+```actionscript
+var counter = {
+  count: 0,
+  function get double():Int { return this.count * 2 },
+  function set value(n:Int):Void { this.count = n },
+  function get value():Int { return this.count },
+  function bump(by:Int):Int { this.count += by; return this.count },
+  async function save():Promise<Void> { await store(this.count) }
+}
+```
+
+They compile to JavaScript methods, getters, and setters. `this` is the object itself (untyped, like
+in a `function` expression); an arrow function inside keeps the same `this`. A getter needs a return
+type, a setter takes one typed parameter, and neither can be `async`. A getter and a setter with the
+same name pair up; any other repeated name is an error. Against a typedef, a getter fits a `final`
+member (`final area:Int`); a member that is written also needs a setter. A spread (`{ ...counter }`)
+copies a getter's current value, as in JavaScript.
+
 ## Destructuring
 
 Array and object destructuring work in declarations, assignments, and `for … of` bindings:

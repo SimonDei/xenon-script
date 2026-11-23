@@ -4127,9 +4127,55 @@ class BodyChecker {
     return T.error;
   }
 
-  private objectLiteral(e: A.Expr & { kind: "Object" }, scope: Scope) {
+  /**
+   * The methods and accessors of an object literal (`function f() {…}`, `function get x():T {…}`):
+   * accessors have the shape of a class's (X0205/X0206/X0211/X0761, typed: X0850), and a name is
+   * declared once (a getter and a setter pair up).
+   */
+  private checkObjectMembers(e: A.Expr & { kind: "Object" }) {
+    const seen = new Map<string, { get: boolean; set: boolean; plain: boolean; explicit: boolean }>();
     for (const p of e.props) {
-      if (p.kind === "Prop") {
+      let key: A.Ident | undefined;
+      if (p.kind === "Accessor") {
+        key = p.key;
+        const { fn } = p;
+        if (fn.async) this.diags.error("X0761", "accessors can't be `async`", fn.span);
+        if (p.accessor === "get") {
+          if (fn.params.length > 0) this.diags.error("X0205", "a getter takes no parameters", fn.params[0]!.span);
+          if (!fn.returnType) this.diags.error("X0850", `the getter \`${key.name}\` needs a return type`, key.span, "add `:Type` after the parentheses");
+        } else {
+          if (fn.params.length !== 1) this.diags.error("X0206", "a setter takes exactly one parameter", fn.params[1]?.span ?? key.span);
+          else if (!fn.params[0]!.type) this.diags.error("X0850", `the parameter of the setter \`${key.name}\` needs a type`, fn.params[0]!.span);
+          if (fn.returnType && !(fn.returnType.kind === "TypeName" && fn.returnType.name.length === 1 && fn.returnType.name[0]!.name.toLowerCase() === "void")) {
+            this.diags.error("X0211", "a setter returns `Void`", fn.returnType.span);
+          }
+        }
+      } else if (p.kind === "Prop" && "name" in p.key) key = p.key;
+      else if (p.kind === "Shorthand") key = p.name;
+      if (!key) continue;
+      const kind = p.kind === "Accessor" ? p.accessor : "plain";
+      const explicit = p.kind === "Accessor" || (p.kind === "Prop" && !!p.method);
+      const old = seen.get(key.name);
+      if (!old) {
+        seen.set(key.name, { get: kind === "get", set: kind === "set", plain: kind === "plain", explicit });
+        continue;
+      }
+      const pairs = (kind === "get" && old.set && !old.get && !old.plain) || (kind === "set" && old.get && !old.set && !old.plain);
+      if (pairs) {
+        if (kind === "get") old.get = true;
+        else old.set = true;
+      } else if (explicit || old.explicit) {
+        this.diags.error("X0201", `\`${key.name}\` is declared twice in this object literal`, key.span, "already declared");
+      }
+    }
+  }
+
+  private objectLiteral(e: A.Expr & { kind: "Object" }, scope: Scope) {
+    this.checkObjectMembers(e);
+    for (const p of e.props) {
+      if (p.kind === "Accessor") {
+        this.valueExpr(p.fn, scope);
+      } else if (p.kind === "Prop") {
         if ("kind" in p.key && p.key.kind === "Computed") this.valueExpr(p.key.expr, scope);
         this.valueExpr(p.value, scope);
       } else if (p.kind === "SpreadProp") {
@@ -4466,8 +4512,10 @@ class BodyChecker {
    * unknown keys are errors (typos like `{ x: 1, yy: 2 }`), and required members must be present.
    */
   private objectAgainstShape(e: A.Expr & { kind: "Object" }, shape: ShapeType, scope: Scope) {
+    this.checkObjectMembers(e);
     const given = new Set<string>();
     const unknown: A.Ident[] = [];
+    const accessors = new Map<string, { get?: A.Ident; set?: A.Ident }>();
     let spread = false;
     for (const p of e.props) {
       if (p.kind === "SpreadProp") {
@@ -4476,7 +4524,8 @@ class BodyChecker {
         continue;
       }
       let key: A.Ident | undefined;
-      if (p.kind === "Shorthand") key = p.name;
+      if (p.kind === "Accessor") key = p.key;
+      else if (p.kind === "Shorthand") key = p.name;
       else if ("name" in p.key) key = p.key;
       else if (p.key.kind === "StringKey") key = { name: p.key.value, span: p.span };
       if (!key) {
@@ -4489,15 +4538,42 @@ class BodyChecker {
       if (!member) {
         unknown.push(key);
         if (p.kind === "Prop") this.valueExpr(p.value, scope);
+        else if (p.kind === "Accessor") this.valueExpr(p.fn, scope);
         continue;
       }
       const memberType = member.optional ? nullableOf(member.type()) : member.type();
-      if (p.kind === "Shorthand") {
+      if (p.kind === "Accessor") {
+        // The getter's result is what the member holds; the setter takes what it is assigned.
+        const sig = this.valueExpr(p.fn, scope);
+        const entry = accessors.get(key.name) ?? {};
+        entry[p.accessor] = key;
+        accessors.set(key.name, entry);
+        if (sig.kind === "method") {
+          const [have, want] = p.accessor === "get" ? [sig.ret, memberType] : [memberType, sig.params[0]?.type];
+          if (want && !isDynamic(have) && !isDynamic(want) && !assignable(have, want)) {
+            const at = p.accessor === "get" ? p.fn.returnType?.span ?? key.span : p.fn.params[0]?.span ?? key.span;
+            this.diags.error("X0308", "mismatched types", at, p.accessor === "get"
+              ? `expected \`${typeToString(memberType)}\`, found \`${typeToString(sig.ret)}\``
+              : `\`${key.name}\` holds \`${typeToString(memberType)}\`, the setter takes \`${typeToString(want)}\``);
+          }
+        }
+      } else if (p.kind === "Shorthand") {
         const ident = { kind: "Ident" as const, name: p.name.name, span: p.name.span };
         this.checkAssign(ident, memberType, undefined, scope);
         const r = this.env.result.resolutions.get(ident);
         if (r) this.env.result.resolutions.set(p, r);
       } else this.checkAssign(p.value, memberType, undefined, scope);
+    }
+    // A shape member that is written needs a setter; a getter alone is a read-only (`final`) member.
+    for (const [name, a] of accessors) {
+      const member = shape.members.get(name)!;
+      if (a.get && !a.set && !member.readonly) {
+        this.diags.error("X0879", `\`${name}\` can be assigned in \`${typeToString(shape)}\`, but the object only has a getter`, a.get.span, "no setter")
+          .help(`declare it \`final ${name}:…\` in the shape, or add \`function set ${name}(value:…):Void\``);
+      } else if (a.set && !a.get) {
+        this.diags.error("X0879", `\`${name}\` is read in \`${typeToString(shape)}\`, but the object only has a setter`, a.set.span, "no getter")
+          .help(`add \`function get ${name}():…\``);
+      }
     }
     const missing = spread ? [] : [...shape.members.values()].filter((m) => !m.optional && !given.has(m.name));
     const free = [...shape.members.keys()].filter((n) => !given.has(n));
@@ -5001,7 +5077,7 @@ class BodyChecker {
     const spread = e.props.some((p) => p.kind === "SpreadProp");
     for (const p of e.props) {
       if (p.kind === "SpreadProp") continue;
-      const key = p.kind === "Shorthand" ? p.name.name : "name" in p.key ? p.key.name : p.key.kind === "StringKey" ? p.key.value : undefined;
+      const key = p.kind === "Shorthand" ? p.name.name : p.kind === "Accessor" ? p.key.name : "name" in p.key ? p.key.name : p.key.kind === "StringKey" ? p.key.value : undefined;
       if (key === undefined) continue; // computed
       given.add(key);
       const member = shape.members.get(key);

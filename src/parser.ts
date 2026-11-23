@@ -1135,6 +1135,7 @@ export class Parser {
       for (const p of e.props) {
         if (p.kind === "SpreadProp") rest = target(p.arg);
         else if (p.kind === "Shorthand") props.push({ key: p.name, value: { kind: "Target", expr: { kind: "Ident", name: p.name.name, span: p.name.span }, span: p.span }, span: p.span });
+        else if (p.kind === "Accessor" || p.method) this.fail("a method can't be destructured", p.span);
         else if ("name" in p.key) props.push({ key: p.key, value: target(p.value), span: p.span });
         else this.fail("computed and quoted keys can't be destructured", p.span);
       }
@@ -1615,6 +1616,34 @@ export class Parser {
     return { kind: "Function", arrow, async: isAsync, name, typeParams, params, returnType, body, span: this.sp(start) };
   }
 
+  /** `function name(…)`, `async function name(…)`; `function: 1` and `async,` are plain keys. */
+  private startsObjectFunction(): boolean {
+    const isFunction = (t: Token) => t.kind === "keyword" && t.value === "function";
+    if (this.is("async")) return isFunction(this.peekTok());
+    if (!isFunction(this.tok)) return false;
+    const next = this.peekTok();
+    return next.kind === "ident" || next.kind === "keyword";
+  }
+
+  /** A method or accessor of an object literal: `[async] function [get|set] name(params)[:T] { … }`. */
+  private parseObjectFunction(): A.ObjectProp {
+    const start = this.tok.span.start;
+    const isAsync = !!this.eat("async");
+    this.expect("function");
+    let accessor: "get" | "set" | undefined;
+    if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword")) {
+      accessor = this.advance().value as "get" | "set";
+    }
+    const key = this.memberName();
+    const typeParams = this.typeParamList();
+    const params = this.parseParams();
+    const returnType = this.eat(":") ? this.parseType() : undefined;
+    const body = this.parseBlock();
+    const fn: A.FunctionNode = { kind: "Function", arrow: false, async: isAsync, typeParams, params, returnType, body, span: this.sp(start) };
+    if (accessor) return { kind: "Accessor", accessor, key, fn, span: this.sp(start) };
+    return { kind: "Prop", key, value: fn, method: true, span: this.sp(start) };
+  }
+
   private parseObject(): A.Expr {
     const open = this.expect("{");
     const start = open.span.start;
@@ -1633,6 +1662,8 @@ export class Parser {
         const key = this.advance().value;
         this.expect(":");
         props.push({ kind: "Prop", key: { kind: "StringKey", value: key }, value: this.parseAssign(), span: this.sp(pStart) });
+      } else if (this.startsObjectFunction()) {
+        props.push(this.parseObjectFunction());
       } else {
         const name = this.memberName();
         if (this.eat(":")) props.push({ kind: "Prop", key: name, value: this.parseAssign(), span: this.sp(pStart) });

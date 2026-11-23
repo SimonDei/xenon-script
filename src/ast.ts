@@ -317,6 +317,9 @@ export type Expr =
   | { kind: "Error"; span: Span };
 
 export type ObjectProp =
-  | { kind: "Prop"; key: Ident | { kind: "Computed"; expr: Expr } | { kind: "StringKey"; value: string }; value: Expr; span: Span }
+  /** `method`: written `function name(…) {…}` (the value is that function). */
+  | { kind: "Prop"; key: Ident | { kind: "Computed"; expr: Expr } | { kind: "StringKey"; value: string }; value: Expr; method?: boolean; span: Span }
+  /** `function get area():Int {…}` / `function set area(v:Int) {…}` in an object literal. */
+  | { kind: "Accessor"; accessor: "get" | "set"; key: Ident; fn: FunctionNode; span: Span }
   | { kind: "Shorthand"; name: Ident; span: Span }
   | { kind: "SpreadProp"; arg: Expr; span: Span };

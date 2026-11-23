@@ -1,0 +1,34 @@
+// Methods and accessors in object literals: `function name() {}`, `function get x():T {}`, `function set x(v:T):Void {}`.
+typedef Box = { width:Int, final area:Int, name:String }
+typedef Rect = { width:Int, area:Int }
+
+public class Main {
+  public function Main() {
+    var w:Int = 3;
+    var ok:Box = {
+      width: w,
+      function get area():Int { return w * 2; },
+      name: 'x'
+    };
+    var rect:Rect = {                                       // X0879: `area` is written in Rect, but there is only a getter
+      width: w,
+      function get area():Int { return w * 2; }
+    };
+    var wrong:Box = {
+      width: w,
+      function get area():String { return 'a'; },           // X0308: the getter's result
+      function set name(v:Int):Void { },                    // X0879 (no getter) and X0308 (the setter's parameter)
+      name: 'y'                                             // X0201: declared twice
+    };
+    var loose = {
+      function get one() { return 1; },                     // X0850: a getter needs a return type
+      function get two(x:Int):Int { return x; },            // X0205
+      function set three():Void { },                        // X0206
+      function set four(v:Int):Int { return v; },           // X0211
+      async function get five():Int { return 1; },         // X0761
+      function six():Int { return 6; },
+      function six():Int { return 7; }                      // X0201
+    };
+    trace(ok, rect, wrong, loose);
+  }
+}

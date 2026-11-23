@@ -19,6 +19,7 @@ error[X0604]: no overload of `hasOwnProperty` accepts (Bool)
   |
   = note: `hasOwnProperty(key:String):Boolean`
   = note: `hasOwnProperty(index:Float):Boolean`
+  = note: `hasOwnProperty(key:Symbol):Boolean`
 
 error[X0426]: no member `toStrin` on `Dog`
  --> std-object-members.xn:7:13
@@ -40,16 +41,14 @@ error[X0414]: `toString` is an instance member; it can't be accessed through the
 14 |   override public function toString(prefix:String):String { return prefix }   // wrong signature
    |                            -------- declared here
 
-error[X0601]: this call takes 1 argument but 0 were given
-  --> std-object-members.xn:9:24
-   |
- 9 |     trace(p.valueOf(), p.propertyIsEnumerable())
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ missing `key:String`
-   |
-  ::: <xenon prelude>/xenon/Object.xn:28:14
-   |
-28 |     function propertyIsEnumerable(key:String):Boolean
-   |              -------------------- `propertyIsEnumerable` defined here
+error[X0604]: no overload of `propertyIsEnumerable` accepts ()
+ --> std-object-members.xn:9:24
+  |
+9 |     trace(p.valueOf(), p.propertyIsEnumerable())
+  |                        ^^^^^^^^^^^^^^^^^^^^^^ no matching overload
+  |
+  = note: `propertyIsEnumerable(key:String):Boolean`
+  = note: `propertyIsEnumerable(key:Symbol):Boolean`
 
 error[X0720]: `valueOf` overrides `Object.valueOf` but is not marked `override`
   --> std-object-members.xn:13:19

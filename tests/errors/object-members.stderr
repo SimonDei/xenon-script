@@ -1,0 +1,80 @@
+error[X0879]: `area` can be assigned in `Rect`, but the object only has a getter
+  --> object-members.xn:15:20
+   |
+15 |       function get area():Int { return w * 2; }
+   |                    ^^^^ no setter
+   |
+help: declare it `final area:…` in the shape, or add `function set area(value:…):Void`
+
+error[X0308]: mismatched types
+  --> object-members.xn:19:27
+   |
+19 |       function get area():String { return 'a'; },           // X0308: the getter's result
+   |                           ^^^^^^ expected `Int`, found `String`
+
+error[X0879]: `name` is read in `Box`, but the object only has a setter
+  --> object-members.xn:20:20
+   |
+20 |       function set name(v:Int):Void { },                    // X0879 (no getter) and X0308 (the setter's parameter)
+   |                    ^^^^ no getter
+   |
+help: add `function get name():…`
+
+error[X0308]: mismatched types
+  --> object-members.xn:20:25
+   |
+20 |       function set name(v:Int):Void { },                    // X0879 (no getter) and X0308 (the setter's parameter)
+   |                         ^^^^^ `name` holds `String`, the setter takes `Int`
+
+error[X0201]: `name` is declared twice in this object literal
+  --> object-members.xn:21:7
+   |
+21 |       name: 'y'                                             // X0201: declared twice
+   |       ^^^^ already declared
+
+error[X0850]: the getter `one` needs a return type
+  --> object-members.xn:24:20
+   |
+24 |       function get one() { return 1; },                     // X0850: a getter needs a return type
+   |                    ^^^ add `:Type` after the parentheses
+
+error[X0205]: a getter takes no parameters
+  --> object-members.xn:25:24
+   |
+25 |       function get two(x:Int):Int { return x; },            // X0205
+   |                        ^^^^^
+
+error[X0206]: a setter takes exactly one parameter
+  --> object-members.xn:26:20
+   |
+26 |       function set three():Void { },                        // X0206
+   |                    ^^^^^
+
+error[X0211]: a setter returns `Void`
+  --> object-members.xn:27:32
+   |
+27 |       function set four(v:Int):Int { return v; },           // X0211
+   |                                ^^^
+
+error[X0761]: accessors can't be `async`
+  --> object-members.xn:28:7
+   |
+28 |       async function get five():Int { return 1; },         // X0761
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[X0763]: an `async` function must return a `Promise<T>`
+  --> object-members.xn:28:33
+   |
+28 |       async function get five():Int { return 1; },         // X0761
+   |                                 ^^^ found `Int`
+   |
+help: return `Promise<Int>`
+   |
+28 |       async function get five():Promise<Int> { return 1; },         // X0761
+   |                                 ~~~~~~~~~~~~
+
+error[X0201]: `six` is declared twice in this object literal
+  --> object-members.xn:30:16
+   |
+30 |       function six():Int { return 7; }                      // X0201
+   |                ^^^ already declared
