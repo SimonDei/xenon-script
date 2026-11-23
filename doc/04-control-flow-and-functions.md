@@ -111,7 +111,7 @@ null checks crossing a closure boundary are intentionally conservative.
 `Type::member` creates a typed function without capturing an instance:
 
 ```actionscript
-var readName:(User) -> String = User::name
+var readName:PropertyReference<User, String> = User::name
 var save:(User, String) -> Bool = User::save
 
 var names:Array<String> = users.map(User::name)

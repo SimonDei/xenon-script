@@ -119,6 +119,7 @@ name. Like other keywords, it remains valid as a member name (`obj.nameof()`).
 ```text
 Int, UInt, Float, String, Bool, Void
 Object, Array<T>, Function, Class<T>, RegExp
+PropertyReference<Owner, Value>
 Tuple<A, B, ...>
 T?
 Null<T>

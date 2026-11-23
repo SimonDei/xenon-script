@@ -1,0 +1,4 @@
+// A typed, unbound reader produced by `Owner::member`.
+package xenon {
+  public typedef PropertyReference<Owner, Value> = (owner:Owner) -> Value
+}

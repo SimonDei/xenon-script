@@ -25,7 +25,7 @@ test("property references read fields/getters and dispatch methods with the supp
     { path: "Main.xn", text: `public class Main {
   public function Main() {
     var user:User = new User('Ann')
-    var readName:(User) -> String = User::name
+    var readName:PropertyReference<User, String> = User::name
     var readUpper:(User) -> String = User::upper
     var label:(User, String) -> String = User::label
     var box:Box<String> = new Box('boxed')
