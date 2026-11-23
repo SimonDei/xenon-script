@@ -2,11 +2,5 @@ countdown 3
 countdown 2
 countdown 1
 6 6 9 6
-playing intro
-playing song
-playing outro
-letter a
-letter b
-letter c
 3 x only 5
 true true false true false

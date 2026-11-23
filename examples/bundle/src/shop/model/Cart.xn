@@ -11,8 +11,8 @@ package shop.model {
       return items.reduce((sum:int, item:Item):int => sum + item.cents, 0)
     }
 
-    public function getEnumerator():IEnumerator<Item> {
-      return items.getEnumerator()
+    public function [Symbol.iterator]():Iterator<Item> {
+      return items.values()
     }
   }
 }

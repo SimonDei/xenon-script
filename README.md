@@ -136,7 +136,7 @@ the important edge cases.
 | Resources | destructors `function ~Connection() { … }`: destroyed when their scope ends (scoped classes), or `implements IDisposable` with a `dispose()` method for `using` / `await using` | [`destructors`](examples/destructors) |
 | Attributes | `[Route('/users', verb = 'POST')]` on classes, methods and fields (classes implementing `IAttribute`, constant arguments), read with `Attributes.of(…)`; `[Deprecated('…')]` warns at uses, `[NoDiscard]` when a result is dropped; `Class<T>` for class values | [`attributes`](examples/attributes), [`class-values`](examples/class-values) |
 | `nameof` | `nameof(user.email)` is the checked string `'email'`: typos are errors, and renaming the member updates it | |
-| Iteration | `Iterable<T>` / `IEnumerator<T>`, usable with `for … of` (also from JavaScript) | [`enumerable`](examples/enumerable) |
+| Iteration | JavaScript-compatible `Iterable<T>` / `Iterator<T>`, usable with `for … of` | [`enumerable`](examples/enumerable) |
 | Compile time | `inline` constants, `constexpr` functions (runtime fallback when arguments aren't constant), compile-only `consteval` functions (every call must fold), `const` methods, operator overloading (`operator+`, `-`, `*`, `/`, `==`) | [`inline`](examples/inline), [`const-methods`](examples/const-methods), [`operators`](examples/operators) |
 | Strings | `'single quotes'`, templates `$'Hi {name}'`, regex literals `~/^a+/i` | [`basics`](examples/basics) |
 

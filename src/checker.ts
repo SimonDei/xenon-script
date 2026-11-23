@@ -165,8 +165,6 @@ export interface CheckResult {
   methodClosures: Set<A.Expr>;
   /** `a + b` / `a -= b` & co. that call `a['operator+'](b)`, and `a == b` / `a != b` that call `operator==` (the operator is the node's). */
   operatorCalls: Set<A.Expr>;
-  /** `x.getEnumerator` resolving to `Iterable`'s declaration (x may be built-in): compiled to `Enumerable.enumerate(x)`. */
-  enumerateCalls: Set<A.Expr>;
   /**
    * Calls of standard-library members typed differently from TypeScript's (`p.catch(log)` is a
    * `Promise<T?>` here, a `Promise<T | void>` there): the TypeScript output casts their result.
@@ -422,7 +420,7 @@ class Scope {
  */
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
-    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), enumerateCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
+    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), operatorCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
     expectedTypes: new Map(), scopedLocals: new Map(), scopedTemps: new Map(), scopedReturns: new Set(), attributes: new Map(), checkedIndexes: new Set(),
   };
   const env = new Env(classes, typedefs, diags, result);
@@ -1394,8 +1392,7 @@ class Env {
     if (info.decl.isInterface || isNative(info) || hasJsAncestor(info)) return;
     const missing: MemberSig[] = [];
     const seen = new Set<string>();
-    // Built-in enumerables (`Set`, `Map`, …) are iterable in JavaScript without a `getEnumerator()`;
-    // `Enumerable.enumerate` provides one, so subclasses don't need to either.
+    // Built-in iterables (`Set`, `Map`, …) already implement `[Symbol.iterator]`.
     const builtinEnumerable = [...superclasses(info)].some((c) => isNative(c) && !!this.enumerable && isSubclass(c, this.enumerable));
     for (const iface of supertypes(info)) {
       if (!iface.decl.isInterface) continue;
@@ -1405,10 +1402,6 @@ class Env {
         const impl = findClassMember(info, req.name);
         if (!impl) {
           if (builtinEnumerable && req.owner === this.enumerable) continue;
-          if (req.owner === this.enumerable) {
-            if (req.name === "getEnumerator") continue;
-            if (req.name === "[Symbol.iterator]" && findClassMember(info, "getEnumerator")) continue;
-          }
           // `IAttribute.wrap` is optional: only attributes that wrap methods define it.
           if (req.owner.qname === "xenon.IAttribute" && req.name === "wrap") continue;
           missing.push(req);
@@ -3549,7 +3542,7 @@ class BodyChecker {
     } else if (t.kind === "prim" || t.kind === "null" || t.kind === "classRef" || t.kind === "method" ||
       (t.kind === "builtin" && t.name !== "Array") || (t.kind === "class" && !hasJsAncestor(t.info))) {
       const d = this.diags.error("X0391", `\`${typeToString(t)}\` is not iterable`, s.iterable.span);
-      if (t.kind === "class") d.help(`implement \`Iterable<T>\` in \`${t.info.decl.name.name}\`: \`function [Symbol.iterator]():Iterator<T>\` (or Xenon's \`getEnumerator():IEnumerator<T>\` adapter)`);
+      if (t.kind === "class") d.help(`implement \`Iterable<T>\` in \`${t.info.decl.name.name}\`: \`function [Symbol.iterator]():Iterator<T>\``);
       element = T.error;
     }
     this.loopVar(s.variable, element, scope, "elements");
@@ -4214,7 +4207,6 @@ class BodyChecker {
         }
         if (m.overloads) this.calleeOverloads.set(e, m.overloads);
         this.memberUse(e, m, e.name.span);
-        this.enumerateCall(e, m);
         return this.seenThrough({ kind: "class", info: cls }, m);
       }
       case "class":
@@ -4247,7 +4239,6 @@ class BodyChecker {
         }
         if (wantStatic) this.inlineRef(e, m);
         this.memberUse(e, m, e.name.span);
-        this.enumerateCall(e, m);
         const seen = this.seenThrough(obj, m);
         if (m.overloads) {
           this.calleeOverloads.set(e, m.overloads.map((o) => ({ decl: o.decl, type: (m.isStatic ? o.type : this.seenThrough(obj, { ...m, type: o.type })) as MethodType })));
@@ -4320,16 +4311,6 @@ class BodyChecker {
       case "union": return t.types.every((m) => this.hasMember(m, name));
       default: return false;
     }
-  }
-
-  /**
-   * `x.getEnumerator` that resolves to `Iterable`'s own declaration: `x` may be a built-in (an array,
-   * a set, …) without the method, so it compiles to `Enumerable.enumerate(x)`.
-   */
-  private enumerateCall(e: A.Expr & { kind: "Member" }, m: MemberSig) {
-    if (m.owner !== this.env.enumerable || m.name !== "getEnumerator") return;
-    this.env.result.enumerateCalls.add(e);
-    this.env.result.methodClosures.delete(e);
   }
 
   /** `f.call`, `f.length` & co. on a function value; other names are errors. */

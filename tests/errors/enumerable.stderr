@@ -4,7 +4,7 @@ error[X0391]: `Plain` is not iterable
 3 |     for (var x:* of new Plain()) trace(x)            // not enumerable
   |                     ^^^^^^^^^^^
   |
-help: implement `Iterable<T>` in `Plain`: `function [Symbol.iterator]():Iterator<T>` (or Xenon's `getEnumerator():IEnumerator<T>` adapter)
+help: implement `Iterable<T>` in `Plain`: `function [Symbol.iterator]():Iterator<T>`
 
 error[X0308]: mismatched types
   --> enumerable.xn:4:12
@@ -51,56 +51,32 @@ error[X0308]: mismatched types
   |              |
   |              `w` declared as `Int`
 
-error[X0315]: cannot apply `+` to `Int` and `Bool`
- --> enumerable.xn:8:21
-  |
-8 |     trace(e.current + e.moveNext())                   // current is an int, moveNext() a Boolean
-  |           --------- ^ ------------ `Bool`
-  |           |
-  |           `Int`
-
 error[X0787]: `Missing` doesn't implement `[Symbol.iterator]`
    --> enumerable.xn:13:7
     |
- 13 | class Missing implements Iterable<int> {}         // getEnumerator() is missing
+ 13 | class Missing implements Iterable<int> {}         // [Symbol.iterator] is missing
     |       ^^^^^^^ missing 1 interface member
     |
-   ::: <xenon prelude>/xenon/Prelude.xn:155:14
+   ::: <xenon prelude>/xenon/Prelude.xn:142:14
     |
-155 |     function [Symbol.iterator]():Iterator<T>
+142 |     function [Symbol.iterator]():Iterator<T>
     |              ----------------- required by `Iterable`
     |
 help: add the missing members (the stubs throw `NotImplementedException`)
     |
   + | class Missing implements Iterable<int> {
   + |   public function [Symbol.iterator]():Iterator<Int> { throw new NotImplementedException() }
- 13 | }         // getEnumerator() is missing
+ 13 | }         // [Symbol.iterator] is missing
 
-error[X0788]: `WrongReturn.getEnumerator` doesn't match `Iterable.getEnumerator`
+error[X0788]: `WrongReturn.[Symbol.iterator]` doesn't match `Iterable.[Symbol.iterator]`
    --> enumerable.xn:18:19
     |
- 18 |   public function getEnumerator():Array<int> { return [] }
-    |                   ^^^^^^^^^^^^^
+ 18 |   public function [Symbol.iterator]():Array<int> { return [] }
+    |                   ^^^^^^^^^^^^^^^^^
     |
-   ::: <xenon prelude>/xenon/Prelude.xn:157:14
+   ::: <xenon prelude>/xenon/Prelude.xn:142:14
     |
-157 |     function getEnumerator():IEnumerator<T>
-    |              ------------- required by this interface member
+142 |     function [Symbol.iterator]():Iterator<T>
+    |              ----------------- required by this interface member
     |
-    = note: returns `Array<Int>` instead of `IEnumerator<Int>`
-
-error[X0787]: `HalfEnumerator` doesn't implement `current`
-   --> enumerable.xn:20:7
-    |
- 20 | class HalfEnumerator implements IEnumerator<int> {
-    |       ^^^^^^^^^^^^^^ missing 1 interface member
-    |
-   ::: <xenon prelude>/xenon/Prelude.xn:145:18
-    |
-145 |     function get current():T
-    |                  ------- required by `IEnumerator`
-    |
-help: add the missing members (the stubs throw `NotImplementedException`)
-    |
-  + |   public function get current():Int { throw new NotImplementedException() }
- 22 | }
+    = note: returns `Array<Int>` instead of `Iterator<Int>`

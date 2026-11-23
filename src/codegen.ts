@@ -346,11 +346,6 @@ function resolveTokens(entries: { text: string; origin?: LineOrigin }[], tokens:
 const TS_NATIVE: Record<string, string> = { Iterator: "IteratorObject", NodeList: "NodeListOf" };
 
 /**
- * Built-in enumerables (`Array<T> implements Iterable<T>` in the standard library) get
- * `getEnumerator()` in the TypeScript output's types, so they fit `Iterable<T>` there too. At
- * runtime calls go through `Enumerable.enumerate`.
- */
-/**
  * Destruction of scoped values (src/scoped.ts), appended to the prelude module: the method key
  * destructors are compiled to, and the helpers a scope's `finally` calls. `error` is what is leaving
  * the scope (`$noError` on a normal exit); a destructor failing during an exception keeps both
@@ -407,14 +402,6 @@ function $suppressed(error${ts ? ": unknown" : ""}, suppressed${ts ? ": unknown"
   return e;
 }`;
 }
-
-const TS_ENUMERABLE_GLOBALS = `declare global {
-  interface Array<T> { getEnumerator(): IEnumerator<T>; }
-  interface String { getEnumerator(): IEnumerator<string>; }
-  interface Set<T> { getEnumerator(): IEnumerator<T>; }
-  interface Map<K, V> { getEnumerator(): IEnumerator<any[]>; }
-  interface IteratorObject<T, TReturn, TNext> { getEnumerator(): IEnumerator<T>; }
-}`;
 
 class ModuleGen {
   /** Packages loaded as globals (`GenerateOptions.globals`): package → global name. */
@@ -587,10 +574,6 @@ class ModuleGen {
       first = false;
       this.from(decl, () => this.classDecl(decl, exported));
     }
-    if (this.ts && this.file.file.prelude) {
-      this.w.line();
-      this.w.line(TS_ENUMERABLE_GLOBALS);
-    }
     if (this.file.file.prelude) {
       this.w.line();
       this.w.line(scopedHelpers(this.ts));
@@ -727,7 +710,6 @@ class ModuleGen {
       prev = m;
       this.from(m, () => this.member(info, decl, m, guard));
     }
-    this.enumerableIterator(info);
     this.disposeBridge(info, !!prev);
     this.w.dedent();
     this.w.line("}");
@@ -776,8 +758,7 @@ class ModuleGen {
         // `IAttribute.wrap` is optional (see the prelude); TypeScript rejects classes implementing an
         // interface of only optional members that have none of them, so it isn't declared there.
         else if (!(this.file.file.prelude && decl.name.name === "IAttribute" && m.name.name === "wrap")) {
-          const optional = this.file.file.prelude && decl.name.name === "Iterable" && m.name.name === "getEnumerator" ? "?" : "";
-          this.w.line(`${name}${optional}${this.typeParams(m.typeParams)}(${this.params(m.params, true)})${this.ann(m.returnType) || ": void"};`);
+          this.w.line(`${name}${this.typeParams(m.typeParams)}(${this.params(m.params, true)})${this.ann(m.returnType) || ": void"};`);
         }
       });
     }
@@ -800,23 +781,6 @@ class ModuleGen {
       this.functionBody(m.body);
       this.w.line("}");
     }
-  }
-
-  /**
-   * The first class (from the top) implementing `Iterable<T>` becomes a JavaScript iterable: `for … of`
-   * (also in plain JavaScript) walks its `getEnumerator()`. Subclasses inherit it; built-ins have their own.
-   */
-  private enumerableIterator(info: ClassInfo) {
-    const e = this.check.classes.get("xenon.Iterable");
-    if (!e || info.decl.isInterface || !isSubclass(info, e) || (info.parent && isSubclass(info.parent, e))) return;
-    if (info.members.has("[Symbol.iterator]")) return;
-    this.w.line();
-    this.w.line("*[Symbol.iterator]() {");
-    this.w.indent();
-    this.w.line("const items = this.getEnumerator();");
-    this.w.line("while (items.moveNext()) yield items.current;");
-    this.w.dedent();
-    this.w.line("}");
   }
 
   /** Is the interface already marked on a superclass's prototype? */
@@ -1752,8 +1716,6 @@ class ModuleGen {
       case "Spread":
         return { code: `...${this.wrap(this.expr(e.arg), P.assign)}`, prec: P.assign };
       case "Member": {
-        // `items.getEnumerator` as a value, on a possibly built-in enumerable.
-        if (this.check.enumerateCalls.has(e)) return { code: `() => ${this.enumerate(e.object)}`, prec: P.assign };
         // Inherited statics are addressed through their declaring class: in JS, `Dog.count++`
         // would create a new property on `Dog` instead of updating `Animal.count`.
         const objType = this.check.exprTypes.get(e.object);
@@ -1851,13 +1813,7 @@ class ModuleGen {
     }
   }
 
-  /** `items.getEnumerator()` on an enumerable that may be built-in (an array, a set, …): the prelude's helper. */
-  private enumerate(object: A.Expr): string {
-    return `${this.classRef(this.check.classes.get("xenon.Enumerable")!)}.enumerate(${this.wrap(this.expr(object), P.assign)})`;
-  }
-
   private call(e: A.Expr & { kind: "Call" }): Code {
-    if (e.callee.kind === "Member" && this.check.enumerateCalls.has(e.callee)) return { code: this.enumerate(e.callee.object), prec: P.call };
     // `Direction.values()` → `Object.values(Direction)`
     if (e.callee.kind === "Member" && e.callee.name.name === "values" && e.args.length === 0) {
       const obj = this.check.exprTypes.get(e.callee.object);

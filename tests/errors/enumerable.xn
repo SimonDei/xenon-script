@@ -4,19 +4,16 @@ public class Main {
     total(['a', 'b'])                                 // Iterable<int> needs int elements
     total(42)                                         // an int isn't enumerable
     for (var w:int of new Words()) trace(w)          // Words yields Strings
-    var e:IEnumerator<int> = [1, 2].getEnumerator()
-    trace(e.current + e.moveNext())                   // current is an int, moveNext() a Boolean
+    var e:Iterator<int> = [1, 2].values()
+    trace(e.next().value ?? 0)
   }
   private function total(xs:Iterable<int>):int { return 0 }
 }
 class Plain {}
-class Missing implements Iterable<int> {}         // getEnumerator() is missing
+class Missing implements Iterable<int> {}         // [Symbol.iterator] is missing
 class Words implements Iterable<String> {
-  public function getEnumerator():IEnumerator<String> { return ['a'].getEnumerator() }
+  public function [Symbol.iterator]():Iterator<String> { return ['a'].values() }
 }
 class WrongReturn implements Iterable<int> {
-  public function getEnumerator():Array<int> { return [] }
-}
-class HalfEnumerator implements IEnumerator<int> {
-  public function moveNext():Boolean { return false }
+  public function [Symbol.iterator]():Array<int> { return [] }
 }

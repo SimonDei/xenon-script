@@ -135,40 +135,11 @@ package xenon {
   }
 
   /**
-   * Steps through a sequence: `while (e.moveNext()) trace(e.current)`. Starts before the first
-   * element; `current` is valid after `moveNext()` returned true.
-   */
-  public interface IEnumerator<T> {
-    /** Advances to the next element; false when there are no more. */
-    function moveNext():Boolean
-    /** The element `moveNext()` advanced to. */
-    function get current():T
-  }
-
-  /**
-   * A sequence `for … of` can loop over. Arrays, strings, `Set`, `Map` and `Iterator` are enumerable;
-   * a class becomes one by implementing `getEnumerator()`. In the JavaScript output it is a regular
-   * iterable, so JavaScript code can loop over it too.
+   * JavaScript's iterable protocol: arrays, strings, `Set`, `Map`, and `Iterator` implement it, and
+   * user classes become iterable by implementing `[Symbol.iterator]`.
    */
   public interface Iterable<T> {
-    /** The official JavaScript iterable protocol; consumers call this with zero arguments. */
     function [Symbol.iterator]():Iterator<T>
-    /** Xenon's enumerator adapter. A class may implement either this or `[Symbol.iterator]`. */
-    function getEnumerator():IEnumerator<T>
-  }
-
-  /** Helpers for enumerables. */
-  public class Enumerable {
-    /**
-     * An enumerator for any enumerable: its own `getEnumerator()`, or one stepping through a
-     * JavaScript iterable (arrays, strings, sets, maps, iterators). `x.getEnumerator()` on an
-     * enumerable that may be built-in compiles to this.
-     */
-    public static function enumerate<T>(source:Iterable<T>):IEnumerator<T> {
-      var any:* = source
-      if (any.getEnumerator is Function) return any.getEnumerator()
-      return new IteratorEnumerator<T>(Iterator.from(any))
-    }
   }
 
   public class Exception extends Error {
@@ -214,25 +185,4 @@ package xenon {
 
   /** The called member has no implementation (abstract stubs). */
   public class NotImplementedException extends Exception {}
-}
-
-/** `IEnumerator<T>` over a JavaScript iterator (for built-in enumerables). */
-class IteratorEnumerator<T> implements IEnumerator<T> {
-  private final source:Iterator<T>
-  private var value:T
-
-  public function IteratorEnumerator(source:Iterator<T>) {
-    this.source = source
-  }
-
-  public function moveNext():Boolean {
-    var step:IteratorResult<T> = source.next()
-    if (step.done == true) return false
-    value = (step.value as *)
-    return true
-  }
-
-  public function get current():T {
-    return value
-  }
 }

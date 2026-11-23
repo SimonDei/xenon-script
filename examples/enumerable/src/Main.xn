@@ -1,18 +1,11 @@
-// Enumerables, C#-style: `Iterable<T>` hands out an `IEnumerator<T>` (`moveNext()` + `current`).
-// Arrays, strings, Set, Map and Iterator are enumerable; a class becomes one by implementing
-// `getEnumerator()`, and then works with `for … of` (in the JavaScript output too).
+// JavaScript iteration: `Iterable<T>` hands out an `Iterator<T>` through `[Symbol.iterator]()`.
+// Arrays, strings, Set, Map and Iterator are iterable.
 public class Main {
   public function Main() {
     // a class of our own works with `for … of`, and wherever an Iterable<int> is wanted
     var countdown:Countdown = new Countdown(3)
     for (var n:int of countdown) trace('countdown', n)
     trace(total(countdown), total([1, 2, 3]), total(new Set([4, 5])), total(new Map([['a', 6]]).values()))
-
-    // stepping by hand, as C#'s foreach does
-    var e:IEnumerator<String> = new Playlist(['intro', 'song', 'outro']).getEnumerator()
-    while (e.moveNext()) trace('playing', e.current)
-    var letters:IEnumerator<String> = 'abc'.getEnumerator()   // built-ins have enumerators too
-    while (letters.moveNext()) trace('letter', letters.current)
 
     // generic code over any enumerable: T comes from the argument
     trace(firstOf(countdown) ?? -1, firstOf('xyz'), firstOf(new Set(['only'])), count('héllo'))
@@ -30,8 +23,7 @@ public class Main {
 
   private function count(items:Iterable<*>):int {
     var c:int = 0
-    var e:IEnumerator<*> = items.getEnumerator()
-    while (e.moveNext()) c++
+    for (var item:* of items) c++
     return c
   }
 
@@ -41,7 +33,7 @@ public class Main {
   }
 }
 
-/** Counts down from `from` to 1 with an enumerator class of its own. */
+/** Counts down from `from` to 1 with a generator-compatible iterator. */
 class Countdown implements Iterable<int> {
   private var from:int
 
@@ -49,29 +41,14 @@ class Countdown implements Iterable<int> {
     this.from = from
   }
 
-  public function getEnumerator():IEnumerator<int> {
-    return new CountdownEnumerator(from)
+  public function [Symbol.iterator]():Iterator<int> {
+    var values:Array<int> = []
+    for (var n:int of 1..=from) values.unshift(n)
+    return values.values()
   }
 }
 
-class CountdownEnumerator implements IEnumerator<int> {
-  private var next:int
-
-  public function CountdownEnumerator(from:int) {
-    next = from + 1
-  }
-
-  public function moveNext():Boolean {
-    next--
-    return next > 0
-  }
-
-  public function get current():int {
-    return next
-  }
-}
-
-/** Enumerates the songs of an array it holds: hands out the array's enumerator. */
+/** Enumerates the songs of an array it holds. */
 class Playlist implements Iterable<String> {
   private var songs:Array<String>
 
@@ -79,7 +56,7 @@ class Playlist implements Iterable<String> {
     this.songs = songs
   }
 
-  public function getEnumerator():IEnumerator<String> {
-    return songs.getEnumerator()
+  public function [Symbol.iterator]():Iterator<String> {
+    return songs.values()
   }
 }

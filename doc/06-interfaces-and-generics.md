@@ -131,12 +131,9 @@ public class Numbers implements Iterable<Int> {
 }
 ```
 
-For Xenon-style `moveNext()`/`current` traversal, `IEnumerator<T>` and the backwards-compatible
-`getEnumerator():IEnumerator<T>` adapter remain available. A class implementing
-`getEnumerator()` receives a generated `[Symbol.iterator]()` method, so JavaScript APIs and
-`for … of` can consume it too. `Iterator<T>` implements both JavaScript's `next()` protocol and
-Xenon's iterable interface; `IteratorResult<T>` mirrors the protocol's optional `done` and `value`
-properties.
+`Iterator<T>` also implements `Iterable<T>` at runtime, as required for JavaScript's built-in
+iterators: its `[Symbol.iterator]()` returns the iterator itself. `IteratorResult<T>` mirrors the
+protocol's optional `done` and `value` properties.
 
 ## `Class<T>`
 
