@@ -19,7 +19,7 @@
  * member by member, so code that compiled against untyped imports keeps compiling.
  */
 import type tsModule from "typescript";
-import { statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type * as A from "./ast.ts";
 import { KEYWORDS } from "./lexer.ts";
@@ -45,6 +45,12 @@ export function tsOptions(): tsModule.CompilerOptions {
     skipLibCheck: true,
     esModuleInterop: true,
   };
+}
+
+/** Bundles ship TypeScript's declarations beside the entry point; source runs use the installed package. */
+export function defaultLibFilePath(ts: TS, options: tsModule.CompilerOptions): string {
+  const bundled = join(import.meta.dir, ts.getDefaultLibFileName(options));
+  return existsSync(bundled) ? bundled : ts.getDefaultLibFilePath(options);
 }
 
 /** What a JavaScript import's local name refers to in the generated declarations. */
@@ -185,6 +191,8 @@ function generate(probes: { file: A.XenonFile; local: string; kind: string; prob
   const options = tsOptions();
   const probePath = join(root, "__xenon_imports__.ts");
   const host = ts.createCompilerHost(options);
+  host.getDefaultLibFileName = (o) => defaultLibFilePath(ts, o);
+  host.getDefaultLibLocation = () => dirname(defaultLibFilePath(ts, options));
   const { getSourceFile, fileExists, readFile } = host;
   host.getCurrentDirectory = () => root;
   host.fileExists = (f) => f === probePath || fileExists.call(host, f);

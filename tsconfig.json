@@ -28,5 +28,5 @@
     "noPropertyAccessFromIndexSignature": false
   },
   // Build output (bundles) and the tests' scratch projects are not sources.
-  "exclude": ["**/node_modules", "packages/*/dist", "tests/.*", "examples/*/out"]
+  "exclude": ["**/node_modules", "dist", "packages/*/dist", "tests/.*", "examples/*/out"]
 }

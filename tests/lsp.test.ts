@@ -2,19 +2,38 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 import { mkdir, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from "vscode-jsonrpc/node";
 import { buildServer } from "../packages/vscode-xenon/scripts/build.ts";
 
 const dir = join(import.meta.dir, ".lsp-project");
 const bundled = join(import.meta.dir, ".lsp-bundle");
-beforeAll(() => buildServer(bundled), 30_000);
+beforeAll(async () => {
+  await buildServer(bundled);
+  const cli = await Bun.build({
+    entrypoints: [join(import.meta.dir, "..", "src", "cli.ts")],
+    target: "bun", outdir: bundled, naming: "cli.js",
+  });
+  expect(cli.success).toBe(true);
+  const tsLib = dirname(Bun.resolveSync("typescript", import.meta.dir));
+  for (const name of ["server.js", "cli.js"]) {
+    const path = join(bundled, name);
+    const text = await Bun.file(path).text();
+    expect(text).toContain(JSON.stringify(tsLib));
+    expect(text).toContain(JSON.stringify(join(tsLib, "typescript.js")));
+    const missing = join(bundled, "missing-typescript");
+    await Bun.write(path, text
+      .replaceAll(JSON.stringify(tsLib), JSON.stringify(missing))
+      .replaceAll(JSON.stringify(join(tsLib, "typescript.js")), JSON.stringify(join(missing, "typescript.js"))));
+  }
+}, 30_000);
 afterAll(() => Promise.all([rm(dir, { recursive: true, force: true }), rm(bundled, { recursive: true, force: true })]));
 
 const SERVERS: [string, string[]][] = [
   ["xenon lsp", [join(import.meta.dir, "..", "src", "cli.ts"), "lsp", "--stdio"]],
   ["the extension's bundled server", [join(bundled, "server.js"), "--stdio"]],
+  ["the bundled compiler's server", [join(bundled, "cli.js"), "lsp", "--stdio"]],
 ];
 
 // `path` is typed by TypeScript (`@types/node`); `.toUpperCase()` on its result needs TypeScript's `lib.esnext.d.ts`.
@@ -23,6 +42,10 @@ public class Main {
   public function Main() {
     var greeting:String = 'hi'
     trace(greeting.toUpperCase(), path.basename('a/b').toUpperCase())
+    var words:Array<String> = []
+    var element:Element? = null
+    var blob:Blob? = null
+    trace(words, element, blob)
   }
 }
 `;
@@ -148,6 +171,30 @@ test.each(SERVERS)("%s: diagnostics, hover, definition and completion over stdio
     server.kill();
   }
 }, 20_000);
+
+test("the relocated compiler resolves standard-library types in JavaScript declarations", async () => {
+  await mkdir(join(dir, "app"), { recursive: true });
+  await Bun.write(join(dir, "xenon.json"), JSON.stringify({ src: "app" }));
+  await Bun.write(join(dir, "app", "values.d.ts"), "export function names(): string[];\n");
+  await Bun.write(join(dir, "app", "values.js"), "export function names() { return ['hello']; }\n");
+  await Bun.write(join(dir, "app", "Main.xn"), `import { names } from './values.js'
+public class Main {
+  public function Main() {
+    var n:Int = names()[0]
+    trace(n)
+  }
+}
+`);
+  const proc = Bun.spawn(["bun", join(bundled, "cli.js"), "check", "--project", dir, "--format", "json"], {
+    stdout: "pipe", stderr: "pipe",
+  });
+  const [stdout, stderr, exit] = await Promise.all([
+    new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited,
+  ]);
+  expect(stderr).toBe("");
+  expect(exit).toBe(1);
+  expect(JSON.parse(stdout).map((d: { code: string }) => d.code)).toContain("X0308");
+});
 
 const repo = join(import.meta.dir, "..");
 

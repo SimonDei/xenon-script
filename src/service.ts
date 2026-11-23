@@ -15,6 +15,7 @@ import type * as A from "./ast.ts";
 import { type CheckResult, type ClassInfo, findMember, isScoped, type TypedefInfo, type MemberSig, readDecl, type Resolution, visibilityOf } from "./checker.ts";
 import { generatedOffsetAt, type Mapping, type OutputFile, sourceOffsetAt } from "./codegen.ts";
 import { compileProject, type CompileResult, PRELUDE, type SourceInput } from "./compiler.ts";
+import { defaultLibFilePath } from "./dts.ts";
 import { CONTEXTUAL_KEYWORDS, KEYWORDS } from "./lexer.ts";
 import { TYPED_GLOBALS } from "./globals.ts";
 import { SourceFile, type Span, spanText } from "./source.ts";
@@ -344,7 +345,7 @@ export class XenonProject {
         return this.libCache.get(f);
       },
       getCurrentDirectory: () => dirname(srcRoot),
-      getDefaultLibFileName: (o) => ts.getDefaultLibFilePath(o),
+      getDefaultLibFileName: (o) => defaultLibFilePath(ts, o),
       fileExists: (f) => this.virtual.has(f) || ts.sys.fileExists(f),
       readFile: (f) => this.virtual.get(f)?.text ?? ts.sys.readFile(f),
       directoryExists: (d) => d === this.virtualRoot || [...this.virtual.keys()].some((f) => f.startsWith(d + "/")) || ts.sys.directoryExists(d),
