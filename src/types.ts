@@ -393,6 +393,8 @@ export function assignable(from: Type, to: Type): boolean {
       return to.kind === "shape" ? fitsShape(from, to) : fitsFunction(from, to);
     } finally {
       set.delete(to);
+      // Remove the entry too: kept, it would hold every compared type (and so every compile) forever.
+      if (set.size === 0) comparing.delete(from);
     }
   }
   if (from.kind === "void" || to.kind === "void") return false;

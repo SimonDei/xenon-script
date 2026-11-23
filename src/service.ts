@@ -312,6 +312,14 @@ interface Analysis {
   outputs: Map<string, OutputFile>;
 }
 
+/**
+ * Shared by every project in the language server: the texts of library and `node_modules` files,
+ * and TypeScript's parsed files (the DOM library, Node's types), which are the same for all of
+ * them. Per project they cost 100–170 MB each; a workspace with many projects ran out of memory.
+ */
+const libCache = new Map<string, ts.IScriptSnapshot | undefined>();
+const documentRegistry = ts.createDocumentRegistry();
+
 export class XenonProject {
   /** Source texts by path relative to the source root. */
   private sources = new Map<string, string>();
@@ -320,7 +328,6 @@ export class XenonProject {
   /** Virtual TypeScript files: absolute path → text and version. */
   private virtual = new Map<string, { text: string; version: number }>();
   private tsService: ts.LanguageService;
-  private libCache = new Map<string, ts.IScriptSnapshot | undefined>();
 
   constructor(
     /** Absolute path of the source root (`src`). */
@@ -338,11 +345,11 @@ export class XenonProject {
       getScriptSnapshot: (f) => {
         const v = this.virtual.get(f);
         if (v) return ts.ScriptSnapshot.fromString(v.text);
-        if (!this.libCache.has(f)) {
+        if (!libCache.has(f)) {
           const text = ts.sys.readFile(f);
-          this.libCache.set(f, text === undefined ? undefined : ts.ScriptSnapshot.fromString(text));
+          libCache.set(f, text === undefined ? undefined : ts.ScriptSnapshot.fromString(text));
         }
-        return this.libCache.get(f);
+        return libCache.get(f);
       },
       getCurrentDirectory: () => dirname(srcRoot),
       getDefaultLibFileName: (o) => defaultLibFilePath(ts, o),
@@ -351,7 +358,7 @@ export class XenonProject {
       directoryExists: (d) => d === this.virtualRoot || [...this.virtual.keys()].some((f) => f.startsWith(d + "/")) || ts.sys.directoryExists(d),
       getDirectories: ts.sys.getDirectories,
     };
-    this.tsService = ts.createLanguageService(host, ts.createDocumentRegistry());
+    this.tsService = ts.createLanguageService(host, documentRegistry);
   }
 
   /** Reads every `.xn` file below the source root (replacing what was set before). */
