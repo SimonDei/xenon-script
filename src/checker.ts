@@ -203,6 +203,11 @@ export interface CheckResult {
    * `RangeException` when `i` is out of range (reads; a plain `a[i] = x` may grow an array).
    */
   checkedIndexes: Set<A.Expr>;
+  /**
+   * Links of an optional chain after its `?.` (`a?.b.c`: `a?.b` and `a?.b.c`): when the chain
+   * stopped they aren't evaluated at all, as in JavaScript (the code generator keeps that).
+   */
+  optionalChains: Set<A.Expr>;
 }
 
 /** How a scoped value is destroyed: awaited for an async destructor; `handedOff` when some `return` passes it on. */
@@ -430,7 +435,7 @@ class Scope {
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
     qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), propertyReferences: new Map(), operatorCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
-    expectedTypes: new Map(), scopedLocals: new Map(), scopedTemps: new Map(), scopedReturns: new Set(), attributes: new Map(), checkedIndexes: new Set(),
+    expectedTypes: new Map(), scopedLocals: new Map(), scopedTemps: new Map(), scopedReturns: new Set(), attributes: new Map(), checkedIndexes: new Set(), optionalChains: new Set(),
   };
   const env = new Env(classes, typedefs, diags, result);
   env.jsBindings = jsBindings;
@@ -4131,52 +4136,14 @@ class BodyChecker {
         return this.propertyReference(e, scope);
       case "Index": {
         const writing = this.writing;
-        const obj = this.valueExpr(e.object, scope);
-        const idx = this.valueExpr(e.index, scope);
-        // Positions that may not exist are checked at run time (see `CheckResult.checkedIndexes`).
-        const nonNullObj = nonNull(obj);
-        if (isNumeric(idx) && (isPrim(nonNullObj, "String") || (nonNullObj.kind === "builtin" && (nonNullObj.name === "Array" || nonNullObj.name === "Tuple")))) {
-          this.env.result.checkedIndexes.add(e);
-        }
-        if (isPrim(obj, "String")) {
-          if (!isNumeric(idx) && !isDynamic(idx)) {
-            this.diags.error("X0308", "mismatched types", e.index.span, `a \`String\` index is an \`int\`, found \`${typeToString(idx)}\``);
-          }
-          return T.String;
-        }
-        // `pair[0]`: a constant position has its own type; any other index the union of them.
-        const positions = tupleElements(obj);
-        if (positions) {
-          if (!isNumeric(idx) && !isDynamic(idx)) {
-            this.diags.error("X0308", "mismatched types", e.index.span, `a tuple index is an \`int\`, found \`${typeToString(idx)}\``);
-          }
-          const at = this.constValue(e.index);
-          if (at.ok && typeof at.value === "number") {
-            if (Number.isInteger(at.value) && at.value >= 0 && at.value < positions.length) {
-              this.env.result.checkedIndexes.delete(e); // a tuple's own position: always there
-              return positions[at.value]!;
-            }
-            this.diags.error("X0324", "tuple index out of range", e.index.span, `\`${typeToString(obj)}\` has positions 0 to ${positions.length - 1}`);
-            return T.error;
-          }
-          return elementOf(obj)!;
-        }
-        // `record[key]`: a `V?` to read (the key may be missing), a `V` to write.
-        const recordV = recordValue(obj);
-        if (recordV) {
-          if (!isPrim(idx, "String") && !isDynamic(idx)) {
-            this.diags.error("X0308", "mismatched types", e.index.span, `a \`Record\` key is a \`String\`, found \`${typeToString(idx)}\``);
-          }
-          return writing ? recordV : nullableOf(recordV);
-        }
-        const element = elementOf(obj);
-        if (element && !isDynamic(element)) {
-          if (!isNumeric(idx) && !isDynamic(idx)) {
-            this.diags.error("X0308", "mismatched types", e.index.span, `an \`Array\` index is an \`int\`, found \`${typeToString(idx)}\``);
-          }
-          return element;
-        }
-        return obj.kind === "error" ? T.error : T.any;
+        const objType = this.valueExpr(e.object, scope);
+        // `a?.[i]` and `a?.b[i]`: an optional chain link (see `member`); a nullable object indexed directly is X0398.
+        const chained = this.chains.has(e.object);
+        let obj = this.chains.get(e.object) ?? objType;
+        if (obj.kind === "nullable") obj = e.optional ? obj.inner : this.mayBeNull(e.object, obj);
+        const link = e.optional || chained;
+        const at = this.index(e, obj, writing, scope);
+        return link && at.kind !== "error" ? this.chainLink(e, at) : at;
       }
       case "Call":
         return this.call(e, scope);
@@ -4460,12 +4427,79 @@ class BodyChecker {
     this.memberName = e.name.name;
     const objType = this.valueExpr(e.object, scope);
     this.memberObject = undefined;
+    // `a?.b.c`: if `a` is null the whole chain stops (it is `null`), so `.c` is the member of what
+    // `a?.b` gives when it doesn't stop; `b` itself may still be null (X0398 then).
+    const base = this.chains.get(e.object) ?? objType;
+    const chained = this.chains.has(e.object);
     // `n?.toFixed(2)` on an `int?`: the member of the `int`, and the result may be null too.
-    if (objType.kind === "nullable") {
-      if (!e.optional) return this.memberOn(e, this.mayBeNull(e.object, objType));
-      return nullableOf(this.memberOn(e, objType.inner));
+    if (base.kind === "nullable") {
+      if (!e.optional) {
+        const r = this.memberOn(e, this.mayBeNull(e.object, base));
+        return chained ? this.chainLink(e, r) : r;
+      }
+      return this.chainLink(e, this.memberOn(e, base.inner));
     }
-    return this.memberOn(e, objType);
+    const r = this.memberOn(e, base);
+    return chained ? this.chainLink(e, r) : r;
+  }
+
+  /** `obj[index]` once the object's type is known (not nullable); `writing`: the target of `=`. */
+  private index(e: A.Expr & { kind: "Index" }, obj: Type, writing: boolean, scope: Scope): Type {
+    const idx = this.valueExpr(e.index, scope);
+    // Positions that may not exist are checked at run time (see `CheckResult.checkedIndexes`).
+    const nonNullObj = nonNull(obj);
+    if (isNumeric(idx) && (isPrim(nonNullObj, "String") || (nonNullObj.kind === "builtin" && (nonNullObj.name === "Array" || nonNullObj.name === "Tuple")))) {
+      this.env.result.checkedIndexes.add(e);
+    }
+    if (isPrim(obj, "String")) {
+      if (!isNumeric(idx) && !isDynamic(idx)) {
+        this.diags.error("X0308", "mismatched types", e.index.span, `a \`String\` index is an \`int\`, found \`${typeToString(idx)}\``);
+      }
+      return T.String;
+    }
+    // `pair[0]`: a constant position has its own type; any other index the union of them.
+    const positions = tupleElements(obj);
+    if (positions) {
+      if (!isNumeric(idx) && !isDynamic(idx)) {
+        this.diags.error("X0308", "mismatched types", e.index.span, `a tuple index is an \`int\`, found \`${typeToString(idx)}\``);
+      }
+      const at = this.constValue(e.index);
+      if (at.ok && typeof at.value === "number") {
+        if (Number.isInteger(at.value) && at.value >= 0 && at.value < positions.length) {
+          this.env.result.checkedIndexes.delete(e); // a tuple's own position: always there
+          return positions[at.value]!;
+        }
+        this.diags.error("X0324", "tuple index out of range", e.index.span, `\`${typeToString(obj)}\` has positions 0 to ${positions.length - 1}`);
+        return T.error;
+      }
+      return elementOf(obj)!;
+    }
+    // `record[key]`: a `V?` to read (the key may be missing), a `V` to write.
+    const recordV = recordValue(obj);
+    if (recordV) {
+      if (!isPrim(idx, "String") && !isDynamic(idx)) {
+        this.diags.error("X0308", "mismatched types", e.index.span, `a \`Record\` key is a \`String\`, found \`${typeToString(idx)}\``);
+      }
+      return writing ? recordV : nullableOf(recordV);
+    }
+    const element = elementOf(obj);
+    if (element && !isDynamic(element)) {
+      if (!isNumeric(idx) && !isDynamic(idx)) {
+        this.diags.error("X0308", "mismatched types", e.index.span, `an \`Array\` index is an \`int\`, found \`${typeToString(idx)}\``);
+      }
+      return element;
+    }
+    return obj.kind === "error" ? T.error : T.any;
+  }
+
+  /** The types of optional chain links as if the chain went on (see `CheckResult.optionalChains`). */
+  private readonly chains = new Map<A.Expr, Type>();
+
+  /** `e` is a link of an optional chain that may have stopped: its value is `t`, or `null`. */
+  private chainLink(e: A.Expr, t: Type): Type {
+    this.chains.set(e, t);
+    this.env.result.optionalChains.add(e);
+    return nullableOf(t);
   }
 
   /** `obj.name` once the object's type is known (not nullable). */
@@ -4689,11 +4723,13 @@ class BodyChecker {
     this.calledCallee = e.callee;
     let callee = this.expr(e.callee, scope);
     this.calledCallee = savedCallee;
+    // `a?.b.m(x)`: the method of what the chain gives when it doesn't stop (the result is nullable below).
+    const chainedCallee = this.chains.get(e.callee);
+    if (chainedCallee) callee = chainedCallee;
     // `a?.m(x)` / `f?.(x)`: the call happens only when there's something to call (the result is
     // nullable below); a nullable function called directly may be null (X0398).
     if (callee.kind === "nullable") {
-      const optional = e.optional || (e.callee.kind === "Member" && e.callee.optional);
-      callee = optional ? callee.inner : this.mayBeNull(e.callee, callee);
+      callee = e.optional ? callee.inner : this.mayBeNull(e.callee, callee);
     }
     this.env.result.methodClosures.delete(e.callee); // called directly, not used as a value
     let res = e.callee.kind === "Ident" ? this.env.result.resolutions.get(e.callee) : undefined;
@@ -4756,8 +4792,8 @@ class BodyChecker {
         const dynamicArg = !!target.typeParams?.length && hasDynamicArg(sig.ret);
         if (chosen.decl?.name.span.file.prelude && (tsDivergent(chosen.decl.returnType) || dynamicArg)) this.env.result.tsResultCasts.add(e);
         // `b?.valueOf()` / `f?.()`: `null` when the object (or function) is.
-        const optional = e.optional || (e.callee.kind === "Member" && e.callee.optional);
-        return optional ? nullableOf(sig.ret) : sig.ret;
+        const optional = e.optional || !!chainedCallee;
+        return optional ? this.chainLink(e, sig.ret) : sig.ret;
       }
       case "any":
       case "error":

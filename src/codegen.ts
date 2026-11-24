@@ -1770,7 +1770,10 @@ class ModuleGen {
           return { code: `${this.wrap(this.expr(e.object), P.call)}${e.optional ? "?." : ""}[${this.expr(e.index).code}]`, prec: P.call };
         }
         const index = this.helper("$index");
-        return this.reuse(e.object, (first, again) => ({ code: `${first}${e.optional ? "?." : ""}[${index}(${again}, ${this.wrap(this.expr(e.index), P.assign)})]`, prec: P.call }));
+        // `a?.b[i]`: when the chain stopped, the checked index must not run either (`?.[`; the object
+        // itself can't be null there, the checker made sure).
+        const skip = e.optional || this.check.optionalChains.has(e.object);
+        return this.reuse(e.object, (first, again) => ({ code: `${first}${skip ? "?." : ""}[${index}(${again}, ${this.wrap(this.expr(e.index), P.assign)})]`, prec: P.call }));
       }
       case "Call": {
         const call = this.call(e);

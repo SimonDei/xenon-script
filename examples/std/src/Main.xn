@@ -348,7 +348,7 @@ package {
       while (word.exec('a bb ccc') != null) count++
       trace(count, word.global, word.ignoreCase, word.lastIndex, word.toString())
       word.lastIndex = 2
-      trace(word.exec('a bb ccc')[0], word.lastIndex)
+      trace(word.exec('a bb ccc')?.[0], word.lastIndex)
 
       // copies, optionally with other flags; named groups come through (m as *).groups
       var copy:RegExp = new RegExp(word, 'i')

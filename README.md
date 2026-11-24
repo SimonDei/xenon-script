@@ -124,7 +124,7 @@ the important edge cases.
 | Tuples | `Tuple<String, Int>`: one type per position, `var [key, value] = pair`; `Object.entries` and map entries are tuples | [`tuples`](examples/tuples) |
 | Records | `Record<String, V>`: a plain object as a dictionary (`ages['ann']` / `ages.ann` read an `Int?`, `Object.entries` is typed); `Record<'id' \| 'name', V>` is a shape; `element.dataset` is one | |
 | Type checks | `(expr : Type)`: checked at compile time, gone at runtime; the value is typed against `Type` (`(['a', 1] : Tuple<String, Int>)`, `([] : Array<Int>)`) | [`types`](examples/types) |
-| Nullable types | `Int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
+| Nullable types | `Int?`, `?.` (stops the whole chain, as in JavaScript: `order?.customer.name`), `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
 | Null safety (on by default; `"nullSafety": false` turns it off) | object types exclude `null` too (`String` vs `String?`), fields and locals need a value before use, `as` gives `T?` | [`null-safety`](examples/null-safety) |
 | Checked indexes | `list[i]` and `text[i]` throw a `RangeException` when `i` is out of range instead of giving `undefined`; `list.at(i)` gives `T?` | |
 | Generics | `class Box<T>` stays invariant; `out T` enables covariance and `in T` contravariance. Classes, interfaces, typedefs and functions support generic inference/defaults | [`generics`](examples/generics) |

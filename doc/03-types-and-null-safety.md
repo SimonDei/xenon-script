@@ -32,6 +32,11 @@ if (email != null) {
 trace(email?.length ?? 0)
 ```
 
+`?.` stops the whole chain, as in JavaScript: in `order?.customer.name.length`, nothing after the `?.`
+runs when `order` is `null`, and the result is `Int?`. Only the `null` that `?.` adds is skipped: if
+`customer` itself may be null, it needs its own `?.` (`order?.customer?.name`). Indexing or calling
+a value that may be null is an error (X0398); write `list?.[0]` or `f?.()`.
+
 The following constructs cooperate with narrowing:
 
 - `x == null` and `x != null`
