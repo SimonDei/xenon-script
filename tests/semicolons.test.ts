@@ -37,9 +37,9 @@ function check(semicolons?: "always" | "never" | "any") {
   return { where, fixed, errors: result.diagnostics.items.filter((d) => d.severity === "error") };
 }
 
-test("`always` warns about statements ended by a line break, `}` or the end; the fix adds the `;`", () => {
+test("`always` makes a statement ended by a line break, `}` or the end an error; the fix adds the `;`", () => {
   const { where, fixed, errors } = check("always");
-  expect(errors).toEqual([]);
+  expect(errors.map((d) => d.code)).toEqual(Array(6).fill("X0884"));
   expect(where).toEqual(["X0884 1:39", "X0884 4:28", "X0884 8:14", "X0884 11:48", "X0884 13:13", "X0884 13:29"]);
   expect(fixed).toContain("import { readFileSync } from 'node:fs';\n");
   expect(fixed).toContain("    do { a++; } while (a < 3);\n");

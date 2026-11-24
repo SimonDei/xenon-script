@@ -225,7 +225,7 @@ Run it as `bun src/cli.ts …` from this repository (or `bun run xenon -- …`).
 | `--no-source-maps` | `"sourceMaps": false` | don't write `.js.map` files |
 | `--deny-warnings` | `"denyWarnings": true` | treat warnings as errors |
 | `--no-null-safety` | `"nullSafety": false` | object types may be `null` without `?`, as in ActionScript (null safety is on by default) |
-| `--semicolons always` | `"semicolons": "always"` | statement endings: `always` warns about a missing `;` (X0884), `never` about one a line break would replace (X0885), `any` (the default) accepts both; quick fixes add or remove them |
+| `--semicolons always` | `"semicolons": "always"` | statement endings: `always` makes a missing `;` an error (X0884), `never` about one a line break would replace (X0885), `any` (the default) accepts both; quick fixes add or remove them |
 | | `"globals": { "pizzip": "PizZip" }` | packages the page loads with `<script>` tags: their imports read the global instead (types still come from the package) |
 | `--max-errors <n>` | `"maxErrors"` | stop after `n` errors (default 50) |
 | `--format json` | | machine-readable diagnostics |

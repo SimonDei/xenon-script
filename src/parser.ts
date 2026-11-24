@@ -172,7 +172,7 @@ export class Parser {
       // `"semicolons": "always"`: every statement ends with `;`.
       if (this.semicolons === "always") {
         const at = span(this.file, this.prevEnd, this.prevEnd);
-        this.diags.warning("X0884", "missing `;`", at, "add `;` here")
+        this.diags.error("X0884", "missing `;`", at, "add `;` here")
           .help("end the statement with `;` (the project's style is `\"semicolons\": \"always\"`)", [{ span: at, text: ";" }]);
       }
       return;
