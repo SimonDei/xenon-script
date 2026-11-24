@@ -1389,6 +1389,12 @@ export class Parser {
   }
 
   private finishRange(variable: A.LoopVar, startExpr: A.Expr, open: Token, start: number): A.Stmt {
+    const bounds = this.parseRange(startExpr, open);
+    const body = this.parseStatement();
+    return { kind: "ForRange", variable, ...bounds, body, span: this.sp(start) };
+  }
+
+  private parseRange(start: A.Expr, open: Token): A.RangeBounds {
     const inclusive = this.advance().value === "..=";
     let end: A.Expr | undefined;
     if (!this.is(")") && !this.isIdent("step")) end = this.parseExpr();
@@ -1399,8 +1405,7 @@ export class Parser {
       step = this.parseExpr();
     }
     this.expectClose(")", open);
-    const body = this.parseStatement();
-    return { kind: "ForRange", variable, start: startExpr, end, inclusive, step, body, span: this.sp(start) };
+    return { start, end, inclusive, step };
   }
 
   private parseSwitch(): A.Stmt {
@@ -1724,8 +1729,13 @@ export class Parser {
         if (!this.isIdent("of")) this.unexpected("`of`");
         this.advance();
         const iterable = this.parseExpr();
-        this.expectClose(")", paren);
-        clauses.push({ kind: "For", variable, iterable });
+        if (this.is("..") || this.is("..=")) {
+          if (variable.pattern) this.fail("a range loop variable cannot be destructured", variable.pattern.span);
+          clauses.push({ kind: "ForRange", variable, ...this.parseRange(iterable, paren) });
+        } else {
+          this.expectClose(")", paren);
+          clauses.push({ kind: "For", variable, iterable });
+        }
       }
     }
     const value = this.parseAssign();

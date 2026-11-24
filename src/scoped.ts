@@ -540,7 +540,8 @@ class ScopedChecker {
         for (const clause of e.clauses) {
           if (clause.kind === "If") this.visit(clause.cond, "use");
           else {
-            this.visit(clause.iterable, "use");
+            if (clause.kind === "For") this.visit(clause.iterable, "use");
+            else for (const bound of [clause.start, clause.end, clause.step]) if (bound) this.visit(bound, "use");
             if (clause.variable.pattern) {
               const addBindings = (p: A.Pattern): void => {
                 if (p.kind === "BindingName") this.fn.locals.add(p.name.span);

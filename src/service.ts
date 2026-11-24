@@ -1272,7 +1272,9 @@ export class XenonProject {
       }
       if (node.kind === "Comprehension") {
         for (const clause of [...node.clauses as A.ComprehensionClause[]].reverse()) {
-          if (clause.kind !== "For" || offset <= clause.iterable.span.end) continue;
+          if (clause.kind === "If") continue;
+          const last = clause.kind === "For" ? clause.iterable : clause.step ?? clause.end ?? clause.start;
+          if (offset <= last.span.end) continue;
           const v = clause.variable;
           if (v.pattern) declaredHere.push(...bindings(v.pattern));
           else declaredHere.push({ name: v.name, type: v.type ? check.typeNodeTypes.get(v.type) : check.bindingTypes.get(v.name) });

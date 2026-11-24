@@ -1757,6 +1757,16 @@ class ModuleGen {
           if (clause.kind === "If") {
             body += `if (${this.expr(clause.cond).code}) { `;
             closes = `} ${closes}`;
+          } else if (clause.kind === "ForRange") {
+            const start = fresh("$comprehensionStart");
+            const end = clause.end && fresh("$comprehensionEnd");
+            const variable = this.name(clause.variable.name);
+            const step = clause.step ? Number(plain(this.expr(clause.step).code)) : 1;
+            const update = step === 1 ? `${variable}++` : `${variable} += ${step}`;
+            body += `{ const ${start} = ${this.wrap(this.expr(clause.start), P.assign)}; `;
+            if (clause.end) body += `const ${end} = ${this.wrap(this.expr(clause.end), P.assign)}; `;
+            body += `for (let ${variable} = ${start}; ${end ? `${variable} ${clause.inclusive ? "<=" : "<"} ${end}` : ""}; ${update}) { `;
+            closes = `} } ${closes}`;
           } else {
             const source = fresh("$comprehensionSource");
             let iterable = this.expr(clause.iterable).code;

@@ -3809,10 +3809,12 @@ class BodyChecker {
           this.valueExpr(e.value, scope);
           result = this.inferredType(e.value);
         }
-      } else if (clause.kind === "For") {
-        const element = this.forOfElement(clause.iterable, scope);
+      } else if (clause.kind === "For" || clause.kind === "ForRange") {
         const inner = new Scope(scope);
-        this.loopVar(clause.variable, element, inner, "elements");
+        if (clause.kind === "For") {
+          const element = this.forOfElement(clause.iterable, scope);
+          this.loopVar(clause.variable, element, inner, "elements");
+        } else this.rangeVar(clause, scope, inner);
         this.loopBody(() => check(index + 1, inner));
       } else {
         this.condition(clause.cond, scope);
@@ -3825,6 +3827,11 @@ class BodyChecker {
 
   private forRange(s: A.Stmt & { kind: "ForRange" }, outer: Scope) {
     const scope = new Scope(outer);
+    this.rangeVar(s, outer, scope);
+    this.loopBody(() => this.nested(s.body, scope));
+  }
+
+  private rangeVar(s: A.RangeBounds & { variable: A.LoopVar }, outer: Scope, scope: Scope) {
     for (const bound of [s.start, s.end]) {
       if (!bound) continue;
       const t = this.valueExpr(bound, outer);
@@ -3859,7 +3866,6 @@ class BodyChecker {
     }
     const element = declared && isPrim(declared, "UInt") ? T.uint : T.int;
     this.loopVar(s.variable, element, scope, "range values", "range");
-    this.loopBody(() => this.nested(s.body, scope));
   }
 
   private switchStmt(s: A.Stmt & { kind: "Switch" }, scope: Scope) {

@@ -226,7 +226,15 @@ export interface LoopVar {
 
 export type ComprehensionClause =
   | { kind: "For"; variable: LoopVar; iterable: Expr }
+  | ({ kind: "ForRange"; variable: LoopVar } & RangeBounds)
   | { kind: "If"; cond: Expr };
+
+export interface RangeBounds {
+  start: Expr;
+  end?: Expr;
+  inclusive: boolean;
+  step?: Expr;
+}
 
 export interface SwitchCase {
   /** `undefined` for `default:`. */
@@ -264,7 +272,7 @@ export type Stmt =
   | { kind: "For"; init?: VarDecl | { kind: "ExprStmt"; expr: Expr; span: Span }; cond?: Expr; update?: Expr; body: Stmt; span: Span }
   | { kind: "ForIn"; variable: LoopVar; object: Expr; body: Stmt; span: Span }
   | { kind: "ForOf"; variable: LoopVar; iterable: Expr; body: Stmt; span: Span }
-  | { kind: "ForRange"; variable: LoopVar; start: Expr; end?: Expr; inclusive: boolean; step?: Expr; body: Stmt; span: Span }
+  | ({ kind: "ForRange"; variable: LoopVar; body: Stmt; span: Span } & RangeBounds)
   | { kind: "Switch"; discriminant: Expr; cases: SwitchCase[]; span: Span }
   | { kind: "ExprStmt"; expr: Expr; span: Span }
   /** `lineBreakBefore`: the next line looks like a value that was meant to be returned. */

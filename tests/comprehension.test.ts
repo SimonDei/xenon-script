@@ -25,6 +25,27 @@ public class Main {
     var $comprehensionSource = [1, 2]
     return [for (x of $comprehensionSource) x + $comprehension]
   }
+  public static function ranges():Array<Int> {
+    return [for (var i:Int of 0..10) if (i % 2 == 0) i]
+  }
+  public static function nestedRanges():Array<Int> {
+    return [for (x of 1..=3) for (y of 0..x step 2) x * 10 + y]
+  }
+  public static function rangeShadow():Array<Int> {
+    var i = 3
+    return [for (i of 0..i) i]
+  }
+  public static function rangeClosures():Array<() -> Int> {
+    return [for (i of 1..=3) () => i]
+  }
+  public static function fractional():Array<Float> {
+    return [for (i:Float of 0..=2 step 0.5) i]
+  }
+  public static function rangeOrder():String {
+    var n = 0
+    var result = [for (i of (n += 1)..(n += 3)) (n += i)]
+    return String(n) + ':' + result.join(',')
+  }
   public static function pairs():Array<Int> {
     var pairs:Array<Tuple<Int, Int>> = [[1, 2], [3, 4]]
     return [for (final [a, b] of pairs) a + b]
@@ -52,6 +73,9 @@ public class Main {
   public static async function later():Promise<Array<Int>> {
     return [for (x of await Promise.resolve([1, 2, 3])) if (await Promise.resolve(x > 1)) await Promise.resolve(x * 2)]
   }
+  public static async function asyncRange():Promise<Array<Int>> {
+    return [for (i of await Promise.resolve(1)..await Promise.resolve(3)) i]
+  }
 }
 `;
 
@@ -66,6 +90,12 @@ test("comprehensions iterate, filter, scope bindings and preserve async evaluati
   expect(new Main().run()).toEqual([12, 13, 13, 14]);
   expect(Main.shadow()).toEqual([2, 4]);
   expect(Main.names()).toEqual([8, 9]);
+  expect(Main.ranges()).toEqual([0, 2, 4, 6, 8]);
+  expect(Main.nestedRanges()).toEqual([10, 20, 30, 32]);
+  expect(Main.rangeShadow()).toEqual([0, 1, 2]);
+  expect(Main.rangeClosures().map((f: () => number) => f())).toEqual([1, 2, 3]);
+  expect(Main.fractional()).toEqual([0, 0.5, 1, 1.5, 2]);
+  expect(Main.rangeOrder()).toBe("10:5,7,10");
   expect(Main.pairs()).toEqual([3, 7]);
   expect(Main.objects()).toEqual([{ value: 1 }, { value: 2 }]);
   expect(Main.closures().map((f: () => number) => f())).toEqual([1, 2, 3]);
@@ -74,6 +104,25 @@ test("comprehensions iterate, filter, scope bindings and preserve async evaluati
   expect(Main.narrow(["a", null, "xyz"])).toEqual([1, 3]);
   expect(await Promise.all(Main.nestedAsync().map((f: () => Promise<number>) => f()))).toEqual([1, 2]);
   expect(await Main.later()).toEqual([4, 6]);
+  expect(await Main.asyncRange()).toEqual([1, 2]);
+});
+
+test("comprehension ranges use the normal range validation", () => {
+  const source = `public class Main {
+    public function Main() {}
+    public static function f():Void {
+      var a = [for (i of 0..10 step 0) i]
+      var b = [for (i of 0..=) i]
+      var c = [for (i of 'a'..3) i]
+      var d:Int = [for (var i:Int of 0..10) i]
+      trace(a, b, c, d)
+    }
+  }`;
+  const messages = errors(compileProject([{ path: "Main.xn", text: source }], { main: "Main" }));
+  expect(messages.some((m) => m.startsWith("X0330 "))).toBe(true);
+  expect(messages.some((m) => m.includes("inclusive range"))).toBe(true);
+  expect(messages.some((m) => m.startsWith("X0334 "))).toBe(true);
+  expect(messages.some((m) => m.startsWith("X0308 "))).toBe(true);
 });
 
 test("comprehension errors use iterable, condition, element and scope checking", () => {

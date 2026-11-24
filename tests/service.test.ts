@@ -60,6 +60,21 @@ test("comprehension bindings are completed only after their source", () => {
   expect(after.some((item) => item.label === "outer" || item.label === "inner")).toBe(false);
 });
 
+test("range comprehension bindings are in scope after the range", () => {
+  const text = `public class Main {
+    public function Main() {}
+    public static function f(end:Int):Void {
+      var values = [for (index of 0..end step 2) index]
+      trace(values)
+    }
+  }`;
+  const p = project({ "Main.xn": text });
+  const inside = p.completions("Main.xn", text.indexOf("step 2") + 2);
+  expect(inside.some((item) => item.label === "index")).toBe(false);
+  const value = p.completions("Main.xn", text.lastIndexOf("index") + 2);
+  expect(value.some((item) => item.label === "index" && item.detail === "index:Int")).toBe(true);
+});
+
 const offset = (text: string, needle: string, delta = 0) => {
   const i = text.indexOf(needle);
   if (i < 0) throw new Error(`not found: ${needle}`);

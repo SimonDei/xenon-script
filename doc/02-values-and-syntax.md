@@ -92,10 +92,12 @@ Array comprehensions use the former JavaScript prefix syntax:
 ```actionscript
 var doubled = [for (score of scores) if (score > 3) score * 2]
 var pairs = [for (a of scores) for (b of scores) if (a != b) [a, b]]
+var indexes = [for (i of 0..10) i]
 ```
 
 Each `for` iterates an iterable and introduces a local binding; later loops, filters and the result
-can use earlier bindings. Filters must be `Bool`. Bindings may also be destructured or written
+can use earlier bindings. Ranges support `..`, `..=`, and `step` as in `for … of`; an open-ended
+range never finishes unless evaluation throws. Filters must be `Bool`. Bindings may also be destructured or written
 with `var`, `final`, or `const` and an optional type, as in `for … of`. The expression builds a
 new array in iteration order, with an element type inferred from its result. Comprehensions compile
 to ordinary JavaScript; they do not depend on browser support for the obsolete syntax.
