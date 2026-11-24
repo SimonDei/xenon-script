@@ -596,8 +596,8 @@ public class Main {
   expect(hover("excelRow", push)).toBe("```xenon\nRow.excelRow:Int\n```\n\nThe row in the sheet, from 1.");
   expect(hover("data }", push)).toBe("```xenon\nRow.data:*\n```");
   expect(p.definition("Main.xn", text.indexOf("excelRow", push) + 1)[0]!.range.start.line).toBe(2);
-  // A literal without a shape to check against: no member to show.
-  expect(hover("excelRow: 1")).toBeUndefined();
+  // A literal without a shape to check against: the member of the shape inferred from it.
+  expect(hover("excelRow: 1")).toBe("```xenon\nexcelRow:Int\n```");
 });
 
 test("hover on destructured names shows their types (tuple positions); completion offers Tuple", () => {

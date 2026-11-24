@@ -63,7 +63,7 @@ error[X0308]: mismatched types
   --> std-set.xn:9:33
    |
  9 |     trace(ids.length, ids.union([1]), ids.valuez(), new Set(5), wrong, n)
-   |                                 ^^^ expected `Set<Int>`, found `Array`
+   |                                 ^^^ expected `Set<Int>`, found `Array<Int>`
    |
   ::: <xenon prelude>/xenon/Set.xn:32:26
    |

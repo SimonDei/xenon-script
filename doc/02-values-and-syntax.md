@@ -66,6 +66,13 @@ var scores:Array<Int> = [3, 5, 8]
 var point = { x: 10, y: 20 }
 ```
 
+A literal has the type of what it builds: `point` is a `{ x:Int, y:Int }`, so `point.z` is an error
+and `point.x` an `Int`. Values are widened (`'a'` gives `String`); shorthands (`{ x }`), spreads of
+shapes (`{ ...point, z: 0 }`, later keys win), getters and nested literals count too, also where a
+literal is returned or passed on. Arrays work the same way: `[{ n: 1 }, { n: 2 }]` is an
+`Array<{ n:Int }>`. An empty `{}` and a literal with a computed key (`{ [key]: 1 }`) stay an open
+`Object`, whose members are untyped.
+
 Object literals are useful with structural typedefs:
 
 ```actionscript

@@ -67,7 +67,7 @@ error[X0308]: mismatched types
   --> std-math.xn:8:20
    |
  8 |     trace(Math.min([1, 2]), new Math(), whole, rounded, i, bad)
-   |                    ^^^^^^ expected `Float`, found `Array`
+   |                    ^^^^^^ expected `Float`, found `Array<Int>`
    |
   ::: <xenon prelude>/xenon/Math.xn:40:45
    |

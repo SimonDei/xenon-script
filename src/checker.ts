@@ -3379,16 +3379,47 @@ class BodyChecker {
       const elements = e.elements.map((el) => this.inferredType(el));
       return elements.some(isDynamic) || elements.some((t) => t.kind === "error") ? own : arrayOf(unionOf(elements));
     }
-    if (e.kind === "Object" && e.props.length > 0 && e.props.every((p) => p.kind === "Prop" && !("expr" in p.key))) {
-      const members = new Map<string, ShapeMember>();
-      for (const p of e.props as (A.ObjectProp & { kind: "Prop" })[]) {
-        const name = "name" in p.key ? p.key.name : (p.key as { value: string }).value;
-        const t = this.inferredType(p.value);
-        members.set(name, { name, optional: false, readonly: false, type: () => t });
-      }
-      return { kind: "shape", members };
-    }
+    if (e.kind === "Object") return own;
     return widen(own);
+  }
+
+  /** The types of `{ name }` shorthand properties, for the literal's shape. */
+  private readonly shorthandTypes = new Map<A.ObjectProp, Type>();
+
+  /**
+   * The shape an object literal builds, from its values' (widened) types: `{ name: 'a', n: 1 }` is
+   * `{ name:String, n:Int }`. Shorthands take their variable's type, a spread of a shape its members
+   * (later keys win), a getter its result (read-only without a setter). Undefined for `{}`, a
+   * computed key or a spread of something that isn't a shape: those stay an open `Object`.
+   */
+  private literalShape(e: A.Expr & { kind: "Object" }): Type | undefined {
+    if (e.props.length === 0) return undefined;
+    const members = new Map<string, ShapeMember>();
+    const put = (name: string, t: Type, readonly = false) => {
+      members.delete(name); // a later key replaces an earlier one (and keeps JavaScript's order)
+      members.set(name, { name, optional: false, readonly, type: () => t });
+    };
+    const setters = new Set(e.props.flatMap((p) => (p.kind === "Accessor" && p.accessor === "set" ? [p.key.name] : [])));
+    for (const p of e.props) {
+      if (p.kind === "SpreadProp") {
+        const t = nonNull(this.env.result.exprTypes.get(p.arg) ?? T.any);
+        if (t.kind !== "shape") return undefined;
+        for (const m of t.members.values()) members.set(m.name, m);
+      } else if (p.kind === "Shorthand") {
+        put(p.name.name, widen(this.shorthandTypes.get(p) ?? T.any));
+      } else if (p.kind === "Accessor") {
+        const sig = this.env.result.exprTypes.get(p.fn);
+        if (sig?.kind !== "method") return undefined;
+        if (p.accessor === "get") put(p.key.name, sig.ret, !setters.has(p.key.name));
+        else if (!members.has(p.key.name)) put(p.key.name, sig.params[0]?.type ?? T.any);
+      } else {
+        if ("expr" in p.key) return undefined;
+        const t = this.inferredType(p.value);
+        if (t.kind === "error") return undefined;
+        put("name" in p.key ? p.key.name : p.key.value, t);
+      }
+    }
+    return { kind: "shape", members };
   }
 
   /**
@@ -4114,11 +4145,17 @@ class BodyChecker {
           const elements = types.map((t) => elementOf(t) ?? this.env.iterableElement(t) ?? (isPrim(t, "String") ? T.String : undefined));
           if (elements.every((t) => t && !isDynamic(t))) return arrayOf(unionOf(elements.map((t) => widen(t!))));
         }
+        // `[{ n: 1 }, { n: 2 }]` used directly: an array of its elements' (widened) type, as `var a = […]` infers.
+        if (e.elements.length > 0 && e.elements.every((el) => el.kind !== "Spread")) {
+          const elements = e.elements.map((el) => this.inferredType(el));
+          if (!elements.some(isDynamic) && !elements.some((t) => t.kind === "error")) return arrayOf(unionOf(elements));
+        }
         return T.Array;
       }
       case "Object":
         this.objectLiteral(e, scope);
-        return T.Object;
+        // `{ name: 'test', age: 20 }` is a `{ name:String, age:Int }` (an empty `{}` stays an open `Object`).
+        return this.literalShape(e) ?? T.Object;
       case "Spread":
         this.diags.error("X0335", "spread `...` is only allowed in calls and array literals", e.span);
         this.expr(e.arg, scope);
@@ -4342,7 +4379,7 @@ class BodyChecker {
         this.valueExpr(p.arg, scope);
       } else {
         const ident = { kind: "Ident" as const, name: p.name.name, span: p.name.span };
-        this.ident(ident, scope);
+        this.shorthandTypes.set(p, this.ident(ident, scope));
         const r = this.env.result.resolutions.get(ident);
         if (r) this.env.result.resolutions.set(p, r);
       }

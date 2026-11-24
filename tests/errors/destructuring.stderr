@@ -51,6 +51,12 @@ error[X0501]: cannot assign twice to final `f1`
 14 |       f1 = 3
    |       ^^
 
+error[X0308]: mismatched types
+  --> destructuring.xn:16:8
+   |
+16 |       [s] = [42]
+   |        ^ expected `String`, found `Int`
+
 error[X0100]: expected `of` (destructuring works with `for … of`), found keyword `in`
   --> destructuring.xn:17:23
    |
