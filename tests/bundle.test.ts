@@ -65,3 +65,22 @@ test("`xenon build --bundle` replaces the modules (stale ones are removed); `--t
   expect(mixed.code).toBe(2);
   expect(mixed.stderr).toContain("--bundle writes JavaScript: it can't be combined with --target ts");
 });
+
+test("blank lines inside template strings survive bundling (Bun prints a template's \\n as a line break)", async () => {
+  const project = join(out, "templates");
+  await rm(project, { recursive: true, force: true });
+  await mkdir(join(project, "src"), { recursive: true });
+  await Bun.write(join(project, "xenon.json"), JSON.stringify({ main: "Main", bundle: true }));
+  await Bun.write(join(project, "src", "Main.xn"), `public class Main {
+  public function Main() {
+    var name:String = 'Ann'
+    var text:String = 'Hello'
+    trace(JSON.stringify($'{name}\\n\\n{text}'))
+    trace(JSON.stringify($'a\\n\\n\\nb'), 1 / 2)
+  }
+}
+`);
+  const proc = Bun.spawn(["bun", cli, "run", "--quiet"], { cwd: project, stdout: "pipe", stderr: "pipe" });
+  expect(await new Response(proc.stdout).text()).toBe('"Ann\\n\\nHello"\n"a\\n\\n\\nb" 0.5\n');
+  expect(await proc.exited).toBe(0);
+});

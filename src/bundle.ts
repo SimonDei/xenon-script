@@ -48,8 +48,10 @@ export async function bundleOutputs(outputs: OutputFile[], outDir: string, sourc
     return modules.has(abs) ? `// ${posix(relative(outDir, abs))}` : line;
   });
   // No blank lines (Bun separates modules and statements with them); `kept` maps the remaining
-  // lines to the bundle's original lines, for the source map.
-  const kept = text.split("\n").flatMap((line, i) => (line.trim() === "" ? [] : [i]));
+  // lines to the bundle's original lines, for the source map. A blank line inside a template literal
+  // is part of a string (Bun prints a template's `\n` as a line break) and stays.
+  const inside = linesInsideLiterals(text);
+  const kept = text.split("\n").flatMap((line, i) => (line.trim() === "" && !inside.has(i) ? [] : [i]));
   const allLines = text.split("\n");
   text = kept.map((i) => allLines[i]).join("\n") + "\n";
 
@@ -102,3 +104,84 @@ function composeMap(bundle: SourceMap, moduleMaps: Map<string, SourceMap>, outDi
   }));
   return { version: 3, file: ENTRY_FILE, sources, sourcesContent: contents, names: [], mappings: encodeMappings(lines) };
 }
+
+/**
+ * The lines (0-based) that start inside a template literal or a block comment of JavaScript `code`:
+ * removing a blank one would change a string. A small scanner for the code Bun prints: strings,
+ * templates with nested `${…}`, comments and regular expression literals.
+ */
+export function linesInsideLiterals(code: string): Set<number> {
+  const inside = new Set<number>();
+  let line = 0;
+  // A stack of open templates: each entry is the `{` depth of the `${…}` it waits to close.
+  const templates: number[] = [];
+  let braces = 0;
+  let inTemplate = false;
+  let prev = ""; // the last significant character in code, to tell a regex from a division
+  for (let i = 0; i < code.length; i++) {
+    const c = code[i]!;
+    if (c === "\n") {
+      line++;
+      if (inTemplate) inside.add(line);
+      continue;
+    }
+    if (inTemplate) {
+      if (c === "\\") i++;
+      else if (c === "`") {
+        inTemplate = false;
+        prev = "`";
+      } else if (c === "$" && code[i + 1] === "{") {
+        templates.push(braces);
+        braces++;
+        inTemplate = false;
+        i++;
+        prev = "{";
+      }
+      continue;
+    }
+    if (c === "'" || c === '"') {
+      for (i++; i < code.length && code[i] !== c && code[i] !== "\n"; i++) if (code[i] === "\\") i++;
+      prev = c;
+      continue;
+    }
+    if (c === "`") {
+      inTemplate = true;
+      continue;
+    }
+    if (c === "/" && code[i + 1] === "/") {
+      while (i < code.length && code[i + 1] !== "\n") i++;
+      continue;
+    }
+    if (c === "/" && code[i + 1] === "*") {
+      for (i += 2; i < code.length && !(code[i] === "*" && code[i + 1] === "/"); i++) {
+        if (code[i] === "\n") inside.add(++line);
+      }
+      i++;
+      continue;
+    }
+    if (c === "/" && (prev === "" || "(,=:[!&|?{};+-*%<>~^".includes(prev) || /(?:return|typeof|case|in|of|void|yield|await)$/.test(code.slice(Math.max(0, i - 7), i).trimEnd()))) {
+      // A regular expression literal: up to its closing `/` (not inside a `[…]` class).
+      let cls = false;
+      for (i++; i < code.length && code[i] !== "\n"; i++) {
+        if (code[i] === "\\") i++;
+        else if (code[i] === "[") cls = true;
+        else if (code[i] === "]") cls = false;
+        else if (code[i] === "/" && !cls) break;
+      }
+      prev = "/";
+      continue;
+    }
+    if (c === "{") braces++;
+    else if (c === "}") {
+      braces--;
+      if (templates.length > 0 && templates.at(-1) === braces) {
+        templates.pop();
+        inTemplate = true;
+        continue;
+      }
+    }
+    if (c.trim() !== "") prev = c;
+  }
+  return inside;
+}
+
