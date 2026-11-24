@@ -163,7 +163,7 @@ export class Parser {
     if (this.eat(";")) {
       // `"semicolons": "never"`: a `;` that a line break, `}` or the end would replace.
       if (this.semicolons === "never" && (this.tok.nl || this.is("}") || this.tok.kind === "eof")) {
-        this.diags.warning("X0885", "unnecessary `;`", semi.span, "the line break ends the statement")
+        this.diags.error("X0885", "unnecessary `;`", semi.span, "the line break ends the statement")
           .help("remove it (the project's style is `\"semicolons\": \"never\"`)", [{ span: semi.span, text: "" }]);
       }
       return;

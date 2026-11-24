@@ -47,8 +47,9 @@ test("`always` makes a statement ended by a line break, `}` or the end an error;
   expect(compileProject([{ path: "Main.xn", text: fixed }], { main: "Main", semicolons: "always" }).diagnostics.items.filter((d) => d.code === "X0884")).toEqual([]);
 });
 
-test("`never` warns about a `;` a line break would replace, not one between statements on a line", () => {
-  const { where, fixed } = check("never");
+test("`never` makes a `;` a line break would replace an error, not one between statements on a line", () => {
+  const { where, fixed, errors } = check("never");
+  expect(errors.map((d) => d.code)).toEqual(["X0885", "X0885"]);
   expect(where).toEqual(["X0885 5:32", "X0885 9:25"]);
   expect(fixed).toContain("private var name:String = 'x'\n");
   expect(fixed).toContain("var b = 2; var c = 3\n");

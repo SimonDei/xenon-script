@@ -49,11 +49,10 @@ A line break ends a statement, so semicolons are optional; a `;` is only needed 
 statements on one line. `"semicolons"` (or `--semicolons`) makes a project consistent:
 
 - `"always"`: every statement and declaration ends with `;` — a missing one is error X0884
-- `"never"`: a `;` at the end of a line is warning X0885 (between statements on one line it stays)
+- `"never"`: a `;` at the end of a line is error X0885 (between statements on one line it stays)
 - `"any"` (the default): both are fine
 
-Both carry a quick fix that adds or removes the `;`; `--deny-warnings` turns X0885 into an error
-too. The standard library keeps its own style.
+Both errors carry a quick fix that adds or removes the `;`. The standard library keeps its own style.
 
 ## Output targets
 
