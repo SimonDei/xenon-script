@@ -12,7 +12,7 @@ import {
   arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, arrayOf, elementOf, isDynamic, isNullable, isNumeric, isPrim, nonNull, nullableOf,
   bind, classValueOf, eraseParams, memberTypeIn, stdClassOf, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
   supertypeArgs, T, type Type, type TypeParamInfo, typeToString, unify,
-  requiredParams, literalType, literalOf, widen, unionOf, membersOf, valueFits, type UnionType, tupleOf, tupleElements, nullSafety,
+  requiredParams, literalType, literalOf, widen, unionOf, membersOf, valueFits, type UnionType, tupleOf, tupleElements, nullSafety, recordOf, recordValue,
 } from "./types.ts";
 
 /** A class known to the project. */
@@ -293,6 +293,13 @@ function tsDivergent(node: A.TypeNode | undefined, inArgs = false): boolean {
   if (node.kind === "AnyType") return inArgs;
   if (node.kind !== "TypeName") return false;
   return (node.name.length === 1 && TS_UNDICI_CLASSES.has(node.name[0]!.name)) || node.args.some((a) => tsDivergent(a, true));
+}
+
+/** Does a type argument somewhere inside `t` (`Array<Tuple<String, *>>`) say `*`? */
+function hasDynamicArg(t: Type): boolean {
+  if (t.kind === "nullable") return hasDynamicArg(t.inner);
+  const args = t.kind === "builtin" || t.kind === "class" ? t.args ?? [] : [];
+  return args.some((a) => isDynamic(a) || hasDynamicArg(a));
 }
 
 /** Names visible inside one file. */
@@ -1077,6 +1084,26 @@ class Env {
         return T.error;
       }
       return tupleOf(node.args.map((a) => this.resolveType(a, scope, false, tparams)));
+    }
+    // `Record<String, V>`: a dictionary object; `Record<'a' | 'b', V>`: the shape `{ a:V, b:V }`.
+    const ownRecord = name === "Record" ? this.lookupClass(scope, name, whole) : undefined;
+    if (name === "Record" && (!ownRecord || ownRecord.file.file.prelude) && !this.lookupTypedef(scope, name)) {
+      if (node.args.length !== 2) {
+        this.diags.error("X0422", "`Record` takes 2 type arguments, the key and the value type: `Record<String, Int>`", node.span, `${node.args.length} given`);
+        return T.error;
+      }
+      const key = this.resolveType(node.args[0]!, scope, false, tparams);
+      const value = this.resolveType(node.args[1]!, scope, false, tparams);
+      if (key.kind === "error" || value.kind === "error") return T.error;
+      if (isDynamic(key) || (key.kind === "prim" && key.name === "String" && key.literal === undefined)) return recordOf(value);
+      const names = membersOf(key).map((k) => (k.kind === "prim" && typeof k.literal === "string" ? k.literal : undefined));
+      if (names.every((n) => n !== undefined)) {
+        const members = new Map<string, ShapeMember>(names.map((n) => [n!, { name: n!, optional: false, readonly: false, type: () => value }]));
+        return { kind: "shape", members };
+      }
+      this.diags.error("X0882", `\`${typeToString(key)}\` can't be a \`Record\` key`, node.args[0]!.span, "a key is `String` or string literals")
+        .note("JavaScript object keys are strings: use `Record<String, V>`, or `Map<K, V>` for other keys");
+      return T.error;
     }
     if (name === "Array" || (name === "Vector" && !this.lookupClass(scope, name, whole))) {
       if (name === "Vector") {
@@ -3859,6 +3886,12 @@ class BodyChecker {
       this.record(e, expected);
       return;
     }
+    const recordV = e.kind === "Object" ? recordValue(expected) : undefined;
+    if (e.kind === "Object" && recordV) {
+      this.objectAgainstRecord(e, recordV, scope);
+      this.record(e, expected);
+      return;
+    }
     if (e.kind === "Function" && expected.kind === "method") {
       // Arrows and function expressions take parameter types from the expected function type.
       const t = this.record(e, this.fnExpr(e, scope, expected));
@@ -4097,6 +4130,7 @@ class BodyChecker {
       case "PropertyReference":
         return this.propertyReference(e, scope);
       case "Index": {
+        const writing = this.writing;
         const obj = this.valueExpr(e.object, scope);
         const idx = this.valueExpr(e.index, scope);
         // Positions that may not exist are checked at run time (see `CheckResult.checkedIndexes`).
@@ -4126,6 +4160,14 @@ class BodyChecker {
             return T.error;
           }
           return elementOf(obj)!;
+        }
+        // `record[key]`: a `V?` to read (the key may be missing), a `V` to write.
+        const recordV = recordValue(obj);
+        if (recordV) {
+          if (!isPrim(idx, "String") && !isDynamic(idx)) {
+            this.diags.error("X0308", "mismatched types", e.index.span, `a \`Record\` key is a \`String\`, found \`${typeToString(idx)}\``);
+          }
+          return writing ? recordV : nullableOf(recordV);
         }
         const element = elementOf(obj);
         if (element && !isDynamic(element)) {
@@ -4442,6 +4484,13 @@ class BodyChecker {
           return root ? this.rootMemberUse(e, root) : T.any;
         }
         if (obj.name === "Function") return this.functionMemberUse(e, obj);
+        // `dataset.userId`: a key like `dataset['userId']` (unless it names an inherited member such as `toString`).
+        if (obj.name === "Record") {
+          const root = this.env.rootMember(name);
+          if (root) return this.rootMemberUse(e, root);
+          const value = obj.args[1] ?? T.any;
+          return this.writing ? value : nullableOf(value);
+        }
         // A typed class value: only its `name` (the actual class, and so its statics, is known at run time).
         if (obj.name === "Class" && obj.args.length > 0) {
           if (name === "name") return T.String;
@@ -4703,7 +4752,9 @@ class BodyChecker {
             }
           } else if (!f.ok && f.limit && chosen.decl?.modifiers.constexpr) this.diags.error("X0527", f.reason, f.at).note("the call is evaluated at compile time because its arguments are constants");
         }
-        if (chosen.decl?.name.span.file.prelude && tsDivergent(chosen.decl.returnType)) this.env.result.tsResultCasts.add(e);
+        // TypeScript's result differs too when a generic std call got `*` for a type argument (`Object.entries(json)`: `unknown` values).
+        const dynamicArg = !!target.typeParams?.length && hasDynamicArg(sig.ret);
+        if (chosen.decl?.name.span.file.prelude && (tsDivergent(chosen.decl.returnType) || dynamicArg)) this.env.result.tsResultCasts.add(e);
         // `b?.valueOf()` / `f?.()`: `null` when the object (or function) is.
         const optional = e.optional || (e.callee.kind === "Member" && e.callee.optional);
         return optional ? nullableOf(sig.ret) : sig.ret;
@@ -4817,6 +4868,35 @@ class BodyChecker {
     if (missing.length > 0) {
       this.diags.error("X0792", `missing ${missing.map((m) => `\`${m.name}\``).join(", ")} for \`${typeToString(shape)}\``, e.span,
         `${missing.length === 1 ? "this member is" : "these members are"} required`);
+    }
+  }
+
+  /** A fresh object literal against `Record<String, V>`: every value is a `V` (any keys). */
+  private objectAgainstRecord(e: A.Expr & { kind: "Object" }, value: Type, scope: Scope) {
+    this.checkObjectMembers(e);
+    for (const p of e.props) {
+      if (p.kind === "SpreadProp") {
+        const t = this.valueExpr(p.arg, scope);
+        if (!assignable(t, recordOf(value)) && !(t.kind === "builtin" && t.name === "Object")) {
+          this.diags.error("X0308", "mismatched types", p.arg.span, `expected \`${typeToString(recordOf(value))}\`, found \`${typeToString(t)}\``);
+        }
+      } else if (p.kind === "Shorthand") {
+        const ident = { kind: "Ident" as const, name: p.name.name, span: p.name.span };
+        this.checkAssign(ident, value, undefined, scope);
+        const r = this.env.result.resolutions.get(ident);
+        if (r) this.env.result.resolutions.set(p, r);
+      } else if (p.kind === "Accessor") {
+        const sig = this.valueExpr(p.fn, scope);
+        if (p.accessor === "get" && sig.kind === "method" && !assignable(sig.ret, value)) {
+          this.diags.error("X0308", "mismatched types", p.fn.returnType?.span ?? p.key.span, `expected \`${typeToString(value)}\`, found \`${typeToString(sig.ret)}\``);
+        }
+      } else {
+        if ("kind" in p.key && p.key.kind === "Computed") {
+          const k = this.valueExpr(p.key.expr, scope);
+          if (!isPrim(k, "String") && !isDynamic(k)) this.diags.error("X0308", "mismatched types", p.key.expr.span, `a \`Record\` key is a \`String\`, found \`${typeToString(k)}\``);
+        }
+        this.checkAssign(p.value, value, undefined, scope);
+      }
     }
   }
 
@@ -6011,7 +6091,7 @@ class BodyChecker {
       }
       return { type, commit: none };
     }
-    if (target.kind === "Index") return { type: this.expr(target, scope), commit: none };
+    if (target.kind === "Index") return { type: evalTarget(), commit: none };
     this.diags.error("X0105", "invalid assignment target", target.span);
     return { type: T.error, commit: none };
   }

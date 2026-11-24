@@ -12,6 +12,7 @@
 | `Void` | no value (`void` is an alias) |
 | `Array<T>` | typed mutable array |
 | `Tuple<A, B, ...>` | fixed-length array with a type per position |
+| `Record<String, V>` | plain object used as a dictionary: any keys, every value a `V` |
 | `Object` | object-like base value |
 | `Function` | untyped function value |
 | `*` | explicitly dynamic/untyped |
@@ -121,6 +122,33 @@ index gives the union of possible position types.
 ```actionscript
 var [key, value]:Tuple<String, Int> = pair
 ```
+
+## Records
+
+`Record<String, V>` is a plain object used as a dictionary, as in TypeScript:
+
+```actionscript
+var ages:Record<String, Int> = { ann: 31, bob: 40 }
+ages['carl'] = 22
+ages.dora = 5                       // the same as ages['dora']
+var ann:Int? = ages['ann']          // a key may be missing: reading gives Int?
+var bob:Int = ages.bob ?? 0
+
+for (var [name, age] of Object.entries(ages)) {
+  trace(name, age + 1)              // age is an Int
+}
+```
+
+Reading a key gives `V?` and writing one takes a `V`. An object literal against a record may have any
+keys; each value is checked against `V`. A typedef shape fits `Record<String, V>` when every member
+holds a `V`. `Object.values` and `Object.entries` type their results with `V`.
+
+With string literal keys, a record is a shape: `Record<'id' | 'name', String>` is
+`{ id:String, name:String }`. Other key types are an error (X0882): JavaScript object keys are strings;
+use `Map<K, V>` for other keys.
+
+Element data attributes are a record: `element.dataset` is a `DOMStringMap`
+(`Record<String, String>`), so `el.dataset.userId` is a `String?`.
 
 ## Checked type expressions
 

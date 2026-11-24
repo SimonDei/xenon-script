@@ -269,6 +269,7 @@ export const CODES: Record<string, CodeInfo> = {
   X0799: c("invalid variance position", "A covariant `out T` may occur only in output positions; a contravariant `in T` only in input positions. Mutable members are invariant, and nested generic variance composes."),
   X0880: c("type argument doesn't satisfy a generic constraint", "A type argument must fit the upper bound written after `extends`."),
   X0881: c("cyclic generic constraints", "Upper bounds cannot form a direct cycle such as `T extends U, U extends T`; self-referential constraints inside a concrete generic bound are allowed, such as `T extends Comparable<T>`."),
+  X0882: c("invalid `Record` key type", "A `Record`'s keys are object keys: `Record<String, V>` for any key, or string literals (`Record<'id' | 'name', V>`, the same as a shape with these members)."),
 
   // ---- destructors ----
   X0800: c("invalid destructor placement", "A class has at most one destructor; interfaces have none."),

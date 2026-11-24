@@ -1199,6 +1199,7 @@ export class XenonProject {
     }
     for (const t of ["Int", "UInt", "Float", "String", "Bool", "Void"]) add({ label: t, kind: "class" });
     add({ label: "Tuple", kind: "class", detail: "Tuple<A, B, …>: an array with one type per position" });
+    add({ label: "Record", kind: "class", detail: "Record<String, V>: an object used as a dictionary" });
     const { classes, typedefs } = this.visibleTypes(a, ast);
     for (const c of classes) add(classItem(c));
     for (const td of typedefs) {

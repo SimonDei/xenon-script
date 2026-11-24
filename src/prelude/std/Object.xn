@@ -4,8 +4,8 @@
 // `Object.prototype`: they are available on all class instances, shapes and `Object` values, and a
 // class redefining one needs `override`. (`new Object()` still makes an empty object.)
 //
-// Typing: keys are `String`s, values are `*` (an object has no single value type), entries are
-// `Tuple<String, *>`.
+// Typing: keys are `String`s; values are `V` for a `Record<String, V>` (a shape gives the union of
+// its members' types) and `*` for other objects, entries `Tuple<String, V>` / `Tuple<String, *>`.
 // `freeze` & co. return their argument with its own type; `assign` returns `*`, since the result
 // has the members of all its arguments. Every value fits `Object`, `null` included, but
 // `Object.keys(null)` throws a `TypeException`: check for `null` first.
@@ -32,9 +32,11 @@ package xenon {
     // ---- reading ----
     /** The own enumerable property names. */
     static function keys(object:Object):Array<String>
-    /** The own enumerable property values. */
+    /** The own enumerable property values: typed for a `Record<String, V>` (and a shape, as the union of its members). */
+    static function values<V>(object:Record<String, V>):Array<V>
     static function values(object:Object):Array<*>
-    /** The own enumerable `[key, value]` pairs. */
+    /** The own enumerable `[key, value]` pairs: typed for a `Record<String, V>` (and a shape, as the union of its members). */
+    static function entries<V>(object:Record<String, V>):Array<Tuple<String, V>>
     static function entries(object:Object):Array<Tuple<String, *>>
     /** All own property names, enumerable or not (but no symbols). */
     static function getOwnPropertyNames(object:Object):Array<String>

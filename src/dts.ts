@@ -651,6 +651,11 @@ class DeclWriter {
       const args = (t as tsModule.TypeReference).target ? this.checker.getTypeArguments(t as tsModule.TypeReference) : [];
       return `NodeList<${args[0] ? this.type(args[0], false) : "Node"}>`;
     }
+    // `Record<string, T>` (a library mapped type) and other objects of only `[key: string]: T`.
+    const stringIndex = checker.getPropertiesOfType(t).length === 0 && t.getCallSignatures().length === 0
+      ? checker.getIndexInfosOfType(t).find((i) => i.keyType.flags & this.ts.TypeFlags.String)
+      : undefined;
+    if (stringIndex) return `Record<String, ${this.withDepth(() => this.type(stringIndex.type, false))}>`;
     if (sym && this.isLib(sym)) return this.libType(sym.name, t);
     const calls = t.getCallSignatures();
     const props = checker.getPropertiesOfType(t);

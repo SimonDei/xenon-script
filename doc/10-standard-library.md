@@ -168,6 +168,9 @@ Declared DOM families include:
 - `XMLSerializer`
 - `EventTarget` and `Event<T>`
 
+`HTMLElement.dataset` is a `DOMStringMap`, a `Record<String, String>`: `el.dataset.userId` reads a
+`String?` and writing sets the `data-user-id` attribute.
+
 `HTMLInputElement` covers `value`, `checked`, `files` (a `FileList?`), the constraint properties
 (`min`, `max`, `required`, `validity`, …) and the selection methods. `form`, `list` and `validity` are
 loosely typed until their classes exist.

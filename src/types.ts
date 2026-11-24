@@ -5,7 +5,7 @@ import type { Span } from "./source.ts";
 export type PrimName = "Int" | "UInt" | "Float" | "String" | "Bool";
 
 /** Built-in reference types that are not (yet) modelled member by member. */
-export type BuiltinName = "Object" | "Array" | "Function" | "Class" | "Tuple";
+export type BuiltinName = "Object" | "Array" | "Function" | "Class" | "Tuple" | "Record";
 
 /** A type parameter (`T` in `class Box<T>` or `function map<U>()`), compared by identity. */
 export interface TypeParamInfo {
@@ -127,6 +127,19 @@ export function arrayOf(element: Type): Type {
  */
 export function tupleOf(elements: Type[]): Type {
   return { kind: "builtin", name: "Tuple", args: elements };
+}
+
+/**
+ * `Record<String, V>`: a plain object used as a dictionary (`element.dataset`). Reading a key gives
+ * `V?` (it may be missing), writing one takes a `V`. (`Record<'a' | 'b', V>` is a shape instead.)
+ */
+export function recordOf(value: Type): Type {
+  return { kind: "builtin", name: "Record", args: [T.String, value] };
+}
+
+/** The value type of a `Record<String, V>`, or undefined for other types. */
+export function recordValue(t: Type): Type | undefined {
+  return t.kind === "builtin" && t.name === "Record" ? t.args[1] ?? T.any : undefined;
 }
 
 /** The element types of a `Tuple<…>`, or undefined for other types. */
@@ -445,6 +458,11 @@ export function assignable(from: Type, to: Type): boolean {
   if (to.kind === "builtin") {
     if (to.name === "Function") return from.kind === "method" || (from.kind === "builtin" && from.name === "Function");
     if (to.name === "Class") return classFits(from, to.args[0]);
+    // A shape is a record when each of its members holds a `V` (`{ a:Int, b:Int }` fits `Record<String, Int>`).
+    if (to.name === "Record" && from.kind === "shape") {
+      const value = to.args[1] ?? T.any;
+      return [...from.members.values()].every((m) => assignable(m.type(), value));
+    }
     if (from.kind !== "builtin") return false;
     // A tuple is an array: it fits `Array<*>`, and `Array<T>` when every element is a `T`.
     if (to.name === "Array" && from.name === "Tuple") {
@@ -640,6 +658,10 @@ export function unify(pattern: Type, actual: Type, vars: Set<TypeParamInfo>, out
       if (actual.kind === "builtin" && actual.name === pattern.name) pattern.args.forEach((p, i) => actual.args[i] && unify(p, actual.args[i]!, vars, out));
       // `Array<T>` from a tuple: `T` is the union of its elements.
       else if (pattern.name === "Array" && pattern.args[0] && tupleElements(actual)) unify(pattern.args[0], elementOf(actual)!, vars, out);
+      // `Record<String, V>` from a shape: `V` is the union of its members.
+      else if (pattern.name === "Record" && pattern.args[1] && actual.kind === "shape" && actual.members.size > 0) {
+        unify(pattern.args[1], unionOf([...actual.members.values()].map((m) => widen(m.type()))), vars, out);
+      }
       return;
     case "method":
       if (actual.kind !== "method") return;

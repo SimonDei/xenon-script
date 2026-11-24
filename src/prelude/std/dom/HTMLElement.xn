@@ -1,5 +1,8 @@
 // Browser: an HTML element. More specific HTML element classes inherit from this common interface.
 package xenon {
+  /** An element's `data-*` attributes (`element.dataset`): names to values, every value a `String`. */
+  public typedef DOMStringMap = Record<String, String>
+
   public native class HTMLElement extends Element {
     private function HTMLElement()
 
@@ -24,8 +27,11 @@ package xenon {
     function set containerTimingIgnore(value:Boolean):void
     function get contentEditable():String
     function set contentEditable(value:String):void
-    /** Custom `data-*` attributes, available through their camel-cased names. */
-    function get dataset():*
+    /**
+     * The `data-*` attributes by their camel-cased names: `data-user-id` is `dataset.userId` (or
+     * `dataset['userId']`). Reading gives `String?` (missing: `null`); writing sets the attribute.
+     */
+    function get dataset():DOMStringMap
     function get dir():String
     function set dir(value:String):void
     function get draggable():Boolean

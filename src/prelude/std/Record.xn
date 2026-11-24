@@ -1,0 +1,21 @@
+// Standard library: `Record<K, V>`, a plain object used as a dictionary. The type is built into the
+// compiler (like `Tuple`); this declaration documents it.
+//
+// At runtime a record is an ordinary JavaScript object. In the TypeScript output it is
+// `Record<string, V>`.
+package xenon {
+  /**
+   * An object whose keys are strings and whose values are all a `V`: `var ages:Record<String, Int> = { ann: 31 }`.
+   *
+   * - `ages['ann']` and `ages.ann` read a `V?` (a key may be missing: `null`); writing takes a `V`.
+   * - An object literal against a record may have any keys; each value is checked against `V`.
+   * - A shape whose members are all `V`s fits `Record<String, V>`.
+   * - `Record<'id' | 'name', V>`, with string literal keys, is the shape `{ id:V, name:V }`.
+   * - `Object.keys`, `Object.values` and `Object.entries` type their results with `V`.
+   *
+   * `Map<K, V>` is the other dictionary: any key type, `get`/`set`, ordered, but not a plain object.
+   */
+  public native('Object') class Record {
+    private function Record()
+  }
+}

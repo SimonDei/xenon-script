@@ -503,3 +503,29 @@ test("samePath: Windows paths match however TypeScript spells them", async () =>
   expect(samePath("/home/me/proj/x.ts", "/home/me/proj/x.ts", "linux")).toBe(true);
   expect(samePath("/home/me/Proj/x.ts", "/home/me/proj/x.ts", "linux")).toBe(false);
 });
+
+test("an object type of only `[key: string]: T` (and `Record<string, T>`) is a `Record<String, T>`", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const src = join(import.meta.dir, ".dts-record", "src");
+  await rm(join(src, ".."), { recursive: true, force: true });
+  await mkdir(join(src, "lib"), { recursive: true });
+  await Bun.write(join(src, "lib", "dict.d.ts"), `export interface Headers { [name: string]: string }
+export declare function headers(): Headers;
+export declare function counts(): Record<string, number>;
+export declare function labels(): { [key: string]: string | undefined };
+`);
+  await Bun.write(join(src, "lib", "dict.js"), "export const headers = () => ({}); export const counts = () => ({}); export const labels = () => ({});\n");
+  try {
+    const text = main("import { headers, counts, labels } from './lib/dict.js'", `    var h:Record<String, String> = headers()
+    var n:Float = counts()['a'] ?? 0
+    var l:String? = labels().title
+    var bad:Int = counts()['b']
+    trace(h, n, l, bad)`);
+    const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: src, assets: [{ path: "lib/dict.js", text: "// js" }] });
+    const errors = result.diagnostics.sorted().filter((d) => d.severity === "error").map((d) => `${d.code} ${d.labels.find((l) => l.primary)!.message}`);
+    expect(errors).toEqual(["X0308 expected `Int`, found `Float?`"]);
+    expect(result.declarationErrors).toEqual([]);
+  } finally {
+    await rm(join(src, ".."), { recursive: true, force: true });
+  }
+});

@@ -122,6 +122,7 @@ the important edge cases.
 | Types | `Int`, `UInt`, `Float`, `String`, `Bool`, `Void`, `Array<T>`, `*` (untyped); the lowercase ActionScript spellings `int`, `uint`, `Boolean`, and `void` remain aliases; local variables take their value's type (`var names = ['a']` is an `Array<String>`) | [`types`](examples/types) |
 | Unions and literals | `Int \| String`, `typedef Encoding = 'utf8' \| 'ascii'`; narrowed by `is`, `==` and null checks | [`types`](examples/types) |
 | Tuples | `Tuple<String, Int>`: one type per position, `var [key, value] = pair`; `Object.entries` and map entries are tuples | [`tuples`](examples/tuples) |
+| Records | `Record<String, V>`: a plain object as a dictionary (`ages['ann']` / `ages.ann` read an `Int?`, `Object.entries` is typed); `Record<'id' \| 'name', V>` is a shape; `element.dataset` is one | |
 | Type checks | `(expr : Type)`: checked at compile time, gone at runtime; the value is typed against `Type` (`(['a', 1] : Tuple<String, Int>)`, `([] : Array<Int>)`) | [`types`](examples/types) |
 | Nullable types | `Int?`, `?.`, `??`, `??=`, narrowing by null checks | [`nullable`](examples/nullable) |
 | Null safety (on by default; `"nullSafety": false` turns it off) | object types exclude `null` too (`String` vs `String?`), fields and locals need a value before use, `as` gives `T?` | [`null-safety`](examples/null-safety) |
