@@ -1,0 +1,43 @@
+// Standard library: `URLSearchParams`, the `name=value&…` part of a URL (a URL's `searchParams`, or
+// built for a query or a form body). Available in Bun and in browsers. Names can repeat:
+// `get` gives the first value, `getAll` all of them. `toString()` encodes (`a=1&b=x+y`).
+//
+// Typing: values are `String`s; a missing name gives `null` (`get` is `String?`). Iterating gives
+// `Tuple<String, String>` pairs: `for (var [name, value] of params)`.
+package xenon {
+  public native class URLSearchParams implements Iterable<Tuple<String, String>> {
+    /** Empty parameters. */
+    function URLSearchParams()
+    /** From a query string, with or without the leading `?`: `new URLSearchParams('?a=1&b=2')`. */
+    function URLSearchParams(init:String)
+    /** From an object of names to values: `new URLSearchParams({ q: 'xenon', page: '2' })`. */
+    function URLSearchParams(init:Record<String, String>)
+    /** From `[name, value]` pairs (names may repeat). */
+    function URLSearchParams(init:Array<Tuple<String, String>>)
+
+    /** The number of name/value pairs (a repeated name counts each time). */
+    final size:int
+
+    /** Adds a pair; an existing pair with the same name stays. */
+    function append(name:String, value:String):void
+    /** Removes every pair with this name (only the one with this value, when given). */
+    function delete(name:String):void
+    function delete(name:String, value:String):void
+    /** The first value for `name`, or `null`. */
+    function get(name:String):String?
+    function getAll(name:String):Array<String>
+    function has(name:String):Boolean
+    function has(name:String, value:String):Boolean
+    /** Replaces all pairs with this name by one. */
+    function set(name:String, value:String):void
+    /** Sorts the pairs by name (stable: the values of a name keep their order). */
+    function sort():void
+    /** The encoded query, without `?`: `'q=xenon+lang&page=2'`. */
+    function toString():String
+
+    function forEach(callback:(value:String, name:String, params:URLSearchParams) -> Void):void
+    function keys():Iterator<String>
+    function values():Iterator<String>
+    function entries():Iterator<Tuple<String, String>>
+  }
+}

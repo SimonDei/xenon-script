@@ -512,11 +512,13 @@ class ModuleGen {
           // Declared from a `.d.ts`: TypeScript knows the type under the local import name only.
           if (info.file.file.generated) return this.importedNames().has(name) ? name : "any";
           // TypeScript's `Event` isn't generic: `Event<Input>` is an `Event` whose targets are an `Input`.
-          if (name === "Event" && t.args?.length) {
-            const target = t.args[0]!;
-            if (target.kind === "class" && jsNameOf(target.info) === "EventTarget") return "Event";
+          // `CustomEvent<D, T>` the same way: TypeScript's `CustomEvent<D>` has no target type.
+          if ((name === "Event" || name === "CustomEvent") && t.args?.length) {
+            const base = name === "Event" ? "Event" : `CustomEvent<${this.tsType(t.args[0]!)}>`;
+            const target = t.args[name === "Event" ? 0 : 1];
+            if (!target || (target.kind === "class" && jsNameOf(target.info) === "EventTarget")) return base;
             const shown = this.tsType(target);
-            return `(Event & { target: ${shown} | null; currentTarget: ${shown} | null })`;
+            return `(${base} & { target: ${shown} | null; currentTarget: ${shown} | null })`;
           }
           return (TS_NATIVE[name] ?? name) + args;
         }

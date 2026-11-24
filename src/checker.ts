@@ -5361,7 +5361,10 @@ class BodyChecker {
     args.forEach((a, i) => {
       const pattern = patternAt(i);
       if (a.kind !== "Function" || !pattern) return;
-      const known = subst(pattern, new Map([...seeded, ...out]));
+      // A type parameter nothing decided yet gives the callback its bound (`E extends Event<*>`): an
+      // untyped `e => …` gets an `Event<*>`, a typed `(e:CustomEvent<Mail>) => …` decides `E` itself.
+      const bounds = new Map([...set].filter((v) => !out.has(v) && !seeded.has(v) && v.constraint).map((v) => [v, v.constraint!] as const));
+      const known = subst(pattern, new Map([...bounds, ...seeded, ...out]));
       const t = this.record(a, this.fnExpr(a, scope, known.kind === "method" ? (eraseParams(known, set) as MethodType) : undefined));
       this.preTyped.set(a, t);
       unify(pattern, t, set, out);
@@ -5443,7 +5446,7 @@ class BodyChecker {
             if (positions) return a.elements.length === positions.length && a.elements.every((el) => el.kind !== "Spread");
             return (m.kind === "builtin" && (m.name === "Array" || m.name === "Object")) || !!this.env.arrayElementFor(m);
           }
-          return m.kind === "shape" ? !strict || this.objectMayFit(a as A.Expr & { kind: "Object" }, m) : m.kind === "builtin" && m.name === "Object";
+          return m.kind === "shape" ? !strict || this.objectMayFit(a as A.Expr & { kind: "Object" }, m) : m.kind === "builtin" && (m.name === "Object" || m.name === "Record");
         });
         if (a.kind === "Function" || a.kind === "Array" || a.kind === "Object") return each(pt);
         const t = types[i]!;

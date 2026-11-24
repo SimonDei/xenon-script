@@ -1,0 +1,56 @@
+// Standard library: `URL`, a parsed absolute URL whose parts can be read and changed. Available in
+// Bun and in browsers. `new URL(text)` throws a `TypeException` for an invalid URL; `URL.canParse`
+// checks first, `URL.parse` gives `null` instead.
+//
+//   var url:URL = new URL('api/mail', 'https://example.org/app/')   // https://example.org/app/api/mail
+//   url.searchParams.set('page', '2')
+//   var r:Response = await fetch(url.href)
+//
+// Typing: the parts are `String`s (`''` when missing); `port` is a `String` too (`''` for the
+// default port). `href` (and `toString()`) give the whole URL.
+package xenon {
+  public native class URL {
+    /** Parses an absolute URL; throws a `TypeException` if `url` isn't one. */
+    function URL(url:String)
+    /** Resolves `url` against `base`: `new URL('../x', 'https://a.org/b/c')` is `https://a.org/x`. */
+    function URL(url:String, base:String)
+    function URL(url:String, base:URL)
+
+    /** Whether `new URL(url, base)` would succeed. */
+    static function canParse(url:String):Boolean
+    static function canParse(url:String, base:String):Boolean
+    /** The parsed URL, or `null` when it isn't valid (where `new URL` would throw). */
+    static function parse(url:String):URL?
+    static function parse(url:String, base:String):URL?
+    /** A `blob:` URL for a `Blob` or `File` (for `<a href>`, `<img src>`); free it with `revokeObjectURL`. */
+    static function createObjectURL(blob:Blob):String
+    static function revokeObjectURL(url:String):void
+
+    /** The whole URL; setting it parses a new one. */
+    var href:String
+    /** `'https:'` (with the colon). */
+    var protocol:String
+    var username:String
+    var password:String
+    /** Host name and port: `'example.org:8080'`. */
+    var host:String
+    var hostname:String
+    /** `''` for the protocol's default port. */
+    var port:String
+    /** `'/app/api/mail'`. */
+    var pathname:String
+    /** The query with its `?` (`''` when there is none). */
+    var search:String
+    /** The query as name/value pairs; changing them changes `search`. */
+    final searchParams:URLSearchParams
+    /** The fragment with its `#` (`''` when there is none). */
+    var hash:String
+    /** `'https://example.org:8080'`: protocol, host and port. */
+    final origin:String
+
+    /** The whole URL, as `href`. */
+    function toString():String
+    /** The whole URL (what `JSON.stringify` writes). */
+    function toJSON():String
+  }
+}

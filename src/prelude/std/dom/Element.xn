@@ -22,7 +22,9 @@ package xenon {
     var id:String
     var className:String
     /** The class names as a `DOMTokenList` (`add`, `remove`, `toggle`, `contains`). */
-    final classList:*
+    /** The CSS classes (`add`, `remove`, `toggle`, `contains`); assigning a `String` replaces the `class` attribute. */
+    function get classList():DOMTokenList
+    function set classList(value:String):void
     /** Inline CSS properties; dynamic because CSSStyleDeclaration has hundreds of properties. */
     function get style():*
 

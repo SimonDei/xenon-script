@@ -37,6 +37,8 @@ const SAMPLES: Record<string, unknown[]> = {
   Symbol: [Symbol("sample")],
   CSSStyleProperties: [dom.document.createElement("div").style],
   CharacterData: [dom.document.createTextNode("text")],
+  // happy-dom keeps a FileReader's state in instance fields (browsers: prototype accessors).
+  FileReader: [new dom.FileReader()],
 };
 
 /**
@@ -115,7 +117,9 @@ for (const file of stdFiles) {
       if (decl.kind !== "Class" || !decl.modifiers.native) continue;
       const jsName = decl.modifiers.nativeName ?? decl.name.name;
       const runtime = file.startsWith("dom/") ? (dom as unknown as Record<string, unknown>) : (globalThis as Record<string, unknown>);
-      const ctor = runtime[jsName] as Record<string, unknown> | undefined;
+      // happy-dom has no global `DOMTokenList`: its class is the one of an element's `classList`.
+      const hidden: Record<string, unknown> = { DOMTokenList: Object.getPrototypeOf(dom.document.createElement("div").classList).constructor };
+      const ctor = (runtime[jsName] ?? (file.startsWith("dom/") ? hidden[jsName] : undefined)) as Record<string, unknown> | undefined;
       if (ctor == null) {
         problems.push(`${jsName}: no such global`);
         continue;

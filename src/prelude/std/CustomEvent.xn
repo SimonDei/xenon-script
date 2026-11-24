@@ -1,0 +1,20 @@
+// Standard library: `CustomEvent<D>`, an event that carries data of your own in `detail`. Available
+// in Bun and in browsers: `target.dispatchEvent(new CustomEvent('saved', { detail: item }))`.
+//
+// Typing: `D` is the type of `detail` (`*` when left out), `T` the type of `target` and
+// `currentTarget` as in `Event<T>`. A listener states what it expects:
+// `(e:CustomEvent<Item>) => trace(e.detail.name)` (unchecked, like `Event<T>`'s target).
+// Not declared: the deprecated `initCustomEvent`.
+package xenon {
+  /** `new CustomEvent(type, init)`: `Event`'s options plus the `detail`. */
+  public typedef CustomEventInit<D> = { ?bubbles:Boolean, ?cancelable:Boolean, ?composed:Boolean, ?detail:D }
+
+  public native class CustomEvent<D = *, T = EventTarget> extends Event<T> {
+    /** An event without data: `detail` is `null`. */
+    function CustomEvent(type:String)
+    function CustomEvent(type:String, init:CustomEventInit<D>)
+
+    /** The data given as `init.detail` (`null` when there was none). */
+    final detail:D
+  }
+}

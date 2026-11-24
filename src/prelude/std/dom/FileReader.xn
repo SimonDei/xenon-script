@@ -1,0 +1,48 @@
+// Browser: the DOM's `FileReader`, which reads a `Blob` or `File` and reports by events. Browser-only:
+// Bun has no `FileReader` (there, and mostly in browsers too, prefer the promises of `Blob`:
+// `await file.text()`, `await file.arrayBuffer()`).
+//
+//   var reader:FileReader = new FileReader()
+//   reader.onload = (e) => trace(reader.result)
+//   reader.readAsText(file)
+//
+// Typing: `result` is `String | ArrayBuffer | null`, depending on the `readAs…` call (`null` until
+// it's done). `error` stays untyped (`*`, a `DOMException`). The `on…` handlers get an `Event<*>`
+// (really a `ProgressEvent`, whose `loaded`/`total` aren't declared yet): read `reader.result`.
+package xenon {
+  public native class FileReader extends EventTarget {
+    function FileReader()
+
+    // ---- states (`readyState`) ----
+    static inline const EMPTY:int = 0
+    static inline const LOADING:int = 1
+    static inline const DONE:int = 2
+
+    /** `EMPTY`, `LOADING` or `DONE`. */
+    final readyState:int
+    /** The file's content once read: a `String` (`readAsText`, `readAsDataURL`) or an `ArrayBuffer`; `null` before. */
+    final result:String | ArrayBuffer | null
+    /** Why reading failed (a `DOMException`), else `null`. */
+    final error:*
+
+    /** Reads the bytes: `result` becomes an `ArrayBuffer`. */
+    function readAsArrayBuffer(blob:Blob):void
+    /** Reads text (UTF-8 unless `encoding` says otherwise): `result` becomes a `String`. */
+    function readAsText(blob:Blob):void
+    function readAsText(blob:Blob, encoding:String):void
+    /** Reads a `data:` URL (base64): `result` becomes a `String`, usable as an `<img src>`. */
+    function readAsDataURL(blob:Blob):void
+    /** Stops reading; `onabort` and `onloadend` run. */
+    function abort():void
+
+    // ---- events (or `addEventListener('load', …)`) ----
+    /** The content is read: `result` holds it. */
+    var onload:Null<(event:Event<*>) -> Void>
+    var onerror:Null<(event:Event<*>) -> Void>
+    /** After `onload`, `onerror` or `onabort`. */
+    var onloadend:Null<(event:Event<*>) -> Void>
+    var onloadstart:Null<(event:Event<*>) -> Void>
+    var onprogress:Null<(event:Event<*>) -> Void>
+    var onabort:Null<(event:Event<*>) -> Void>
+  }
+}

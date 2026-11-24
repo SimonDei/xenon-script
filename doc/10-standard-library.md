@@ -136,9 +136,20 @@ input.addEventListener('input', (e:Event<HTMLInputElement>):Void => {
 
 `Event<T = EventTarget>`: a bare `Event` is `Event<EventTarget>`. `T` states what you expect (the
 checker can't know which element the listener was added to). The two properties are `T?`, because
-they are `null` before and after dispatch, and on an event you create yourself. Listeners are
-declared as `(event:Event<*>) -> Void`, so a listener can take any `Event<T>`; an untyped
-`e => …` has a dynamic `e.target`.
+they are `null` before and after dispatch, and on an event you create yourself. A listener may take
+any kind of event (`addEventListener<E extends Event<*>>`); an untyped `e => …` gets an `Event<*>`,
+whose `target` is dynamic.
+
+`CustomEvent<D>` carries data of your own in `detail`, typed from dispatch to listener:
+
+```actionscript
+typedef Preview = { mail:Mail, error:String }
+
+bus.addEventListener('open-preview', (e:CustomEvent<Preview>):Void => {
+  show(e.detail.mail)
+})
+bus.dispatchEvent(new CustomEvent('open-preview', { detail: { mail: mail, error: '' } }))
+```
 
 `Event` exposes phases, target/currentTarget, cancellation, propagation, and `composedPath`.
 
@@ -164,6 +175,9 @@ Declared DOM families include:
 - `NodeList<T>`
 - `HTMLCollection`
 - `FileList`
+- `DOMTokenList` (`element.classList`: `add`, `remove`, `toggle`, `contains`; assigning a `String`
+  replaces the `class` attribute)
+- `FileReader` (event-based; `await file.text()` is usually simpler)
 - `DOMParser`
 - `XMLSerializer`
 - `EventTarget` and `Event<T>`
@@ -186,6 +200,19 @@ function chosen(input:HTMLInputElement):Array<File> {
 
 The DOM is browser-only. Constructing/testing the available DOM classes in a runtime without the DOM
 can fail even though XenonScript type checking succeeds.
+
+## URLs
+
+```actionscript
+var url:URL = new URL('api/mail', 'https://example.org/app/')
+url.searchParams.set('page', '2')
+var query:URLSearchParams = new URLSearchParams({ q: 'xenon', tag: 'a' })
+for (var [name, value] of query) trace(name, value)
+```
+
+`URL` parses (`URL.canParse` and `URL.parse` instead of an exception), its parts are writable fields
+(`origin` and `searchParams` are read-only). `URLSearchParams.get` gives `String?`; it takes a
+query string, a `Record<String, String>` or `[name, value]` pairs.
 
 ## Runtime globals
 

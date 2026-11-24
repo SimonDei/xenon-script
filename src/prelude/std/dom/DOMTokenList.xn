@@ -1,0 +1,37 @@
+// Browser: the DOM's `DOMTokenList`, a set of space-separated words in an attribute: an element's
+// `classList` (`class="a b"`), `relList`, `part`. It is live: changes write the attribute.
+// Browser-only: Bun has no DOM.
+//
+// Typing: tokens are `String`s; `item` past the end is `null`. Use it with `for (var c:String of list)`.
+package xenon {
+  public native class DOMTokenList implements Iterable<String> {
+    private function DOMTokenList()
+
+    /** The number of tokens. */
+    final length:int
+    /** The attribute's text (`'a b'`); setting it replaces all tokens. */
+    var value:String
+
+    /** The token at `index`, or `null` past the end. */
+    function item(index:int):String?
+    function contains(token:String):Boolean
+    /** Adds the tokens that aren't there yet: `el.classList.add('active', 'wide')`. */
+    function add(...tokens:Array<String>):void
+    function remove(...tokens:Array<String>):void
+    /** Removes the token if present, else adds it (`force`: add when `true`, remove when `false`); whether it's there now. */
+    function toggle(token:String):Boolean
+    function toggle(token:String, force:Boolean):Boolean
+    /** Replaces `token` by `newToken`; `false` when `token` wasn't there. */
+    function replace(token:String, newToken:String):Boolean
+    /** Whether the attribute accepts the token (for `relList` & co.; `classList` throws). */
+    function supports(token:String):Boolean
+    function toString():String
+
+    function forEach(callback:(token:String, index:int, list:DOMTokenList) -> Void):void
+    /** With `thisArg` as the callback's `this` (for `function` callbacks). */
+    function forEach(callback:(token:String, index:int, list:DOMTokenList) -> Void, thisArg:*):void
+    function keys():Iterator<int>
+    function values():Iterator<String>
+    function entries():Iterator<Tuple<int, String>>
+  }
+}

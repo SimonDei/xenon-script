@@ -613,7 +613,7 @@ test("hover on destructured names shows their types (tuple positions); completio
 `;
   const p = project({ "Main.xn": text });
   const hover = (needle: string) => (p.hover("Main.xn", offset(text, needle, 1))!.contents as string).split("\n")[1];
-  expect([hover("key,"), hover("value]"), hover("name,"), hover("age]")]).toEqual(["key:String", "value:*", "name:String", "age:Int"]);
+  expect([hover("key,"), hover("value]"), hover("name,"), hover("age]")]).toEqual(["key:String", "value:Int", "name:String", "age:Int"]);
   expect(p.completions("Main.xn", offset(text, "var t:Tu", 8)).map((i) => i.label)).toContain("Tuple");
 });
 
