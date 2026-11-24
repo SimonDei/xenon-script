@@ -25,6 +25,9 @@ Options:
   --deny-warnings    treat warnings as errors
   --no-null-safety   object types may be null without a ? (null safety is on by default;
                      "nullSafety": false in xenon.json does the same)
+  --semicolons always|never|any
+                     statement endings: warn about missing ;s (always) or unneeded ones (never);
+                     any (the default) accepts both ("semicolons" in xenon.json does the same)
   --quiet            only print diagnostics
   --no-source-maps   don't write .js.map files (stack traces then show the JavaScript)
   --target js|ts     output JavaScript (default) or typed TypeScript (.ts, no source maps)
@@ -107,7 +110,11 @@ async function loadConfig(args: string[]): Promise<{
     // On unless turned off: `--no-null-safety` or `"nullSafety": false` (`--null-safety` is accepted, the default).
     nullSafety: flags.has("no-null-safety") ? false : flags.has("null-safety") || project.nullSafety !== false,
     globals: project.globals ?? {},
+    semicolons: ((flags.get("semicolons") as string | undefined) ?? project.semicolons ?? "any") as Config["semicolons"],
   };
+  if (!["always", "never", "any"].includes(config.semicolons)) {
+    throw new UsageError(`${flags.has("semicolons") ? "--semicolons" : '"semicolons" in xenon.json'} must be always, never or any`);
+  }
   const globals = config.globals as unknown;
   if (typeof globals !== "object" || globals === null || Array.isArray(globals) || Object.values(globals).some((v) => typeof v !== "string" || v === "")) {
     throw new UsageError('"globals" in xenon.json maps package names to global names, e.g. { "pizzip": "PizZip" }');

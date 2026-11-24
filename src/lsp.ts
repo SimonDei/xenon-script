@@ -5,6 +5,7 @@
  * Open editors override the files on disk; diagnostics are published for every file after each
  * change (debounced), since a change in one file can break another.
  */
+import type { SemicolonStyle } from "./parser.ts";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -74,19 +75,20 @@ const SCRIPT = /\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/;
  * not Xenon (the compiler's own `src/prelude/*.xn`, for one). Files in no project (the
  * compiler's deliberately broken test files) get no diagnostics.
  */
-export function locateProject(file: string): { srcRoot: string; main: string; nullSafety?: boolean } | undefined {
+export function locateProject(file: string): { srcRoot: string; main: string; nullSafety?: boolean; semicolons?: SemicolonStyle } | undefined {
   let srcFolder: string | undefined;
   for (let dir = dirname(file); ; ) {
     const config = join(dir, "xenon.json");
     if (existsSync(config)) {
-      let json: { src?: string; main?: string; nullSafety?: boolean } = {};
+      let json: { src?: string; main?: string; nullSafety?: boolean; semicolons?: SemicolonStyle } = {};
       try {
         json = JSON.parse(readFileSync(config, "utf8"));
       } catch {
         // a broken xenon.json: the CLI reports it; use the defaults here
       }
       const srcRoot = resolve(dir, json.src ?? "src");
-      if (!relative(srcRoot, file).startsWith("..")) return { srcRoot, main: json.main ?? "Main", ...(typeof json.nullSafety === "boolean" ? { nullSafety: json.nullSafety } : {}) };
+      const semicolons = ["always", "never", "any"].includes(json.semicolons as string) ? { semicolons: json.semicolons } : {};
+      if (!relative(srcRoot, file).startsWith("..")) return { srcRoot, main: json.main ?? "Main", ...(typeof json.nullSafety === "boolean" ? { nullSafety: json.nullSafety } : {}), ...semicolons };
     }
     if (!srcFolder && basename(dir) === "src") {
       let scripts = false;
@@ -123,7 +125,7 @@ export function startServer(connection: Connection = createConnection(ProposedFe
     if (!p) {
       if (!create) return undefined;
       p = (async () => {
-        const project = new XenonProject(found.srcRoot, found.main, undefined, { nullSafety: found.nullSafety });
+        const project = new XenonProject(found.srcRoot, found.main, undefined, { nullSafety: found.nullSafety, semicolons: found.semicolons });
         await project.load();
         return project;
       })();

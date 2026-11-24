@@ -7,6 +7,7 @@
  * knows `*`: JavaScript and npm imports, whose `.d.ts` types TypeScript reads. Its errors are
  * reported too, mapped back through the token mappings.
  */
+import type { SemicolonStyle } from "./parser.ts";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -338,7 +339,7 @@ export class XenonProject {
     /** Where the virtual `.ts` files live (TypeScript resolves npm packages from there upwards). */
     readonly virtualRoot = join(dirname(srcRoot), ".xenon", "ts"),
     /** The project's compiler settings from `xenon.json` (`nullSafety`, on unless `false`). */
-    readonly settings: { nullSafety?: boolean } = {},
+    readonly settings: { nullSafety?: boolean; semicolons?: SemicolonStyle } = {},
   ) {
     const host: ts.LanguageServiceHost = {
       getCompilationSettings: () => TS_OPTIONS,
@@ -409,7 +410,7 @@ export class XenonProject {
   }
 
   private compile(inputs: SourceInput[]): Analysis {
-    const result = compileProject(inputs, { main: this.main, target: "ts", tolerant: true, typeRoot: this.srcRoot, nullSafety: this.settings.nullSafety });
+    const result = compileProject(inputs, { main: this.main, target: "ts", tolerant: true, typeRoot: this.srcRoot, nullSafety: this.settings.nullSafety, semicolons: this.settings.semicolons });
     const outputs = new Map<string, OutputFile>();
     for (const o of result.outputs) if (o.source) outputs.set(o.source.path, o);
     return { result, outputs };

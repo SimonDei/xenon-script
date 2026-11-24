@@ -5,7 +5,7 @@ import { generate, type OutputFile } from "./codegen.ts";
 import { type Diagnostic, DiagnosticBag } from "./diagnostics.ts";
 import { type JsDeclarations, jsDeclarations } from "./dts.ts";
 import { BUILTIN_TYPES, nullSafety } from "./types.ts";
-import { parseFile } from "./parser.ts";
+import { parseFile, type SemicolonStyle } from "./parser.ts";
 import { preludeFiles } from "./prelude/files.ts" with { type: "macro" };
 import { SourceFile, type Span } from "./source.ts";
 
@@ -50,6 +50,8 @@ export interface CompileOptions {
   tolerant?: boolean;
   /** Null safety: object types exclude `null` unless written `T?` (see `types.nullSafety`). On unless `false`. */
   nullSafety?: boolean;
+  /** Statement endings the project wants (`"semicolons"` in xenon.json): warnings for the other kind. */
+  semicolons?: SemicolonStyle;
   /** Packages the page loads as globals, `{ "pizzip": "PizZip" }` (see `GenerateOptions.globals`). */
   globals?: Record<string, string>;
 }
@@ -82,7 +84,7 @@ function compileWith(sources: SourceInput[], options: CompileOptions): CompileRe
     ...PRELUDE.map((s) => new SourceFile(s.path, s.text, true)),
     ...sources.map((s) => new SourceFile(s.path, s.text)),
   ];
-  const asts = files.map((f) => parseFile(f, diags));
+  const asts = files.map((f) => parseFile(f, diags, options.semicolons));
   const userFiles = files.filter((f) => !f.prelude);
 
   // JavaScript imports: declarations generated from their `.d.ts` files.

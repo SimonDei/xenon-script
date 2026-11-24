@@ -4,6 +4,7 @@ import { type CompileOptions, compileProject, type CompileResult, type SourceInp
 import { bundleOutputs } from "./bundle.ts";
 import { entryFile } from "./codegen.ts";
 import { renderAll, renderSummary } from "./diagnostics.ts";
+import type { SemicolonStyle } from "./parser.ts";
 import type { Span } from "./source.ts";
 
 export interface Config {
@@ -28,6 +29,8 @@ export interface Config {
   nullSafety: boolean;
   /** Packages the page loads as globals (`"globals": { "pizzip": "PizZip" }`): no import, a read of the global. */
   globals: Record<string, string>;
+  /** Statement endings: `"semicolons": "always" | "never" | "any"` / `--semicolons` (default `any`). */
+  semicolons: SemicolonStyle;
 }
 
 /**
@@ -51,7 +54,7 @@ export function runCommand(config: Config, outDir: string, args: string[]): stri
 export function compileOptions(config: Config, root: string): CompileOptions {
   const sourceRoot = relative(resolve(root, config.out), resolve(root, config.src)).split(sep).join("/");
   const sourceMaps = config.sourceMaps && config.target === "js" ? { sourceRoot } : undefined;
-  return { main: config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target, typeRoot: resolve(root, config.src), nullSafety: config.nullSafety, globals: config.globals };
+  return { main: config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target, typeRoot: resolve(root, config.src), nullSafety: config.nullSafety, globals: config.globals, semicolons: config.semicolons };
 }
 
 /**

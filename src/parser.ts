@@ -43,9 +43,18 @@ const BINARY_PREC: Record<string, number> = {
   "**": 12,
 };
 
-export function parseFile(file: SourceFile, diags: DiagnosticBag): A.XenonFile {
+/**
+ * How a project ends statements (`"semicolons"` in xenon.json, `--semicolons`): `always` warns about a
+ * statement ended by a line break, `never` about a `;` at the end of a line; `any` (the default)
+ * accepts both. A `;` between two statements on one line is always needed.
+ */
+export type SemicolonStyle = "always" | "never" | "any";
+
+export function parseFile(file: SourceFile, diags: DiagnosticBag, semicolons: SemicolonStyle = "any"): A.XenonFile {
   const tokens = lex(file, diags);
-  return new Parser(tokens, file, diags).parseFile();
+  // The prelude and generated declarations have their own style.
+  const style = file.prelude || file.generated ? "any" : semicolons;
+  return new Parser(tokens, file, diags, style).parseFile();
 }
 
 export class Parser {
@@ -57,6 +66,7 @@ export class Parser {
     private tokens: Token[],
     private file: SourceFile,
     private diags: DiagnosticBag,
+    private semicolons: SemicolonStyle = "any",
   ) {}
 
   /* ----------------------------- helpers ----------------------------- */
@@ -149,8 +159,24 @@ export class Parser {
 
   /** Statement terminator: `;`, a line break, `}` or end of file (ASI). */
   private endStatement() {
-    if (this.eat(";")) return;
-    if (this.tok.nl || this.is("}") || this.tok.kind === "eof") return;
+    const semi = this.tok;
+    if (this.eat(";")) {
+      // `"semicolons": "never"`: a `;` that a line break, `}` or the end would replace.
+      if (this.semicolons === "never" && (this.tok.nl || this.is("}") || this.tok.kind === "eof")) {
+        this.diags.warning("X0885", "unnecessary `;`", semi.span, "the line break ends the statement")
+          .help("remove it (the project's style is `\"semicolons\": \"never\"`)", [{ span: semi.span, text: "" }]);
+      }
+      return;
+    }
+    if (this.tok.nl || this.is("}") || this.tok.kind === "eof") {
+      // `"semicolons": "always"`: every statement ends with `;`.
+      if (this.semicolons === "always") {
+        const at = span(this.file, this.prevEnd, this.prevEnd);
+        this.diags.warning("X0884", "missing `;`", at, "add `;` here")
+          .help("end the statement with `;` (the project's style is `\"semicolons\": \"always\"`)", [{ span: at, text: ";" }]);
+      }
+      return;
+    }
     if (this.doBody > 0 && this.is("while")) return;
     const prev = this.tokens[this.i - 1];
     const at = prev ? span(this.file, prev.span.end, prev.span.end) : this.tok.span;
