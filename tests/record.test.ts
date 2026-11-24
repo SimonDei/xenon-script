@@ -98,3 +98,17 @@ test("the TypeScript output of records type-checks", () => {
 });
 
 afterAll(() => rm(join(import.meta.dir, ".record-ts"), { recursive: true, force: true }));
+
+test("Object.entries of a shape without members (a `.d.ts` type of only an index signature) gives `*` values", () => {
+  const text = `typedef Sheet = { }
+public class Main {
+  public function Main() {}
+  public static function cells(sheet:Sheet):Int {
+    var n:Int = 0
+    for (var [address, cell]:Tuple<String, Int> of Object.entries(sheet)) n += cell + address.length
+    return n
+  }
+}
+`;
+  expect(errors(compileProject([{ path: "Main.xn", text }], { main: "Main" }))).toEqual([]);
+});

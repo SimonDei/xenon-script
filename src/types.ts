@@ -658,9 +658,11 @@ export function unify(pattern: Type, actual: Type, vars: Set<TypeParamInfo>, out
       if (actual.kind === "builtin" && actual.name === pattern.name) pattern.args.forEach((p, i) => actual.args[i] && unify(p, actual.args[i]!, vars, out));
       // `Array<T>` from a tuple: `T` is the union of its elements.
       else if (pattern.name === "Array" && pattern.args[0] && tupleElements(actual)) unify(pattern.args[0], elementOf(actual)!, vars, out);
-      // `Record<String, V>` from a shape: `V` is the union of its members.
-      else if (pattern.name === "Record" && pattern.args[1] && actual.kind === "shape" && actual.members.size > 0) {
-        unify(pattern.args[1], unionOf([...actual.members.values()].map((m) => widen(m.type()))), vars, out);
+      // `Record<String, V>` from a shape: `V` is the union of its members (`*` for a shape without
+      // members, like a `.d.ts` type that only has an index signature: its values are unknown).
+      else if (pattern.name === "Record" && pattern.args[1] && actual.kind === "shape") {
+        const values = [...actual.members.values()].map((m) => widen(m.type()));
+        unify(pattern.args[1], values.length > 0 ? unionOf(values) : T.any, vars, out);
       }
       return;
     case "method":
