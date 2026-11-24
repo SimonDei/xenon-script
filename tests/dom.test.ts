@@ -265,20 +265,20 @@ test("EventTarget: Node extends it; own classes can extend it; listeners get an 
     const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
     expect(stderr).toBe("");
     expect(stdout).toBe("saved:true,once,saved:true false\n");
+    // A DOM node in happy-dom: the listener runs at the target (phase 2). The compiled module is
+    // imported with its imports (the prelude's runtime helpers, such as checked indexing).
+    const window = new Window();
+    try {
+      const { Main } = await import(join(out, "Main.js"));
+      const el = window.document.createElement("div");
+      const n = Main.count(el, "ping");
+      el.dispatchEvent(new window.Event("ping"));
+      expect(n).toEqual([2]);
+    } finally {
+      await window.happyDOM.close();
+    }
   } finally {
     await rm(out, { recursive: true, force: true });
-  }
-  // A DOM node in happy-dom: the listener runs at the target (phase 2).
-  const window = new Window();
-  try {
-    const js = result.outputs.find((o) => o.path === "Main.js")!.text;
-    const Main = new Function("Store", `${js.replace(/^import .*$/gm, "").replace(/^export /m, "").replace(/\/\/# sourceMappingURL.*$/m, "")}; return Main;`)(class {});
-    const el = window.document.createElement("div");
-    const n = Main.count(el, "ping");
-    el.dispatchEvent(new window.Event("ping"));
-    expect(n).toEqual([2]);
-  } finally {
-    await window.happyDOM.close();
   }
 });
 
@@ -436,5 +436,47 @@ test("HTMLInputElement and Event<T>: typed targets, runs against a DOM (and the 
   const { join } = await import("node:path");
   const ts = compileProject([{ path: "Main.xn", text: inputCode }], { main: "Main", target: "ts" });
   expect(ts.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  expect(typeCheck(ts.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
+});
+
+test("HTMLTemplateElement and DocumentFragment: clone a template's content into the page (and the TypeScript output checks)", async () => {
+  const code = `public class Main {
+  public function Main() {}
+
+  /** One \`<li>\` per name, cloned from the \`<template>\` and inserted through one fragment. */
+  public static function fill(doc:Document, names:Array<String>):Int {
+    var template:HTMLTemplateElement? = doc.querySelector('#row') as HTMLTemplateElement
+    var list:Element? = doc.querySelector('ul')
+    if (template == null || list == null) return -1
+    var rows:DocumentFragment = doc.createDocumentFragment()
+    for (var name:String of names) {
+      var row:DocumentFragment? = template.content.cloneNode(true) as DocumentFragment
+      if (row == null) continue
+      var label:Element? = row.querySelector('.name')
+      if (label != null) label.textContent = name
+      rows.append(row)
+    }
+    var empty:DocumentFragment = new DocumentFragment()
+    list.append(rows, empty)
+    return rows.childElementCount + template.content.childElementCount * 10 + (template.content.firstElementChild?.tagName?.length ?? 0) * 100
+  }
+}
+`;
+  const result = compileProject([{ path: "Main.xn", text: code }], { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  const source = result.outputs.find((o) => o.path === "Main.js")!.text;
+  const window = new Window();
+  try {
+    const Main = new Function("HTMLTemplateElement", "DocumentFragment", `${source.replace(/^export /m, "").replace(/\/\/# sourceMappingURL.*$/m, "")}; return Main;`)(window.HTMLTemplateElement, window.DocumentFragment);
+    window.document.body.innerHTML = `<template id="row"><li><span class="name"></span></li></template><ul></ul>`;
+    // The fragment is empty after appending; the template keeps its one `<li>`.
+    expect(Main.fill(window.document, ["Ann", "Bob"])).toBe(0 + 10 + 200);
+    expect([...window.document.querySelectorAll("ul li .name")].map((e) => e.textContent)).toEqual(["Ann", "Bob"]);
+  } finally {
+    await window.happyDOM.close();
+  }
+  const { typeCheck } = await import("./tsemit.ts");
+  const { join } = await import("node:path");
+  const ts = compileProject([{ path: "Main.xn", text: code }], { main: "Main", target: "ts" });
   expect(typeCheck(ts.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
 });

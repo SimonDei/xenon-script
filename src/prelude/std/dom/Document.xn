@@ -59,7 +59,7 @@ package xenon {
     function createTextNode(data:String):Text
     function createComment(data:String):Node
     /** A lightweight container: appending it moves its children, not itself. */
-    function createDocumentFragment():Node
+    function createDocumentFragment():DocumentFragment
     /** A copy of a node from another document, owned by this one (`deep`: with its subtree). */
     function importNode(node:Node, deep:Boolean = false):Node
     /** Moves a node from another document into this one. */

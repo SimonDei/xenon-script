@@ -48,6 +48,10 @@ const ARITY_QUIRKS = new Set(["Response.prototype.clone", "Blob.prototype.stream
 /** Standard DOM members (every browser has them) that happy-dom doesn't implement. */
 const HAPPY_DOM_GAPS = new Set([
   "HTMLInputElement.prototype.dirName",
+  "HTMLTemplateElement.prototype.shadowRootMode",
+  "HTMLTemplateElement.prototype.shadowRootClonable",
+  "HTMLTemplateElement.prototype.shadowRootDelegatesFocus",
+  "HTMLTemplateElement.prototype.shadowRootSerializable",
   "HTMLInputElement.prototype.capture",
   "HTMLInputElement.prototype.showPicker",
   "Node.prototype.lookupPrefix",

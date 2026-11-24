@@ -1,0 +1,26 @@
+// Browser: a `<template>` element. Its children aren't part of the page: they are parsed into
+// `content`, a `DocumentFragment`, to be cloned and inserted as often as needed:
+// `list.append(template.content.cloneNode(true))`. Browser-only: Bun has no DOM.
+//
+// Typing: `document.createElement('template')` and `querySelector` give an `HTMLElement`/`Element`;
+// `as HTMLTemplateElement` gives `content`. The `shadowRoot…` properties describe a declarative
+// shadow root (`<template shadowrootmode="open">`).
+package xenon {
+  public native class HTMLTemplateElement extends HTMLElement {
+    private function HTMLTemplateElement()
+
+    /** The template's children, kept out of the page: clone it with `cloneNode(true)` or `document.importNode(content, true)`. */
+    function get content():DocumentFragment
+
+    // ---- declarative shadow root ----
+    /** `'open'` or `'closed'` attaches the template as a shadow root of its parent; `''` (the default) doesn't. */
+    function get shadowRootMode():String
+    function set shadowRootMode(value:String):void
+    function get shadowRootClonable():Boolean
+    function set shadowRootClonable(value:Boolean):void
+    function get shadowRootDelegatesFocus():Boolean
+    function set shadowRootDelegatesFocus(value:Boolean):void
+    function get shadowRootSerializable():Boolean
+    function set shadowRootSerializable(value:Boolean):void
+  }
+}

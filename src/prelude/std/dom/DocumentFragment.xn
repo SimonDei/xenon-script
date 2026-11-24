@@ -1,0 +1,37 @@
+// Browser: the DOM's `DocumentFragment`, a lightweight container of nodes without a parent. Appending
+// a fragment moves its children into the target (the fragment is empty afterwards), so it builds
+// several nodes for one insertion. A `<template>`'s `content` is one. Browser-only: Bun has no DOM.
+//
+// Typing: like `Element`'s, lookups that may find nothing are `T?`; `textContent` is a `String`
+// (never `null` for a fragment), `ownerDocument` a `Document`.
+package xenon {
+  public native class DocumentFragment extends Node {
+    /** An empty fragment of the current document: `new DocumentFragment()`. */
+    function DocumentFragment()
+
+    /** The document the fragment belongs to. */
+    public override function get ownerDocument():Document
+
+    /** The fragment's text, the text of all its descendants. */
+    public override function get textContent():String
+    public override function set textContent(value:String):void
+
+    // ---- finding elements ----
+    /** The element with this `id`, or `null`. */
+    function getElementById(elementId:String):HTMLElement?
+    /** The first descendant matching a CSS selector, or `null`. */
+    function querySelector(selectors:String):Element?
+    function querySelectorAll(selectors:String):NodeList<Element>
+
+    // ---- children that are elements ----
+    function get children():HTMLCollection
+    function get firstElementChild():Element?
+    function get lastElementChild():Element?
+    function get childElementCount():int
+
+    // ---- changing the tree (nodes or strings, which become text) ----
+    function append(...nodes:Array<*>):void
+    function prepend(...nodes:Array<*>):void
+    function replaceChildren(...nodes:Array<*>):void
+  }
+}
