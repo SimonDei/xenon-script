@@ -54,6 +54,30 @@ function indexOf<T extends IEquatable<T>>(items:Array<T>, x:T):Int {
 JavaScript's `Map`, `Set`, and `Array.includes` still compare objects by identity; they don't call
 `equals`. To make `==` itself compare values, overload `operator==`.
 
+### Ordering: `IComparable<T>`
+
+`IComparable<T>` gives a class a natural order. `compareTo` returns a negative number when this
+value comes first, `0` when the two are equal in the order, and a positive number when it comes after:
+
+```actionscript
+class Version implements IComparable<Version> {
+  public final major:Int
+  public final minor:Int
+  public function Version(major:Int, minor:Int) { this.major = major; this.minor = minor }
+  public function compareTo(other:Version):Int => major != other.major ? major - other.major : minor - other.minor
+}
+
+var sorted = versions.toSorted((a, b) => a.compareTo(b))
+
+function max<T extends IComparable<T>>(items:Array<T>):T? {
+  var best:T? = null
+  for (var item:T of items) if (best == null || item.compareTo(best) > 0) best = item
+  return best
+}
+```
+
+A class can implement both interfaces; `equals` then usually agrees with `compareTo(other) == 0`.
+
 ## Generics
 
 Classes, interfaces, methods, local functions, and typedefs accept type parameters:

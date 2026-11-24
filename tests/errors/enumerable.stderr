@@ -57,9 +57,9 @@ error[X0787]: `Missing` doesn't implement `[Symbol.iterator]`
  13 | class Missing implements Iterable<int> {}         // [Symbol.iterator] is missing
     |       ^^^^^^^ missing 1 interface member
     |
-   ::: <xenon prelude>/xenon/Prelude.xn:153:14
+   ::: <xenon prelude>/xenon/Prelude.xn:164:14
     |
-153 |     function [Symbol.iterator]():Iterator<T>
+164 |     function [Symbol.iterator]():Iterator<T>
     |              ----------------- required by `Iterable`
     |
 help: add the missing members (the stubs throw `NotImplementedException`)
@@ -74,9 +74,9 @@ error[X0788]: `WrongReturn.[Symbol.iterator]` doesn't match `Iterable.[Symbol.it
  18 |   public function [Symbol.iterator]():Array<int> { return [] }
     |                   ^^^^^^^^^^^^^^^^^
     |
-   ::: <xenon prelude>/xenon/Prelude.xn:153:14
+   ::: <xenon prelude>/xenon/Prelude.xn:164:14
     |
-153 |     function [Symbol.iterator]():Iterator<T>
+164 |     function [Symbol.iterator]():Iterator<T>
     |              ----------------- required by this interface member
     |
     = note: returns `Array<Int>` instead of `Iterator<Int>`

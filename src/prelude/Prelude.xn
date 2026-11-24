@@ -30,6 +30,17 @@ package xenon {
     function equals(other:T):Bool
   }
 
+  /**
+   * Values with a natural order: `a.compareTo(b)` is negative when `a` comes before `b`, `0` when
+   * they're equal in the order, positive after (`Version`, `Money`, a date). Sort with it:
+   * `versions.sort((a, b) => a.compareTo(b))`; generic code can require it:
+   * `function max<T extends IComparable<T>>(items:Array<T>):T?`.
+   */
+  public interface IComparable<T> {
+    /** Negative if this comes before `other`, `0` if they are equal in the order, positive if after. */
+    function compareTo(other:T):Int
+  }
+
   /** `IDisposable` with an async `dispose()`: `await using`, `await x.dispose()`. */
   public interface IAsyncDisposable {
     function dispose():Promise<Void>
