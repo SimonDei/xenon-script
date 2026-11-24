@@ -79,6 +79,15 @@ interface Code {
   prec: number;
 }
 
+/** An await belonging to this expression, rather than to a nested function. */
+function containsAwait(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  if (Array.isArray(value)) return value.some(containsAwait);
+  if ("kind" in value && value.kind === "Function") return false;
+  if ("kind" in value && value.kind === "Await") return true;
+  return Object.entries(value).some(([key, child]) => key !== "span" && key !== "file" && containsAwait(child));
+}
+
 /** Quotes a string as a single-quoted JS literal. */
 export function jsString(value: string): string {
   let out = "'";
@@ -1734,6 +1743,34 @@ class ModuleGen {
       }
       case "Array":
         return { code: `[${this.args(e.elements)}]`, prec: P.primary };
+      case "Comprehension": {
+        const fresh = (base: string) => {
+          let name: string;
+          do name = this.temp(base); while (e.span.file.text.includes(name));
+          return name;
+        };
+        const result = fresh("$comprehension");
+        const async = containsAwait(e);
+        let body = `const ${result} = []; `;
+        let closes = "";
+        for (const clause of e.clauses) {
+          if (clause.kind === "If") {
+            body += `if (${this.expr(clause.cond).code}) { `;
+            closes = `} ${closes}`;
+          } else {
+            const source = fresh("$comprehensionSource");
+            let iterable = this.expr(clause.iterable).code;
+            const t = this.ts ? this.check.exprTypes.get(clause.iterable) : undefined;
+            if (t?.kind === "class" && TS_NOT_ITERABLE.has(t.info.qname)) iterable = `(${iterable} as unknown as Iterable<any>)`;
+            const target = clause.variable.pattern ? this.pattern(clause.variable.pattern) : this.name(clause.variable.name);
+            const kw = clause.variable.decl === "var" ? "let" : "const";
+            body += `{ const ${source} = ${iterable}; for (${kw} ${target} of ${source}) { `;
+            closes = `} } ${closes}`;
+          }
+        }
+        body += `${result}[${result}.length] = ${this.wrap(this.expr(e.value), P.assign)}; ${closes}return ${result};`;
+        return { code: `${async ? "await " : ""}(${async ? "async " : ""}() => { ${body} })()`, prec: async ? P.unary : P.call };
+      }
       case "Object": {
         if (e.props.length === 0) return { code: "{}", prec: P.primary };
         const props = e.props.map((p) => {

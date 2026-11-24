@@ -1677,6 +1677,7 @@ export class Parser {
           }
           case "[": {
             const open = this.advance();
+            if (this.is("for")) return this.parseComprehension(open, start);
             const elements: A.Expr[] = [];
             while (!this.is("]")) {
               elements.push(this.parseSpreadOrExpr());
@@ -1693,6 +1694,43 @@ export class Parser {
         break;
     }
     this.unexpected("an expression");
+  }
+
+  private parseComprehension(open: Token, start: number): A.Expr {
+    const clauses: A.ComprehensionClause[] = [];
+    while (this.is("for") || this.is("if")) {
+      if (this.eat("if")) {
+        const paren = this.expect("(");
+        const cond = this.parseExpr();
+        this.expectClose(")", paren);
+        clauses.push({ kind: "If", cond });
+      } else {
+        this.expect("for");
+        const paren = this.expect("(");
+        let variable: A.LoopVar;
+        if (this.startsBinding() || this.is("final")) variable = this.loopVar();
+        else {
+          const begin = this.tok.span.start;
+          if (this.is("{") || this.is("[")) {
+            const pattern = this.parsePattern();
+            const type = this.eat(":") ? this.parseType() : undefined;
+            variable = { decl: "var", name: { name: "", span: pattern.span }, pattern, type, span: this.sp(begin) };
+          } else {
+            const name = this.ident("a loop variable name");
+            const type = this.eat(":") ? this.parseType() : undefined;
+            variable = { decl: "var", name, type, span: this.sp(begin) };
+          }
+        }
+        if (!this.isIdent("of")) this.unexpected("`of`");
+        this.advance();
+        const iterable = this.parseExpr();
+        this.expectClose(")", paren);
+        clauses.push({ kind: "For", variable, iterable });
+      }
+    }
+    const value = this.parseAssign();
+    this.expectClose("]", open);
+    return { kind: "Comprehension", clauses, value, span: this.sp(start) };
   }
 
   /** At `(`: is this the parameter list of an arrow function? Looks past `)` for `=>` or `: Type =>`. */

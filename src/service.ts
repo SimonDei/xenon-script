@@ -1270,6 +1270,14 @@ export class XenonProject {
       if (node.kind === "Method" || node.kind === "Function") {
         for (const p of (node.params as A.Param[])) declaredHere.push({ name: p.name, type: p.type && check.typeNodeTypes.get(p.type) });
       }
+      if (node.kind === "Comprehension") {
+        for (const clause of [...node.clauses as A.ComprehensionClause[]].reverse()) {
+          if (clause.kind !== "For" || offset <= clause.iterable.span.end) continue;
+          const v = clause.variable;
+          if (v.pattern) declaredHere.push(...bindings(v.pattern));
+          else declaredHere.push({ name: v.name, type: v.type ? check.typeNodeTypes.get(v.type) : check.bindingTypes.get(v.name) });
+        }
+      }
       const variable = (node as { variable?: A.LoopVar }).variable;
       if (variable?.pattern) declaredHere.push(...bindings(variable.pattern));
       else if (variable?.name) declaredHere.push({ name: variable.name, type: variable.type && check.typeNodeTypes.get(variable.type) });

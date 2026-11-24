@@ -224,6 +224,10 @@ export interface LoopVar {
   span: Span;
 }
 
+export type ComprehensionClause =
+  | { kind: "For"; variable: LoopVar; iterable: Expr }
+  | { kind: "If"; cond: Expr };
+
 export interface SwitchCase {
   /** `undefined` for `default:`. */
   test?: Expr;
@@ -303,6 +307,7 @@ export type Expr =
   | { kind: "Null"; span: Span }
   | { kind: "Undefined"; span: Span }
   | { kind: "Array"; elements: Expr[]; span: Span }
+  | { kind: "Comprehension"; clauses: ComprehensionClause[]; value: Expr; span: Span }
   | { kind: "Object"; props: ObjectProp[]; span: Span }
   | { kind: "Spread"; arg: Expr; span: Span }
   | { kind: "Member"; object: Expr; name: Ident; optional: boolean; span: Span }

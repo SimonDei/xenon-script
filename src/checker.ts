@@ -3769,13 +3769,19 @@ class BodyChecker {
 
   private forOf(s: A.Stmt & { kind: "ForOf" }, outer: Scope) {
     const scope = new Scope(outer);
-    const t = this.valueExpr(s.iterable, outer);
+    const element = this.forOfElement(s.iterable, outer);
+    this.loopVar(s.variable, element, scope, "elements");
+    this.loopBody(() => this.nested(s.body, scope));
+  }
+
+  private forOfElement(iterable: A.Expr, outer: Scope): Type {
+    const t = this.valueExpr(iterable, outer);
     let element: Type = T.any;
     const arrayElement = elementOf(t) ?? this.env.iterableElement(t);
     if (arrayElement) element = arrayElement;
     else if (isPrim(t, "String")) element = T.String;
     else if (t.kind === "builtin" && t.name === "Object") {
-      const e = s.iterable.span;
+      const e = iterable.span;
       this.diags.error("X0390", "an `Object` is not iterable", e, "plain objects can't be used with `of`")
         .help("iterate over its values", [
           { span: span(e.file, e.start, e.start), text: "Object.values(" },
@@ -3784,12 +3790,37 @@ class BodyChecker {
       element = T.error;
     } else if (t.kind === "prim" || t.kind === "null" || t.kind === "classRef" || t.kind === "method" ||
       (t.kind === "builtin" && t.name !== "Array") || (t.kind === "class" && !hasJsAncestor(t.info))) {
-      const d = this.diags.error("X0391", `\`${typeToString(t)}\` is not iterable`, s.iterable.span);
+      const d = this.diags.error("X0391", `\`${typeToString(t)}\` is not iterable`, iterable.span);
       if (t.kind === "class") d.help(`implement \`Iterable<T>\` in \`${t.info.decl.name.name}\`: \`function [Symbol.iterator]():Iterator<T>\``);
       element = T.error;
     }
-    this.loopVar(s.variable, element, scope, "elements");
-    this.loopBody(() => this.nested(s.body, scope));
+    return element;
+  }
+
+  private comprehension(e: A.Expr & { kind: "Comprehension" }, outer: Scope, expected?: Type): Type {
+    let result: Type = T.any;
+    const check = (index: number, scope: Scope): void => {
+      const clause = e.clauses[index];
+      if (!clause) {
+        if (expected) {
+          this.checkAssign(e.value, expected, undefined, scope);
+          result = expected;
+        } else {
+          this.valueExpr(e.value, scope);
+          result = this.inferredType(e.value);
+        }
+      } else if (clause.kind === "For") {
+        const element = this.forOfElement(clause.iterable, scope);
+        const inner = new Scope(scope);
+        this.loopVar(clause.variable, element, inner, "elements");
+        this.loopBody(() => check(index + 1, inner));
+      } else {
+        this.condition(clause.cond, scope);
+        check(index + 1, scope.withFacts(this.facts(clause.cond, scope).whenTrue));
+      }
+    };
+    check(0, new Scope(outer));
+    return arrayOf(result);
   }
 
   private forRange(s: A.Stmt & { kind: "ForRange" }, outer: Scope) {
@@ -3916,12 +3947,12 @@ class BodyChecker {
       return;
     }
     // A literal is never null: against `Node?` it is checked against `Node` (null safety).
-    if ((e.kind === "Object" || e.kind === "Function" || e.kind === "Array") && expected.kind === "nullable" && expected.inner.kind !== "union") {
+    if ((e.kind === "Object" || e.kind === "Function" || e.kind === "Array" || e.kind === "Comprehension") && expected.kind === "nullable" && expected.inner.kind !== "union") {
       this.checkAssign(e, expected.inner, origin, scope);
       return;
     }
     // A literal against a union: checked against the member of its kind (`{…}` against the shape).
-    if ((e.kind === "Object" || e.kind === "Function" || e.kind === "Array") && nonNull(expected).kind === "union") {
+    if ((e.kind === "Object" || e.kind === "Function" || e.kind === "Array" || e.kind === "Comprehension") && nonNull(expected).kind === "union") {
       const member = this.unionMemberFor(e, nonNull(expected) as UnionType);
       if (member) {
         this.checkAssign(e, member, origin, scope);
@@ -3952,6 +3983,13 @@ class BodyChecker {
     if (e.kind === "Array" && positions) {
       this.tupleLiteral(e, positions, expected, scope);
       return;
+    }
+    if (e.kind === "Comprehension") {
+      const element = elementOf(expected) ?? this.env.arrayElementFor(expected);
+      if (element && !tupleElements(expected)) {
+        this.record(e, this.comprehension(e, scope, element));
+        return;
+      }
     }
     // Array literals take their type from context: `var v:Array<int> = [1, 2]`, also through an
     // interface arrays implement: `Iterable<int>`.
@@ -4168,6 +4206,8 @@ class BodyChecker {
         }
         return T.Array;
       }
+      case "Comprehension":
+        return this.comprehension(e, scope);
       case "Object":
         this.objectLiteral(e, scope);
         // `{ name: 'test', age: 20 }` is a `{ name:String, age:Int }` (an empty `{}` stays an open `Object`).

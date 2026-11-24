@@ -87,6 +87,21 @@ var moved = { ...p, x: 20 }
 var all:Array<Int> = [...scores, 13]
 ```
 
+Array comprehensions use the former JavaScript prefix syntax:
+
+```actionscript
+var doubled = [for (score of scores) if (score > 3) score * 2]
+var pairs = [for (a of scores) for (b of scores) if (a != b) [a, b]]
+```
+
+Each `for` iterates an iterable and introduces a local binding; later loops, filters and the result
+can use earlier bindings. Filters must be `Bool`. Bindings may also be destructured or written
+with `var`, `final`, or `const` and an optional type, as in `for … of`. The expression builds a
+new array in iteration order, with an element type inferred from its result. Comprehensions compile
+to ordinary JavaScript; they do not depend on browser support for the obsolete syntax.
+When a comprehension contains `await`, it runs in an async wrapper, so it can also suspend after
+the comprehension even if no iteration reached an `await`.
+
 An object literal can have methods and accessors, written like a class's with the `function` keyword:
 
 ```actionscript

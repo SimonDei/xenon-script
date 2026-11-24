@@ -480,7 +480,7 @@ class ScopedChecker {
     // Only where such a value is made: names and members have their type reported where declared,
     // and a value checked against an annotation has it reported there.
     const t = this.type(e);
-    const made = e.kind === "Call" || e.kind === "New" || e.kind === "Array" || e.kind === "Object";
+    const made = e.kind === "Call" || e.kind === "New" || e.kind === "Array" || e.kind === "Comprehension" || e.kind === "Object";
     const annotated = this.result.expectedTypes.get(e);
     if (!t || !made || cls || (annotated && holdsScoped(annotated))) return;
     const held = holdsScoped(t);
@@ -534,6 +534,33 @@ class ScopedChecker {
       case "Array":
         for (const el of e.elements) this.visit(el.kind === "Spread" ? el.arg : el, "store", "stored in an array");
         return;
+      case "Comprehension": {
+        const saved = this.noTemps;
+        this.noTemps = "loop";
+        for (const clause of e.clauses) {
+          if (clause.kind === "If") this.visit(clause.cond, "use");
+          else {
+            this.visit(clause.iterable, "use");
+            if (clause.variable.pattern) {
+              const addBindings = (p: A.Pattern): void => {
+                if (p.kind === "BindingName") this.fn.locals.add(p.name.span);
+                else if (p.kind === "ArrayPattern") {
+                  for (const item of p.elements) if (item) addBindings(item);
+                  if (p.rest) addBindings(p.rest);
+                } else if (p.kind === "ObjectPattern") {
+                  for (const prop of p.props) addBindings(prop.value);
+                  if (p.rest) addBindings(p.rest);
+                }
+              };
+              this.pattern(clause.variable.pattern);
+              addBindings(clause.variable.pattern);
+            } else this.fn.locals.add(clause.variable.name.span);
+          }
+        }
+        this.visit(e.value, "store", "stored in an array");
+        this.noTemps = saved;
+        return;
+      }
       case "Object":
         for (const p of e.props) {
           if (p.kind === "Prop") {

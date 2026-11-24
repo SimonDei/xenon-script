@@ -41,6 +41,25 @@ function project(files: Record<string, string>): XenonProject {
   return p;
 }
 
+test("comprehension bindings are completed only after their source", () => {
+  const text = `public class Main {
+  public function Main() {}
+  public static function f(xs:Array<Int>):Void {
+    var values = [for (outer of xs) for (inner of [outer]) inner + outer]
+    trace(values)
+  }
+}`;
+  const p = project({ "Main.xn": text });
+  const inSource = p.completions("Main.xn", text.indexOf("[outer]") + 2);
+  expect(inSource.some((item) => item.label === "outer" && item.detail === "outer:Int")).toBe(true);
+  expect(inSource.some((item) => item.label === "inner")).toBe(false);
+  const inValue = p.completions("Main.xn", text.indexOf("inner + outer") + 2);
+  expect(inValue.some((item) => item.label === "outer" && item.detail === "outer:Int")).toBe(true);
+  expect(inValue.some((item) => item.label === "inner" && item.detail === "inner:Int")).toBe(true);
+  const after = p.completions("Main.xn", text.indexOf("trace(values)") + 1);
+  expect(after.some((item) => item.label === "outer" || item.label === "inner")).toBe(false);
+});
+
 const offset = (text: string, needle: string, delta = 0) => {
   const i = text.indexOf(needle);
   if (i < 0) throw new Error(`not found: ${needle}`);
