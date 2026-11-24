@@ -117,7 +117,7 @@ the important edge cases.
 | Packages and classes | `package com.zoo { public class Animal { … } }`; a file's package matches its folder | [`zoo`](examples/zoo) |
 | Inheritance | `extends`, `override`, `super`, `abstract`, `final`, `protected` | [`inheritance`](examples/inheritance), [`abstract`](examples/abstract) |
 | Properties | `function get color()` / `function set color(v)`; the setter may be narrower (`private set`) | [`interfaces`](examples/interfaces) |
-| Interfaces | `interface IShape { function area():Float }`, checked `implements` | [`interfaces`](examples/interfaces) |
+| Interfaces | `interface IShape { function area():Float }`, checked `implements`; `IEquatable<T>` for value equality (`a.equals(b)`, usable as a generic constraint) | [`interfaces`](examples/interfaces) |
 | Variables | `var` (compiles to `let`), `final` and `const` (assigned once: `const`), `inline final` (pasted as its value) | [`basics`](examples/basics) |
 | Types | `Int`, `UInt`, `Short`, `Byte` (16- and 8-bit, arithmetic as `Int`, `b++`/`b += 1` wrap), `Float`, `String`, `Bool`, `Void`, `Array<T>`, `*` (untyped); the lowercase ActionScript spellings `int`, `uint`, `Boolean`, and `void` remain aliases; local variables take their value's type (`var names = ['a']` is an `Array<String>`) | [`types`](examples/types) |
 | Unions and literals | `Int \| String`, `typedef Encoding = 'utf8' \| 'ascii'`; narrowed by `is`, `==` and null checks | [`types`](examples/types) |

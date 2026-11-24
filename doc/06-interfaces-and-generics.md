@@ -29,6 +29,31 @@ cannot be constructed directly.
 
 An abstract class may defer an interface implementation to its concrete subclasses.
 
+### Value equality: `IEquatable<T>`
+
+`==` compares objects by reference. The built-in `IEquatable<T>` interface gives a class a
+value comparison, and generic code can require it with a constraint:
+
+```actionscript
+class Money implements IEquatable<Money> {
+  public final cents:Int
+  public final currency:String
+  public function Money(cents:Int, currency:String) { this.cents = cents; this.currency = currency }
+  public function equals(other:Money):Bool => cents == other.cents && currency == other.currency
+}
+
+new Money(100, 'EUR') == new Money(100, 'EUR')        // false: two objects
+new Money(100, 'EUR').equals(new Money(100, 'EUR'))   // true: the same value
+
+function indexOf<T extends IEquatable<T>>(items:Array<T>, x:T):Int {
+  for (var i:Int = 0; i < items.length; i++) if (items[i].equals(x)) return i
+  return -1
+}
+```
+
+JavaScript's `Map`, `Set`, and `Array.includes` still compare objects by identity; they don't call
+`equals`. To make `==` itself compare values, overload `operator==`.
+
 ## Generics
 
 Classes, interfaces, methods, local functions, and typedefs accept type parameters:

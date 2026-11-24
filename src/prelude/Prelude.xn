@@ -19,6 +19,17 @@ package xenon {
     function dispose():Void
   }
 
+  /**
+   * Values that compare by content, not identity: `a.equals(b)` for two `Money`s with the same amount
+   * and currency, where `==` compares references. Generic code can require it:
+   * `function indexOf<T extends IEquatable<T>>(items:Array<T>, x:T):Int`. (JavaScript's `Map`, `Set`
+   * and `Array.includes` compare objects by identity and don't call it.)
+   */
+  public interface IEquatable<T> {
+    /** Whether `other` represents the same value as this one. */
+    function equals(other:T):Bool
+  }
+
   /** `IDisposable` with an async `dispose()`: `await using`, `await x.dispose()`. */
   public interface IAsyncDisposable {
     function dispose():Promise<Void>
