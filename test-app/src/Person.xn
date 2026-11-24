@@ -1,8 +1,0 @@
-import Main.MyType;
-
-public class Person {
-  public function Person() {
-    var p:MyType?;
-
-  }
-}
