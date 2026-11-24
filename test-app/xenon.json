@@ -1,0 +1,5 @@
+{
+  "main": "Main",
+  "bundle": true,
+  "semicolons": "always"
+}

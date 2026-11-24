@@ -62,6 +62,8 @@ export function fold(e: A.Expr, lookup: ConstLookup): Fold {
     case "String": return { ok: true, value: e.value };
     case "Bool": return { ok: true, value: e.value };
     case "Null": return { ok: true, value: null };
+    case "Unconst":
+      return fold(e.arg, lookup);
     case "Nameof": {
       const target = e.args.length === 1 ? e.args[0] : undefined;
       if (target?.kind === "Ident") return { ok: true, value: target.name };

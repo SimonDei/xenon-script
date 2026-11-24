@@ -783,3 +783,119 @@ test("semantic tokens paint plain keys as properties, not methods and accessors 
   const painted = p.semanticTokens("Main.xn").map((t) => lines[t.line]!.slice(t.character, t.character + t.length));
   expect(painted).toEqual(["rows", "handler"]);
 });
+
+test("nested typedefs: hover, go to definition, references, rename, completion and outline", () => {
+  const animal = `package zoo {
+  public class Animal {
+    /** What a keeper writes down. */
+    public typedef Info = { name:String }
+    private typedef Secret = Int
+    protected typedef Legs = Int
+
+    public function info():Info => { name: 'rex' }
+  }
+}
+`;
+  const main = `import zoo.Animal
+import zoo.Animal.Info
+
+public class Main {
+  public function Main() {
+    var a:Animal.Info = new Animal().info()
+    var b:Info = a
+    var c:Animal.
+    trace(a.name, b.name)
+  }
+}
+`;
+  const files = { "zoo/Animal.xn": animal, "Main.xn": main };
+  const p = project(files);
+  expect(p.hover("Main.xn", offset(main, "Animal.Info", 8))!.contents).toBe("```xenon\npublic typedef Animal.Info = { name:String }\n```\n\nWhat a keeper writes down.");
+  expect(p.hover("Main.xn", offset(main, "Animal.Info", 2))!.contents).toContain("class zoo.Animal");
+  expect(p.hover("Main.xn", offset(main, "Animal.Info\n", 8))!.contents).toContain("public typedef Animal.Info");
+  const [def] = p.definition("Main.xn", offset(main, "b:Info", 3));
+  expect(def!.path).toEndWith("/.service-project/src/zoo/Animal.xn");
+  expect(def!.range.start).toEqual({ line: 3, character: 19 });
+  const refs = texts(p, files, p.references("zoo/Animal.xn", offset(animal, "typedef Info", 9)));
+  expect(refs.sort()).toEqual(["Main.xn:2:Info", "Main.xn:6:Info", "Main.xn:7:Info", "zoo/Animal.xn:4:Info", "zoo/Animal.xn:8:Info"]);
+  // After `Animal.` in a type: the typedefs visible here (not the private or protected ones).
+  const nested = p.completions("Main.xn", offset(main, "var c:Animal.", 13));
+  expect(nested.map((i) => i.label)).toEqual(["Info"]);
+  // Inside the class, its own typedefs are plain names.
+  const inside = p.completions("zoo/Animal.xn", offset(animal, "info():Info", 7)).map((i) => i.label);
+  expect(inside).toEqual(expect.arrayContaining(["Info", "Secret", "Legs"]));
+  expect(p.completions("Main.xn", offset(main, "b:Info", 2)).map((i) => i.label)).not.toContain("Secret");
+  const edits = (r: ReturnType<XenonProject["rename"]>) => {
+    if ("error" in r) throw new Error(r.error);
+    return [...r.changes].flatMap(([path, es]) => es.map((e) => `${path.slice(path.indexOf("/src/") + 5)}:${e.range.start.line + 1}:${e.newText}`)).sort();
+  };
+  expect(edits(p.rename("Main.xn", offset(main, "b:Info", 3), "Card"))).toEqual(["Main.xn:2:Card", "Main.xn:6:Card", "Main.xn:7:Card", "zoo/Animal.xn:4:Card", "zoo/Animal.xn:8:Card"]);
+  // Renaming the class renames it where it qualifies a typedef too.
+  const cls = p.rename("zoo/Animal.xn", offset(animal, "class Animal", 7), "Beast");
+  if ("error" in cls) throw new Error(cls.error);
+  expect(edits(cls).filter((e) => e.startsWith("Main.xn"))).toEqual(["Main.xn:1:Beast", "Main.xn:2:Beast", "Main.xn:6:Beast", "Main.xn:6:Beast"]);
+  const outline = p.documentSymbols("zoo/Animal.xn")[0]!.children.map((c) => `${c.kind} ${c.name}`);
+  expect(outline).toEqual(["typedef Info", "typedef Secret", "typedef Legs", "method info"]);
+});
+
+test("type parameters: completion and hover on a value come from its bounds (`T extends A & B`)", () => {
+  const text = `public class Main {
+  public function Main() {}
+  public static function both<T extends INamed & ISized>(x:T):String => x.name + x.size
+}
+interface INamed { function get name():String }
+interface ISized { function get size():Int }
+`;
+  const p = project({ "Main.xn": text });
+  const labels = p.completions("Main.xn", offset(text, "x.name", 2)).map((i) => i.label);
+  expect(labels).toEqual(expect.arrayContaining(["name", "size"]));
+  expect(p.hover("Main.xn", offset(text, "x.size", 3))!.contents).toContain("function get ISized.size():Int");
+  expect(p.hover("Main.xn", offset(text, "both", 1))!.contents).toContain("both<T extends INamed & ISized>(x:T):String");
+});
+
+test("shape intersections: hover names them as written, members go to the part declaring them", () => {
+  const text = `typedef Attrs = { id:String, ?title:String }
+typedef Obj = { prop:Attrs & { myProp:String } }
+
+public class Main {
+  public function Main() {
+    var o:Obj = { prop: { id: 'a', myProp: 'm' } }
+    trace(o.prop.id, o.prop.myProp)
+  }
+}
+`;
+  const p = project({ "Main.xn": text });
+  expect(p.hover("Main.xn", offset(text, "o.prop.id", 3))!.contents).toContain("prop:Attrs & { myProp:String }");
+  const [id] = p.definition("Main.xn", offset(text, "o.prop.id", 7));
+  expect(id!.range.start).toEqual({ line: 0, character: 18 }); // `id` in `Attrs`
+  const labels = p.completions("Main.xn", offset(text, "o.prop.id", 7)).map((i) => i.label);
+  expect(labels).toEqual(expect.arrayContaining(["id", "title", "myProp"]));
+});
+
+test("`const` values: completion hides what can't be used; X0905 offers to make the method `const`", () => {
+  const text = `public class Main {
+  public function Main() {
+    var view:const Cart = new Cart()
+    var list:const Array<Int> = [1]
+    trace(view.total, list.length)
+    view.add(1)
+  }
+}
+class Cart {
+  public var total:Int = 0
+  public function count():Int const => total
+  public function add(n:Int):Void { total += n }
+}
+`;
+  const p = project({ "Main.xn": text });
+  const cart = p.completions("Main.xn", offset(text, "view.total", 5)).map((i) => i.label);
+  expect(cart).toEqual(expect.arrayContaining(["total", "count"]));
+  expect(cart).not.toContain("add");
+  const list = p.completions("Main.xn", offset(text, "list.length", 5)).map((i) => i.label);
+  expect(list).toEqual(expect.arrayContaining(["length", "map", "slice"]));
+  expect(list).not.toContain("push");
+  const d = p.diagnostics().get("Main.xn")!.find((x) => x.code === "X0905")!;
+  expect(d.fixes.map((f) => [f.title, f.edits.flatMap((e) => e.edits.map((x) => x.newText))])).toEqual([
+    ["if add doesn't change the object, make it const", [" const"]],
+  ]);
+});

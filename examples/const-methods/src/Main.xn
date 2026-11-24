@@ -38,13 +38,14 @@ class Inventory implements IReport {
 
   public function report():String const {
     Inventory.reports++                      // static state isn't `this`
-    var names:Array = items.map((i:Item):String => i.name + (isEmpty ? '' : '')) // arrows keep the restriction (const getter is fine)
+    var names:Array = items.map((i:const Item):String => i.name + (isEmpty ? '' : '')) // arrows keep the restriction (const getter is fine)
     return $'{count()} items ({names.join(', ')}), total {total}'
   }
 
   public function priciest():String const {
-    var best:Item? = null
-    for (var i:Item of items) if (best == null || i.price > best.price) best = i
+    // `items` is read through `this`, so its elements are read-only here: `const Item`.
+    var best:const Item? = null
+    for (var i:const Item of items) if (best == null || i.price > best.price) best = i
     return best == null ? 'none' : best.name
   }
 }

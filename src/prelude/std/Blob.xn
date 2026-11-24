@@ -32,18 +32,18 @@ package xenon {
      * The bytes from `start` up to (not including) `end`, as a new blob with `contentType`
      * (default `''`); negative positions count from the end.
      */
-    function slice():Blob
-    function slice(start:Int):Blob
-    function slice(start:Int, end:Int):Blob
-    function slice(start:Int, end:Int, contentType:String):Blob
+    function slice():Blob const
+    function slice(start:Int):Blob const
+    function slice(start:Int, end:Int):Blob const
+    function slice(start:Int, end:Int, contentType:String):Blob const
 
     /** The bytes decoded as UTF-8 text. */
-    function text():Promise<String>
+    function text():Promise<String> const
     /** A copy of the bytes. */
-    function arrayBuffer():Promise<ArrayBuffer>
+    function arrayBuffer():Promise<ArrayBuffer> const
     /** A copy of the bytes as a `Uint8Array`. */
-    function bytes():Promise<*>
+    function bytes():Promise<*> const
     /** The bytes as a `ReadableStream`, read in chunks. */
-    function stream():*
+    function stream():* const
   }
 }

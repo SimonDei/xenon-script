@@ -8,6 +8,8 @@ export interface Ident {
 /** A declared type parameter; a class's may have a default: `class Event<T = EventTarget>`. */
 export interface TypeParam extends Ident {
   constraint?: TypeNode;
+  /** `T extends A & B & C`: the bounds after the first (`B`, `C`); a type argument must satisfy all. */
+  extraConstraints?: TypeNode[];
   default?: TypeNode;
   variance?: "in" | "out";
 }
@@ -28,6 +30,10 @@ export type TypeNode =
   | { kind: "VoidType"; span: Span }
   | { kind: "NullableType"; inner: TypeNode; span: Span } // int?
   | { kind: "UnionType"; types: TypeNode[]; span: Span } // int | String, 'utf8' | 'ascii' | null
+  /** `const Cart`: a read-only view of a value. */
+  | { kind: "ConstType"; inner: TypeNode; span: Span }
+  /** `Attrs & { extra:String }`: one shape with the members of all parts (in `extends`: several bounds). */
+  | { kind: "IntersectionType"; types: TypeNode[]; span: Span }
   | { kind: "NullType"; span: Span } // `null`, as a member of a union
   /** `true`, `'buffer'`, `1`, `-1`, `0.5` (a value as a type); `float`: a number written with a fraction or exponent. */
   | { kind: "LiteralType"; value: boolean | string | number; float?: boolean; span: Span }
@@ -151,6 +157,8 @@ export interface ClassDecl {
   extends?: TypeNode;
   implements: TypeNode[];
   members: Member[];
+  /** `public typedef Shape = …` inside the class body: named `Owner.Shape` outside the class. */
+  typedefs?: TypedefDecl[];
   span: Span;
 }
 
@@ -325,6 +333,8 @@ export type Expr =
   | { kind: "Call"; callee: Expr; args: Expr[]; optional: boolean; span: Span }
   /** `nameof(target)`: checked source-level name, folded to a string constant. */
   | { kind: "Nameof"; args: Expr[]; span: Span }
+  /** `unconst(view)`: the value with `const` removed from its type (compile time only). */
+  | { kind: "Unconst"; arg: Expr; span: Span }
   | { kind: "New"; callee: TypeNode; args: Expr[]; span: Span }
   | { kind: "Unary"; op: string; arg: Expr; span: Span }
   | { kind: "Update"; op: "++" | "--"; prefix: boolean; arg: Expr; span: Span }

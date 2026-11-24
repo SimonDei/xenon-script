@@ -1,0 +1,28 @@
+import zoo.Animal
+import zoo.Animal.Legs
+
+public class Main {
+  private typedef Secret = { code:Int }
+  public typedef Leaky = { s:Secret }
+  static typedef Bad = Int
+  public var field:Secret? = null
+
+  public function Main() {
+    var a:Animal.Info = { name: 'rex' }
+    var b:Animal.Hidden = true
+    var c:Animal.Internal = 'x'
+    var d:Animal.Legs = 4
+    var e:Animal.Nope = 1
+    var f:zoo.Animal.Info = a
+  }
+
+  public function take(s:Secret):Void {}
+}
+
+class Box<T> {
+  public typedef Item = { value:T }
+}
+
+interface Shape {
+  typedef Corner = Int
+}

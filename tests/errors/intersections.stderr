@@ -1,0 +1,53 @@
+error[X0887]: `id` has different types in this intersection
+ --> intersections.xn:8:11
+  |
+8 |     var a:Named & Counted = { id: 'x', count: 1 }
+  |           ^^^^^^^^^^^^^^^ `String` and `Int`
+  |
+  = note: a member that appears in several parts must have the same type in each
+
+error[X0888]: `INamed` can't be part of an intersection
+  --> intersections.xn:10:11
+   |
+10 |     var b:INamed & ISized = new Doc()
+   |           ^^^^^^ not a shape
+   |
+   = note: `&` combines shapes (`{ … }` and typedefs of them) into one shape
+help: for a type parameter, list interfaces as bounds: `T extends A & B`
+
+error[X0888]: `ISized` can't be part of an intersection
+  --> intersections.xn:10:20
+   |
+10 |     var b:INamed & ISized = new Doc()
+   |                    ^^^^^^ not a shape
+   |
+   = note: `&` combines shapes (`{ … }` and typedefs of them) into one shape
+help: for a type parameter, list interfaces as bounds: `T extends A & B`
+
+error[X0888]: `String` can't be part of an intersection
+  --> intersections.xn:11:19
+   |
+11 |     var c:Attrs & String = { id: 'x' }
+   |                   ^^^^^^ not a shape
+   |
+   = note: `&` combines shapes (`{ … }` and typedefs of them) into one shape
+
+error[X0792]: missing `myProp` for `Attrs & { myProp:String }`
+  --> intersections.xn:13:39
+   |
+13 |     var d:Attrs & { myProp:String } = { id: 'x' }
+   |                                       ^^^^^^^^^^^ this member is required
+
+error[X0791]: `other` is not a member of `Attrs & { myProp:String }`
+  --> intersections.xn:14:63
+   |
+14 |     var e:Attrs & { myProp:String } = { id: 'x', myProp: 'm', other: 1 }
+   |                                                               ^^^^^ unknown member
+
+error[X0793]: `count` is read-only in `Attrs & { final count:Int }`
+  --> intersections.xn:17:7
+   |
+17 |     f.count = 2
+   |       ^^^^^
+   |
+   = note: it is declared `final` in the shape

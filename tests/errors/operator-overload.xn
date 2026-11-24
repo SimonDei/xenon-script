@@ -16,7 +16,7 @@ package {
 }
 
 class Vec {
-  public function operator+(other:Vec):Vec const { return this }
+  public function operator+(other:Vec):Vec const { return other }
   public function operator%(other:Vec):Vec { return this }      // only + - * / can be overloaded
   public static function operator+(a:Vec):Vec { return a }
 }
@@ -38,6 +38,6 @@ class Bad {
 }
 
 class Strict {
-  public function operator+(o:Strict):Strict { return o }
+  public function operator+(o:const Strict):Strict { return new Strict() }
   public function sum():Strict const { return this + this }
 }

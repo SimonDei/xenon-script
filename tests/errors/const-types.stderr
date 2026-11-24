@@ -1,0 +1,98 @@
+error[X0308]: mismatched types
+ --> const-types.xn:5:21
+  |
+5 |     var back:Cart = view                // a const Cart doesn't fit a Cart
+  |              ----   ^^^^ expected `Cart`, found `const Cart`
+  |              |
+  |              expected because of this type
+  |
+  = note: a `const Cart` is a read-only view; it can't be used where a changeable `Cart` is expected
+help: if the code it goes to doesn't change it, declare that as `const Cart`
+
+error[X0308]: mismatched types
+  --> const-types.xn:6:12
+   |
+ 6 |     change(view)
+   |            ^^^^ expected `Cart`, found `const Cart`
+...
+25 |   private function change(c:Cart):Void {}
+   |                             ---- parameter declared here
+   |
+   = note: a `const Cart` is a read-only view; it can't be used where a changeable `Cart` is expected
+help: if the code it goes to doesn't change it, declare that as `const Cart`
+
+error[X0308]: mismatched types
+ --> const-types.xn:8:29
+  |
+8 |     var plain:Array<Cart> = list        // type arguments are invariant
+  |               -----------   ^^^^ expected `Array<Cart>`, found `Array<const Cart>`
+  |               |
+  |               expected because of this type
+
+error[X0308]: mismatched types
+  --> const-types.xn:10:27
+   |
+10 |     var arr2:Array<Int> = arr
+   |              ----------   ^^^ expected `Array<Int>`, found `const Array<Int>`
+   |              |
+   |              expected because of this type
+   |
+   = note: a `const Array<Int>` is a read-only view; it can't be used where a changeable `Array<Int>` is expected
+help: if the code it goes to doesn't change it, declare that as `const Array<Int>`
+
+warning[X0889]: `const` has no effect on `Int`
+  --> const-types.xn:11:11
+   |
+11 |     var n:const Int = 1                 // no effect
+   |           ^^^^^^^^^ can't be changed anyway
+   |
+   = note: `const` makes a read-only view of an object, array or shape; this type's values can't be changed
+help: remove `const`
+   |
+11 -     var n:const Int = 1                 // no effect
+11 +     var n:Int = 1                 // no effect
+
+error[X0308]: mismatched types
+  --> const-types.xn:13:22
+   |
+13 |     var again:Cart = same
+   |               ----   ^^^^ expected `Cart`, found `const Cart`
+   |               |
+   |               expected because of this type
+   |
+   = note: a `const Cart` is a read-only view; it can't be used where a changeable `Cart` is expected
+help: if the code it goes to doesn't change it, declare that as `const Cart`
+
+error[X0308]: mismatched types
+  --> const-types.xn:16:19
+   |
+16 |       var d:Dog = a                     // narrowing keeps const
+   |             ---   ^ expected `Dog`, found `const Dog`
+   |             |
+   |             expected because of this type
+   |
+   = note: a `const Dog` is a read-only view; it can't be used where a changeable `Dog` is expected
+help: if the code it goes to doesn't change it, declare that as `const Dog`
+
+error[X0904]: cannot change `total` through a `const Cart`
+  --> const-types.xn:22:10
+   |
+22 |     view.total += 1
+   |          ^^^^^ read-only view
+   |
+   = note: a `const Cart` can be read but not changed; the code that has the `Cart` itself can change it
+
+error[X0905]: cannot use non-const method `add` through a `const Cart`
+  --> const-types.xn:23:10
+   |
+23 |     view.add(1)
+   |          ^^^ might change the object
+...
+31 |   public function add(n:Int):Void { total += n }
+   |                   --- `add` is not `const`
+   |
+   = note: a `const Cart` can only use `const` methods and getters; mark `add` `const` if it doesn't change the object
+help: if `add` doesn't change the object, make it `const`
+   |
+31 |   public function add(n:Int):Void const { total += n }
+   |                                  ++++++

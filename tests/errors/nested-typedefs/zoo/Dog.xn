@@ -1,0 +1,8 @@
+package zoo {
+  public class Dog extends Animal {
+    public function Dog() {
+      var n:Legs = this.legs()   // inherited protected: visible
+      var h:Hidden = true        // inherited private: not visible
+    }
+  }
+}

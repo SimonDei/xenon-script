@@ -12,7 +12,7 @@ error[X0308]: mismatched types
  6 |       var x:Vec = v + 5
    |                       ^ expected `Vec`, found `Int`
 ...
-19 |   public function operator+(other:Vec):Vec const { return this }
+19 |   public function operator+(other:Vec):Vec const { return other }
    |                                   --- `operator+` parameter declared here
 
 error[X0315]: cannot apply `+` to `Int` and `Vec`
@@ -99,7 +99,7 @@ error[X0373]: `operator+` must be an instance method
 error[X0201]: `operator+` is declared more than once in `Vec`
   --> operator-overload.xn:21:26
    |
-19 |   public function operator+(other:Vec):Vec const { return this }
+19 |   public function operator+(other:Vec):Vec const { return other }
    |                   --------- first declared here
 ...
 21 |   public static function operator+(a:Vec):Vec { return a }
@@ -143,7 +143,13 @@ error[X0372]: `operator+` must return a value
 error[X0902]: cannot use non-const method `operator+` in const method `sum`
   --> operator-overload.xn:42:52
    |
-41 |   public function operator+(o:Strict):Strict { return o }
+41 |   public function operator+(o:const Strict):Strict { return new Strict() }
    |                   --------- `operator+` is not `const`
 42 |   public function sum():Strict const { return this + this }
    |                                                    ^
+   |
+   = note: it might change the object; mark it `const` if it doesn't
+help: if `operator+` doesn't change the object, make it `const`
+   |
+41 |   public function operator+(o:const Strict):Strict const { return new Strict() }
+   |                                                   ++++++

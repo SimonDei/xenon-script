@@ -486,9 +486,11 @@ class ModuleGen {
     const withDefault = (p: A.TypeParam | A.Ident) => {
       const declared = info?.typeParams.find((q) => q.name === p.name);
       const variance = "variance" in p && p.variance ? `${p.variance} ` : "";
-      const resolved = "constraint" in p && p.constraint ? this.check.typeNodeTypes.get(p.constraint) : undefined;
-      const constraintType = resolved ?? declared?.constraint;
-      const constraint = constraintType ? this.tsType(constraintType) : undefined;
+      // `T extends A & B` is a TypeScript intersection too.
+      const nodes = "constraint" in p && p.constraint ? [p.constraint, ...(p.extraConstraints ?? [])] : [];
+      const resolved = nodes.map((n) => this.check.typeNodeTypes.get(n));
+      const types = resolved.length > 0 && resolved.every((t) => t) ? (resolved as Type[]) : declared?.constraint ? [declared.constraint, ...(declared.extraBounds ?? [])] : [];
+      const constraint = types.length > 0 ? types.map((t) => (t.kind === "method" ? `(${this.tsType(t)})` : this.tsType(t))).join(" & ") : undefined;
       const bound = constraint ? ` extends ${constraint}` : "";
       return declared?.default ? `${variance}${this.name(p)}${bound} = ${this.tsType(declared.default)}` : `${variance}${this.name(p)}${bound}`;
     };
@@ -497,6 +499,16 @@ class ModuleGen {
 
   /** A Xenon type in TypeScript. `top`: a typedef's own body (not its name). */
   private tsType(t: Type, top = false): string {
+    // `const Cart` → `Readonly<Cart>`, `const Array<T>` → `ReadonlyArray<T>`, a `const` tuple
+    // `readonly [A, B]`; `const T` stays `T` (TypeScript can't infer `T` through `Readonly<T>` for
+    // classes with `#private` fields).
+    if ((t.kind === "class" || t.kind === "shape") && t.constView) return `Readonly<${this.tsType({ ...t, constView: false } as Type, top)}>`;
+    if (t.kind === "builtin" && t.constView) {
+      const plain: Type = { ...t, constView: false };
+      if (t.name === "Array") return `ReadonlyArray<${this.tsType(t.args[0] ?? { kind: "any" })}>`;
+      if (t.name === "Tuple") return `readonly ${this.tsType(plain)}`;
+      return `Readonly<${this.tsType(plain)}>`;
+    }
     switch (t.kind) {
       case "prim":
         if (t.literal !== undefined) return JSON.stringify(t.literal); // `true`, `"buffer"`
@@ -548,12 +560,13 @@ class ModuleGen {
         if (!top && t.typedef) return this.typedefRef(t.typedef, t.aliasArgs);
         const params = t.params.map((p, i) => `${p.rest ? "..." : ""}${p.name || `p${i}`}${p.optional ? "?" : ""}: ${this.tsType(p.type)}`);
         const tps = t.typeParams?.length
-          ? `<${t.typeParams.map((p) => `${p.name}${p.constraint ? ` extends ${this.tsType(p.constraint)}` : ""}`).join(", ")}>`
+          ? `<${t.typeParams.map((p) => `${p.name}${p.constraint ? ` extends ${[p.constraint, ...(p.extraBounds ?? [])].map((b) => this.tsType(b)).join(" & ")}` : ""}`).join(", ")}>`
           : "";
         return `${tps}(${params.join(", ")}) => ${this.tsType(t.ret)}`;
       }
       case "shape": {
         if (!top && t.typedef) return this.typedefRef(t.typedef, t.aliasArgs);
+        if (t.parts) return t.parts.map((p) => this.tsType(p)).join(" & "); // `Attrs & { extra: string }`
         const members = [...t.members.values()].map((m) => `${m.readonly ? "readonly " : ""}${m.name}${m.optional ? "?" : ""}: ${this.tsType(m.type())}`);
         return members.length === 0 ? "{}" : `{ ${members.join("; ")} }`;
       }
@@ -569,6 +582,8 @@ class ModuleGen {
     if (td.file.file.prelude && td.decl.name.name === "PropertyReference" && args?.length === 2) {
       return `(owner: ${this.tsType(args[0]!)}) => ${this.tsType(args[1]!)}`;
     }
+    // Nested in a class: a type of the namespace merged with it (see `nestedTypedefs`).
+    if (td.owner) return `${this.classRef(td.owner)}.${td.decl.name.name}` + (args?.length ? `<${args.map((a) => this.tsType(a)).join(", ")}>` : "");
     if (td.file !== this.file && !td.file.file.prelude) {
       const module = moduleOf(td.file);
       this.typeImports.set(module, (this.typeImports.get(module) ?? new Set()).add(td.decl.name.name));
@@ -610,6 +625,7 @@ class ModuleGen {
       if (!first) this.w.line();
       first = false;
       this.from(decl, () => this.classDecl(decl, exported));
+      if (this.ts && decl.typedefs?.length) this.nestedTypedefs(decl, exported);
     }
     if (this.file.file.prelude) {
       this.w.line();
@@ -701,6 +717,19 @@ class ModuleGen {
     const info = this.check.typeResolutions.get(t);
     if (info) return this.classRef(info);
     return t.kind === "TypeName" ? t.name.map((n) => n.name).join(".") : "Object";
+  }
+
+  /**
+   * TypeScript output: a class's typedefs as types of a namespace merged with it (`Table.Row`).
+   * The namespace holds only types, so it emits no JavaScript; Xenon has checked their visibility.
+   */
+  private nestedTypedefs(decl: A.ClassDecl, exported: boolean) {
+    this.w.line(`${exported ? "export " : ""}namespace ${decl.name.name} {`);
+    for (const td of decl.typedefs!) {
+      const t = this.check.typeNodeTypes.get(td.type);
+      this.from(td, () => this.w.line(`  export type ${this.name(td.name)}${this.typeParams(td.typeParams)} = ${this.tok(td.type.span, t ? this.tsType(t, true) : "any")};`));
+    }
+    this.w.line("}");
   }
 
   private classDecl(decl: A.ClassDecl, exported: boolean) {
@@ -1851,6 +1880,8 @@ class ModuleGen {
       }
       case "Await":
         return { code: `await ${this.wrap(this.expr(e.arg), P.unary)}`, prec: P.unary };
+      case "Unconst":
+        return this.expr(e.arg); // compile time only
       case "Update": {
         this.writeTargets.add(e.arg);
         this.readWrites.add(e.arg);

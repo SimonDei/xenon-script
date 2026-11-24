@@ -139,6 +139,98 @@ public class Main {
   expect(typeCheck(result.outputs, join(import.meta.dir, ".constraints-ts"))).toEqual([]);
 });
 
+const NAMED_SIZED = [
+  { path: "INamed.xn", text: "public interface INamed { function get name():String }" },
+  { path: "ISized.xn", text: "public interface ISized { function get size():Int }" },
+  { path: "Doc.xn", text: `public class Doc implements INamed, ISized {
+  public function Doc() {}
+  public function get name():String => 'doc'
+  public function get size():Int => 3
+  public var label:String = 'L'
+}` },
+  { path: "OnlyNamed.xn", text: "public class OnlyNamed implements INamed { public function OnlyNamed() {} public function get name():String => 'n' }" },
+];
+
+test("intersection constraints: `T extends A & B` sees every bound's members and fits each bound", () => {
+  const result = compileProject([
+    ...NAMED_SIZED,
+    { path: "Box.xn", text: `public class Box<T extends INamed & ISized> {
+  private var item:T
+  public function Box(item:T) { this.item = item }
+  public function describe():String => item.name + ':' + item.size
+  public function named():INamed => item
+  public function sized():ISized => item
+}` },
+    { path: "Main.xn", text: `public class Main {
+  public function Main() {}
+  public static function both<T extends INamed & ISized>(x:T):String => x.name + x.size
+  public static function labelled<T extends INamed & { label:String }>(x:T):String => x.label + x.name
+  public static function total<T extends INamed & ISized>(xs:Array<T>):Int {
+    var sum = 0
+    for (var x of xs) sum += x.size
+    return sum
+  }
+  public static function run():String => both(new Doc()) + labelled(new Doc()) + new Box(new Doc()).describe() + total([new Doc()])
+}` },
+  ], { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error")).toEqual([]);
+});
+
+test("intersection constraints: every bound is checked; a member must come from one of them", () => {
+  const result = compileProject([
+    ...NAMED_SIZED,
+    { path: "Box.xn", text: "public class Box<T extends INamed & ISized> { public function Box() {} }" },
+    { path: "Main.xn", text: `public class Main {
+  public function Main() {
+    trace(both(new OnlyNamed()), new Box<OnlyNamed>())
+  }
+  public static function both<T extends INamed & ISized>(x:T):String => x.name + x.missing
+  public static function asString<T extends INamed & ISized>(x:T):String => x
+}` },
+  ], { main: "Main" });
+  expect(constraintErrors(result)).toEqual([
+    "type argument `OnlyNamed` does not satisfy constraint `ISized`",
+    "type argument `OnlyNamed` does not satisfy constraint `ISized`",
+  ]);
+  const x0880 = result.diagnostics.items.find((d) => d.code === "X0880")!;
+  expect(x0880.notes).toContain("`T` must satisfy every bound: `INamed & ISized`");
+  const missing = result.diagnostics.items.find((d) => d.code === "X0426")!;
+  expect(missing.message).toBe("no member `missing` on type parameter `T`");
+  expect(result.diagnostics.items.some((d) => d.code === "X0308")).toBe(true); // `T` isn't a `String`
+});
+
+test("intersection constraints: an implementation may not add a bound the interface doesn't have", () => {
+  const result = compileProject([
+    ...NAMED_SIZED,
+    { path: "Reader.xn", text: "public interface Reader { function read<T extends INamed & ISized>(x:T):String; function peek<T extends INamed>(x:T):String }" },
+    { path: "Impl.xn", text: `public class Impl implements Reader {
+  public function Impl() {}
+  public function read<T extends ISized & INamed>(x:T):String => x.name   // the same bounds, reordered: fine
+  public function peek<T extends INamed & ISized>(x:T):String => x.name   // stricter
+}` },
+    { path: "Main.xn", text: "public class Main { public function Main() {} }" },
+  ], { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.code === "X0788").map((d) => d.message)).toEqual([
+    "`Impl.peek` doesn't match `Reader.peek`",
+  ]);
+});
+
+test("intersection constraints are TypeScript intersections", () => {
+  const result = compileProject([
+    ...NAMED_SIZED,
+    { path: "Main.xn", text: `public class Main {
+  public function Main() {}
+  public static function both<T extends INamed & ISized>(x:T):String => x.name + x.size
+  public static function labelled<T extends INamed & { label:String }>(x:T):String => x.label
+}` },
+  ], { main: "Main", target: "ts" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error")).toEqual([]);
+  const main = result.outputs.find((o) => o.path === "Main.ts")!.text;
+  expect(main).toContain("both<T extends INamed & ISized>(x: T): string");
+  expect(main).toContain("labelled<T extends INamed & { label: string }>(x: T): string");
+  expect(typeCheck(result.outputs, join(import.meta.dir, ".constraints-ts"))).toEqual([]);
+});
+
 afterAll(async () => {
   const { rm } = await import("node:fs/promises");
   await rm(join(import.meta.dir, ".constraints-ts"), { recursive: true, force: true });

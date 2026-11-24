@@ -89,7 +89,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/Array.xn:90:29
    |
-90 |     function join(separator:String = ','):String
+90 |     function join(separator:String = ','):String const
    |                             ------ parameter declared here
    |
 help: convert the value with `String()`
@@ -121,23 +121,23 @@ error[X0308]: mismatched types
    --> std-array.xn:11:23
     |
  11 |     trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
-    |                       ^^^^^^^^^^^^^^^^ expected `(item:Int, index:Int, array:Array<Int>) -> Bool`, found `(x:Int) -> Int`
+    |                       ^^^^^^^^^^^^^^^^ expected `(item:Int, index:Int, array:const Array<Int>) -> Bool`, found `(x:Int) -> Int`
     |
    ::: <xenon prelude>/xenon/Array.xn:100:26
     |
-100 |     function filter(test:(item:T, index:Int, array:Array<T>) -> Bool):Array<T>
-    |                          ------------------------------------------- parameter declared here
+100 |     function filter(test:(item:T, index:Int, array:const Array<T>) -> Bool):Array<T> const
+    |                          ------------------------------------------------- parameter declared here
 
 error[X0308]: mismatched types
    --> std-array.xn:11:52
     |
  11 |     trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
-    |                                                    ^ expected `(item:Int, index:Int, array:Array<Int>) -> Bool`, found `Int`
+    |                                                    ^ expected `(item:Int, index:Int, array:const Array<Int>) -> Bool`, found `Int`
     |
    ::: <xenon prelude>/xenon/Array.xn:104:24
     |
-104 |     function find(test:(item:T, index:Int, array:Array<T>) -> Bool):T?
-    |                        ------------------------------------------- parameter declared here
+104 |     function find(test:(item:T, index:Int, array:const Array<T>) -> Bool):T? const
+    |                        ------------------------------------------------- parameter declared here
 
 error[X0604]: no overload of `reduce` accepts ()
   --> std-array.xn:11:56
@@ -145,8 +145,8 @@ error[X0604]: no overload of `reduce` accepts ()
 11 |     trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
    |                                                        ^^^^^^^^^^^ no matching overload
    |
-   = note: `reduce(callback:(accumulator:T, item:T, index:Int, array:Array<T>) -> T):T`
-   = note: `reduce(callback:(accumulator:U, item:T, index:Int, array:Array<T>) -> U, initial:U):U`
+   = note: `reduce(callback:(accumulator:T, item:T, index:Int, array:const Array<T>) -> T):T`
+   = note: `reduce(callback:(accumulator:U, item:T, index:Int, array:const Array<T>) -> U, initial:U):U`
 
 error[X0311]: this expression has no value
   --> std-array.xn:11:71
@@ -158,12 +158,12 @@ error[X0308]: mismatched types
   --> std-array.xn:11:84
    |
 11 |     trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
-   |                                                                                    ^ expected `(item:Int, index:Int, array:Array<Int>) -> Void`, found `Int`
+   |                                                                                    ^ expected `(item:Int, index:Int, array:const Array<Int>) -> Void`, found `Int`
    |
   ::: <xenon prelude>/xenon/Array.xn:94:31
    |
-94 |     function forEach(callback:(item:T, index:Int, array:Array<T>) -> Void):Void
-   |                               ------------------------------------------- parameter declared here
+94 |     function forEach(callback:(item:T, index:Int, array:const Array<T>) -> Void):Void const
+   |                               ------------------------------------------------- parameter declared here
 
 error[X0604]: no overload of `from` accepts (Int)
   --> std-array.xn:11:88
@@ -210,7 +210,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/Array.xn:85:27
    |
-85 |     function indexOf(item:T, from:Int = 0):Int
+85 |     function indexOf(item:T, from:Int = 0):Int const
    |                           - parameter declared here
    |
 help: convert the value with `Int()`

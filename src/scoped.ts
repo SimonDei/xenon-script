@@ -425,6 +425,8 @@ class ScopedChecker {
       case "TypeOp":
       case "TypeCheck":
         return this.origin(e.expr);
+      case "Unconst":
+        return this.origin(e.arg);
       default:
         return "borrowed";
     }
@@ -594,6 +596,8 @@ class ScopedChecker {
         return;
       case "Nameof":
         return; // Checked without evaluating its target.
+      case "Unconst":
+        return this.visit(e.arg, arms); // the value passes through, like a conditional's branch
       case "New":
         for (const a of e.args) this.visit(a.kind === "Spread" ? a.arg : a, a.kind === "Spread" ? "store" : "arg", "spread");
         return;

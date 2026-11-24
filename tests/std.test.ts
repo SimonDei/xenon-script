@@ -11,6 +11,7 @@ import { PRELUDE } from "../src/compiler.ts";
 import { DiagnosticBag } from "../src/diagnostics.ts";
 import { parseFile } from "../src/parser.ts";
 import { SourceFile, spanText } from "../src/source.ts";
+import { CONST_MARKED } from "../src/checker.ts";
 
 const stdDir = join(import.meta.dir, "..", "src", "prelude", "std");
 const stdFiles = [
@@ -202,3 +203,121 @@ for (const file of stdFiles) {
     expect(problems).toEqual([]);
   });
 }
+
+/**
+ * `const` members of the standard library (classes in `CONST_MARKED`) must not change their
+ * receiver: each one is called on a fresh sample, and the sample's observable state compared.
+ * A member marked `const` without a call here fails, so new marks get checked too.
+ */
+const CONST_CHECKS: Record<string, { sample: () => any; state: (v: any) => unknown; calls: Record<string, (v: any) => unknown> }> = {
+  Array: {
+    sample: () => [3, 1, 2],
+    state: (a) => [...a],
+    calls: {
+      slice: (a) => a.slice(1), concat: (a) => a.concat([4]), toReversed: (a) => a.toReversed(), toSorted: (a) => a.toSorted(),
+      toSpliced: (a) => a.toSpliced(0, 1), with: (a) => a.with(0, 9), flat: (a) => a.flat(), at: (a) => a.at(0),
+      indexOf: (a) => a.indexOf(1), lastIndexOf: (a) => a.lastIndexOf(1), includes: (a) => a.includes(2), join: (a) => a.join("-"),
+      toString: (a: any) => a.toString(), forEach: (a) => a.forEach(() => {}), map: (a) => a.map((x: number) => x * 2),
+      flatMap: (a) => a.flatMap((x: number) => [x]), filter: (a) => a.filter((x: number) => x > 1), some: (a) => a.some((x: number) => x > 2),
+      every: (a) => a.every((x: number) => x > 0), find: (a) => a.find((x: number) => x > 1), findIndex: (a) => a.findIndex((x: number) => x > 1),
+      findLast: (a) => a.findLast((x: number) => x > 1), findLastIndex: (a) => a.findLastIndex((x: number) => x > 1),
+      reduce: (a) => a.reduce((s: number, x: number) => s + x), reduceRight: (a) => a.reduceRight((s: number, x: number) => s + x),
+      keys: (a) => [...a.keys()], values: (a) => [...a.values()], entries: (a) => [...a.entries()],
+    },
+  },
+  Map: {
+    sample: () => new Map([["a", 1], ["b", 2]]),
+    state: (m) => [...m],
+    calls: { get: (m) => m.get("a"), has: (m) => m.has("a"), forEach: (m) => m.forEach(() => {}), keys: (m) => [...m.keys()], values: (m) => [...m.values()], entries: (m) => [...m.entries()] },
+  },
+  Set: {
+    sample: () => new Set([1, 2]),
+    state: (s) => [...s],
+    calls: {
+      has: (s) => s.has(1), forEach: (s) => s.forEach(() => {}), values: (s) => [...s.values()], keys: (s) => [...s.keys()], entries: (s) => [...s.entries()],
+      union: (s) => s.union(new Set([3])), intersection: (s) => s.intersection(new Set([1])), difference: (s) => s.difference(new Set([1])),
+      symmetricDifference: (s) => s.symmetricDifference(new Set([3])), isSubsetOf: (s) => s.isSubsetOf(new Set([1, 2, 3])),
+      isSupersetOf: (s) => s.isSupersetOf(new Set([1])), isDisjointFrom: (s) => s.isDisjointFrom(new Set([5])),
+    },
+  },
+  Date: {
+    sample: () => new Date(2024, 1, 29, 12, 30, 15, 500),
+    state: (d) => d.getTime(),
+    calls: Object.fromEntries([
+      "getFullYear", "getMonth", "getDate", "getDay", "getHours", "getMinutes", "getSeconds", "getMilliseconds", "getTime", "valueOf",
+      "getTimezoneOffset", "getUTCFullYear", "getUTCMonth", "getUTCDate", "getUTCDay", "getUTCHours", "getUTCMinutes", "getUTCSeconds",
+      "getUTCMilliseconds", "toISOString", "toJSON", "toString", "toDateString", "toTimeString", "toUTCString", "toLocaleString",
+      "toLocaleDateString", "toLocaleTimeString",
+    ].map((n) => [n, (d: any) => d[n]()])),
+  },
+  URLSearchParams: {
+    sample: () => new URLSearchParams("b=2&a=1&a=3"),
+    state: (p) => p.toString(),
+    calls: {
+      get: (p) => p.get("a"), getAll: (p) => p.getAll("a"), has: (p) => p.has("a"), toString: (p: any) => p.toString(), forEach: (p) => p.forEach(() => {}),
+      keys: (p) => [...p.keys()], values: (p) => [...p.values()], entries: (p) => [...p.entries()],
+    },
+  },
+  FormData: {
+    sample: () => { const f = new FormData(); f.append("a", "1"); f.append("b", "2"); return f; },
+    state: (f) => [...f.entries()],
+    calls: {
+      has: (f) => f.has("a"), get: (f) => f.get("a"), getAll: (f) => f.getAll("a"), forEach: (f) => f.forEach(() => {}),
+      keys: (f) => [...f.keys()], values: (f) => [...f.values()], entries: (f) => [...f.entries()],
+    },
+  },
+  RegExp: {
+    sample: () => /a+/g,
+    state: (r) => [r.source, r.flags, r.lastIndex],
+    calls: { toString: (r: any) => r.toString() },
+  },
+  Promise: {
+    sample: () => Promise.resolve(1),
+    state: (p) => typeof p.then,
+    calls: { then: (p) => p.then((x: number) => x), catch: (p) => p.catch(() => {}), finally: (p) => p.finally(() => {}) },
+  },
+  Blob: {
+    sample: () => new Blob(["hello"], { type: "text/plain" }),
+    state: (b) => [b.size, b.type],
+    calls: { slice: (b) => b.slice(1), text: (b) => b.text(), arrayBuffer: (b) => b.arrayBuffer(), bytes: (b) => b.bytes(), stream: (b) => b.stream() },
+  },
+  ArrayBuffer: {
+    sample: () => new Uint8Array([1, 2, 3]).buffer,
+    state: (b) => [b.byteLength, b.detached, [...new Uint8Array(b)]],
+    calls: { slice: (b) => b.slice(1) },
+  },
+  Object: {
+    sample: () => ({ a: 1 }),
+    state: (o) => JSON.stringify(o),
+    calls: {
+      toString: (o: any) => o.toString(), toLocaleString: (o: any) => o.toLocaleString(), valueOf: (o: any) => o.valueOf(), hasOwnProperty: (o) => o.hasOwnProperty("a"),
+      isPrototypeOf: (o) => o.isPrototypeOf({}), propertyIsEnumerable: (o) => o.propertyIsEnumerable("a"),
+    },
+  },
+};
+
+test("`const` members of the standard library don't change their receiver", async () => {
+  const problems: string[] = [];
+  for (const qname of CONST_MARKED) {
+    const name = qname.replace(/^xenon\./, "");
+    const check = CONST_CHECKS[name];
+    if (!check) {
+      problems.push(`${name}: in CONST_MARKED, but no entry in CONST_CHECKS`);
+      continue;
+    }
+    const source = new SourceFile(`xenon/${name}.xn`, await Bun.file(join(stdDir, `${name}.xn`)).text(), true);
+    const ast = parseFile(source, new DiagnosticBag());
+    const decl = ast.decls.find((d): d is A.ClassDecl => d.kind === "Class" && d.name.name === name)!;
+    const marked = new Set(decl.members.filter((m): m is A.Method => m.kind === "Method" && m.isConst && !m.modifiers.static && !m.isConstructor).map((m) => m.name.name));
+    for (const m of marked) if (!check.calls[m]) problems.push(`${name}.${m}: marked \`const\`, but not called here`);
+    for (const m of Object.keys(check.calls)) if (!marked.has(m)) problems.push(`${name}.${m}: called here, but not marked \`const\``);
+    for (const [m, call] of Object.entries(check.calls)) {
+      const sample = check.sample();
+      const before = JSON.stringify(check.state(sample));
+      await call(sample);
+      const after = JSON.stringify(check.state(sample));
+      if (before !== after) problems.push(`${name}.${m}: changed its receiver (${before} → ${after})`);
+    }
+  }
+  expect(problems).toEqual([]);
+});

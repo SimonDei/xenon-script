@@ -40,6 +40,10 @@ error[X0902]: cannot use non-const method `add` in const method `report`
    |       ^^^
    |
    = note: it might change the object; mark it `const` if it doesn't
+help: if `add` doesn't change the object, make it `const`
+   |
+ 9 |     public function add(x:*):void const { items.push(x) }
+   |                                  ++++++
 
 error[X0902]: cannot use non-const method `add` in const method `report`
   --> const-methods.xn:20:12
@@ -51,6 +55,10 @@ error[X0902]: cannot use non-const method `add` in const method `report`
    |            ^^^
    |
    = note: it might change the object; mark it `const` if it doesn't
+help: if `add` doesn't change the object, make it `const`
+   |
+ 9 |     public function add(x:*):void const { items.push(x) }
+   |                                  ++++++
 
 error[X0902]: cannot use non-const getter `v` in const method `report`
   --> const-methods.xn:21:13
@@ -62,6 +70,10 @@ error[X0902]: cannot use non-const getter `v` in const method `report`
    |             ^
    |
    = note: it might change the object; mark it `const` if it doesn't
+help: if `v` doesn't change the object, make it `const`
+   |
+10 |     public function get v():int const { return _v }
+   |                                ++++++
 
 error[X0902]: cannot use non-const method `add` in const method `report`
   --> const-methods.xn:22:24
@@ -73,6 +85,23 @@ error[X0902]: cannot use non-const method `add` in const method `report`
    |                        ^^^
    |
    = note: it might change the object; mark it `const` if it doesn't
+help: if `add` doesn't change the object, make it `const`
+   |
+ 9 |     public function add(x:*):void const { items.push(x) }
+   |                                  ++++++
+
+error[X0905]: cannot use non-const method `push` through a `const Array`
+  --> const-methods.xn:23:13
+   |
+23 |       items.push(5)
+   |             ^^^^ might change the object
+   |
+  ::: <xenon prelude>/xenon/Array.xn:39:14
+   |
+39 |     function push(...items:Array<T>):Int
+   |              ---- `push` is not `const`
+   |
+   = note: a `const Array` can only use `const` methods and getters; mark `push` `const` if it doesn't change the object
 
 error[X0901]: cannot change `total` in const method `report`
   --> const-methods.xn:24:37

@@ -22,7 +22,7 @@ package xenon {
     /** The match (see the file header), or `null`. With `g`/`y`, searches from `lastIndex`. */
     function exec(text:String):Array<String>?
     /** `'/pattern/flags'` */
-    function toString():String
+    function toString():String const
 
     /** The pattern text, without the slashes. */
     final source:String

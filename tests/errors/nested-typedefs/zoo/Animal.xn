@@ -1,0 +1,13 @@
+package zoo {
+  public class Animal {
+    public typedef Info = { name:String }
+    protected typedef Legs = Int
+    typedef Internal = String
+    private typedef Hidden = Bool
+
+    protected function legs():Legs { return 4 }
+    // a protected typedef in a protected signature is fine, in a public one it isn't
+    public function count():Legs { return 4 }
+    internal function tag():Internal { return 'x' }
+  }
+}

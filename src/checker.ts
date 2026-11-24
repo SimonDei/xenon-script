@@ -13,6 +13,7 @@ import {
   bind, classValueOf, eraseParams, memberTypeIn, stdClassOf, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
   supertypeArgs, T, type Type, type TypeParamInfo, typeToString, unify,
   requiredParams, literalType, literalOf, widen, unionOf, membersOf, valueFits, type UnionType, tupleOf, tupleElements, nullSafety, recordOf, recordValue, paramsIn,
+  boundsOf, boundsText, canBeConst, constOf, deepWithoutConst, hasConstView, isConstView, withoutConst,
 } from "./types.ts";
 
 /** A class known to the project. */
@@ -73,6 +74,8 @@ export interface TypedefInfo {
   pkg: string;
   qname: string;
   filePrivate: boolean;
+  /** Declared inside this class's body (`Owner.Name`); visible as its `modifiers` say, like a member. */
+  owner?: ClassInfo;
   /** `typedef Pair<A, B>`: the target is resolved once with these, then substituted per use. */
   params: TypeParamInfo[];
   state?: "busy" | Type;
@@ -158,6 +161,8 @@ export interface CheckResult {
   resolutions: Map<A.Expr | A.ObjectProp, Resolution>;
   /** Class referenced by a type node (`new X`, `extends X`, annotations). */
   typeResolutions: Map<A.TypeNode, ClassInfo>;
+  /** Typedef referenced by a type node (`Row`, `Table.Row`). */
+  typedefResolutions: Map<A.TypeNode, TypedefInfo>;
   /** The resolved type of every type annotation (for the TypeScript output). */
   typeNodeTypes: Map<A.TypeNode, Type>;
   /** Static type of every checked expression. */
@@ -441,7 +446,7 @@ class Scope {
  */
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
-    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), propertyReferences: new Map(), operatorCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
+    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typedefResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), propertyReferences: new Map(), operatorCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
     expectedTypes: new Map(), scopedLocals: new Map(), scopedTemps: new Map(), scopedReturns: new Set(), attributes: new Map(), checkedIndexes: new Set(), optionalChains: new Set(),
   };
   const env = new Env(classes, typedefs, diags, result);
@@ -473,6 +478,7 @@ export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typ
   env.validateVariance(infos, typedefs);
   for (const file of files) env.collectFunctions(file, scopes.get(file)!);
   for (let i = 0; i < env.pendingShapeMembers.length; i++) env.pendingShapeMembers[i]!.type();
+  for (const info of infos) if (!info.file.file.prelude) env.checkTypedefLeaks(info);
   for (const info of infos) env.checkOverrides(info);
   for (const info of infos) env.checkImplements(info);
   for (const info of infos) env.checkAbstractImplemented(info);
@@ -535,7 +541,7 @@ class Env {
   ) {
     // `Array<int>` and `String` fit interfaces their std classes implement (`Iterable<T>`).
     stdClassOf.fn = (t) => {
-      if (t.kind === "builtin" && (t.name === "Array" || t.name === "Tuple") && this.arrayClass) return { kind: "class", info: this.arrayClass, args: [elementOf(t)!] };
+      if (t.kind === "builtin" && (t.name === "Array" || t.name === "Tuple") && this.arrayClass) return { kind: "class", info: this.arrayClass, args: [elementOf(t)!], constView: t.constView };
       if (t.kind === "prim") {
         const info = this.primClass(t.name);
         if (info) return { kind: "class", info };
@@ -550,7 +556,7 @@ class Env {
     const pkg = file.packageName.map((n) => n.name).join(".");
     const scope: FileScope = { file, classes: new Map(), ambiguous: new Map(), jsImports: new Set(), jsMembers: new Map(), typedefs: new Map(), importOf: new Map(), used: new Set() };
     for (const td of this.typedefs.values()) {
-      if (td.pkg === pkg && (!td.filePrivate || td.file === file)) scope.typedefs.set(td.decl.name.name, td);
+      if (td.pkg === pkg && !td.owner && (!td.filePrivate || td.file === file)) scope.typedefs.set(td.decl.name.name, td);
     }
     /** Where each name came from, for clash messages. */
     const origin = new Map<string, { kind: "package" | "private" | "import"; span: Span }>();
@@ -635,7 +641,12 @@ class Env {
       const at = cover(imp.path[0]!.span, imp.path.at(-1)!.span);
       const td = this.typedefs.get(path);
       if (td && !td.filePrivate && !this.classes.has(path)) {
-        if (td.pkg !== pkg && visibilityOf(td.decl) !== "public") {
+        if (td.owner && !this.nestedTypedefVisible(td, pkg, undefined)) {
+          scope.used.add(imp);
+          this.nestedTypedefAccessError(td, at);
+          continue;
+        }
+        if (!td.owner && td.pkg !== pkg && visibilityOf(td.decl) !== "public") {
           scope.used.add(imp);
           this.diags.error("X0441", `typedef \`${td.qname}\` is internal to package \`${td.pkg}\``, at, "not visible here")
             .secondary(td.decl.name.span, "declared without `public`");
@@ -690,7 +701,7 @@ class Env {
     for (const imp of wildcards) {
       const path = imp.path.map((p) => p.name).join(".");
       const found = [...this.classes.values()].filter((c) => c.pkg === path && !c.filePrivate);
-      const foundTypedefs = [...this.typedefs.values()].filter((t) => t.pkg === path && !t.filePrivate && (t.pkg === pkg || visibilityOf(t.decl) === "public"));
+      const foundTypedefs = [...this.typedefs.values()].filter((t) => t.pkg === path && !t.owner && !t.filePrivate && (t.pkg === pkg || visibilityOf(t.decl) === "public"));
       for (const td of foundTypedefs) {
         if (scope.typedefs.has(td.decl.name.name)) continue;
         scope.typedefs.set(td.decl.name.name, td);
@@ -733,7 +744,7 @@ class Env {
       if (info.file.file.prelude && !info.filePrivate && !scope.classes.has(info.decl.name.name)) scope.classes.set(info.decl.name.name, info);
     }
     for (const td of this.typedefs.values()) {
-      if (td.file.file.prelude && !td.filePrivate && !scope.typedefs.has(td.decl.name.name)) scope.typedefs.set(td.decl.name.name, td);
+      if (td.file.file.prelude && !td.filePrivate && !td.owner && !scope.typedefs.has(td.decl.name.name)) scope.typedefs.set(td.decl.name.name, td);
     }
     return scope;
   }
@@ -746,6 +757,88 @@ class Env {
         { span: span(info.decl.span.file, info.decl.span.start, info.decl.span.start), text: "public " },
       ]);
   }
+
+  /**
+   * May code in `pkg` (inside class `from`, if any) use the nested typedef `td`? Like a member:
+   * `private` in its class, `protected` there and in subclasses, `internal` in the package.
+   * Its class must be usable there too.
+   */
+  nestedTypedefVisible(td: TypedefInfo, pkg: string, from: ClassInfo | undefined): boolean {
+    return nestedTypedefVisible(td, pkg, from);
+  }
+
+  nestedTypedefAccessError(td: TypedefInfo, at: Span) {
+    const owner = td.owner!;
+    const vis = visibilityOf(td.decl);
+    // Visible as declared, yet not here: its class is internal to another package.
+    const where = vis === "public" ? `declared in \`${owner.qname}\`, which is ${VIS_DESCRIPTION.internal(owner)}` : VIS_DESCRIPTION[vis](owner);
+    this.diags.error("X0442", `typedef \`${td.displayName}\` is ${where}`, at, "not visible here")
+      .secondary(td.decl.name.span, td.decl.modifiers.visibility ? `declared \`${vis}\` here` : "declared without a visibility (`internal`)");
+  }
+
+  /**
+   * A nested typedef `name` of `cls` or a class it extends (nearest first), if `from` may use it.
+   * `hidden`: one that exists but isn't visible (for the error).
+   */
+  findNestedTypedef(cls: ClassInfo, name: string, pkg: string, from: ClassInfo | undefined): { td?: TypedefInfo; hidden?: TypedefInfo } {
+    let hidden: TypedefInfo | undefined;
+    for (let c: ClassInfo | undefined = cls; c; c = c.parent) {
+      const td = this.typedefs.get(`${c.qname}.${name}`);
+      if (!td) continue;
+      if (this.nestedTypedefVisible(td, pkg, from)) return { td };
+      hidden ??= td;
+    }
+    return { hidden };
+  }
+
+  /**
+   * X0443: a signature (or nested typedef) must not use a nested typedef that is less visible than
+   * itself; callers could get values whose type they can't name.
+   */
+  checkTypedefLeaks(info: ClassInfo) {
+    // A non-public class narrows its public members to its package.
+    const effective = (v: Visibility, cls: ClassInfo): Visibility => (v === "public" && (cls.filePrivate || visibilityOf(cls.decl) !== "public") ? "internal" : v);
+    const covers = (t: Visibility, m: Visibility) => t === m || t === "public" || m === "private";
+    const check = (node: A.TypeNode | undefined, vis: Visibility, what: string) => {
+      if (!node) return;
+      for (const n of typeNameNodes(node)) {
+        const td = this.result.typedefResolutions.get(n);
+        if (!td?.owner) continue;
+        const tdVis = effective(visibilityOf(td.decl), td.owner);
+        if (covers(tdVis, vis)) continue;
+        this.diags.error("X0443", `${tdVis} typedef \`${td.displayName}\` is used in ${what}`, n.span, `\`${td.displayName}\` is ${tdVis}`)
+          .secondary(td.decl.name.span, "declared here")
+          .note(`code that can use the ${vis} declaration couldn't name this type`)
+          .help(`make the typedef \`${vis}\`, or the declaration ${tdVis === "private" ? "`private`" : `\`${tdVis}\``}`);
+      }
+    };
+    for (const m of info.decl.members) {
+      if (m.kind === "StaticBlock") continue;
+      const vis = effective(visibilityOf(m), info);
+      if (vis === "private") continue;
+      const what = m.kind === "Field" ? `${vis} field \`${m.name.name}\`` : m.isConstructor ? `a ${vis} constructor` : `the signature of ${vis} method \`${m.name.name}\``;
+      if (m.kind === "Field") check(m.type, vis, what);
+      else {
+        for (const p of m.params) check(p.type, vis, what);
+        check(m.returnType, vis, what);
+      }
+    }
+    for (const td of info.decl.typedefs ?? []) {
+      const vis = effective(visibilityOf(td), info);
+      if (vis !== "private") check(td.type, vis, `${vis} typedef \`${info.decl.name.name}.${td.name.name}\``);
+    }
+  }
+
+  /** The class whose body (header included) contains `at`, in `file`. */
+  enclosingClass(file: A.XenonFile, at: Span): ClassInfo | undefined {
+    let list = this.classesByFile.get(file);
+    if (!list) {
+      list = [...this.classes.values()].filter((c) => c.file === file);
+      this.classesByFile.set(file, list);
+    }
+    return list.find((c) => c.decl.span.start <= at.start && at.end <= c.decl.span.end);
+  }
+  private readonly classesByFile = new Map<A.XenonFile, ClassInfo[]>();
 
   /** Reports a member (or constructor) that isn't visible from class `from`. Returns false if not accessible. */
   checkAccess(d: A.Field | A.Method, owner: ClassInfo, from: ClassInfo, at: Span, what?: string): boolean {
@@ -784,7 +877,8 @@ class Env {
   iterableElement(t: Type): Type | undefined {
     const e = this.enumerable;
     if (t.kind !== "class" || !e || !isSubclass(t.info, e)) return undefined;
-    return supertypeArgs(t.info, t.args ?? [], e)?.[0] ?? T.any;
+    const element = supertypeArgs(t.info, t.args ?? [], e)?.[0] ?? T.any;
+    return t.constView ? constOf(element) : element; // `for (x of view)` over a `const` iterable: read-only elements
   }
 
   /** The std library's `RegExp` (src/prelude/std/RegExp.xn): the type of `~/…/` literals. */
@@ -1030,6 +1124,20 @@ class Env {
       }
       return unionOf(types);
     }
+    if (node.kind === "IntersectionType") return this.intersectShapes(node, scope, tparams);
+    if (node.kind === "ConstType") {
+      const inner = this.resolveType(node.inner, scope, allowVoid, tparams);
+      if (inner.kind === "error" || isDynamic(inner)) return inner;
+      const target = nonNull(inner);
+      const changeable = target.kind === "union" ? target.types.some(canBeConst) : canBeConst(target);
+      if (!changeable) {
+        this.diags.warning("X0889", `\`const\` has no effect on \`${typeToString(inner)}\``, node.span, "can't be changed anyway")
+          .note("`const` makes a read-only view of an object, array or shape; this type's values can't be changed")
+          .help("remove `const`", [{ span: span(node.span.file, node.span.start, node.inner.span.start), text: "" }]);
+        return inner;
+      }
+      return constOf(inner);
+    }
     // `int?` and `Null<int>`: the type plus `null` (types that already include `null` stay as they are).
     if (node.kind === "NullableType") return nullableOf(this.resolveType(node.inner, scope, false, tparams));
     if (node.kind === "ShapeType") {
@@ -1067,6 +1175,9 @@ class Env {
     // `Sheet.Book`: a type exported by a JavaScript namespace import (see `fileScope`).
     const exported = names.length > 1 && (scope.classes.has(names.join(".")) || scope.typedefs.has(names.join(".")));
     if (names.length > 1 && !exported) {
+      // `Table.Row` / `pkg.Table.Row`: a typedef nested in a class.
+      const nested = this.qualifiedNestedTypedef(node, scope, whole);
+      if (nested) return nested === "error" ? T.error : this.applyTypedef(node, nested, scope, allowVoid, tparams);
       const info = this.classes.get(names.join("."));
       if (info && !info.filePrivate) {
         if (!classAccessible(info, scope.file.packageName.map((n) => n.name).join("."))) this.classAccessError(info, whole);
@@ -1086,6 +1197,15 @@ class Env {
     if (param) {
       if (node.args.length > 0) this.diags.error("X0423", `type parameter \`${name}\` doesn't take type arguments`, node.span);
       return { kind: "typeParam", param };
+    }
+    // A typedef nested in the enclosing class or one it extends shadows the package's types.
+    let hiddenNested: TypedefInfo | undefined;
+    const encloser = exported ? undefined : this.enclosingClass(scope.file, whole);
+    if (encloser) {
+      const pkg = scope.file.packageName.map((n) => n.name).join(".");
+      const { td, hidden } = this.findNestedTypedef(encloser, name, pkg, encloser);
+      if (td) return this.applyTypedef(node, td, scope, allowVoid, tparams);
+      hiddenNested = hidden;
     }
     // `Tuple<String, int>`: one type per position (unless a class of the program is named `Tuple`;
     // the standard library's `Tuple` only documents the type).
@@ -1158,26 +1278,20 @@ class Env {
     const info = ownTypedef && !ownTypedef.file.file.prelude ? undefined : found;
     if (info) return this.genericClass(node, info, scope, tparams, allowRaw);
     const td = this.lookupTypedef(scope, name);
-    if (td) {
-      const target = this.resolveTypedef(td);
-      if (target.kind === "void" && !allowVoid) {
-        this.diags.error("X0421", `\`${name}\` is only allowed as a return type`, node.span);
-        return T.error;
-      }
-      if (!this.checkArgCount(node, td.decl.name.name, td.params.length, false)) return target;
-      if (td.params.length === 0) return target;
-      const args = node.args.map((a) => this.resolveType(a, scope, false, tparams));
-      this.checkTypeArgs(td.params, args, node.span, node.args);
-      const t = subst(target, bind(td.params, args));
-      const shown = td.displayName ?? td.decl.name.name;
-      if (t.kind === "union") return { ...t, alias: shown, aliasArgs: args };
-      return t.kind === "shape" || t.kind === "method" ? { ...t, alias: shown, aliasArgs: args, typedef: td } : t;
-    }
+    if (td) return this.applyTypedef(node, td, scope, allowVoid, tparams);
     if (this.isJsImport(scope, name)) return T.any; // JS classes are dynamic until .d.ts support
+    if (hiddenNested) {
+      this.nestedTypedefAccessError(hiddenNested, whole);
+      return T.error;
+    }
     const d = this.diags.error("X0420", `cannot find type \`${name}\``, whole, "not found");
     const ownerWithParam = [...this.classes.values()].find((c) => c.file === scope.file && c.typeParams.some((p) => p.name === name) &&
       c.decl.span.start <= whole.start && whole.end <= c.decl.span.end);
-    if (ownerWithParam) {
+    const inNested = ownerWithParam?.decl.typedefs?.find((t) => t.span.start <= whole.start && whole.end <= t.span.end);
+    if (ownerWithParam && inNested) {
+      d.note(`\`${name}\` is a type parameter of \`${ownerWithParam.decl.name.name}\`, which a typedef inside it can't use (\`${ownerWithParam.decl.name.name}.${inNested.name.name}\` means the same type everywhere)`)
+        .help(`give the typedef its own type parameter: \`typedef ${inNested.name.name}<${name}> = …\``);
+    } else if (ownerWithParam) {
       d.note(`\`${name}\` is a type parameter of \`${ownerWithParam.decl.name.name}\`, which static members can't use (there's no instance to give it a type)`);
     } else if (name === "Number") d.help("Xenon calls floating-point numbers `Float`", [{ span: whole, text: "Float" }]);
     else if (name in ERROR_HINTS) {
@@ -1191,6 +1305,109 @@ class Env {
       else this.missingImportHint(d, name);
     }
     return T.error;
+  }
+
+  /**
+   * `Attrs & { extra:String }`: one shape with the members of every part. Only shapes combine
+   * (classes and interfaces only as bounds: `T extends A & B`). A member in several parts must have
+   * the same type in each; it is optional only if it is optional everywhere, read-only if anywhere.
+   */
+  private intersectShapes(node: A.TypeNode & { kind: "IntersectionType" }, scope: FileScope, tparams: TypeParamScope | undefined): Type {
+    const parts = node.types.map((n) => [n, this.resolveType(n, scope, false, tparams)] as const);
+    if (parts.some(([, t]) => t.kind === "error")) return T.error;
+    let ok = true;
+    for (const [n, t] of parts) {
+      if (t.kind === "shape" || isDynamic(t)) continue;
+      ok = false;
+      const d = this.diags.error("X0888", `\`${typeToString(t)}\` can't be part of an intersection`, n.span, "not a shape")
+        .note("`&` combines shapes (`{ … }` and typedefs of them) into one shape");
+      if (t.kind === "class" && t.info.decl.isInterface) d.help("for a type parameter, list interfaces as bounds: `T extends A & B`");
+    }
+    if (!ok) return T.error;
+    if (parts.some(([, t]) => isDynamic(t))) return T.any;
+    const members = new Map<string, ShapeMember>();
+    const sources = new Map<string, { member: ShapeMember; node: A.TypeNode }[]>();
+    for (const [n, t] of parts) {
+      for (const m of (t as ShapeType).members.values()) sources.set(m.name, [...(sources.get(m.name) ?? []), { member: m, node: n }]);
+    }
+    for (const [name, from] of sources) {
+      if (from.length === 1) {
+        members.set(name, from[0]!.member);
+        continue;
+      }
+      let cached: Type | undefined;
+      const member: ShapeMember = {
+        name,
+        optional: from.every((f) => f.member.optional),
+        readonly: from.some((f) => f.member.readonly),
+        // Compared when first needed (members may refer to the shapes being combined).
+        type: () => {
+          if (cached) return cached;
+          cached = from[0]!.member.type();
+          const other = from.find((f) => !sameType(f.member.type(), cached!));
+          if (other) {
+            this.diags.error("X0887", `\`${name}\` has different types in this intersection`, node.span,
+              `\`${typeToString(cached)}\` and \`${typeToString(other.member.type())}\``)
+              .note("a member that appears in several parts must have the same type in each");
+          }
+          return cached;
+        },
+      };
+      members.set(name, member);
+      this.pendingShapeMembers.push(member);
+    }
+    return { kind: "shape", members, parts: parts.map(([, t]) => t as ShapeType) };
+  }
+
+  /** A use of typedef `td` (with the node's type arguments). */
+  private applyTypedef(node: A.TypeNode & { kind: "TypeName" }, td: TypedefInfo, scope: FileScope, allowVoid: boolean, tparams: TypeParamScope | undefined): Type {
+    this.result.typedefResolutions.set(node, td);
+    const target = this.resolveTypedef(td);
+    const shown = td.displayName ?? td.decl.name.name;
+    if (target.kind === "void" && !allowVoid) {
+      this.diags.error("X0421", `\`${shown}\` is only allowed as a return type`, node.span);
+      return T.error;
+    }
+    if (!this.checkArgCount(node, shown, td.params.length, false)) return target;
+    if (td.params.length === 0) return target;
+    const args = node.args.map((a) => this.resolveType(a, scope, false, tparams));
+    this.checkTypeArgs(td.params, args, node.span, node.args);
+    const t = subst(target, bind(td.params, args));
+    if (t.kind === "union") return { ...t, alias: shown, aliasArgs: args };
+    return t.kind === "shape" || t.kind === "method" ? { ...t, alias: shown, aliasArgs: args, typedef: td } : t;
+  }
+
+  /**
+   * `Owner.Name` / `pkg.Owner.Name` naming a typedef nested in class `Owner` (or a class it
+   * extends): the typedef, `"error"` when it was found but isn't visible (reported), else undefined.
+   */
+  private qualifiedNestedTypedef(node: A.TypeNode & { kind: "TypeName" }, scope: FileScope, whole: Span): TypedefInfo | "error" | undefined {
+    const names = node.name.map((n) => n.name);
+    const ownerNames = names.slice(0, -1);
+    const pkg = scope.file.packageName.map((n) => n.name).join(".");
+    let owner: ClassInfo | undefined;
+    if (ownerNames.length === 1) {
+      owner = scope.classes.get(ownerNames[0]!);
+      if (!owner) {
+        const local = this.typedefs.get(`${pkg ? `${pkg}.` : ""}${ownerNames[0]}`);
+        if (local) return undefined;
+      }
+    } else {
+      owner = this.classes.get(ownerNames.join("."));
+      if (owner?.filePrivate) owner = undefined;
+    }
+    if (!owner) return undefined;
+    const { td, hidden } = this.findNestedTypedef(owner, names.at(-1)!, pkg, this.enclosingClass(scope.file, whole));
+    if (td) {
+      if (ownerNames.length === 1) this.markUsed(scope, ownerNames[0]!);
+      return td;
+    }
+    if (hidden) {
+      if (ownerNames.length === 1) this.markUsed(scope, ownerNames[0]!);
+      this.nestedTypedefAccessError(hidden, whole);
+      return "error";
+    }
+    return undefined;
   }
 
   private classType(node: A.TypeNode, info: ClassInfo, args?: Type[]): Type {
@@ -1256,8 +1473,10 @@ class Env {
     for (const param of params) {
       const node = nodes?.find((p) => p.name === param.name);
       if (!node?.constraint || param.constraint) continue;
-      param.constraintSpan = node.constraint.span;
+      const last = node.extraConstraints?.at(-1) ?? node.constraint;
+      param.constraintSpan = cover(node.constraint.span, last.span);
       param.constraint = this.resolveType(node.constraint, scope, false, all);
+      if (node.extraConstraints) param.extraBounds = node.extraConstraints.map((n) => this.resolveType(n, scope, false, all));
     }
     if (params[0] && !this.checkedConstraintOwners.has(params[0])) {
       this.checkedConstraintOwners.add(params[0]);
@@ -1286,12 +1505,14 @@ class Env {
   checkTypeArgs(params: TypeParamInfo[], args: Type[], at: Span, argNodes?: A.TypeNode[]) {
     const map = bind(params, args);
     params.forEach((param, i) => {
-      if (!param.constraint) return;
       const actual = args[i] ?? T.any;
-      const expected = subst(param.constraint, map);
-      if (isDynamic(actual) || assignable(actual, expected)) return;
+      if (isDynamic(actual)) return;
+      // `T extends A & B`: every bound must be satisfied; the first one that isn't is reported.
+      const expected = boundsOf(param).map((b) => subst(b, map)).find((b) => !assignable(actual, b));
+      if (!expected) return;
       const d = this.diags.error("X0880", `type argument \`${typeToString(actual)}\` does not satisfy constraint \`${typeToString(expected)}\``, argNodes?.[i]?.span ?? at, `expected a \`${typeToString(expected)}\``);
       if (param.constraintSpan) d.secondary(param.constraintSpan, `\`${param.name}\` is constrained here`);
+      if (param.extraBounds?.length) d.note(`\`${param.name}\` must satisfy every bound: \`${boundsText(param)}\``);
     });
   }
 
@@ -2378,8 +2599,9 @@ function signatureDiffs(impl: MemberSig, req: MemberSig): string[] {
     requestedParams.forEach((required, i) => {
       const implemented = implementationParams[i]!;
       if (!implemented.constraint) return;
-      const requiredConstraint = required.constraint ? subst(required.constraint, rename) : undefined;
-      if (!requiredConstraint || !assignable(requiredConstraint, implemented.constraint)) {
+      // Each of the implementation's bounds must follow from one of the required ones.
+      const requiredBounds = boundsOf(required).map((b) => subst(b, rename));
+      if (!boundsOf(implemented).every((b) => requiredBounds.some((r) => assignable(r, b)))) {
         diffs.push(`type parameter \`${implemented.name}\` has a stricter constraint`);
       }
     });
@@ -2405,7 +2627,8 @@ function alignTypeParams(b: MethodType, a: MethodType): MethodType {
   const bp = b.typeParams ?? [];
   const ap = a.typeParams ?? [];
   if (bp.length === 0 || bp.length !== ap.length) return b;
-  return subst(b, new Map(bp.map((p, i) => [p, { kind: "typeParam", param: ap[i]! } as Type]))) as MethodType;
+  // `subst` drops the type parameters it replaces; the renamed signature still has them (`a`'s).
+  return { ...(subst(b, new Map(bp.map((p, i) => [p, { kind: "typeParam", param: ap[i]! } as Type]))) as MethodType), typeParams: ap };
 }
 
 /** Source text of a stub implementing an interface member. */
@@ -2453,6 +2676,45 @@ export type Visibility = "public" | "internal" | "protected" | "private";
 
 export function visibilityOf(d: { modifiers: A.Modifiers }): Visibility {
   return d.modifiers.visibility?.value ?? "internal";
+}
+
+/**
+ * Can `m` be used through a `const` view without an error (X0905)? Fields (read), statics, `const`
+ * methods and getters, and members of standard-library classes that aren't marked yet.
+ */
+export function usableThroughConst(m: MemberSig): boolean {
+  return m.isStatic || (m.kind !== "method" && m.kind !== "accessor") || isConstMember(m) || (isNative(m.owner) && !CONST_MARKED.has(m.owner.qname));
+}
+
+/** See `Env.nestedTypedefVisible`. */
+export function nestedTypedefVisible(td: TypedefInfo, pkg: string, from: ClassInfo | undefined): boolean {
+  const owner = td.owner!;
+  if (!classAccessible(owner, pkg)) return false;
+  const vis = visibilityOf(td.decl);
+  if (vis === "public" || (vis === "internal" && owner.pkg === pkg)) return true;
+  return !!from && vis !== "internal" && canAccess(vis, owner, from);
+}
+
+/**
+ * Standard-library classes whose members are marked `const` where they don't change the object
+ * (checked through `const` views; the others aren't yet).
+ */
+export const CONST_MARKED = new Set([
+  "xenon.Array", "xenon.Map", "xenon.Set", "xenon.Date", "xenon.URLSearchParams", "xenon.FormData", "xenon.RegExp",
+  "xenon.Promise", "xenon.Blob", "xenon.ArrayBuffer", "xenon.Object",
+]);
+
+/** The type names in a type annotation (`Map<String, Row>?` → `Map`, `String`, `Row`). */
+function typeNameNodes(node: A.TypeNode): (A.TypeNode & { kind: "TypeName" })[] {
+  switch (node.kind) {
+    case "TypeName": return [node, ...node.args.flatMap(typeNameNodes)];
+    case "NullableType": return typeNameNodes(node.inner);
+    case "UnionType": case "IntersectionType": return node.types.flatMap(typeNameNodes);
+    case "ConstType": return typeNameNodes(node.inner);
+    case "ShapeType": return node.members.flatMap((m) => typeNameNodes(m.type));
+    case "FunctionType": return [...node.params.flatMap((p) => typeNameNodes(p.type)), ...typeNameNodes(node.ret)];
+    default: return [];
+  }
 }
 
 /** May code in class `from` use a member (or constructor) with this visibility declared in `owner`? */
@@ -2582,9 +2844,9 @@ class BodyChecker {
     return this.env.resolveType(node, this.scope, allowVoid, this.tparams, allowRaw);
   }
 
-  /** The type of `this`: `Box<T>` inside a generic class. */
+  /** The type of `this`: `Box<T>` inside a generic class; a `const` view of it in a const method. */
   private get thisType(): Type {
-    return ownType(this.info);
+    return this.constMethod ? constOf(ownType(this.info)) : ownType(this.info);
   }
 
   /** A member's type as seen through `obj` (generic arguments substituted). */
@@ -4135,6 +4397,10 @@ class BodyChecker {
       d.help("convert the value with `Float()`", wrap("Float"));
     } else if (isPrim(expected, "String") && (isNumeric(value) || isPrim(value, "Bool"))) {
       d.help("convert the value with `String()`", wrap("String"));
+    } else if (isConstView(nonNull(actual)) && assignable(withoutConst(actual), expected)) {
+      // Only `const` is in the way.
+      d.note(`a \`${typeToString(nonNull(actual))}\` is a read-only view; it can't be used where a changeable \`${typeToString(nonNull(withoutConst(actual)))}\` is expected`)
+        .help(`if the code it goes to doesn't change it, declare that as \`${typeToString(constOf(expected))}\``);
     } else if (actual.kind === "nullable" && assignable(actual.inner, expected)) {
       const fallback = defaultFor(actual.inner);
       if (fallback) d.help(`the value may be null: give a default with \`??\``, nullishFix(e, fallback));
@@ -4269,8 +4535,23 @@ class BodyChecker {
         this.bindPattern(e.pattern, source, scope);
         return source;
       }
-      case "TypeOp":
-        return this.typeOp(e, scope);
+      case "TypeOp": {
+        // `view as Dog` on a `const Animal` is a `const Dog?`: a cast narrows, it doesn't drop `const` (`unconst` does).
+        const t = this.typeOp(e, scope);
+        const from = this.env.result.exprTypes.get(e.expr);
+        return e.op === "as" && from && hasConstView(from) ? constOf(t) : t;
+      }
+      case "Unconst": {
+        const t = this.valueExpr(e.arg, scope);
+        if (t.kind !== "error" && !isDynamic(t) && !hasConstView(t)) {
+          this.diags.warning("X0907", `\`unconst\` has no effect: \`${typeToString(t)}\` isn't \`const\``, e.span, "nothing to remove")
+            .help("remove `unconst`", [
+              { span: span(e.span.file, e.span.start, e.arg.span.start), text: "" },
+              { span: span(e.span.file, e.arg.span.end, e.span.end), text: "" },
+            ]);
+        }
+        return deepWithoutConst(t);
+      }
       case "TypeCheck": {
         // `(expr : Type)`: `expr` is checked top-down against `Type` (literals take it from there), and is a `Type` from here on.
         const t = this.resolveT(e.type, this.scope);
@@ -4329,7 +4610,9 @@ class BodyChecker {
       res.set(e, { kind: "member", isStatic: member.isStatic, owner: member.owner });
       this.inlineRef(e, member);
       this.memberUse(e, member, e.span);
-      return this.seenThrough(this.thisType, member);
+      const self = this.thisType;
+      if (isConstView(self)) this.constViewUse(e, self, member, e.span);
+      return this.viewedMember(self, member, this.seenThrough(self, member));
     }
     const cls = this.env.lookupClass(this.scope, name, e.span) ?? this.typedefClass(name);
     if (cls) {
@@ -4607,7 +4890,7 @@ class BodyChecker {
     // The built-in array type has its members from the std class `Array<T>`.
     const arrayClass = this.env.arrayClass;
     // A tuple is an array of its elements' union (`pair.join(',')`, `pair.length`).
-    if (obj.kind === "builtin" && (obj.name === "Array" || obj.name === "Tuple") && arrayClass) obj = { kind: "class", info: arrayClass, args: [elementOf(obj)!] };
+    if (obj.kind === "builtin" && (obj.name === "Array" || obj.name === "Tuple") && arrayClass) obj = { kind: "class", info: arrayClass, args: [elementOf(obj)!], constView: obj.constView };
     const name = e.name.name;
     switch (obj.kind) {
       case "builtin": {
@@ -4644,22 +4927,33 @@ class BodyChecker {
       case "error":
       case "void":
         return T.error;
-      case "typeParam":
-        if (obj.param.constraint) {
-          const seen = new Set<TypeParamInfo>();
-          let bound: Type = obj;
-          while (bound.kind === "typeParam" && bound.param.constraint && !seen.has(bound.param)) {
-            seen.add(bound.param);
-            bound = bound.param.constraint;
-          }
-          if (bound.kind !== "typeParam") return this.memberOn(e, bound);
-        }
-        this.diags.error("X0426", `no member \`${name}\` on type parameter \`${obj.param.name}\``, e.name.span, "unknown member")
-          .note(`type parameter \`${obj.param.name}\` has no upper bound`);
+      case "typeParam": {
+        // The bounds, through bounds that are type parameters themselves (`U extends T`, `T extends A & B`).
+        const bounds: Type[] = [];
+        const seen = new Set<TypeParamInfo>();
+        const collect = (t: Type) => {
+          if (t.kind !== "typeParam") return void bounds.push(t);
+          if (seen.has(t.param)) return;
+          seen.add(t.param);
+          boundsOf(t.param).forEach(collect);
+        };
+        collect(obj);
+        // The member comes from the first bound that has it; with one bound, that bound reports.
+        const owner = bounds.find((b) => this.boundHasMember(b, name)) ?? (bounds.length === 1 || this.env.rootMember(name) ? bounds[0] : undefined);
+        // A `const T` is read-only through its bound too.
+        if (owner) return this.memberOn(e, obj.constView ? constOf(owner) : owner);
+        const d = this.diags.error("X0426", `no member \`${name}\` on type parameter \`${obj.param.name}\``, e.name.span, "unknown member");
+        if (bounds.length === 0) d.note(`type parameter \`${obj.param.name}\` has no upper bound`);
+        else d.note(`none of its bounds has it: \`${bounds.map(typeToString).join(" & ")}\``);
         return T.error;
+      }
       case "shape": {
         const m = obj.members.get(name);
-        if (m) return m.optional ? nullableOf(m.type()) : m.type(); // `?count:int` may be missing
+        // `?count:int` may be missing; through a `const` shape the member is read-only too.
+        if (m) {
+          const t = obj.constView ? constOf(m.type()) : m.type();
+          return m.optional ? nullableOf(t) : t;
+        }
         const root = this.env.rootMember(name);
         if (root) return this.rootMemberUse(e, root);
         const d = this.diags.error("X0426", `no member \`${name}\` on \`${typeToString(obj)}\``, e.name.span, "unknown member");
@@ -4718,9 +5012,15 @@ class BodyChecker {
         }
         if (wantStatic) this.inlineRef(e, m);
         this.memberUse(e, m, e.name.span);
-        const seen = this.seenThrough(obj, m);
+        // (Named as written: `const Array<Cart>`, not the `Array` class it's looked up in.)
+        if (isConstView(obj)) this.constViewUse(e, objType.kind === "builtin" ? objType : obj, m, e.name.span);
+        // A marked standard-library class has no bodies to check: through a `const` view its type
+        // arguments are `const` too (`get` of a `const Map<String, Cart>` gives a `const Cart`).
+        const through = obj.kind === "class" && obj.constView && obj.args?.length && isNative(obj.info) && CONST_MARKED.has(obj.info.qname)
+          ? { ...obj, args: obj.args.map(constOf) } : obj;
+        const seen = this.viewedMember(obj, m, this.seenThrough(through, m));
         if (m.overloads) {
-          this.calleeOverloads.set(e, m.overloads.map((o) => ({ decl: o.decl, type: (m.isStatic ? o.type : this.seenThrough(obj, { ...m, type: o.type })) as MethodType })));
+          this.calleeOverloads.set(e, m.overloads.map((o) => ({ decl: o.decl, type: (m.isStatic ? o.type : this.seenThrough(through, { ...m, type: o.type })) as MethodType })));
         }
         if (!wantStatic && m.isStatic) {
           const owner = m.owner.decl.name.name;
@@ -5198,11 +5498,13 @@ class BodyChecker {
           .help("call it on the object instead");
         return T.error;
       }
-      return this.seenThrough(source, m);
+      // Destructured from a `const` view: `var { owner } = view` is a `const Person` too.
+      return this.viewedMember(source, m, this.seenThrough(source, m));
     }
     if (source.kind === "shape") {
       const m = source.members.get(key.name);
-      if (m) return m.optional ? nullableOf(m.type()) : m.type();
+      const t = m && (source.constView ? constOf(m.type()) : m.type());
+      if (m && t) return m.optional ? nullableOf(t) : t;
       this.diags.error("X0426", `no member \`${key.name}\` on \`${typeToString(source)}\``, key.span, "unknown member");
       return T.error;
     }
@@ -5331,12 +5633,75 @@ class BodyChecker {
     return t;
   }
 
+  /** Does a value of type `t` (a type parameter's bound) have an instance member `name`? */
+  private boundHasMember(t: Type, name: string): boolean {
+    switch (t.kind) {
+      case "class": return !!findMember(t.info, name);
+      case "shape": return t.members.has(name);
+      case "prim": {
+        const cls = this.env.primClass(t.name);
+        return !!cls && !!findMember(cls, name);
+      }
+      case "builtin": {
+        const cls = stdClassOf.fn?.(t);
+        return !!cls && cls.kind === "class" && !!findMember(cls.info, name);
+      }
+      default: return false;
+    }
+  }
+
   /**
    * A typedef used as a value stands for the class it names, so its statics are reachable:
    * `Int.MAX_VALUE` (the prelude's `typedef Int = int`), `Bool(x)`. Only non-generic targets.
    */
   private typedefClass(name: string): ClassInfo | undefined {
     return this.env.typedefClass(this.scope, name);
+  }
+
+  /**
+   * A member used through a `const` view: only `const` methods and getters (fields are read; writes
+   * are checked in `lvalue`). The standard library's members aren't marked `const` yet, so they
+   * aren't checked.
+   */
+  private constViewUse(e: A.Expr, view: Type, m: MemberSig, at: Span) {
+    if (m.isStatic || this.writing || (m.kind !== "method" && m.kind !== "accessor") || isConstMember(m)) return;
+    const what = m.kind === "method" ? "method" : "getter";
+    // `this` in a const method (also implicit: `add()`, and `super.add()`): the const method's own message.
+    if (this.constMethod && this.isOwnReceiver(e)) {
+      const d = this.diags.error("X0902", `cannot use non-const ${what} \`${m.name}\` in const method \`${this.constMethod}\``, at)
+        .secondary(m.decl.name.span, `\`${m.name}\` is not \`const\``)
+        .note(`it might change the object; mark it \`const\` if it doesn't`);
+      this.makeConstFix(d, m);
+      return;
+    }
+    if (isNative(m.owner) && !CONST_MARKED.has(m.owner.qname)) return;
+    const d = this.diags.error("X0905", `cannot use non-const ${what} \`${m.name}\` through a \`${typeToString(view)}\``, at, "might change the object")
+      .secondary(m.decl.name.span, `\`${m.name}\` is not \`const\``)
+      .note(`a \`${typeToString(view)}\` can only use \`const\` methods and getters; mark \`${m.name}\` \`const\` if it doesn't change the object`);
+    this.makeConstFix(d, m);
+  }
+
+  /** Quick fix: `function count():Int` → `function count():Int const` (the program's own methods only). */
+  private makeConstFix(d: DiagnosticBuilder, m: MemberSig) {
+    const decl = readDecl(m);
+    if (decl.kind !== "Method" || !decl.returnType || m.owner.file.file.prelude || m.owner.file.file.generated || isNative(m.owner)) return;
+    const end = decl.returnType.span.end;
+    d.help(`if \`${m.name}\` doesn't change the object, make it \`const\``, [{ span: span(decl.span.file, end, end), text: " const" }]);
+  }
+
+  /**
+   * Transitive const: a field or getter read through a `const` view gives a `const` value
+   * (`cart.owner` of a `const Cart` is a `const Person`), also inside a write target
+   * (`view.owner.name = …`). A method's result is as declared.
+   */
+  private viewedMember(view: Type, m: MemberSig, seen: Type): Type {
+    if (!isConstView(view) || m.isStatic || m.kind === "method") return seen;
+    return constOf(seen);
+  }
+
+  /** `x` (an implicit member), `this.x` or `super.x`: a use on the current object. */
+  private isOwnReceiver(e: A.Expr): boolean {
+    return e.kind === "Ident" || (e.kind === "Member" && (e.object.kind === "This" || e.object.kind === "Super"));
   }
 
   /** Bookkeeping for every member reference: setter-only reads and method closures. */
@@ -5346,14 +5711,6 @@ class BodyChecker {
       this.diags.error("X0528", "a `consteval` function can't be used as a runtime value", at, "compile-time functions can't be kept or passed")
         .help("call it with constant arguments, or change it to `constexpr`");
       return;
-    }
-    // In a const method, only const methods and getters may be used on `this`.
-    const onThis = e.kind === "Ident" || (e.kind === "Member" && (e.object.kind === "This" || e.object.kind === "Super"));
-    if (this.constMethod && onThis && !m.isStatic && !this.writing && (m.kind === "method" || m.kind === "accessor") && !isConstMember(m)) {
-      const what = m.kind === "method" ? "method" : "getter";
-      this.diags.error("X0902", `cannot use non-const ${what} \`${m.name}\` in const method \`${this.constMethod}\``, at)
-        .secondary(m.decl.name.span, `\`${m.name}\` is not \`const\``)
-        .note(`it might change the object; mark it \`const\` if it doesn't`);
     }
     if (m.kind === "accessor" && !this.writing && !accessorHalves(m).includes("get") && m.delegate !== "get") {
       this.diags.error("X0506", `\`${m.name}\` has a setter but no getter`, at, "can't be read").secondary(m.decl.name.span, "setter declared here");
@@ -5652,6 +6009,7 @@ class BodyChecker {
       return T.error;
     }
     this.memberUse(e, m, e.name.span);
+    if (isConstView(this.thisType)) this.constViewUse(e, this.thisType, m, e.name.span);
     if (isAbstract(m) || m.owner.decl.isInterface) {
       this.diags.error("X0718", `\`${m.owner.decl.name.name}.${e.name.name}\` is abstract and has no implementation to call`, e.span)
         .secondary(m.decl.name.span, "declared abstract here");
@@ -6043,10 +6401,10 @@ class BodyChecker {
     if (!m || m.kind !== "method" || m.isStatic) return undefined;
     this.env.usedMembers.add(m);
     this.env.checkAccess(m.decl, m.owner, this.info, opSpan);
-    const onThis = left.kind === "This";
-    if (this.constMethod && onThis && !isConstMember(m)) {
-      this.diags.error("X0902", `cannot use non-const method \`${name}\` in const method \`${this.constMethod}\``, opSpan)
-        .secondary(m.decl.name.span, `\`${name}\` is not \`const\``);
+    // `a + b` through a `const` view (`this` in a const method too) needs a `const` operator.
+    if (isConstView(l)) {
+      const receiver = left.kind === "This" ? ({ kind: "Member", object: left, name: { name, span: opSpan }, optional: false, span: opSpan } as A.Expr) : left;
+      this.constViewUse(receiver, l, m, opSpan);
     }
     const sig = this.seenThrough(l, m) as MethodType;
     const param = sig.params[0];
@@ -6234,6 +6592,18 @@ class BodyChecker {
         this.diags.error("X0793", `\`${target.name.name}\` is read-only in \`${typeToString(objType)}\``, target.name.span)
           .note("it is declared `final` in the shape");
       }
+      // `view.total = 1` through a `const Cart`: the view is read-only (fields, setters, `++`, `+=`).
+      const viewed = objType && nonNull(objType);
+      if (viewed && this.constMethod && (target.object.kind === "This" || target.object.kind === "Super") && isConstView(viewed)) {
+        this.diags.error("X0901", `cannot change \`${target.name.name}\` in const method \`${this.constMethod}\``, target.name.span, `assigns \`this.${target.name.name}\``)
+          .note("a `const` method doesn't change the object; remove `const` if it has to");
+        return { type, commit: none };
+      }
+      if (viewed && (isConstView(viewed) || (viewed.kind === "union" && viewed.types.some(isConstView)))) {
+        this.diags.error("X0904", `cannot change \`${target.name.name}\` through a \`${typeToString(viewed)}\``, target.name.span, "read-only view")
+          .note(`a \`${typeToString(viewed)}\` can be read but not changed; the code that has the \`${typeToString(withoutConst(viewed))}\` itself can change it`);
+        return { type, commit: none };
+      }
       // A primitive's members come from its std class (`s.length = 3` is a getter-only write).
       const primCls = objType?.kind === "prim" ? this.env.primClass(objType.name) : undefined;
       if (primCls) return { type, commit: this.memberWrite(target.name.name, primCls, target.name.span, false) };
@@ -6249,7 +6619,17 @@ class BodyChecker {
       }
       return { type, commit: none };
     }
-    if (target.kind === "Index") return { type: evalTarget(), commit: none };
+    if (target.kind === "Index") {
+      const type = evalTarget();
+      // `view[0] = x` / `rec['k'] = v` through a `const` array, tuple or record.
+      const objType = this.env.result.exprTypes.get(target.object);
+      const viewed = objType && nonNull(objType);
+      if (viewed && isConstView(viewed)) {
+        this.diags.error("X0904", `cannot change an element through a \`${typeToString(viewed)}\``, target.span, "read-only view")
+          .note(`a \`${typeToString(viewed)}\` can be read but not changed; the code that has the \`${typeToString(withoutConst(viewed))}\` itself can change it`);
+      }
+      return { type, commit: none };
+    }
     this.diags.error("X0105", "invalid assignment target", target.span);
     return { type: T.error, commit: none };
   }
@@ -6357,11 +6737,12 @@ class BodyChecker {
           // `x is Box` on a `Box<Int>`-like type would lose the type arguments: only from untyped values.
           const generic = target.kind === "class" && target.info.typeParams.length > 0 && !open;
           if (!narrower || generic || (!open && sameType(target, cur))) return NO_FACTS;
-          return { whenTrue: [{ local, type: target }], whenFalse: [] };
+          // A `const` view stays one when narrowed (`a is Dog` on a `const Animal`: a `const Dog`).
+          return { whenTrue: [{ local, type: isConstView(base) ? constOf(target) : target }], whenFalse: [] };
         }
         // `x is String` on an `int | String`: `String` when true, `int` (and `null`) when false.
         const members = membersOf(cur);
-        const yes = members.flatMap((m) => (assignable(m, target) ? [m] : assignable(target, m) ? [target] : []));
+        const yes = members.flatMap((m) => (assignable(m, target) ? [m] : assignable(target, m) ? [isConstView(m) ? constOf(target) : target] : []));
         const no = members.filter((m) => !assignable(m, target));
         const otherwise = no.length > 0 ? unionOf(no) : undefined;
         return {

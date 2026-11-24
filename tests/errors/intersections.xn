@@ -1,0 +1,27 @@
+typedef Named = { id:String }
+typedef Counted = { id:Int, count:Int }
+typedef Attrs = { id:String, ?title:String }
+
+public class Main {
+  public function Main() {
+    // the same member with different types
+    var a:Named & Counted = { id: 'x', count: 1 }
+    // only shapes combine
+    var b:INamed & ISized = new Doc()
+    var c:Attrs & String = { id: 'x' }
+    // the combined shape needs every required member, and has no others
+    var d:Attrs & { myProp:String } = { id: 'x' }
+    var e:Attrs & { myProp:String } = { id: 'x', myProp: 'm', other: 1 }
+    // a `final` member stays read-only
+    var f:Attrs & { final count:Int } = { id: 'x', count: 1 }
+    f.count = 2
+    trace(a, b, c, d, e, f)
+  }
+}
+
+interface INamed { function get name():String }
+interface ISized { function get size():Int }
+class Doc implements INamed, ISized {
+  public function get name():String => 'doc'
+  public function get size():Int => 3
+}

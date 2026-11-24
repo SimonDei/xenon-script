@@ -32,7 +32,7 @@ export const KEYWORDS = new Set([
   // exceptions
   "throw", "try", "catch", "finally",
   // expressions
-  "new", "this", "super", "is", "as", "typeof", "delete", "await", "nameof",
+  "new", "this", "super", "is", "as", "typeof", "delete", "await", "nameof", "unconst",
   // literals
   "true", "false", "null", "undefined",
   // types

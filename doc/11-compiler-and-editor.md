@@ -1,5 +1,8 @@
 # Chapter 11: Compiler and editor workflow
 
+This chapter describes the tools around the language: the `xenon` command, the project file, the
+output targets, diagnostics, and the VS Code extension.
+
 ## Commands
 
 ```text
@@ -42,6 +45,21 @@ launch. `--no-clear` preserves terminal history.
 ```
 
 Paths are relative to `xenon.json`. Command-line options override the project file.
+
+| Setting | Option | Meaning |
+|---|---|---|
+| `src`, `out` | `--src`, `--out` | source and output folders |
+| `main` | `--main` | the main class, by qualified name |
+| `target` | `--target js\|ts` | JavaScript (default) or TypeScript output |
+| `bundle` | `--bundle` | one `xenon-main.js` instead of a module per file |
+| `sourceMaps` | `--no-source-maps` | write `.js.map` files (default on) |
+| `nullSafety` | `--no-null-safety` | null safety (default on; see [chapter 3](03-types-and-null-safety.md#null-safety)) |
+| `semicolons` | `--semicolons` | `always`, `never` or `any` (below) |
+| `denyWarnings` | `--deny-warnings` | warnings fail the build |
+| `maxErrors` | `--max-errors` | stop listing after this many errors (default 50) |
+| `globals` | | packages a page loads with `<script>` ([chapter 9](09-packages-and-javascript.md#script-globals)) |
+|  | `--format pretty\|json` | human-readable or JSON diagnostics |
+|  | `--color auto\|always\|never`, `--quiet` | terminal output |
 
 ### Semicolons
 
@@ -109,8 +127,21 @@ xenon explain X0308
 xenon explain X0528
 ```
 
-Use `xenon-allow Xxxxx` in a comment to suppress a specific diagnostic. `--max-errors` prevents a
-single cascade from overwhelming the output.
+A **warning** can be silenced where it occurs, with a comment naming its code, on the line above or
+earlier on the same line:
+
+```actionscript check
+// xenon-allow X0850
+var later
+var other = /* xenon-allow X0840 */ undefined
+```
+
+Errors can't be silenced. `--max-errors` prevents a single cascade from overwhelming the output, and
+`--deny-warnings` turns warnings into failures (for CI).
+
+`--format json` prints the diagnostics as a JSON array, for other tools: each entry has `severity`,
+`code`, `message`, `labels` (with file, line, column and offsets), `notes`, and `help` entries with
+their `edits`.
 
 ## Source maps and runtime stacks
 
@@ -119,16 +150,24 @@ maps stack frames itself.
 
 ## VS Code extension
 
-The extension in [`../packages/vscode-xenon`](../packages/vscode-xenon) provides:
+The extension in [`../packages/vscode-xenon`](../packages/vscode-xenon) runs the compiler's language
+server (`xenon lsp`), which recompiles the project as you type. It provides:
 
-- syntax and semantic highlighting
-- live diagnostics and quick fixes
-- completion that knows its context (types in annotations, the expected shape's keys in an object literal, members after `.`), also inside half-typed code
-- hover and signature help
-- go to definition
-- references and rename
-- document outline
-- typed `.d.ts` awareness
+- **diagnostics** as you type, with the compiler's notes; every suggested fix is a **quick fix**
+  (`Ctrl+.`): conversions, `override`, missing interface members, `const` on a method, `;`, …
+- **completion** that knows its context: members after `.` (typed by the receiver, and leaving out
+  what a `const` view can't use), types in annotations, the expected shape's keys in an object
+  literal, locals and imports elsewhere, also inside half-typed code
+- **hover** with the declaration and its doc comment, for every name, including the standard
+  library's and imported JavaScript's
+- **signature help** inside calls, with overloads and the active parameter
+- **go to definition**, also into the standard library's declarations and `.d.ts` files
+- **find references** and **rename**: renaming a public class renames its file too; overriding
+  methods are renamed together
+- **document outline** and **semantic highlighting** (properties, members, types)
+
+TypeScript's own errors on the generated code are shown too, where XenonScript itself only knows a
+value as `*`.
 
 Install it from this repository:
 
@@ -156,6 +195,9 @@ UPDATE=1 bun test tests/errors.test.ts
 
 Tests include:
 
+- the book: every ```` ```actionscript check ```` example in `doc/` is compiled, its `// error Xnnnn`
+  comments are checked, and examples followed by ```` ```text output ```` are run
+  (`tests/docs.test.ts`)
 - lexer/parser and diagnostics snapshots
 - end-to-end execution of every example
 - standard-library runtime conformance

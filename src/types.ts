@@ -12,11 +12,100 @@ export interface TypeParamInfo {
   name: string;
   variance: "invariant" | "in" | "out";
   span?: Span;
-  /** Upper bound declared as `T extends Base`. */
+  /** Upper bound declared as `T extends Base` (the first one of `T extends A & B`). */
   constraint?: Type;
+  /** `T extends A & B`: the bounds after `constraint`. Use `boundsOf` for all of them. */
+  extraBounds?: Type[];
   constraintSpan?: Span;
   /** A class's `<T = EventTarget>`: the argument when a use leaves it out (set after the classes are known). */
   default?: Type;
+}
+
+/**
+ * Can a value of this type be changed through it, so that a `const` view of it means something?
+ * Objects, arrays, tuples, records, shapes and type parameters can; primitives, enums, functions,
+ * classes as values, `Object` and `*` can't (or aren't checked).
+ */
+export function canBeConst(t: Type): boolean {
+  switch (t.kind) {
+    case "class": return !t.info.decl.isEnum;
+    case "builtin": return t.name === "Array" || t.name === "Tuple" || t.name === "Record";
+    case "shape": case "typeParam": return true;
+    default: return false;
+  }
+}
+
+/** Is this a `const T` read-only view? */
+export function isConstView(t: Type): boolean {
+  return (t.kind === "class" || t.kind === "builtin" || t.kind === "shape" || t.kind === "typeParam") && !!t.constView;
+}
+
+/** `const T`: a read-only view of `t` (through `?` and unions; types that can't change stay as they are). */
+export function constOf(t: Type): Type {
+  if (t.kind === "nullable") return { kind: "nullable", inner: constOf(t.inner) };
+  if (t.kind === "union") return { ...t, types: t.types.map(constOf) };
+  if (!canBeConst(t) || isConstView(t)) return t;
+  return { ...t, constView: true } as Type;
+}
+
+/** Is `t` (or a member of it, when nullable or a union) a `const` view? */
+export function hasConstView(t: Type): boolean {
+  const inner = nonNull(t);
+  return isConstView(inner) || (inner.kind === "union" && inner.types.some(isConstView));
+}
+
+/** `unconst`: the type without any `const`, also in type arguments and shape members (`const Array<const Cart>` → `Array<Cart>`). */
+export function deepWithoutConst(t: Type): Type {
+  const plain = withoutConst(t);
+  switch (plain.kind) {
+    case "nullable": return { kind: "nullable", inner: deepWithoutConst(plain.inner) };
+    case "union": return { ...plain, types: plain.types.map(deepWithoutConst) };
+    case "builtin": return plain.args.length ? { ...plain, args: plain.args.map(deepWithoutConst) } : plain;
+    case "class": return plain.args?.length ? { ...plain, args: plain.args.map(deepWithoutConst) } : plain;
+    case "shape": {
+      const members = new Map<string, ShapeMember>();
+      for (const [k, m] of plain.members) {
+        let cached: Type | undefined;
+        members.set(k, { ...m, type: () => (cached ??= deepWithoutConst(m.type())) });
+      }
+      return { ...plain, members };
+    }
+    default: return plain;
+  }
+}
+
+/** The changeable type behind a `const T` view. */
+export function withoutConst(t: Type): Type {
+  if (t.kind === "nullable") return { kind: "nullable", inner: withoutConst(t.inner) };
+  if (t.kind === "union") return { ...t, types: t.types.map(withoutConst) };
+  if (!isConstView(t)) return t;
+  const { constView: _, ...plain } = t as Type & { constView?: boolean };
+  return plain as Type;
+}
+
+/** Every upper bound of a type parameter (`T extends A & B` → `A`, `B`). */
+export function boundsOf(p: TypeParamInfo): Type[] {
+  return p.constraint ? [p.constraint, ...(p.extraBounds ?? [])] : [];
+}
+
+/** `A & B`, the bounds as written in messages and hovers. */
+export function boundsText(p: TypeParamInfo): string {
+  return boundsOf(p).map(typeToString).join(" & ");
+}
+
+/**
+ * Standard-library classes whose `const` members never store a value of these type parameters
+ * (by position), so a `const` view of them is covariant there: a `const Set<Dog>` is a
+ * `const Set<Animal>`. Map keys stay invariant (`get`/`has` compare them).
+ */
+const CONST_COVARIANT: Record<string, number[]> = { "xenon.Map": [1], "xenon.Set": [0], "xenon.Promise": [0] };
+
+/**
+ * A type argument seen through a `const` view: nothing can be stored through it, so it is
+ * covariant, and its own `const` doesn't matter (what is read through the view is `const` anyway).
+ */
+function readOnlyArgFits(actual: Type, expected: Type): boolean {
+  return isDynamic(actual) || isDynamic(expected) || assignable(constOf(actual), constOf(expected));
 }
 
 function argumentFits(actual: Type, expected: Type, variance: TypeParamInfo["variance"]): boolean {
@@ -52,6 +141,10 @@ export interface ShapeMember {
 export interface ShapeType {
   kind: "shape";
   members: Map<string, ShapeMember>;
+  /** Combined by `A & B`: the parts as written (for messages and the TypeScript output). */
+  parts?: ShapeType[];
+  /** `const { … }`: a read-only view. */
+  constView?: boolean;
   alias?: string;
   aliasArgs?: Type[];
   typedef?: TypedefInfo;
@@ -70,9 +163,10 @@ export type Type =
   | { kind: "void" }
   | { kind: "null" }
   | { kind: "any" } // `*`
-  | { kind: "builtin"; name: BuiltinName; args: Type[] }
-  | { kind: "class"; info: ClassInfo; args?: Type[] } // instance of a Xenon class (`args` for generic classes)
-  | { kind: "typeParam"; param: TypeParamInfo }
+  /** `constView` (also on shapes and type parameters): a `const T` read-only view (see `constOf`). */
+  | { kind: "builtin"; name: BuiltinName; args: Type[]; constView?: boolean }
+  | { kind: "class"; info: ClassInfo; args?: Type[]; constView?: boolean } // instance of a Xenon class (`args` for generic classes)
+  | { kind: "typeParam"; param: TypeParamInfo; constView?: boolean }
   | { kind: "classRef"; info: ClassInfo } // the class itself (`Dog` in `Dog.create()`)
   | MethodType
   | ShapeType
@@ -143,12 +237,15 @@ export function recordOf(value: Type): Type {
 
 /** The value type of a `Record<String, V>`, or undefined for other types. */
 export function recordValue(t: Type): Type | undefined {
-  return t.kind === "builtin" && t.name === "Record" ? t.args[1] ?? T.any : undefined;
+  if (t.kind !== "builtin" || t.name !== "Record") return undefined;
+  const value = t.args[1] ?? T.any;
+  return t.constView ? constOf(value) : value; // transitive: a `const` record's values are read-only too
 }
 
-/** The element types of a `Tuple<…>`, or undefined for other types. */
+/** The element types of a `Tuple<…>`, or undefined for other types (`const` ones for a `const` tuple). */
 export function tupleElements(t: Type): Type[] | undefined {
-  return t.kind === "builtin" && t.name === "Tuple" ? t.args : undefined;
+  if (t.kind !== "builtin" || t.name !== "Tuple") return undefined;
+  return t.constView ? t.args.map(constOf) : t.args;
 }
 
 /**
@@ -157,8 +254,10 @@ export function tupleElements(t: Type): Type[] | undefined {
  * methods see; positions are typed one by one through indexes and destructuring).
  */
 export function elementOf(t: Type): Type | undefined {
-  if (t.kind === "builtin" && t.name === "Tuple") return unionOf(t.args.map(widen));
-  return t.kind === "builtin" && t.name === "Array" ? t.args[0] ?? T.any : undefined;
+  // Transitive: the elements of a `const Array<Cart>` are `const Cart`s.
+  const viewed = (e: Type) => (t.kind === "builtin" && t.constView ? constOf(e) : e);
+  if (t.kind === "builtin" && t.name === "Tuple") return viewed(unionOf(t.args.map(widen)));
+  return t.kind === "builtin" && t.name === "Array" ? viewed(t.args[0] ?? T.any) : undefined;
 }
 
 export function isNumeric(t: Type): boolean {
@@ -306,6 +405,7 @@ export function nonNull(t: Type): Type {
 }
 
 export function typeToString(t: Type): string {
+  if (isConstView(t)) return `const ${typeToString(withoutConst(t))}`;
   switch (t.kind) {
     case "prim": return t.literal === undefined ? t.name : typeof t.literal !== "string" ? literalNumberText(t) : `'${t.literal.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
     case "void": return "Void";
@@ -329,6 +429,7 @@ export function typeToString(t: Type): string {
     }
     case "shape": {
       if (t.alias) return aliasText(t);
+      if (t.parts) return t.parts.map(typeToString).join(" & ");
       const ms = [...t.members.values()].map((m) => `${m.readonly ? "final " : ""}${m.optional ? "?" : ""}${m.name}:${typeToString(m.type())}`);
       return `{ ${ms.join(", ")} }`;
     }
@@ -347,7 +448,7 @@ function aliasText(t: { alias?: string; aliasArgs?: Type[] }): string {
 }
 
 export function sameType(a: Type, b: Type): boolean {
-  if (a.kind !== b.kind) return false;
+  if (a.kind !== b.kind || isConstView(a) !== isConstView(b)) return false;
   switch (a.kind) {
     case "prim": return a.name === (b as typeof a).name && a.literal === (b as typeof a).literal;
     case "class": {
@@ -423,10 +524,13 @@ export function assignable(from: Type, to: Type): boolean {
   // `int?` takes `null`, `int` and `int?`; an `int?` fits only where `null` fits too.
   if (to.kind === "nullable") return from.kind === "null" || assignable(nonNull(from), to.inner);
   if (from.kind === "nullable") return isNullable(to) && to.kind !== "typeParam" && assignable(from.inner, to);
+  // A `const Cart` is read-only: it fits a `const` view, never a changeable `Cart` (a `Cart` fits both).
+  if (isConstView(from) && canBeConst(to) && !isConstView(to)) return false;
   // A type parameter fits its own identity, `Object`, and everything guaranteed by its upper bound.
   if (from.kind === "typeParam") {
     if ((to.kind === "typeParam" && to.param === from.param) || (to.kind === "builtin" && to.name === "Object")) return true;
-    return !!from.param.constraint && constraintAssignable(from.param.constraint, to, new Set([from.param]));
+    // `T extends A & B` fits wherever one of its bounds fits.
+    return boundsOf(from.param).some((b) => constraintAssignable(b, to, new Set([from.param])));
   }
   if (to.kind === "typeParam") return from.kind === "null";
   if ((to.kind === "shape" || to.kind === "method") && from.kind !== "null") {
@@ -465,9 +569,11 @@ export function assignable(from: Type, to: Type): boolean {
     if (!to.args?.length) return true;
     // Generic types are invariant: compare the arguments as seen from the target class.
     const seen = supertypeArgs(from.info, from.args ?? [], to.info);
+    const covariant = to.constView ? CONST_COVARIANT[to.info.qname] ?? [] : [];
     // `*` as a type argument is a wildcard on either side: `Box<int>` fits `Box<*>` and back.
-    return !seen || seen.length === 0 || to.args.every((a, i) =>
-      argumentFits(seen[i] ?? T.any, a, to.info.typeParams[i]?.variance ?? "invariant"));
+    return !seen || seen.length === 0 || to.args.every((a, i) => covariant.includes(i)
+      ? readOnlyArgFits(seen[i] ?? T.any, a)
+      : argumentFits(seen[i] ?? T.any, a, to.info.typeParams[i]?.variance ?? "invariant"));
   }
   if (to.kind === "builtin") {
     if (to.name === "Function") return from.kind === "method" || (from.kind === "builtin" && from.name === "Function");
@@ -478,6 +584,15 @@ export function assignable(from: Type, to: Type): boolean {
       return [...from.members.values()].every((m) => assignable(m.type(), value));
     }
     if (from.kind !== "builtin") return false;
+    // A `const` view of an array, tuple or record is covariant: a `const Array<Dog>` (or a plain
+    // `Array<Dog>`) is a `const Array<Animal>`, as nothing can be stored through the view.
+    if (to.constView && (to.name === "Array" || to.name === "Tuple" || to.name === "Record")) {
+      if (to.name === "Array" && from.name === "Tuple") return from.args.every((a) => readOnlyArgFits(widen(a), to.args[0] ?? T.any));
+      if (from.name !== to.name) return false;
+      if (to.name === "Tuple") return from.args.length === to.args.length && to.args.every((a, i) => readOnlyArgFits(from.args[i]!, a));
+      if (to.name === "Record") return sameArg(to.args[0] ?? T.any, from.args[0] ?? T.any) && readOnlyArgFits(from.args[1] ?? T.any, to.args[1] ?? T.any);
+      return readOnlyArgFits(from.args[0] ?? T.any, to.args[0] ?? T.any);
+    }
     // A tuple is an array: it fits `Array<*>`, and `Array<T>` when every element is a `T`.
     if (to.name === "Array" && from.name === "Tuple") {
       const e = to.args[0] ?? T.any;
@@ -498,7 +613,7 @@ function constraintAssignable(from: Type, to: Type, seen: Set<TypeParamInfo>): b
   if (to.kind === "typeParam" && from.param === to.param) return true;
   if (seen.has(from.param) || !from.param.constraint) return false;
   seen.add(from.param);
-  return constraintAssignable(from.param.constraint, to, seen);
+  return boundsOf(from.param).some((b) => constraintAssignable(b, to, new Set(seen)));
 }
 
 /**
@@ -507,6 +622,8 @@ function constraintAssignable(from: Type, to: Type, seen: Set<TypeParamInfo>): b
  */
 function sameArg(a: Type, b: Type): boolean {
   if (sameType(a, b) || isDynamic(a) || isDynamic(b)) return true;
+  // `Array<const Cart>` isn't an `Array<Cart>`: its elements could then be changed.
+  if (isConstView(a) !== isConstView(b)) return false;
   if (a.kind === "builtin" && b.kind === "builtin") return a.name === b.name && a.args.length === b.args.length && a.args.every((x, i) => sameArg(x, b.args[i]!));
   if (a.kind === "class" && b.kind === "class") return a.info === b.info && (a.args ?? []).length === (b.args ?? []).length && (a.args ?? []).every((x, i) => sameArg(x, b.args![i]!));
   if (a.kind === "nullable" && b.kind === "nullable") return sameArg(a.inner, b.inner);
@@ -535,7 +652,11 @@ export function bind(params: TypeParamInfo[], args: Type[]): Map<TypeParamInfo, 
 export function subst(t: Type, map: Map<TypeParamInfo, Type>): Type {
   if (map.size === 0) return t;
   switch (t.kind) {
-    case "typeParam": return map.get(t.param) ?? t;
+    // `const T` with `T = Cart` is a `const Cart`.
+    case "typeParam": {
+      const bound = map.get(t.param);
+      return bound ? (t.constView ? constOf(bound) : bound) : t;
+    }
     case "nullable": return nullableOf(subst(t.inner, map)); // `V?` with `V = Dog` is just `Dog`
     case "union": {
       const u = unionOf(t.types.map((m) => subst(m, map)));
@@ -548,6 +669,7 @@ export function subst(t: Type, map: Map<TypeParamInfo, Type>): Type {
       const renamed = remaining?.map((p) => ({
         ...p,
         ...(p.constraint ? { constraint: subst(p.constraint, map) } : {}),
+        ...(p.extraBounds ? { extraBounds: p.extraBounds.map((b) => subst(b, map)) } : {}),
       }));
       const effective = renamed?.length
         ? new Map<TypeParamInfo, Type>([
@@ -569,7 +691,11 @@ export function subst(t: Type, map: Map<TypeParamInfo, Type>): Type {
         let cached: Type | undefined;
         members.set(k, { ...m, type: () => (cached ??= subst(m.type(), map)) });
       }
-      return { ...t, members, ...(t.aliasArgs ? { aliasArgs: t.aliasArgs.map((a) => subst(a, map)) } : {}) };
+      return {
+        ...t, members,
+        ...(t.aliasArgs ? { aliasArgs: t.aliasArgs.map((a) => subst(a, map)) } : {}),
+        ...(t.parts ? { parts: t.parts.map((p) => subst(p, map) as ShapeType) } : {}),
+      };
     }
     default: return t;
   }

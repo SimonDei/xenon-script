@@ -1,6 +1,6 @@
 // Standard library: the web platform's `FormData`: form fields as name/value pairs, for an upload
 // with `fetch` (as a `multipart/form-data` body, with the header set for you):
-//   var form:FormData = new FormData()
+//   var form:const FormData = new FormData()
 //   form.append('to', mail.to)
 //   form.append('attachment', mail.attachment, mail.fileName)
 //   await fetch('api/mail', { method: 'POST', body: form })
@@ -29,18 +29,18 @@ package xenon {
     /** Removes all values of `name`. */
     function delete(name:String):Void
 
-    function has(name:String):Bool
+    function has(name:String):Bool const
     /** The first value of `name` (a `String` or a `File`), or `null`. */
-    function get(name:String):*
+    function get(name:String):* const
     /** All values of `name`, in the order they were added. */
-    function getAll(name:String):Array<*>
+    function getAll(name:String):Array<*> const
     /** Calls `callback(value, name, form)` for each pair in order. */
-    function forEach(callback:(value:*, name:String, form:FormData) -> Void):Void
+    function forEach(callback:(value:*, name:String, form:const FormData) -> Void):Void const
 
     /** The names, once per value (a name added twice comes twice). */
-    function keys():Iterator<String>
-    function values():Iterator<*>
+    function keys():Iterator<String> const
+    function values():Iterator<*> const
     /** `[name, value]` pairs. */
-    function entries():Iterator<Tuple<String, *>>
+    function entries():Iterator<Tuple<String, *>> const
   }
 }

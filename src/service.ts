@@ -13,14 +13,14 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import ts from "typescript";
 import type * as A from "./ast.ts";
-import { type CheckResult, type ClassInfo, findMember, isScoped, type TypedefInfo, type MemberSig, readDecl, type Resolution, visibilityOf } from "./checker.ts";
+import { type CheckResult, type ClassInfo, findMember, isScoped, nestedTypedefVisible, type TypedefInfo, type MemberSig, readDecl, type Resolution, usableThroughConst, visibilityOf } from "./checker.ts";
 import { generatedOffsetAt, type Mapping, type OutputFile, sourceOffsetAt } from "./codegen.ts";
 import { compileProject, type CompileResult, PRELUDE, type SourceInput } from "./compiler.ts";
 import { defaultLibFilePath } from "./dts.ts";
 import { CONTEXTUAL_KEYWORDS, KEYWORDS } from "./lexer.ts";
 import { TYPED_GLOBALS } from "./globals.ts";
 import { SourceFile, type Span, spanText } from "./source.ts";
-import { isSubclass, memberTypeIn, nonNull, type MethodType, type ShapeMember, type ShapeType, stdClassOf, supertypes, type Type, typeToString } from "./types.ts";
+import { boundsOf, boundsText, hasConstView, isSubclass, memberTypeIn, nonNull, type MethodType, type ShapeMember, type ShapeType, stdClassOf, supertypes, type Type, type TypeParamInfo, typeToString } from "./types.ts";
 
 /** Options of the virtual TypeScript project. Xenon references may be `null`: no strict null checks. */
 export const TS_OPTIONS: ts.CompilerOptions = {
@@ -196,7 +196,7 @@ function docComment(file: SourceFile, start: number): string | undefined {
 }
 
 function signature(t: MethodType, name: string): string {
-  const tps = t.typeParams?.length ? `<${t.typeParams.map((p) => `${p.variance === "invariant" ? "" : `${p.variance} `}${p.name}${p.constraint ? ` extends ${typeToString(p.constraint)}` : ""}`).join(", ")}>` : "";
+  const tps = t.typeParams?.length ? `<${t.typeParams.map((p) => `${p.variance === "invariant" ? "" : `${p.variance} `}${p.name}${p.constraint ? ` extends ${boundsText(p)}` : ""}`).join(", ")}>` : "";
   const ps = t.params.map((p) => `${p.rest ? "..." : ""}${p.name}${p.optional ? "?" : ""}:${typeToString(p.type)}`);
   return `${name}${tps}(${ps.join(", ")}):${typeToString(t.ret)}`;
 }
@@ -225,8 +225,8 @@ function classItem(c: ClassInfo): CompletionItem {
 /** `typedef Column = { key:String, index:int, … }`, shortened to a line. */
 function typedefText(td: TypedefInfo): string {
   const target = spanText(td.decl.type.span).replace(/\s+/g, " ").replace(/\{ /g, "{ ");
-  const tps = td.params.length ? `<${td.params.map((p) => `${p.variance === "invariant" ? "" : `${p.variance} `}${p.name}${p.constraint ? ` extends ${typeToString(p.constraint)}` : ""}`).join(", ")}>` : "";
-  const text = `typedef ${td.decl.name.name}${tps} = ${target}`;
+  const tps = td.params.length ? `<${td.params.map((p) => `${p.variance === "invariant" ? "" : `${p.variance} `}${p.name}${p.constraint ? ` extends ${boundsText(p)}` : ""}`).join(", ")}>` : "";
+  const text = `typedef ${td.owner ? `${td.owner.decl.name.name}.` : ""}${td.decl.name.name}${tps} = ${target}`;
   return text.length > 100 ? `${text.slice(0, 99)}…` : text;
 }
 
@@ -241,7 +241,7 @@ function classText(info: ClassInfo): string {
   ].filter(Boolean).join(" ");
   const prefix = modifiers ? `${modifiers} ` : "";
   const what = d.isInterface ? `${prefix}interface` : d.isEnum ? `${prefix}enum` : `${prefix}class`;
-  const tps = info.typeParams.length ? `<${info.typeParams.map((p) => `${p.variance === "invariant" ? "" : `${p.variance} `}${p.name}${p.constraint ? ` extends ${typeToString(p.constraint)}` : ""}${p.default ? ` = ${typeToString(p.default)}` : ""}`).join(", ")}>` : "";
+  const tps = info.typeParams.length ? `<${info.typeParams.map((p) => `${p.variance === "invariant" ? "" : `${p.variance} `}${p.name}${p.constraint ? ` extends ${boundsText(p)}` : ""}${p.default ? ` = ${typeToString(p.default)}` : ""}`).join(", ")}>` : "";
   const ext = info.parent ? ` extends ${info.parent.decl.name.name}` : "";
   const impl = info.interfaces.length ? ` ${d.isInterface ? "extends" : "implements"} ${info.interfaces.map((i) => i.decl.name.name).join(", ")}` : "";
   return `${what} ${info.qname.replace(/^.*#/, "")}${tps}${ext}${impl}`;
@@ -252,7 +252,13 @@ function shapeMember(shape: ShapeType, name: string): { member: ShapeMember; nod
   const member = shape.members.get(name);
   if (!member) return undefined;
   const target = shape.typedef?.decl.type;
-  return { member, node: target?.kind === "ShapeType" ? target.members.find((n) => n.name.name === name) : undefined };
+  if (target?.kind === "ShapeType") return { member, node: target.members.find((n) => n.name.name === name) };
+  // `Attrs & { extra:String }`: declared in the part that has it.
+  for (const part of shape.parts ?? []) {
+    const found = part.members.has(name) ? shapeMember(part, name) : undefined;
+    if (found?.node) return { member, node: found.node };
+  }
+  return { member };
 }
 
 /** `?to:String`, `final id:int`: as written in a shape. */
@@ -581,14 +587,27 @@ export class XenonProject {
       }
       if (parent.kind === "Typedef") {
         const t = check.typeNodeTypes.get((parent as A.TypedefDecl).type);
-        return { text: `typedef ${(node as A.Ident).name} = ${t ? typeToString({ ...t, alias: undefined } as Type) : "?"}`, span: node.span, decl: node.span };
+        const owner = [...check.classes.values()].find((c) => c.decl.typedefs?.includes(parent as A.TypedefDecl));
+        const vis = owner ? `${visibilityOf(parent as A.TypedefDecl)} ` : "";
+        const name = owner ? `${owner.decl.name.name}.${(node as A.Ident).name}` : (node as A.Ident).name;
+        return { text: `${vis}typedef ${name} = ${t ? typeToString({ ...t, alias: undefined } as Type) : "?"}`, doc: docComment(parent.span.file, parent.span.start), span: node.span, decl: node.span };
       }
-      // `com.zoo.Animal`: the last part names the type.
-      if (parent.kind === "TypeName") return (parent as A.TypeNode & { kind: "TypeName" }).name.at(-1) === node ? this.describeType(a, parent as A.TypeNode, node.span) : undefined;
+      // `com.zoo.Animal`: the last part names the type; in `Table.Row`, `Table` is the class holding the typedef.
+      if (parent.kind === "TypeName") {
+        const names = (parent as A.TypeNode & { kind: "TypeName" }).name;
+        if (names.at(-1) === node) return this.describeType(a, parent as A.TypeNode, node.span);
+        const td = check.typedefResolutions.get(parent as A.TypeNode);
+        return td?.owner && names.at(-2) === node ? ofClass(td.owner, node.span) : undefined;
+      }
       if (parent.kind === "XenonImport") {
         const imp = parent as A.XenonImport;
-        const info = imp.path.at(-1) === node && !imp.wildcard ? check.classes.get(imp.path.map((p) => p.name).join(".")) : undefined;
-        return info && ofClass(info, node.span);
+        if (imp.wildcard) return undefined;
+        const at = imp.path.indexOf(node as A.Ident);
+        const path = imp.path.map((p) => p.name).join(".");
+        const td = at === imp.path.length - 1 ? check.typedefs.get(path) : undefined;
+        if (td) return this.describeTypedef(td, node.span);
+        const info = check.classes.get(imp.path.slice(0, at + 1).map((p) => p.name).join("."));
+        return info && (at === imp.path.length - 1 || check.typedefs.has(path)) ? ofClass(info, node.span) : undefined;
       }
       // `{ excelRow: 1 }` / `{ data }` in a literal checked against a shape: the shape's member.
       const isKey = (parent.kind === "Prop" || parent.kind === "Accessor") && (parent as A.ObjectProp & { kind: "Prop" | "Accessor" }).key === node;
@@ -691,7 +710,17 @@ export class XenonProject {
     return undefined;
   }
 
+  private describeTypedef(td: TypedefInfo, span: Span): Sym {
+    const t = td.state && td.state !== "busy" ? td.state : undefined;
+    const name = td.owner ? `${td.owner.decl.name.name}.${td.decl.name.name}` : td.decl.name.name;
+    const vis = td.owner ? `${visibilityOf(td.decl)} ` : "";
+    const text = t ? `${vis}typedef ${name} = ${typeToString({ ...t, alias: undefined } as Type)}` : `${vis}${typedefText(td)}`;
+    return { text, doc: docComment(td.decl.span.file, td.decl.span.start), span, decl: td.decl.name.span };
+  }
+
   private describeType(a: Analysis, node: A.TypeNode, span: Span): Sym | undefined {
+    const typedef = a.result.check.typedefResolutions.get(node);
+    if (typedef?.owner) return this.describeTypedef(typedef, span);
     const info = a.result.check.typeResolutions.get(node);
     if (info) return { text: classText(info), doc: docComment(info.decl.span.file, info.decl.span.start), span, decl: info.decl.name.span, info };
     const t = a.result.check.typeNodeTypes.get(node);
@@ -716,9 +745,9 @@ export class XenonProject {
   }
 
   /** The members of a value of type `t`, nearest declaration first, each name once. */
-  private membersOf(a: Analysis, t: Type | undefined): MemberSig[] {
+  private membersOf(a: Analysis, t: Type | undefined, visiting = new Set<TypeParamInfo>()): MemberSig[] {
     if (!t) return [];
-    if (t.kind === "nullable") return this.membersOf(a, t.inner);
+    if (t.kind === "nullable") return this.membersOf(a, t.inner, visiting);
     // A union: the members every member type has (what `x.` may use without narrowing).
     if (t.kind === "union") {
       const [first, ...rest] = t.types.map((m) => this.membersOf(a, m));
@@ -739,6 +768,16 @@ export class XenonProject {
     if (t.kind === "method") {
       const fn = a.result.check.classes.get("xenon.Function");
       return fn ? this.collect([fn], (m) => !m.isStatic) : [];
+    }
+    // `T extends A & B`: the members of every bound (the first bound with a name wins).
+    if (t.kind === "typeParam") {
+      if (visiting.has(t.param)) return []; // a constraint cycle (reported by the checker)
+      visiting.add(t.param);
+      const seen = new Map<string, MemberSig>();
+      for (const b of boundsOf(t.param)) {
+        for (const m of this.membersOf(a, b, visiting)) if (!seen.has(m.name)) seen.set(m.name, m);
+      }
+      return [...seen.values()];
     }
     return [];
   }
@@ -1019,6 +1058,11 @@ export class XenonProject {
         const detail = sig ? (sig.type.kind === "method" ? signature(sig.type, "") : typeToString(sig.type)) : undefined;
         return [{ name: m.kind === "Method" && m.isConstructor ? "constructor" : m.kind === "Method" && m.accessor ? `${m.accessor} ${m.name.name}` : m.name.name, detail, kind, range: r(m.span), selectionRange: r(m.name.span), children: [] }];
       });
+      for (const td of d.typedefs ?? []) {
+        const t = a.result.check.typeNodeTypes.get(td.type);
+        children.push({ name: td.name.name, detail: t && typeToString({ ...t, alias: undefined } as Type), kind: "typedef", range: r(td.span), selectionRange: r(td.name.span), children: [] });
+      }
+      children.sort((x, y) => x.range.start.line - y.range.start.line || x.range.start.character - y.range.start.character);
       const kind: SymbolKind = d.isInterface ? "interface" : d.isEnum ? "enum" : "class";
       return { name: d.name.name, detail: info && classText(info), kind, range: r(d.span), selectionRange: r(d.name.span), children };
     });
@@ -1099,6 +1143,15 @@ export class XenonProject {
     if (!receiver || !isTypePosition(text, receiver.index)) return undefined;
     const a = this.analyze();
     const ast = this.astOf(a, path);
+    // `Table.`: the typedefs nested in a class this file can name.
+    const owner = ast && this.visibleTypes(a, ast).classes.find((c) => c.decl.name.name === receiver[0]);
+    if (ast && owner) {
+      const from = [...a.result.check.classes.values()].find((c) => c.file === ast && c.decl.span.start <= nameStart && nameStart <= c.decl.span.end);
+      const nested = this.nestedTypedefsOf(a, ast, owner, from);
+      if (nested.length > 0) {
+        return nested.map((td) => ({ label: td.decl.name.name, kind: "typedef" as CompletionKind, detail: typedefText(td), documentation: docComment(td.decl.span.file, td.decl.span.start) }));
+      }
+    }
     const types = ast && a.result.check.qualifiedTypes.get(ast);
     const prefix = `${receiver[0]}.`;
     if (!types || ![...types.keys()].some((k) => k.startsWith(prefix))) return undefined;
@@ -1141,7 +1194,9 @@ export class XenonProject {
     if (shape?.kind === "shape") return this.shapeCompletions(shape);
     if (t && t.kind !== "any" && t.kind !== "error") {
       const enclosing = this.enclosingClass(a, ast, nameStart);
-      return this.membersOf(a, t).filter((m) => this.visible(m, enclosing)).map((m) => ({
+      // Through a `const` view, only what can be used there (no `push`, setters stay as reads).
+      const readOnly = hasConstView(t);
+      return this.membersOf(a, t).filter((m) => this.visible(m, enclosing) && (!readOnly || usableThroughConst(m))).map((m) => ({
         label: m.name,
         kind: memberKind(m),
         detail: memberText(m),
@@ -1194,7 +1249,7 @@ export class XenonProject {
     };
     for (const n of nodesAt(ast, offset)) {
       for (const p of (n as { typeParams?: A.TypeParam[] }).typeParams ?? []) {
-        const constraint = p.constraint ? ` extends ${spanText(p.constraint.span)}` : "";
+        const constraint = p.constraint ? ` extends ${[p.constraint, ...(p.extraConstraints ?? [])].map((c) => spanText(c.span)).join(" & ")}` : "";
         add({ label: p.name, kind: "typeParameter", detail: `type parameter ${p.name}${constraint}` });
       }
     }
@@ -1203,7 +1258,7 @@ export class XenonProject {
     add({ label: "Record", kind: "class", detail: "Record<String, V>: an object used as a dictionary" });
     const { classes, typedefs } = this.visibleTypes(a, ast);
     for (const c of classes) add(classItem(c));
-    for (const td of typedefs) {
+    for (const td of [...this.nestedTypedefsAt(a, ast, offset), ...typedefs]) {
       add({ label: td.decl.name.name, kind: "typedef", detail: typedefText(td), documentation: docComment(td.decl.span.file, td.decl.span.start) });
     }
     // JavaScript imports that are types (`import JSZip from 'jszip'`) or hold some (`xlsx.`, `JSZip.`).
@@ -1221,6 +1276,26 @@ export class XenonProject {
     return [...items.values()];
   }
 
+  /** The typedefs nested in the class around `offset` and the classes it extends, as far as they're visible. */
+  private nestedTypedefsAt(a: Analysis, ast: A.XenonFile, offset: number): TypedefInfo[] {
+    const check = a.result.check;
+    const from = [...check.classes.values()].find((c) => c.file === ast && c.decl.span.start <= offset && offset <= c.decl.span.end);
+    return from ? this.nestedTypedefsOf(a, ast, from, from) : [];
+  }
+
+  /** The visible typedefs nested in `cls` and the classes it extends (nearest first). */
+  private nestedTypedefsOf(a: Analysis, ast: A.XenonFile, cls: ClassInfo, from: ClassInfo | undefined): TypedefInfo[] {
+    const pkg = ast.packageName.map((n) => n.name).join(".");
+    const result: TypedefInfo[] = [];
+    for (let c: ClassInfo | undefined = cls; c; c = c.parent) {
+      for (const d of c.decl.typedefs ?? []) {
+        const td = a.result.check.typedefs.get(`${c.qname}.${d.name.name}`);
+        if (td && nestedTypedefVisible(td, pkg, from)) result.push(td);
+      }
+    }
+    return result;
+  }
+
   /** Classes and typedefs this file can name: its package, its imports, the prelude, its own file-private ones. */
   private visibleTypes(a: Analysis, ast: A.XenonFile): { classes: ClassInfo[]; typedefs: TypedefInfo[] } {
     const pkg = ast.packageName.map((n) => n.name).join(".");
@@ -1229,7 +1304,7 @@ export class XenonProject {
       !name.startsWith("__") && (t.filePrivate ? t.file === ast : t.pkg === pkg || t.pkg === "xenon" || imported.has(t.qname) || imported.has(t.pkg));
     return {
       classes: [...a.result.check.classes.values()].filter((c) => visible(c, c.decl.name.name)),
-      typedefs: [...a.result.check.typedefs.values()].filter((t) => visible(t, t.decl.name.name)),
+      typedefs: [...a.result.check.typedefs.values()].filter((t) => !t.owner && visible(t, t.decl.name.name)),
     };
   }
 

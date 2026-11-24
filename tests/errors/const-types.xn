@@ -1,0 +1,37 @@
+public class Main {
+  public function Main() {
+    var cart:Cart = new Cart()
+    var view:const Cart = cart          // a Cart fits a const Cart
+    var back:Cart = view                // a const Cart doesn't fit a Cart
+    change(view)
+    var list:Array<const Cart> = [view]
+    var plain:Array<Cart> = list        // type arguments are invariant
+    var arr:const Array<Int> = [1, 2]
+    var arr2:Array<Int> = arr
+    var n:const Int = 1                 // no effect
+    var same = Util.id(view)            // T = const Cart
+    var again:Cart = same
+    var a:const Animal = new Dog()
+    if (a is Dog) {
+      var d:Dog = a                     // narrowing keeps const
+      trace(d)
+    }
+    trace(back, plain, arr2, n, again)
+    // read-only access
+    trace(view.total, view.count())
+    view.total += 1
+    view.add(1)
+  }
+  private function change(c:Cart):Void {}
+}
+
+class Cart {
+  public var total:Int = 0
+  public function count():Int const => total
+  public function add(n:Int):Void { total += n }
+}
+class Animal {}
+class Dog extends Animal {}
+class Util {
+  public static function id<T>(x:T):T => x
+}

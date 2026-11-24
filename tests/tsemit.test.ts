@@ -24,7 +24,8 @@ test("token mappings cover the same text on both sides", async () => {
         // Names are copied; types, `trace` and constructors are spelled differently in TypeScript.
         const renamed = ["trace", "int", "uint", "Float", "String", "Boolean", "Bool", "Symbol", "Array", "Object", "Iterator", "Void", "Int", "UInt"];
         if (/^[A-Za-z_$][\w$]*$/.test(src) && !renamed.includes(src) && gen !== "constructor") {
-          expect(gen).toBe(src);
+          // A typedef nested in a class is qualified in TypeScript, also inside its class (`Inventory.Item`).
+          expect(gen.endsWith(`.${src}`) ? gen.slice(gen.lastIndexOf(".") + 1) : gen).toBe(src);
           names++;
         }
       }

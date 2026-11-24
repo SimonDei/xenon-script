@@ -529,3 +529,45 @@ export declare function labels(): { [key: string]: string | undefined };
     await rm(join(src, ".."), { recursive: true, force: true });
   }
 });
+
+test("TypeScript's read-only types become `const`: `ReadonlyArray`, `readonly` tuples, `ReadonlyMap`, `ReadonlySet`", async () => {
+  const { mkdir, rm } = await import("node:fs/promises");
+  const project = join(import.meta.dir, ".dts-readonly");
+  const pkg = join(project, "node_modules", "frozen");
+  await rm(project, { recursive: true, force: true });
+  await mkdir(pkg, { recursive: true });
+  await Bun.write(join(pkg, "package.json"), JSON.stringify({ name: "frozen", types: "index.d.ts" }));
+  await Bun.write(join(pkg, "index.d.ts"), [
+    "export declare function names(): ReadonlyArray<string>;",
+    "export declare function pair(): readonly [string, number];",
+    "export declare function ages(): ReadonlyMap<string, number>;",
+    "export declare function tags(): ReadonlySet<string>;",
+    "export declare function count(items: readonly string[]): number;",
+    "",
+  ].join("\n"));
+  try {
+    const text = `import * as frozen from 'frozen'
+
+public class Main {
+  public function Main() {
+    var names = frozen.names()
+    trace(names.length, names.join(','), frozen.count(['a']), frozen.count(names), frozen.ages().get('a'), frozen.tags().has('x'), frozen.pair()[0])
+    names.push('x')
+    frozen.pair()[0] = 'y'
+    frozen.ages().set('b', 1)
+    frozen.tags().add('y')
+  }
+}
+`;
+    const result = compileProject([{ path: "Main.xn", text }], { main: "Main", typeRoot: join(project, "src") });
+    expect(result.declarationErrors).toEqual([]);
+    expect(result.diagnostics.sorted().filter((d) => d.severity === "error").map((d) => `${d.code} ${d.message}`)).toEqual([
+      "X0905 cannot use non-const method `push` through a `const Array<String>`",
+      "X0904 cannot change an element through a `const Tuple<String, Float>`",
+      "X0905 cannot use non-const method `set` through a `const Map<String, Float>`",
+      "X0905 cannot use non-const method `add` through a `const Set<String>`",
+    ]);
+  } finally {
+    await rm(project, { recursive: true, force: true });
+  }
+});

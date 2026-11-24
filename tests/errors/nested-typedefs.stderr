@@ -1,0 +1,132 @@
+error[X0442]: typedef `Animal.Legs` is protected in `Animal`
+ --> nested-typedefs/Main.xn:2:8
+  |
+2 | import zoo.Animal.Legs
+  |        ^^^^^^^^^^^^^^^ not visible here
+  |
+ ::: nested-typedefs/zoo/Animal.xn:4:23
+  |
+4 |     protected typedef Legs = Int
+  |                       ---- declared `protected` here
+
+error[X0443]: private typedef `Main.Secret` is used in public typedef `Main.Leaky`
+ --> nested-typedefs/Main.xn:6:30
+  |
+5 |   private typedef Secret = { code:Int }
+  |                   ------ declared here
+6 |   public typedef Leaky = { s:Secret }
+  |                              ^^^^^^ `Main.Secret` is private
+  |
+  = note: code that can use the public declaration couldn't name this type
+help: make the typedef `public`, or the declaration `private`
+
+error[X0444]: a typedef can't be `static`
+ --> nested-typedefs/Main.xn:7:3
+  |
+7 |   static typedef Bad = Int
+  |   ^^^^^^ not allowed on a typedef
+  |
+  = note: a typedef only takes a visibility: `public`, `protected`, `internal` or `private`
+
+error[X0443]: private typedef `Main.Secret` is used in public field `field`
+ --> nested-typedefs/Main.xn:8:20
+  |
+5 |   private typedef Secret = { code:Int }
+  |                   ------ declared here
+...
+8 |   public var field:Secret? = null
+  |                    ^^^^^^ `Main.Secret` is private
+  |
+  = note: code that can use the public declaration couldn't name this type
+help: make the typedef `public`, or the declaration `private`
+
+error[X0442]: typedef `Animal.Hidden` is private to `Animal`
+  --> nested-typedefs/Main.xn:12:11
+   |
+12 |     var b:Animal.Hidden = true
+   |           ^^^^^^^^^^^^^ not visible here
+   |
+  ::: nested-typedefs/zoo/Animal.xn:6:21
+   |
+ 6 |     private typedef Hidden = Bool
+   |                     ------ declared `private` here
+
+error[X0442]: typedef `Animal.Internal` is internal to package `zoo`
+  --> nested-typedefs/Main.xn:13:11
+   |
+13 |     var c:Animal.Internal = 'x'
+   |           ^^^^^^^^^^^^^^^ not visible here
+   |
+  ::: nested-typedefs/zoo/Animal.xn:5:13
+   |
+ 5 |     typedef Internal = String
+   |             -------- declared without a visibility (`internal`)
+
+error[X0442]: typedef `Animal.Legs` is protected in `Animal`
+  --> nested-typedefs/Main.xn:14:11
+   |
+14 |     var d:Animal.Legs = 4
+   |           ^^^^^^^^^^^ not visible here
+   |
+  ::: nested-typedefs/zoo/Animal.xn:4:23
+   |
+ 4 |     protected typedef Legs = Int
+   |                       ---- declared `protected` here
+
+error[X0420]: cannot find type `Animal.Nope`
+  --> nested-typedefs/Main.xn:15:11
+   |
+15 |     var e:Animal.Nope = 1
+   |           ^^^^^^^^^^^ not found
+
+error[X0443]: private typedef `Main.Secret` is used in the signature of public method `take`
+  --> nested-typedefs/Main.xn:19:26
+   |
+ 5 |   private typedef Secret = { code:Int }
+   |                   ------ declared here
+...
+19 |   public function take(s:Secret):Void {}
+   |                          ^^^^^^ `Main.Secret` is private
+   |
+   = note: code that can use the public declaration couldn't name this type
+help: make the typedef `public`, or the declaration `private`
+
+error[X0420]: cannot find type `T`
+  --> nested-typedefs/Main.xn:23:33
+   |
+23 |   public typedef Item = { value:T }
+   |                                 ^ not found
+   |
+   = note: `T` is a type parameter of `Box`, which a typedef inside it can't use (`Box.Item` means the same type everywhere)
+help: give the typedef its own type parameter: `typedef Item<T> = …`
+
+error[X0444]: an interface can't declare a typedef
+  --> nested-typedefs/Main.xn:27:11
+   |
+27 |   typedef Corner = Int
+   |           ^^^^^^ inside an interface
+   |
+help: declare it in its own file `Corner.xn`, or in a class
+
+error[X0443]: protected typedef `Animal.Legs` is used in the signature of public method `count`
+  --> nested-typedefs/zoo/Animal.xn:10:29
+   |
+ 4 |     protected typedef Legs = Int
+   |                       ---- declared here
+...
+10 |     public function count():Legs { return 4 }
+   |                             ^^^^ `Animal.Legs` is protected
+   |
+   = note: code that can use the public declaration couldn't name this type
+help: make the typedef `public`, or the declaration `protected`
+
+error[X0442]: typedef `Animal.Hidden` is private to `Animal`
+ --> nested-typedefs/zoo/Dog.xn:5:13
+  |
+5 |       var h:Hidden = true        // inherited private: not visible
+  |             ^^^^^^ not visible here
+  |
+ ::: nested-typedefs/zoo/Animal.xn:6:21
+  |
+6 |     private typedef Hidden = Bool
+  |                     ------ declared `private` here

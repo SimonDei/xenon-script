@@ -24,9 +24,9 @@ package xenon {
     final detached:Bool
 
     /** A copy of the bytes from `start` up to (not including) `end`; negative positions count from the end. */
-    function slice():ArrayBuffer
-    function slice(start:Int):ArrayBuffer
-    function slice(start:Int, end:Int):ArrayBuffer
+    function slice():ArrayBuffer const
+    function slice(start:Int):ArrayBuffer const
+    function slice(start:Int, end:Int):ArrayBuffer const
     /** Changes the size of a resizable buffer (new bytes are zero); throws a `RangeException` beyond `maxByteLength`. */
     function resize(newLength:Int):Void
     /** Moves the bytes into a new buffer (of `newLength` bytes, cut or zero-filled), detaching this one; keeps resizability. */

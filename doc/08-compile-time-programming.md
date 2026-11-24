@@ -1,145 +1,213 @@
 # Chapter 8: Compile-time programming
 
+Some values are known before the program runs: sizes, limits, lookup tables, names. XenonScript can
+compute them while compiling and paste the result into the output, so the program doesn't pay for
+them at runtime, and mistakes in them become compile errors. This chapter covers `inline`
+constants, `constexpr` and `consteval` functions, and `nameof`.
+
 ## Inline constants
 
-```actionscript
-public static inline final WIDTH:Int = 640
-public static inline final AREA:Int = WIDTH * 480
-```
+An `inline` constant is computed by the compiler and pasted wherever it is used:
 
-Inline constants must be compile-time values. Their uses are replaced with the literal result, so a
-private inline constant is never emitted as a runtime property.
+```actionscript check
+public class Main {
+  public static inline final WIDTH:Int = 640
+  public static inline final AREA:Int = WIDTH * 480
 
-Allowed folds include:
-
-- literals
-- enum members
-- other inline constants
-- numeric/string/Bool operators
-- casts/conversions
-- eligible standard-library and `constexpr`/`consteval` calls
-
-Cycle detection and constant fitting are checked. An object cannot be stored as an inline constant;
-compile-time objects may still participate in evaluating a primitive final result.
-
-## `constexpr`
-
-A `constexpr` function uses a compile-time-safe subset of XenonScript. With constant arguments, the
-call folds:
-
-```actionscript
-public static constexpr function twice(n:Int):Int => n * 2
-
-trace(twice(21)) // emits console.log(42)
-```
-
-With runtime arguments, the ordinary function call remains:
-
-```actionscript
-var n:Int = readCount()
-trace(twice(n)) // emits Main.twice(n)
-```
-
-`constexpr` is therefore “compile time when possible.”
-
-## `consteval`
-
-`consteval` is strict. Every call must fold during compilation:
-
-```actionscript
-public static consteval function square(n:Int):Int => n * n
-
-trace(square(12)) // emits console.log(144)
-```
-
-This is an error:
-
-```actionscript
-var n:Int = readCount()
-trace(square(n)) // X0528
-```
-
-The function cannot be captured as a function value and is omitted from generated JavaScript and
-TypeScript.
-
-`consteval` functions can call one another:
-
-```actionscript
-public static consteval function sumSquares(n:Int):Int {
-  return square(n) + square(n + 1)
+  public function Main() {
+    inline const greeting = 'hi ' + 'there'
+    trace(WIDTH, AREA, greeting)
+  }
 }
 ```
 
-## Shared restrictions
-
-`constexpr` and `consteval` may use:
-
-- parameters and locals
-- literals
-- operators and conditional expressions
-- allowed casts/conversions
-- inline constants
-- compile-time class/object members
-- `if`, `while`, `do … while`, C-style/range `for`, `switch`
-- `return`, `break`, `continue`
-- assignments and updates to locals
-
-They cannot perform runtime I/O or call arbitrary functions. `try`/`throw`, closures, destructuring,
-and `for … of` are outside the compile-time statement interpreter.
-
-Parameters and returns must be compile-time-capable values. A `consteval` result must be a primitive
-that code generation can emit. User-defined functions cannot take rest parameters in this mode.
-
-Instance `constexpr` methods are implicitly `const`; constructors may be `constexpr`, but not
-`consteval`.
-
-## Standard-library folds
-
-Selected standard declarations participate:
-
-- `Math` functions and constants
-- safe `String`, `Float`, and `Bool` methods
-- string length
-- conversion functions
-
-For example:
-
-```actionscript
-'a b'.replace(~/ /g, '-').toUpperCase()
-Math.max(3, 8, 5)
-Float.parseInt('42')
+```text output
+640 307200 hi there
 ```
 
-Locale-dependent, random, or array-returning APIs stay at runtime.
+The generated JavaScript has no `WIDTH` property and no multiplication:
+
+```js
+console.log(640, 307200, 'hi there');
+```
+
+- `inline final` (fields) and `inline const` (locals) take a constant expression: literals, enum
+  members, other inline constants, operators, `?:`, the conversions `Int()`, `UInt()`, `Float()`,
+  `String()`, `Bool()`, and calls of `constexpr` functions (below). Anything else is X0523.
+- The value must fit the declared type (`inline final B:Byte = 300` is an error), and constants that
+  refer to each other in a circle are reported.
+- A `private` inline constant doesn't exist at runtime at all; a public one is also emitted as a
+  property, so JavaScript code can read it.
+- The result must be a primitive (a number, string or `Bool`). Objects can be used *while*
+  computing it (see `constexpr` constructors), but not stored.
+
+## `constexpr` functions
+
+A `constexpr` function is an ordinary function that the compiler *can* also run. When every
+argument is a constant, the call is replaced by its result; otherwise it runs at runtime as usual:
+
+```actionscript check
+public class Main {
+  public function Main() {
+    var n = Main.readCount()
+    trace(Main.twice(21), Main.twice(n), Main.factorial(10))
+  }
+
+  public static constexpr function twice(n:Int):Int => n * 2
+
+  public static constexpr function factorial(n:Int):Int {
+    var result = 1
+    for (var i of 2..=n) result *= i
+    return result
+  }
+
+  public static function readCount():Int => 3
+}
+```
+
+```text output
+42 6 3628800
+```
+
+```js
+console.log(42, Main.twice(n), 3628800);
+```
+
+A `constexpr` body can use parameters and locals, literals, operators and `?:`, conversions, inline
+constants, other `constexpr` functions (including the standard library's), and the statements
+`if`, `while`, `do … while`, `for` (C-style and ranges), `switch`, `return`, `break` and `continue`.
+Calling anything else is an error at the call (X0526) that lists what's allowed. `try`, `throw`,
+closures, destructuring and `for … of` aren't available, and neither is anything with side effects
+(I/O, randomness, the clock).
+
+### `constexpr` methods and constructors
+
+Instance methods and constructors can be `constexpr` too. A `constexpr` constructor builds an
+object at compile time, whose `constexpr` methods can then be folded, the way C++ does it:
+
+```actionscript check
+class Size {
+  public final w:Int
+  public final h:Int
+  public constexpr function Size(w:Int, h:Int) {
+    this.w = w
+    this.h = h
+  }
+  public constexpr function area():Int => w * h
+}
+
+public class Main {
+  public static inline final HD:Int = new Size(1280, 720).area()
+
+  public function Main() {
+    trace(HD, new Size(2, 3).area())
+  }
+}
+```
+
+```text output
+921600 6
+```
+
+`constexpr` methods are implicitly `const` (they can't change the object) and `final` (an override
+couldn't be folded, so overriding one is an error, X0723). Their class's fields must be `final`.
+At runtime they are ordinary methods.
+
+### The standard library at compile time
+
+Standard-library members marked `constexpr` run in the compiler with constant arguments: `Math`
+functions and constants, string methods without side effects (`toUpperCase`, `replace`, `trim`,
+`split`'s length, …), `Float` formatting (`toFixed`, `toString(radix)`) and parsing, and the
+conversions:
+
+```actionscript check
+public class Main {
+  public static inline final SLUG:String = 'Hello World'.replace(~/ /g, '-').toLowerCase()
+  public static inline final MAX:Float = Math.max(3, 8, 5)
+
+  public function Main() {
+    trace(SLUG, MAX)
+  }
+}
+```
+
+```text output
+hello-world 8
+```
+
+Locale-dependent, random and clock functions, and those returning arrays, always run at runtime.
+
+## `consteval` functions
+
+A `consteval` function *must* run at compile time: every call needs constant arguments, and the
+function doesn't exist in the output at all:
+
+```actionscript check
+public class Main {
+  public function Main() {
+    trace(Main.square(12))
+    var n = 3
+    trace(Main.square(n))                 // error X0528: `n` isn't a constant
+  }
+
+  public static consteval function square(n:Int):Int => n * n
+}
+```
+
+Use it for things that should never cost anything at runtime, or that would be wrong to compute
+then: lookup tables, checked configuration, hashes of constant strings. A `consteval` function can't
+be used as a value, and its result must be a primitive. `consteval` functions can call each other
+and `constexpr` functions; constructors can't be `consteval`.
+
+`constexpr` and `consteval` are written after `static` (or the visibility) and before `function`.
+On a field, `constexpr` is an error that points to `inline final` (X0526).
 
 ## `nameof`
 
-`nameof` checks a symbol and becomes its source-level name:
+`nameof(x)` is the name of a local, parameter, member, class or enum member, as a string constant.
+The compiler checks that the name exists, and renaming the symbol in the editor renames it too:
 
-```actionscript
-nameof(user.email) // 'email'
-nameof(User.save)  // 'save'
-nameof(User::name) // 'name'
+```actionscript check
+class User {
+  public var email:String = ''
+  public function save():Void {}
+}
+
+public class Main {
+  public function Main() {
+    var user = new User()
+    var count = 1
+    trace(nameof(user.email), nameof(User.save), nameof(User::email), nameof(count), nameof(User))
+    trace(nameof(user.emial))             // error X0426: no member `emial`
+  }
+}
 ```
 
-`nameof` is a reserved compile-time operator. A typo is an error, and member
-renaming/refactoring updates the expression. It accepts ordinary checked names and typed unbound
-property references (`Type::member`) through the same member-resolution path. A class may still
-declare or call a member named `nameof` through a receiver, such as `service.nameof()`.
+The first line prints `email save email count User`.
 
-Untyped `*` members cannot be checked by `nameof`; use a string literal at that boundary.
+Use it wherever an API wants a property or parameter name as text: change notifications, error
+messages (`throw new ArgumentException(nameof(count))`), `Object.defineProperty`, serialization
+keys. Members of `*` values can't be checked; use a string literal there.
 
-## Limits and diagnostics
+`nameof` is reserved at expression level, so it can't be used as the name of a local or a bare
+function; as a member name (`service.nameof()`) it is fine.
 
-Compile-time evaluation protects the compiler with:
+## Limits
 
-- a call-depth limit
-- a total-call limit
-- a statement-step budget
-- maximum generated string sizes
+Compile-time evaluation is bounded, so a runaway loop or recursion can't hang the compiler: there
+are limits on call depth, the total number of calls, the number of statements executed and the size
+of generated strings. Exceeding one is X0527, at the call that started the evaluation. `X0528`
+reports a `consteval` call that can't be completed at compile time.
 
-`X0527` reports an evaluation limit. `X0528` reports a `consteval` call that cannot be completed
-at compile time.
+## Exercises
+
+1. Declare `inline final` constants for a grid (`COLS`, `ROWS`, `CELLS = COLS * ROWS`) and check the
+   generated JavaScript.
+2. Write `constexpr function fib(n:Int):Int` and use it both in an `inline final` and with a runtime
+   argument.
+3. Make a `constexpr` class `Rgb` with a `constexpr` method `hex():String` and compute a color
+   constant from it.
+4. Use `nameof` in an `ArgumentException` message, then rename the parameter in the editor.
 
 See [`examples/inline`](../examples/inline) and
 [`tests/constexpr.test.ts`](../tests/constexpr.test.ts).

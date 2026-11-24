@@ -14,29 +14,29 @@ package xenon {
     final size:Int
     /** Adds `value` unless it is already there; returns the set, so calls chain. */
     function add(value:T):Set<T>
-    function has(value:T):Bool
+    function has(value:T):Bool const
     /** Removes `value`; returns whether it was there. */
     function delete(value:T):Bool
     function clear():Void
     /** Calls `callback(value, value, set)` for each value in insertion order (the value is passed twice, as in `Map.forEach`). */
-    function forEach(callback:(value:T, key:T, set:Set<T>) -> Void):Void
+    function forEach(callback:(value:T, key:T, set:const Set<T>) -> Void):Void const
 
     /** The values in insertion order (single-use). */
-    function values():Iterator<T>
+    function values():Iterator<T> const
     /** Same as `values()`: a set's keys are its values. */
-    function keys():Iterator<T>
+    function keys():Iterator<T> const
     /** `[value, value]` pairs, mirroring `Map.entries()`. */
-    function entries():Iterator<Tuple<T, T>>
+    function entries():Iterator<Tuple<T, T>> const
 
     // Set algebra: each returns a new set and leaves both operands unchanged.
-    function union(other:Set<T>):Set<T>
-    function intersection(other:Set<T>):Set<T>
+    function union(other:Set<T>):Set<T> const
+    function intersection(other:Set<T>):Set<T> const
     /** Values in this set but not in `other`. */
-    function difference(other:Set<T>):Set<T>
+    function difference(other:Set<T>):Set<T> const
     /** Values in exactly one of the two sets. */
-    function symmetricDifference(other:Set<T>):Set<T>
-    function isSubsetOf(other:Set<T>):Bool
-    function isSupersetOf(other:Set<T>):Bool
-    function isDisjointFrom(other:Set<T>):Bool
+    function symmetricDifference(other:Set<T>):Set<T> const
+    function isSubsetOf(other:Set<T>):Bool const
+    function isSupersetOf(other:Set<T>):Bool const
+    function isDisjointFrom(other:Set<T>):Bool const
   }
 }

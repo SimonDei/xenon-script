@@ -116,6 +116,8 @@ const cases: [string, string, string, number?][] = [
   ["public static consteval function kib(n:int):int => n * 1024", "consteval", "storage.modifier.xenon"],
   ["trace(nameof(user.email), obj.nameof())", "nameof", "keyword.operator.expression.xenon"],
   ["trace(nameof(user.email), obj.nameof())", "nameof", "entity.name.function.call.xenon", 1],
+  ["unconst(view).total = 1", "unconst", "keyword.operator.expression.xenon"],
+  ["var c:const Cart = view", "const", "storage.type.const.xenon"],
   ["var read:(User) -> String = User::name", "::", "keyword.operator.optional.xenon"],
   ["class Producer<out T> {", "out", "storage.modifier.variance.xenon"],
   ["class Cage<T extends Animal> {", "extends", "storage.modifier.extends.xenon"],

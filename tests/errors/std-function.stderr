@@ -45,12 +45,12 @@ error[X0308]: mismatched types
   --> std-function.xn:8:38
    |
  8 |     var nums:Array<int> = [1, 2].map(untyped.bind(null))   // bind gives an untyped Function
-   |                                      ^^^^^^^^^^^^^^^^^^ expected `(item:Int, index:Int, array:Array<Int>) -> Int`, found `Function`
+   |                                      ^^^^^^^^^^^^^^^^^^ expected `(item:Int, index:Int, array:const Array<Int>) -> Int`, found `Function`
    |
   ::: <xenon prelude>/xenon/Array.xn:96:30
    |
-96 |     function map<U>(callback:(item:T, index:Int, array:Array<T>) -> U):Array<U>
-   |                              ---------------------------------------- parameter declared here
+96 |     function map<U>(callback:(item:T, index:Int, array:const Array<T>) -> U):Array<U> const
+   |                              ---------------------------------------------- parameter declared here
 
 error[X0415]: `Function` can't be instantiated with `new`
  --> std-function.xn:9:22

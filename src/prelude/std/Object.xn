@@ -16,18 +16,18 @@ package xenon {
   public native class Object {
     // ---- instance members (Object.prototype) ----
     /** Text for the object; `'[object Object]'` unless a class overrides it. String concatenation calls it. */
-    function toString():String
-    function toLocaleString():String
+    function toString():String const
+    function toLocaleString():String const
     /** The primitive value of the object (the object itself unless overridden); used by comparisons. */
-    function valueOf():*
+    function valueOf():* const
     /** Prefer `Object.hasOwn(o, key)`, which also works for objects without a prototype. */
-    function hasOwnProperty(key:String):Bool
-    function hasOwnProperty(index:Float):Bool
-    function hasOwnProperty(key:Symbol):Bool
+    function hasOwnProperty(key:String):Bool const
+    function hasOwnProperty(index:Float):Bool const
+    function hasOwnProperty(key:Symbol):Bool const
     /** Is this object somewhere in `object`'s prototype chain? */
-    function isPrototypeOf(object:*):Bool
-    function propertyIsEnumerable(key:String):Bool
-    function propertyIsEnumerable(key:Symbol):Bool
+    function isPrototypeOf(object:*):Bool const
+    function propertyIsEnumerable(key:String):Bool const
+    function propertyIsEnumerable(key:Symbol):Bool const
 
     // ---- reading ----
     /** The own enumerable property names. */

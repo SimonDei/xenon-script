@@ -153,6 +153,11 @@ export const CODES: Record<string, CodeInfo> = {
   X0434: c("file-private name clash", "A file-private class has the same name as a class in the package."),
   X0435: c("file-private import", "Classes after the package block can only be used in their own file."),
   X0441: c("not visible outside its package", "The class or typedef is `internal` to its package; mark it `public` to use it elsewhere."),
+  X0442: c("nested typedef not visible", "A typedef declared in a class is visible like a member: `public` everywhere, `internal` (the default) in its package, `protected` in its class and subclasses, `private` in its class only.",
+    "package shop {\n  public class Cart {\n    private typedef Line = { sku:String, qty:Int }\n  }\n}\n\n// elsewhere\nvar l:Cart.Line", "package shop {\n  public class Cart {\n    public typedef Line = { sku:String, qty:Int }\n  }\n}\n\n// elsewhere\nvar l:Cart.Line"),
+  X0443: c("less visible typedef in a signature", "A field, method or typedef uses a nested typedef that is less visible than itself, so code that may use it couldn't name the type of what it gets. Make the typedef as visible as the declaration, or the declaration less visible.",
+    "public class Cart {\n  private typedef Line = { sku:String }\n  public function first():Line { … }\n}", "public class Cart {\n  public typedef Line = { sku:String }\n  public function first():Line { … }\n}"),
+  X0444: c("invalid typedef in a class body", "A typedef inside a class takes only a visibility (`public`, `protected`, `internal`, `private`); it belongs to the class, not to its instances, so `static` and other modifiers don't apply. Interfaces can't declare typedefs; declare the typedef in its own file or in a class."),
 
   // ---- assignment and definite assignment ----
   X0501: c("assigned twice", "`const` and `final` values can be assigned only once.",
@@ -274,6 +279,12 @@ export const CODES: Record<string, CodeInfo> = {
   X0884: c("missing semicolon", "The project ends every statement with `;` (`\"semicolons\": \"always\"` in xenon.json or `--semicolons always`). The quick fix adds it."),
   X0885: c("unnecessary semicolon", "The project ends statements with line breaks (`\"semicolons\": \"never\"` in xenon.json or `--semicolons never`): a `;` is only needed between two statements on one line. The quick fix removes it."),
   X0886: c("invalid property", "A property with accessors is a `var` with a type (`var label:String = '' { set => label = value.trim() }`). Inside its `get`/`set` the property's own name is its storage; when both accessors are given and neither uses it, there is no storage, so an initial value would be lost."),
+  X0887: c("conflicting member in an intersection", "A member that appears in several parts of `A & B` must have the same type in each; the combined shape can't have two types for one name.",
+    "typedef Named = { id:String }\ntypedef Counted = { id:Int }\nvar x:Named & Counted", "typedef Named = { id:String }\ntypedef Counted = { id:String, count:Int }\nvar x:Named & Counted"),
+  X0888: c("not a shape in an intersection", "`&` combines shapes (`{ … }` and typedefs of them) into one shape. Classes, interfaces and primitives can't be combined into a type; for a type parameter, list them as bounds instead: `T extends INamed & ISized`.",
+    "function f(x:INamed & ISized):Void {}", "function f<T extends INamed & ISized>(x:T):Void {}"),
+  X0889: c("`const` without effect", "`const T` is a read-only view of an object, array, tuple, record or shape. Primitives (`Int`, `String`, `Bool`), enums and function types can't be changed through a value anyway, so `const` adds nothing.",
+    "function show(n:const Int):Void {}", "function show(n:Int):Void {}"),
 
   // ---- destructors ----
   X0800: c("invalid destructor placement", "A class has at most one destructor; interfaces have none."),
@@ -361,6 +372,12 @@ export const CODES: Record<string, CodeInfo> = {
     "public function count():Int const { calls++; return n }", "public function count():Int const { return n }"),
   X0902: c("non-const use in a const method", "A `const` method can only use const methods and getters on `this`."),
   X0903: c("invalid `const`", "Static methods, setters and constructors can't be `const`."),
+  X0904: c("change through a `const` view", "A `const T` value is a read-only view: its fields can't be assigned and its setters can't be used, also not with `++` or `+=`. Code that holds the object as a plain `T` can still change it.",
+    "function rename(c:const Cart):Void { c.name = 'x' }", "function rename(c:Cart):Void { c.name = 'x' }"),
+  X0906: c("invalid `unconst`", "`unconst(value)` takes exactly one expression: the value whose `const` is removed."),
+  X0907: c("`unconst` without effect", "`unconst` removes `const` from a value's type; this value isn't `const`, so it does nothing."),
+  X0905: c("non-const use through a `const` view", "Through a `const T` value only `const` methods and getters can be used: others might change the object. Mark the method `const` if it doesn't change anything.",
+    "class Cart { public function count():Int { … } }\nfunction f(c:const Cart):Int => c.count()", "class Cart { public function count():Int const { … } }\nfunction f(c:const Cart):Int => c.count()"),
 };
 
 /** Text for `xenon explain <code>`. */

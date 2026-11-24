@@ -67,7 +67,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/Set.xn:32:26
    |
-32 |     function union(other:Set<T>):Set<T>
+32 |     function union(other:Set<T>):Set<T> const
    |                          ------ parameter declared here
 
 error[X0426]: no member `valuez` on `Set`

@@ -38,6 +38,13 @@ package {
       var pair:{ first:String, second:Int } = { first: 'sum', second: total }
       var twice:(Int) -> Int = (n) => n * 2
       trace(pair.first, pair.second, twice(pair.second))
+
+      // a typedef declared in a class: `Inventory.Item` outside it, `Item` inside
+      var inv:Inventory = new Inventory()
+      var hammer:Inventory.Item = { name: 'hammer', count: 2 }
+      inv.add(hammer)
+      inv.add({ name: 'nail', count: 40 })
+      trace(inv.total())
     }
 
     private function dist(p:Point, q:Point):Float {
@@ -58,4 +65,18 @@ class Vec {
   public var x:Float
   public var y:Float
   public function Vec(x:Float, y:Float) { this.x = x; this.y = y }
+}
+
+class Inventory {
+  public typedef Item = { name:String, count:Int }
+  private typedef Describe = (item:Item) -> String
+
+  private var items:Array<Item> = []
+
+  public function add(item:Item):Void { items.push(item) }
+
+  public function total():String {
+    var describe:Describe = (item) => item.name
+    return items.map(describe).join('+') + ' ' + items.length
+  }
 }

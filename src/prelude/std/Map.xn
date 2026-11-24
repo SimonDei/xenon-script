@@ -22,19 +22,19 @@ package xenon {
     /** How many keys the map holds. */
     final size:Int
     /** The value for `key`, or `null` if there is none. */
-    function get(key:K):V?
+    function get(key:K):V? const
     /** Sets the value for `key` (replacing an old one); returns the map, so calls chain. */
     function set(key:K, value:V):Map<K, V>
-    function has(key:K):Bool
+    function has(key:K):Bool const
     /** Removes `key`; returns whether it was there. */
     function delete(key:K):Bool
     function clear():Void
     /** Calls `callback(value, key, map)` for each pair in insertion order. */
-    function forEach(callback:(value:V, key:K, map:Map<K, V>) -> Void):Void
+    function forEach(callback:(value:V, key:K, map:const Map<K, V>) -> Void):Void const
 
-    function keys():Iterator<K>
-    function values():Iterator<V>
+    function keys():Iterator<K> const
+    function values():Iterator<V> const
     /** `[key, value]` pairs. */
-    function entries():Iterator<Tuple<K, V>>
+    function entries():Iterator<Tuple<K, V>> const
   }
 }

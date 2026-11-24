@@ -640,9 +640,15 @@ class DeclWriter {
       const target = (t as tsModule.TypeReference).target as tsModule.TupleType;
       const fixed = target.elementFlags.every((f) => f & this.ts.ElementFlags.Required);
       const elements = checker.getTypeArguments(t as tsModule.TypeReference);
-      return fixed && elements.length > 0 ? `Tuple<${elements.map((e) => this.type(e, false)).join(", ")}>` : "Array<*>";
+      // `readonly [a, b]`: a `const` tuple.
+      const ro = target.readonly ? "const " : "";
+      return fixed && elements.length > 0 ? `${ro}Tuple<${elements.map((e) => this.type(e, false)).join(", ")}>` : `${ro}Array<*>`;
     }
-    if (checker.isArrayType(t)) return `Array<${this.type(checker.getTypeArguments(t as tsModule.TypeReference)[0]!, false)}>`;
+    if (checker.isArrayType(t)) {
+      // `ReadonlyArray<T>` / `readonly T[]`: a `const Array<T>`.
+      const ro = t.getSymbol()?.name === "ReadonlyArray" ? "const " : "";
+      return `${ro}Array<${this.type(checker.getTypeArguments(t as tsModule.TypeReference)[0]!, false)}>`;
+    }
     const sym = t.getSymbol();
     // A web platform class the standard library declares (`Blob` in pizzip's `generate(…): Blob`):
     // the same class, whether TypeScript's DOM library, Node's or Bun's types declare it.
@@ -671,8 +677,10 @@ class DeclWriter {
     const arg = (i: number, ret = false) => (args[i] ? this.type(args[i], ret) : "*");
     switch (name) {
       case "Promise": case "PromiseLike": return `Promise<${arg(0, true)}>`;
-      case "Map": case "ReadonlyMap": return `Map<${arg(0)}, ${arg(1)}>`;
-      case "Set": case "ReadonlySet": return `Set<${arg(0)}>`;
+      case "Map": return `Map<${arg(0)}, ${arg(1)}>`;
+      case "ReadonlyMap": return `const Map<${arg(0)}, ${arg(1)}>`;
+      case "Set": return `Set<${arg(0)}>`;
+      case "ReadonlySet": return `const Set<${arg(0)}>`;
       case "Iterator": case "IterableIterator": case "IteratorObject": case "MapIterator": case "SetIterator": case "ArrayIterator": case "Generator":
         return `Iterator<${arg(0)}>`;
       case "RegExp": case "Date": case "Function": case "Object": return name;

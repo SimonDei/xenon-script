@@ -60,62 +60,62 @@ package xenon {
 
     // ---- copies (the array stays unchanged) ----
     [NoDiscard('returns a new array; this one is unchanged')]
-    function slice():Array<T>
-    function slice(start:Int):Array<T>
-    function slice(start:Int, end:Int):Array<T>
+    function slice():Array<T> const
+    function slice(start:Int):Array<T> const
+    function slice(start:Int, end:Int):Array<T> const
     [NoDiscard('returns a new array; this one is unchanged')]
-    function concat(...others:Array<Array<T>>):Array<T>
+    function concat(...others:Array<Array<T>>):Array<T> const
     [NoDiscard('returns a new array; this one is unchanged')]
-    function toReversed():Array<T>
+    function toReversed():Array<T> const
     [NoDiscard('returns a new array; this one is unchanged')]
-    function toSorted():Array<T>
-    function toSorted(compare:(a:T, b:T) -> Float):Array<T>
+    function toSorted():Array<T> const
+    function toSorted(compare:(a:T, b:T) -> Float):Array<T> const
     [NoDiscard('returns a new array; this one is unchanged')]
-    function toSpliced(start:Int, deleteCount:Int, ...items:Array<T>):Array<T>
+    function toSpliced(start:Int, deleteCount:Int, ...items:Array<T>):Array<T> const
     /** A copy with the element at `index` replaced (throws a `RangeError` out of range). */
     [NoDiscard('returns a new array; this one is unchanged')]
-    function with(index:Int, value:T):Array<T>
+    function with(index:Int, value:T):Array<T> const
     /** One level of nesting removed; the result's elements are untyped. */
     [NoDiscard('returns a new array; this one is unchanged')]
-    function flat():Array<*>
+    function flat():Array<*> const
 
     // ---- reading ----
     /** Like `a[index]`, but negative indexes count from the end: `a.at(-1)` is the last element. */
-    function at(index:Int):T?
-    function indexOf(item:T, from:Int = 0):Int
-    function lastIndexOf(item:T):Int
-    function lastIndexOf(item:T, from:Int):Int
-    function includes(item:T, from:Int = 0):Bool
+    function at(index:Int):T? const
+    function indexOf(item:T, from:Int = 0):Int const
+    function lastIndexOf(item:T):Int const
+    function lastIndexOf(item:T, from:Int):Int const
+    function includes(item:T, from:Int = 0):Bool const
     /** The elements as text, joined by `separator`. */
-    function join(separator:String = ','):String
-    function toString():String
+    function join(separator:String = ','):String const
+    function toString():String const
 
     // ---- callbacks: `(item, index, array)`; shorter parameter lists are fine ----
-    function forEach(callback:(item:T, index:Int, array:Array<T>) -> Void):Void
+    function forEach(callback:(item:T, index:Int, array:const Array<T>) -> Void):Void const
     [NoDiscard('returns a new array; this one is unchanged')]
-    function map<U>(callback:(item:T, index:Int, array:Array<T>) -> U):Array<U>
+    function map<U>(callback:(item:T, index:Int, array:const Array<T>) -> U):Array<U> const
     [NoDiscard('returns a new array; this one is unchanged')]
-    function flatMap<U>(callback:(item:T, index:Int, array:Array<T>) -> Array<U>):Array<U>
+    function flatMap<U>(callback:(item:T, index:Int, array:const Array<T>) -> Array<U>):Array<U> const
     [NoDiscard('returns a new array; this one is unchanged')]
-    function filter(test:(item:T, index:Int, array:Array<T>) -> Bool):Array<T>
-    function some(test:(item:T, index:Int, array:Array<T>) -> Bool):Bool
-    function every(test:(item:T, index:Int, array:Array<T>) -> Bool):Bool
+    function filter(test:(item:T, index:Int, array:const Array<T>) -> Bool):Array<T> const
+    function some(test:(item:T, index:Int, array:const Array<T>) -> Bool):Bool const
+    function every(test:(item:T, index:Int, array:const Array<T>) -> Bool):Bool const
     /** The first element passing `test`, or `null`. */
-    function find(test:(item:T, index:Int, array:Array<T>) -> Bool):T?
+    function find(test:(item:T, index:Int, array:const Array<T>) -> Bool):T? const
     /** Its position, or -1. */
-    function findIndex(test:(item:T, index:Int, array:Array<T>) -> Bool):Int
-    function findLast(test:(item:T, index:Int, array:Array<T>) -> Bool):T?
-    function findLastIndex(test:(item:T, index:Int, array:Array<T>) -> Bool):Int
+    function findIndex(test:(item:T, index:Int, array:const Array<T>) -> Bool):Int const
+    function findLast(test:(item:T, index:Int, array:const Array<T>) -> Bool):T? const
+    function findLastIndex(test:(item:T, index:Int, array:const Array<T>) -> Bool):Int const
     /** Folds from the left without a start value (throws a `TypeError` on an empty array). */
-    function reduce(callback:(accumulator:T, item:T, index:Int, array:Array<T>) -> T):T
-    function reduce<U>(callback:(accumulator:U, item:T, index:Int, array:Array<T>) -> U, initial:U):U
-    function reduceRight(callback:(accumulator:T, item:T, index:Int, array:Array<T>) -> T):T
-    function reduceRight<U>(callback:(accumulator:U, item:T, index:Int, array:Array<T>) -> U, initial:U):U
+    function reduce(callback:(accumulator:T, item:T, index:Int, array:const Array<T>) -> T):T const
+    function reduce<U>(callback:(accumulator:U, item:T, index:Int, array:const Array<T>) -> U, initial:U):U const
+    function reduceRight(callback:(accumulator:T, item:T, index:Int, array:const Array<T>) -> T):T const
+    function reduceRight<U>(callback:(accumulator:U, item:T, index:Int, array:const Array<T>) -> U, initial:U):U const
 
     // ---- iterators ----
-    function keys():Iterator<Int>
-    function values():Iterator<T>
+    function keys():Iterator<Int> const
+    function values():Iterator<T> const
     /** `[index, item]` pairs. */
-    function entries():Iterator<Tuple<Int, T>>
+    function entries():Iterator<Tuple<Int, T>> const
   }
 }

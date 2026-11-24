@@ -303,7 +303,7 @@ package {
       var total:Int = 0
       for (var n:Int of ids) total += n
       trace(total)
-      ids.forEach((value:Int, key:Int, owner:Set<Int>):Void => trace('each', value))
+      ids.forEach((value:Int, key:Int, owner:const Set<Int>):Void => trace('each', value))
 
       // set algebra returns new sets; spread them into arrays to print
       var other:Set<Int> = new Set([2, 3, 4])
@@ -379,7 +379,7 @@ package {
 
       // keys(), values() and entries() are iterators
       trace(ages.keys().toArray().join(','), ages.values().toArray().join(','), ages.entries().toArray().length)
-      ages.forEach((value:Int, key:String, owner:Map<String, Int>):Void => trace(key, value))
+      ages.forEach((value:Int, key:String, owner:const Map<String, Int>):Void => trace(key, value))
 
       // Map.groupBy builds a Map<K, Array<T>> from a function of each item
       var byLength:Map<Int, Array<String>> = Map.groupBy(['a', 'bb', 'cc', 'd'], (w:String, i:Int):Int => w.length)
@@ -422,7 +422,7 @@ package {
       // callbacks are typed; map<U> infers U from what the callback returns
       var labels:Array<String> = nums.map((x:Int, i:Int):String => 'n' + x)
       trace(labels.join(','), nums.filter((x:Int, i:Int):Bool => x > 2).length)
-      trace(nums.reduce((acc:Int, x:Int, i:Int, all:Array<Int>):Int => acc + x), nums.reduce((acc:String, x:Int, i:Int, all:Array<Int>):String => acc + x, ''))
+      trace(nums.reduce((acc:Int, x:Int, i:Int, all:const Array<Int>):Int => acc + x), nums.reduce((acc:String, x:Int, i:Int, all:const Array<Int>):String => acc + x, ''))
       trace(nums.some((x:Int):Bool => x > 9), nums.every((x:Int):Bool => x > 9), nums.find((x:Int):Bool => x > 2), nums.findIndex((x:Int):Bool => x > 2))
 
       // copies leave the array alone; splice removes and inserts

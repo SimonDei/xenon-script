@@ -443,16 +443,20 @@ export class Parser {
     if (this.is("function")) return this.parseMethod(modifiers, start, ""); // package-level: checked in collectClasses (X0029)
     if (this.is("class")) return this.parseClass(modifiers, start);
     if (this.is("interface")) return this.parseInterface(modifiers, start);
-    if (this.eat("typedef")) {
-      const name = this.ident("a typedef name");
-      const typeParams = this.typeParamList(false, true);
-      this.expect("=");
-      const type = this.parseType();
-      this.endStatement();
-      return { kind: "Typedef", modifiers, name, typeParams, type, span: this.sp(start) };
-    }
+    if (this.is("typedef")) return this.parseTypedef(modifiers, start);
     if (this.is("enum")) return this.parseEnum(modifiers, start);
     this.unexpected("a class declaration");
+  }
+
+  /** `typedef Name<T> = Type`, from the `typedef` keyword. */
+  private parseTypedef(modifiers: A.Modifiers, start: number): A.TypedefDecl {
+    this.expect("typedef");
+    const name = this.ident("a typedef name");
+    const typeParams = this.typeParamList(false, true);
+    this.expect("=");
+    const type = this.parseType();
+    this.endStatement();
+    return { kind: "Typedef", modifiers, name, typeParams, type, span: this.sp(start) };
   }
 
   private parseClass(modifiers: A.Modifiers, start: number): A.ClassDecl {
@@ -468,10 +472,15 @@ export class Parser {
     }
     const open = this.expect("{");
     const members: A.Member[] = [];
+    let typedefs: A.TypedefDecl[] | undefined;
     while (!this.is("}") && this.tok.kind !== "eof") {
       const memberStart = this.i;
       try {
         const m = this.parseMember(name.name);
+        if (m.kind === "Typedef") {
+          (typedefs ??= []).push(m);
+          continue;
+        }
         // Members of a native class describe the JS API: public unless stated, never with code.
         if (modifiers.native && m.kind !== "StaticBlock") {
           if (!m.modifiers.visibility) m.modifiers.visibility = { value: "public", span: m.name.span };
@@ -485,7 +494,7 @@ export class Parser {
       }
     }
     this.expectClose("}", open);
-    return { kind: "Class", modifiers, name, typeParams, extends: ext, implements: impls, members, span: this.sp(start) };
+    return { kind: "Class", modifiers, name, typeParams, extends: ext, implements: impls, members, typedefs, span: this.sp(start) };
   }
 
   /**
@@ -539,6 +548,11 @@ export class Parser {
       const memberStart = this.i;
       try {
         const m = this.parseMember("");
+        if (m.kind === "Typedef") {
+          this.diags.error("X0444", "an interface can't declare a typedef", m.name.span, "inside an interface")
+            .help(`declare it in its own file \`${m.name.name}.xn\`, or in a class`);
+          continue;
+        }
         // Interface members are public; an explicit visibility other than `public` is reported by the checker.
         if (m.kind !== "StaticBlock" && !m.modifiers.visibility) m.modifiers.visibility = { value: "public", span: m.name.span };
         if (modifiers.native && m.kind !== "StaticBlock") m.modifiers.native = modifiers.native;
@@ -660,19 +674,31 @@ export class Parser {
     return getter;
   }
 
-  private parseMember(className: string): A.Member {
+  /** A member, or a nested `typedef` (which the class keeps apart from its members). */
+  private parseMember(className: string): A.Member | A.TypedefDecl {
     const attributes = this.parseAttributes();
     const member = this.parseMemberInner(className);
     if (attributes.length === 0) return member;
     member.span = cover(attributes[0]!.span, member.span);
     if (member.kind === "StaticBlock") this.misplacedAttributes(attributes, "a `static` block");
+    else if (member.kind === "Typedef") this.misplacedAttributes(attributes, "a typedef");
     else member.attributes = attributes;
     return member;
   }
 
-  private parseMemberInner(className: string): A.Member {
+  private parseMemberInner(className: string): A.Member | A.TypedefDecl {
     const start = this.tok.span.start;
     const modifiers = this.parseModifiers(true);
+
+    // `private typedef Row = { … }`: a type named `Owner.Row` outside the class.
+    if (this.is("typedef")) {
+      const extra = Object.entries(modifiers).find(([k]) => k !== "visibility" && k !== "nativeName");
+      if (extra) {
+        this.diags.error("X0444", `a typedef can't be \`${extra[0]}\``, extra[1] as Span, "not allowed on a typedef")
+          .note("a typedef only takes a visibility: `public`, `protected`, `internal` or `private`");
+      }
+      return this.parseTypedef(modifiers, start);
+    }
 
     if (modifiers.static && this.is("{")) {
       const others = Object.keys(modifiers).filter((k) => k !== "static");
@@ -788,16 +814,26 @@ export class Parser {
   /* ------------------------------ types ------------------------------ */
 
   /**
-   * A type; `A | B | null` is a union unless `union` is false (after `is`/`as` and `new`, where a
-   * `|` is the bitwise operator: `x as int | 1`).
+   * A type; `A | B | null` is a union and `A & B` an intersection (binding tighter, as in
+   * TypeScript) unless `union` is false (after `is`/`as` and `new`, where `|` and `&` are the
+   * bitwise operators: `x as int | 1`).
    */
   parseType(union = true): A.TypeNode {
     const start = this.tok.span.start;
-    const first = this.parseNullableType();
+    const first = union ? this.parseIntersectionType() : this.parseNullableType();
     if (!union || !this.is("|")) return first;
     const types = [first];
-    while (this.eat("|")) types.push(this.parseNullableType());
+    while (this.eat("|")) types.push(this.parseIntersectionType());
     return { kind: "UnionType", types, span: this.sp(start) };
+  }
+
+  private parseIntersectionType(): A.TypeNode {
+    const start = this.tok.span.start;
+    const first = this.parseNullableType();
+    if (!this.is("&")) return first;
+    const types = [first];
+    while (this.eat("&")) types.push(this.parseNullableType());
+    return { kind: "IntersectionType", types, span: this.sp(start) };
   }
 
   private parseNullableType(): A.TypeNode {
@@ -816,6 +852,8 @@ export class Parser {
 
   private parseTypeAtom(): A.TypeNode {
     const start = this.tok.span.start;
+    // `const Cart`: binds to the type right after it (`const Cart?` is a nullable `const Cart`).
+    if (this.eat("const")) return { kind: "ConstType", inner: this.parseTypeAtom(), span: this.sp(start) };
     if (this.eat("*")) return { kind: "AnyType", span: this.sp(start) };
     if (this.is("{")) return this.parseShapeType();
     if (this.is("(")) return this.parseFunctionType();
@@ -859,7 +897,14 @@ export class Parser {
       }
       const param: A.TypeParam = this.ident("a type parameter name");
       if (variance) param.variance = variance;
-      if (this.eat("extends")) param.constraint = this.parseType();
+      if (this.eat("extends")) {
+        // `T extends INamed & ISized`: several bounds, each one checked on its own.
+        const bound = this.parseType();
+        if (bound.kind === "IntersectionType") {
+          param.constraint = bound.types[0]!;
+          param.extraConstraints = bound.types.slice(1);
+        } else param.constraint = bound;
+      }
       if (this.is("=")) {
         if (!allowDefaults) this.fail("only a class or interface type parameter can have a default", this.tok.span, "write just the name");
         this.advance();
@@ -1649,6 +1694,14 @@ export class Parser {
           case "nameof": {
             this.advance();
             return { kind: "Nameof", args: this.parseArgs(), span: this.sp(start) };
+          }
+          case "unconst": {
+            this.advance();
+            if (!this.is("(")) this.unexpected("`(` after `unconst`");
+            const args = this.parseArgs();
+            const arg = args.length === 1 && args[0]!.kind !== "Spread" ? args[0]! : undefined;
+            if (!arg) this.diags.error("X0906", "`unconst` takes exactly one expression", this.sp(start), `${args.length} given`);
+            return { kind: "Unconst", arg: arg ?? { kind: "Error", span: this.sp(start) }, span: this.sp(start) };
           }
           case "new": {
             this.advance();

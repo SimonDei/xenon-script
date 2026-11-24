@@ -14,14 +14,14 @@ contextual words in the next section when the syntax permits an otherwise valid 
 | `class` | Declares a concrete, abstract, final, static, or native class. |
 | `interface` | Declares a nominal contract that classes or other interfaces extend/implement. |
 | `enum` | Declares a fixed set of named values. |
-| `typedef` | Gives a name to a structural shape, function type, union, or other type expression. |
+| `typedef` | Gives a name to a structural shape, function type, union, or other type expression. Inside a class body it is named `Owner.Name` outside the class and takes a member visibility. |
 | `extends` | Declares a superclass, or the parent interface of an interface. |
 | `implements` | Lists interfaces that a class or enum implements. |
-| `function` | Declares a method or package-level function. |
+| `function` | Declares a method, accessor, constructor, destructor, local function or function expression. (Package-level functions exist only in the standard library's declarations.) |
 | `var` | Declares a mutable local, field, or loop variable. |
-| `const` | Declares an immutable initialized constant; on a method it marks a read-only `this` contract. |
+| `const` | Declares a constant initialized at its declaration; after a method's return type it makes the method read-only; before a type it makes a read-only view (`const Cart`). |
 | `final` | Declares a value assigned once, prevents a class from being extended, or a method from being overridden. |
-| `using` | Declares or blocks a scoped disposable resource whose destructor runs at scope exit. |
+| `using` | Calls `dispose()` of an `IDisposable` (or awaits that of an `IAsyncDisposable`) when its block ends: `using (r = open()) { … }`, `using r = open()`, `using (existing) …`. |
 
 ### Modifiers
 
@@ -56,7 +56,7 @@ read-only with respect to `this`.
 | `while` | Repeats a body while a `Bool` condition is true. |
 | `do` | Starts a loop whose condition is checked after each iteration. |
 | `for` | Starts a C-style, `for … of`, `for … in`, or range loop. |
-| `in` | Iterates object keys, or tests whether a key/property exists in an object with the `in` operator. |
+| `in` | Iterates object keys (`for (var k in obj)`), tests whether a property exists (`'a' in obj`), or marks a contravariant type parameter (`Consumer<in T>`). |
 | `break` | Leaves the innermost loop or `switch`. |
 | `continue` | Starts the next iteration of the innermost loop. |
 | `return` | Leaves a function and optionally supplies its result. |
@@ -73,16 +73,17 @@ read-only with respect to `this`.
 | `this` | Refers to the current instance. It is unavailable in static methods. |
 | `super` | Refers to the parent class implementation or constructor. |
 | `is` | Tests a value against a runtime-compatible type. |
-| `as` | Performs a checked runtime cast; incompatible values become `null`. |
+| `as` | Performs a checked runtime cast; incompatible values become `null`. A cast keeps `const`. |
 | `typeof` | Produces the JavaScript runtime type tag of a value. |
 | `delete` | Deletes a property from a dynamic/`*` or `Object` value. |
 | `await` | Pauses an async function until a promise settles and produces its value. |
 | `nameof` | Produces the checked source name of a local, parameter, class, member, or enum member as a string constant. |
+| `unconst` | `unconst(value)`: the value with `const` removed from its type, at any depth. Compile time only; it emits just `value`. |
 | `true` | The true `Bool` literal. |
 | `false` | The false `Bool` literal. |
 | `null` | The null/no-value literal and the value handled by nullable types. |
 | `undefined` | JavaScript's undefined value. Supported for compatibility, but every use warns; use `null`. |
-| `void` | Names a function result with no value. Outside ordinary value positions, it is also supported as `Promise<void>`. |
+| `void` | The lowercase alias of `Void`. As a statement prefix, `void promise()` starts a promise deliberately without awaiting it. |
 
 ### Reserved for later
 
@@ -109,12 +110,13 @@ syntax.
 | `step` | range-loop stride |
 | `defer` | statement scheduled for block end |
 | `out` | marks a covariant type parameter: `Producer<out T>` |
+| `get`, `set` in a property | accessors of a property: `var x:T { get => …; set => … }` |
 | `extends` after a type parameter | constrains the parameter: `T extends Comparable<T>` |
 
 Outside its special position, a contextual word can remain an identifier.
 
-`nameof` is reserved at expression level, so it cannot be declared as a local or bare function
-name. Like other keywords, it remains valid as a member name (`obj.nameof()`).
+`nameof` and `unconst` are reserved at expression level, so they cannot be declared as a local or
+bare function name. Like other keywords, they remain valid as member names (`obj.nameof()`).
 
 ## Primitive and built-in type notation
 
@@ -130,6 +132,9 @@ A | B
 'literal' | 'other'
 (A, B) -> R
 { field:T, ?optional:T?, final readonly:T }
+Shape & { extra:T }          shapes combined into one
+const Cart                   a read-only view (see chapter 5)
+T extends A & B              a type parameter with several bounds
 Producer<out T>
 Consumer<in T>
 ```
@@ -150,6 +155,7 @@ public abstract class Base
 public interface Contract<T>
 public class Event<T = EventTarget>
 public typedef Shape<T> = { value:T }
+public class Cart { public typedef Line = { sku:String } }   // Cart.Line
 public enum Kind { A, B = 4 }
 
 public function method(a:T):R
@@ -159,6 +165,12 @@ public function get property():T
 public function set property(value:T):Void
 public function operator+(other:This):This
 public function ~Resource()
+public function count():Int const                           // a const method
+public function view():const Cart const                     // returning a read-only view
+public function apply(final cart:const Cart):Void           // final and read-only parameter
+public var label:String = '' { set => label = value.trim() }  // a property with accessors
+public function Name(…)                                     // constructor
+[Route('/users', verb = 'POST')] public function create():Void  // attributes
 ```
 
 Methods and accessors of an object literal use the same words:
@@ -189,6 +201,14 @@ defer statement
 try { ... } catch (e:Exception) { ... } finally { ... }
 ```
 
+Array comprehensions are expressions with the same loop forms:
+
+```actionscript
+[for (value of values) if (condition) result]
+[for (a of xs) for (b of ys) [a, b]]
+[for (var i:Int of 0..10 step 2) i * i]
+```
+
 ## Operators
 
 ```text
@@ -203,10 +223,36 @@ update         ++  --
 member         .  ?.
 conditional    ? :
 spread/range   ...  ..  ..=
-type           is  as  typeof
-other          delete  await  nameof
+type           is  as  typeof  (expr : Type)
+other          delete  await  nameof  unconst  void
 references     Type::member
 ```
+
+`==` and `!=` are always strict (`===` and `!==` work and warn), conditions must be `Bool`, `/` gives
+a `Float`, and integer `+ - *` wrap at 32 bits (see [chapter 2](02-values-and-syntax.md#operators)).
+
+## Common diagnostics
+
+Every diagnostic has a code; `xenon explain <code>` prints a longer explanation with an example.
+The ones met most often:
+
+| Code | Meaning | See |
+|---|---|---|
+| X0308 | mismatched types: a value doesn't fit where it's used | [3](03-types-and-null-safety.md#how-types-fit-together) |
+| X0310 | a condition isn't a `Bool` | [2](02-values-and-syntax.md#conditions-are-bool) |
+| X0314 | not every path of a function returns a value | [4](04-control-flow-and-functions.md#functions) |
+| X0398 | a value that may be `null` is used as if it weren't | [3](03-types-and-null-safety.md#null-safety) |
+| X0420, X0425, X0426 | unknown type, name or member | |
+| X0501, X0502, X0510 | a `final`/`const` assigned twice, outside its constructor, or read before it's assigned | [2](02-values-and-syntax.md#declarations), [5](05-classes-and-objects.md#fields) |
+| X0603 | a member isn't visible here | [5](05-classes-and-objects.md#visibility) |
+| X0720, X0721 | `override` missing, or there is nothing to override | [5](05-classes-and-objects.md#inheritance) |
+| X0787, X0788 | an interface member is missing or doesn't match | [6](06-interfaces-and-generics.md#interfaces) |
+| X0819 | a non-null field isn't assigned on every constructor path | [3](03-types-and-null-safety.md#null-safety) |
+| X0822–X0825 | a scoped value could outlive its owner | [7](07-async-errors-and-resources.md#scoped-destructors) |
+| X0861, X0870 | an unused variable or import (warnings) | |
+| X0874 | a promise is neither awaited nor kept (warning) | [7](07-async-errors-and-resources.md#forgotten-promises) |
+| X0880 | a type argument doesn't satisfy a constraint | [6](06-interfaces-and-generics.md#generic-constraints) |
+| X0901–X0905 | a change through `const` (a const method or a read-only view) | [5](05-classes-and-objects.md#const-methods) |
 
 ## Current boundaries
 
@@ -217,8 +263,11 @@ Not currently implemented:
 - generator functions using `yield`
 - labels for nested `break`/`continue`
 - first-class `Range` values
-- intersection constraints for one parameter (use a combining interface or structural type)
-- transitive `const T` read-only types
+- intersections of classes or interfaces as types (`var x:INamed & ISized`); shapes combine anywhere (`Attrs & { extra:String }`), and `T extends INamed & ISized` works
+- `new` and statics through a `Class<T>` value
+- overloads in XenonScript code (only native declarations have them)
+- a non-null assertion operator (`x!`)
+- `const` for the DOM classes, `Event`, `EventTarget`, iterators and `Response` (not checked through `const` views yet)
 - owned scoped fields and reassignment-time destruction
 - closures proved safe to call only before a scoped owner ends
 - async functions returning scoped resources

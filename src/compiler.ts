@@ -209,7 +209,21 @@ function collectClasses(asts: A.XenonFile[], diags: DiagnosticBag, typedefs: Map
         diags.error("X0024", `class \`${qname}\` is defined more than once`, decl.name.span).secondary(prev.decl.name.span, "first defined here");
         return;
       }
-      classes.set(qname, { decl, file: ast, pkg, qname, filePrivate, module, members: new Map(), interfaces: [], typeParams: uniqueParams(decl.typeParams, diags), parentArgs: [], interfaceArgs: [] });
+      const info: ClassInfo = { decl, file: ast, pkg, qname, filePrivate, module, members: new Map(), interfaces: [], typeParams: uniqueParams(decl.typeParams, diags), parentArgs: [], interfaceArgs: [] };
+      classes.set(qname, info);
+      // Nested typedefs: `Owner.Name` (registered under `<owner's qname>.Name`).
+      for (const td of decl.typedefs ?? []) {
+        const tdName = `${qname}.${td.name.name}`;
+        const prev = typedefs.get(tdName);
+        if (prev) {
+          diags.error("X0024", `typedef \`${decl.name.name}.${td.name.name}\` is defined more than once`, td.name.span).secondary(prev.decl.name.span, "first defined here");
+          continue;
+        }
+        typedefs.set(tdName, {
+          decl: td, file: ast, pkg, qname: tdName, filePrivate: false, owner: info,
+          displayName: `${decl.name.name}.${td.name.name}`, params: uniqueParams(td.typeParams, diags),
+        });
+      }
     };
     for (const decl of ast.decls) add(decl, false);
     for (const fn of ast.functions) {

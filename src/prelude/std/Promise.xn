@@ -62,20 +62,20 @@ package xenon {
 
     // ---- reacting ----
     /** A promise of what `onFulfilled` returns for the value (waiting for it if it's a promise); rejections pass through. */
-    function then<U>(onFulfilled:(value:T) -> Promise<U>):Promise<U>
-    function then<U>(onFulfilled:(value:T) -> U):Promise<U>
+    function then<U>(onFulfilled:(value:T) -> Promise<U>):Promise<U> const
+    function then<U>(onFulfilled:(value:T) -> U):Promise<U> const
     /** Also handles a rejection: the result is what `onRejected` returns for its reason. */
-    function then<U>(onFulfilled:(value:T) -> Promise<U>, onRejected:(reason:*) -> Promise<U>):Promise<U>
-    function then<U>(onFulfilled:(value:T) -> U, onRejected:(reason:*) -> U):Promise<U>
+    function then<U>(onFulfilled:(value:T) -> Promise<U>, onRejected:(reason:*) -> Promise<U>):Promise<U> const
+    function then<U>(onFulfilled:(value:T) -> U, onRejected:(reason:*) -> U):Promise<U> const
     /** Handles a rejection with a replacement value (or promise): `load().catch(_ => defaults)`. */
-    function catch(onRejected:(reason:*) -> T):Promise<T>
-    function catch(onRejected:(reason:*) -> Promise<T>):Promise<T>
+    function catch(onRejected:(reason:*) -> T):Promise<T> const
+    function catch(onRejected:(reason:*) -> Promise<T>):Promise<T> const
     /** Handles a rejection without a replacement (`p.catch(e => trace(e))`): the value is `null` then. */
-    function catch(onRejected:(reason:*) -> Void):Promise<T?>
+    function catch(onRejected:(reason:*) -> Void):Promise<T?> const
     /**
      * Runs `onFinally` once the promise settles either way; the result settles like this promise
      * (or rejects, if `onFinally` throws or returns a rejected promise).
      */
-    function finally(onFinally:() -> Void):Promise<T>
+    function finally(onFinally:() -> Void):Promise<T> const
   }
 }
