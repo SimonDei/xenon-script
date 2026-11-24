@@ -23,11 +23,17 @@ test("one module for the program; packages, built-in modules and the source fold
   expect(bundle).toContain(`import * as Sheet from "./lib/sheet.js";`);
   expect(bundle).toContain(`import { Cell, toCsv } from "./lib/sheet.js";`);
   expect(bundle).toContain("// reports/Totals.js");
-  expect(bundle).not.toContain("class Exception"); // prelude classes the program doesn't use are left out
+  // Prelude classes the program doesn't use are left out (`Exception` stays: checked indexes throw a
+  // `RangeException`); interface marks are getters in the class body, so marked classes go too.
+  expect(bundle).toContain("class RangeException");
+  for (const unused of ["class ArgumentException", "class NotImplementedException", "class Deprecated", "class NoDiscard"]) {
+    expect(bundle).not.toContain(unused);
+  }
   expect(bundle.trimEnd().endsWith("//# sourceMappingURL=xenon-main.js.map")).toBe(true);
   expect(bundle.split("\n").slice(0, -1).filter((l) => l.trim() === "")).toEqual([]); // no blank lines
   const map = JSON.parse(outputs.find((o) => o.path === "xenon-main.js.map")!.text);
-  expect([...map.sources].sort()).toEqual(["../src/Main.xn", "../src/reports/Totals.xn"]);
+  // The prelude code the bundle keeps (checked indexes, `RangeException`) maps to the prelude, embedded in the map.
+  expect([...map.sources].sort()).toEqual(["../src/Main.xn", "../src/reports/Totals.xn", "xenon/Prelude.xn"]);
   expect(map.sourcesContent.every((c: string | null) => c?.includes("class"))).toBe(true);
 
   for (const o of outputs) await Bun.write(join(out, o.path), o.text);

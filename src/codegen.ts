@@ -734,18 +734,20 @@ class ModuleGen {
       this.from(m, () => this.member(info, decl, m, guard));
     }
     this.disposeBridge(info, !!prev);
+    // Mark the prototype for every interface this class implements (super-interfaces included);
+    // subclasses inherit the marks through the prototype chain. A getter in the class body, not an
+    // assignment after it: the class stays free of side effects, so a bundler drops it when unused.
+    const marks = [...supertypes(info)].filter((t) => t.decl.isInterface && !this.inheritedMark(info, t));
+    for (const iface of marks) {
+      if (prev) this.w.line();
+      prev = decl.members[0];
+      this.w.line(`get [${this.classRef(iface)}]()${this.ts ? ": true" : ""} { return true; }`);
+    }
     this.w.dedent();
     this.w.line("}");
     for (const l of this.afterClass) this.w.line(l);
     this.afterClass = [];
     this.attributeTable(info, decl);
-    // Mark the prototype for every interface this class implements (super-interfaces included);
-    // subclasses inherit the marks through the prototype chain.
-    const marks = [...supertypes(info)].filter((t) => t.decl.isInterface && !this.inheritedMark(info, t));
-    for (const iface of marks) {
-      const proto = this.ts ? `(${decl.name.name}.prototype as any)` : `${decl.name.name}.prototype`;
-      this.w.line(`${proto}[${this.classRef(iface)}] = true;`);
-    }
   }
 
   /** TypeScript: the parameters of the parent's constructor as a tuple type, `[name: string, age?: number]`. */
