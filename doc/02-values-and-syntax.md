@@ -100,6 +100,7 @@ var counter = {
 }
 ```
 
+A body can also be one expression, as for class methods: `function get total():Int => rows.length`.
 They compile to JavaScript methods, getters, and setters. `this` is the object itself (untyped, like
 in a `function` expression); an arrow function inside keeps the same `this`. A getter needs a return
 type, a setter takes one typed parameter, and neither can be `async`. A getter and a setter with the

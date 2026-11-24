@@ -1808,7 +1808,13 @@ export class Parser {
     const typeParams = this.typeParamList();
     const params = this.parseParams();
     const returnType = this.eat(":") ? this.parseType() : undefined;
-    const body = this.parseBlock();
+    // `function get total():Int => rows.length`: an expression body, as for class methods.
+    let body: A.Block;
+    if (this.eat("=>")) {
+      const bodyStart = this.tok.span.start;
+      const expr = this.parseAssign();
+      body = { kind: "Block", body: [exprBodyStatement(expr, returnType, accessor, false)], span: this.sp(bodyStart) };
+    } else body = this.parseBlock();
     const fn: A.FunctionNode = { kind: "Function", arrow: false, async: isAsync, typeParams, params, returnType, body, span: this.sp(start) };
     if (accessor) return { kind: "Accessor", accessor, key, fn, span: this.sp(start) };
     return { kind: "Prop", key, value: fn, method: true, span: this.sp(start) };

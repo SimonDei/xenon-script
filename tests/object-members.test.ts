@@ -91,3 +91,31 @@ public class Main {
 });
 
 afterAll(() => rm(join(import.meta.dir, ".members-ts"), { recursive: true, force: true }));
+
+test("methods and accessors of an object literal may have an expression body (`=> expr`)", async () => {
+  const text = `public class Main {
+  public function Main() {}
+  public static function run():Array<String> {
+    var rows:Array<Int> = [1, 2, 3]
+    var log:Array<String> = []
+    var o = {
+      count: 2,
+      function get total():Int => rows.length,
+      function get first():Int? => rows.at(0),
+      function set size(n:Int):Void => this.count = n,
+      function twice(n:Int):Int => n * 2,
+      function note():Void => log.push('noted')
+    }
+    o.size = 5
+    o.note()
+    return [$'{o.total} {o.first} {o.count} {o.twice(4)}', log.join(',')]
+  }
+}
+`;
+  const result = compileProject([{ path: "Main.xn", text }], { main: "Main" });
+  expect(errors(result)).toEqual([]);
+  const js = result.outputs.find((o) => o.path === "Main.js")!.text;
+  expect(js).toContain("get total() {");
+  const Main = new Function(`${js.replace(/^export /m, "").replace(/\/\/# sourceMappingURL.*$/m, "")}; return Main;`)();
+  expect(Main.run()).toEqual(["3 1 5 8", "noted"]);
+});
