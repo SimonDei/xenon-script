@@ -1,0 +1,26 @@
+// X0883: a type parameter that only an untyped arrow parameter could decide becomes `*`.
+class Animal {
+  public var name:String = ''
+  public function Animal() {}
+}
+class Dog extends Animal {
+  public function Dog() { super() }
+}
+
+public class Main {
+  public function Main() {
+    var dogs:Array<Dog> = [new Dog()]
+    dogs.sort(Main.by(Dog::name))                 // fine: T = Dog, K = String
+    dogs.sort(Main.by(Animal::name))              // fine: a reader of Animals reads Dogs (`in Owner`)
+    dogs.sort(Main.by((d:Dog) => d.name))         // fine: the parameter has a type
+    var cmp:(a:Dog, b:Dog) -> Int = Main.by(d => d.name)   // fine: the expected type decides T
+    var lost = Main.by(d => d.name)               // X0883: T is `*`
+    var mapped = dogs.map(d => d.name)            // fine: T is the array's, not the callback's
+    var p = new Promise(resolve => resolve(1))    // X0883: a Promise<*>
+    trace(cmp, lost, mapped, p)
+  }
+
+  public static function by<T, K>(key:PropertyReference<T, K>):(a:T, b:T) -> Int {
+    return (a, b) => String(key(a)).localeCompare(String(key(b)))
+  }
+}

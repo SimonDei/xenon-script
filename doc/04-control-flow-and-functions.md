@@ -129,6 +129,21 @@ save(user, 'next value')
 The reference is checked for visibility and member existence. Static members do not have an instance
 receiver and therefore cannot use `::`.
 
+A reference carries its owner type, which an arrow's untyped parameter doesn't. That matters for
+generic functions whose type parameters only a callback's parameter could decide:
+
+```actionscript
+public static function by<T, K>(key:PropertyReference<T, K>):(a:T, b:T) -> Int { … }
+
+dogs.sort(by(Dog::name))        // T = Dog, K = String
+dogs.sort(by(Animal::name))     // also fine: `PropertyReference<in Owner, out Value>`
+var lost = by(d => d.name)      // warning X0883: `d` has no type, so T is `*`
+```
+
+Annotate the arrow's parameter (`(d:Dog) => d.name`), give the result an expected type, or use a
+property reference. Callbacks whose parameter types come from elsewhere (`dogs.map(d => d.name)`,
+where `T` is the array's) are not affected.
+
 Use `nameof` when an API needs the checked JavaScript property name rather than a reader:
 
 ```actionscript

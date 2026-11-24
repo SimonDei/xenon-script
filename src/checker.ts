@@ -12,7 +12,7 @@ import {
   arithmeticResult, assignable, isSubclass, supertypes, BUILTIN_TYPES, arrayOf, elementOf, isDynamic, isNullable, isNumeric, isPrim, nonNull, nullableOf,
   bind, classValueOf, eraseParams, memberTypeIn, stdClassOf, type MethodType, numberLiteralType, sameType, type ShapeMember, type ShapeType, subst, superclasses,
   supertypeArgs, T, type Type, type TypeParamInfo, typeToString, unify,
-  requiredParams, literalType, literalOf, widen, unionOf, membersOf, valueFits, type UnionType, tupleOf, tupleElements, nullSafety, recordOf, recordValue,
+  requiredParams, literalType, literalOf, widen, unionOf, membersOf, valueFits, type UnionType, tupleOf, tupleElements, nullSafety, recordOf, recordValue, paramsIn,
 } from "./types.ts";
 
 /** A class known to the project. */
@@ -5357,6 +5357,7 @@ class BodyChecker {
     // `var p:Promise<void> = new Promise((resolve, reject) => resolve())`, `resolve` takes a `void`.
     const seeded = new Map<TypeParamInfo, Type>();
     if (seed) unify(seed[0], seed[1], set, seeded);
+    const beforeFunctions = new Set(out.keys());
     args.forEach((a, i) => {
       const pattern = patternAt(i);
       if (a.kind !== "Function" || !pattern) return;
@@ -5364,6 +5365,21 @@ class BodyChecker {
       const t = this.record(a, this.fnExpr(a, scope, known.kind === "method" ? (eraseParams(known, set) as MethodType) : undefined));
       this.preTyped.set(a, t);
       unify(pattern, t, set, out);
+    });
+    // `by(d => d.name)` with `by<T, K>(key:(T) -> K)`: nothing gives `d` a type, so `T` (and what
+    // depends on it) silently became `*`. Only parameters count: an untyped result (`json.map(x => x.id)`) is fine.
+    args.forEach((a, i) => {
+      const pattern = patternAt(i);
+      if (a.kind !== "Function" || pattern?.kind !== "method") return;
+      a.params.forEach((p, j) => {
+        const pp = pattern.params[j];
+        if (p.type || !pp) return;
+        const lost = paramsIn(pp.type).filter((v) => set.has(v) && !beforeFunctions.has(v) && !seeded.has(v) && isDynamic(out.get(v) ?? T.void));
+        if (lost.length === 0) return;
+        const names = lost.map((v) => `\`${v.name}\``).join(", ");
+        this.diags.warning("X0883", `${names} can't be inferred: \`${p.name.name}\` has no type, so ${lost.length === 1 ? "it is" : "they are"} \`*\``, p.name.span, "untyped parameter")
+          .help(`give the parameter a type: \`(${p.name.name}:Type) => …\`, or pass a property reference such as \`Type::member\``);
+      });
     });
     // The expected type is the weakest source: it only fills in what the arguments left open.
     if (seed) unify(seed[0], seed[1], set, out);

@@ -1,0 +1,15 @@
+warning[X0883]: `T` can't be inferred: `d` has no type, so it is `*`
+  --> untyped-inference.xn:17:24
+   |
+17 |     var lost = Main.by(d => d.name)               // X0883: T is `*`
+   |                        ^ untyped parameter
+   |
+help: give the parameter a type: `(d:Type) => …`, or pass a property reference such as `Type::member`
+
+warning[X0883]: `T` can't be inferred: `resolve` has no type, so it is `*`
+  --> untyped-inference.xn:19:25
+   |
+19 |     var p = new Promise(resolve => resolve(1))    // X0883: a Promise<*>
+   |                         ^^^^^^^ untyped parameter
+   |
+help: give the parameter a type: `(resolve:Type) => …`, or pass a property reference such as `Type::member`

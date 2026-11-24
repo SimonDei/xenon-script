@@ -682,7 +682,7 @@ export function unify(pattern: Type, actual: Type, vars: Set<TypeParamInfo>, out
 
 /** Does the type mention any of these parameters? */
 /** The type parameters a type mentions (`K` and `V` in `Map<K, Array<V>>`). */
-function paramsIn(t: Type, found: TypeParamInfo[] = []): TypeParamInfo[] {
+export function paramsIn(t: Type, found: TypeParamInfo[] = []): TypeParamInfo[] {
   switch (t.kind) {
     case "typeParam": found.push(t.param); break;
     case "nullable": paramsIn(t.inner, found); break;
