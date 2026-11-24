@@ -3,11 +3,10 @@ package xenon {
   public abstract native class CharacterData extends Node {
     private function CharacterData()
 
-    function get data():String
-    function set data(value:String):void
-    function get length():int
-    function get nextElementSibling():Element?
-    function get previousElementSibling():Element?
+    var data:String
+    final length:int
+    final nextElementSibling:Element?
+    final previousElementSibling:Element?
 
     function after(...nodes:Array<*>):void
     function appendData(data:String):void

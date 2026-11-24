@@ -21,20 +21,20 @@ package xenon {
     static inline const BUBBLING_PHASE:int = 3
 
     /** The event's name: `'click'`, `'saved'`. */
-    function get type():String
+    final type:String
     /** Where the event was dispatched (`null` when it isn't being dispatched). */
-    function get target():T?
+    final target:T?
     /** The target whose listener is running now (for a bubbling event, an ancestor of `target`). */
-    function get currentTarget():T?
+    final currentTarget:T?
     /** One of `NONE`, `CAPTURING_PHASE`, `AT_TARGET`, `BUBBLING_PHASE`. */
-    function get eventPhase():int
-    function get bubbles():Boolean
-    function get cancelable():Boolean
-    function get composed():Boolean
+    final eventPhase:int
+    final bubbles:Boolean
+    final cancelable:Boolean
+    final composed:Boolean
     /** Has a listener called `preventDefault()` (on a cancelable event)? */
-    function get defaultPrevented():Boolean
+    final defaultPrevented:Boolean
     /** When the event was created, in milliseconds (as `performance.now()`). */
-    function get timeStamp():Float
+    final timeStamp:Float
     /** The targets the event passes through, from `target` outwards. */
     function composedPath():Array<EventTarget>
 

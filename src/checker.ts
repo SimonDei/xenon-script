@@ -100,6 +100,8 @@ export interface MemberSig {
   kind: "field" | "method" | "accessor";
   /** Field type, method type, or accessor (getter, else setter) value type. */
   type: Type;
+  /** Native classes only: what the setter takes when it differs from what the getter gives (`style`: a `String`). */
+  writeType?: Type;
   /** Span of the declared type annotation, used as the origin of expected types. */
   typeSpan?: Span;
   /** The other half of a getter/setter pair. */
@@ -1890,7 +1892,10 @@ class Env {
           }
           const getterType = m.accessor === "get" ? valueType : prev.type;
           const setterType = m.accessor === "set" ? valueType : prev.type;
-          if (!sameType(getterType, setterType) && !isDynamic(getterType) && !isDynamic(setterType)) {
+          // A JavaScript property may take another type than it gives, as in TypeScript's DOM typings
+          // (`get style():CSSStyleProperties` / `set style(cssText:String)`); own classes may not.
+          if (isNative(info) && !sameType(getterType, setterType)) prev.writeType = setterType;
+          else if (!sameType(getterType, setterType) && !isDynamic(getterType) && !isDynamic(setterType)) {
             this.diags.error("X0207", "getter and setter types don't match", m.name.span, `this is \`${typeToString(valueType)}\``)
               .secondary(prev.decl.name.span, `the other accessor uses \`${typeToString(prev.type)}\``);
           }
@@ -6160,7 +6165,10 @@ class BodyChecker {
       if (fnCls) return { type, commit: this.memberWrite(target.name.name, fnCls, target.name.span, false) };
       if (objType?.kind === "class" || objType?.kind === "classRef") {
         const own = target.object.kind === "This" || (objType.kind === "classRef" && objType.info === this.info);
-        return { type, commit: this.memberWrite(target.name.name, objType.info, target.name.span, own) };
+        // `el.style = 'color: red'`: a native setter that takes another type than its getter gives.
+        const m = plain ? findMember(objType.info, target.name.name) : undefined;
+        const written = m?.writeType && objType.kind === "class" ? memberTypeIn(objType.info, objType.args ?? [], m.owner, m.writeType) : m?.writeType;
+        return { type: written ?? type, commit: this.memberWrite(target.name.name, objType.info, target.name.span, own) };
       }
       return { type, commit: none };
     }
@@ -6191,6 +6199,9 @@ class BodyChecker {
       this.diags.error("X0504", `\`${name}\` has a getter but no setter`, at).secondary(m.decl.name.span, "getter declared here");
     } else if (m.kind === "method") {
       this.diags.error("X0505", `cannot assign to method \`${name}\``, at);
+    } else if (m.readonly === "final" && isNative(m.owner)) {
+      // A read-only property of a JavaScript class (TypeScript's `readonly`): nothing assigns it.
+      this.diags.error("X0504", `\`${name}\` is read-only`, at).secondary(m.decl.name.span, "declared `final` here");
     } else if (m.readonly === "final") {
       if (own && this.da.has(m)) return () => this.daWrite(m, at, m.decl.name.span, `final field \`${name}\``);
       const where = m.isStatic ? "in a `static { }` block of its class" : "in the constructor of its class";

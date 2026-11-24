@@ -146,7 +146,7 @@ for (const file of stdFiles) {
         const onSample = !isStatic && (SAMPLES[decl.name.name] ?? []).some((v) => runtimeName in Object(v));
         if (file.startsWith("dom/") && HAPPY_DOM_GAPS.has(where)) continue;
         // Browser CSS properties are engine-dependent; happy-dom exposes only a subset on its style object.
-        if (decl.name.name === "CSSStyleProperties" && m.kind === "Method" && m.accessor && !onSample) continue;
+        if (decl.name.name === "CSSStyleProperties" && (m.kind === "Field" || (m.kind === "Method" && m.accessor)) && !onSample) continue;
         if (!(runtimeName in target) && !onSample) {
           problems.push(`${where}: missing at runtime`);
           continue;

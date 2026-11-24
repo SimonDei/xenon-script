@@ -5,1022 +5,515 @@ package xenon {
   public native('CSSStyleDeclaration') class CSSStyleProperties extends CSSStyleDeclaration {
     private function CSSStyleProperties()
 
-    function get accentColor():String
-    function set accentColor(value:String):void
-    function get alignContent():String
-    function set alignContent(value:String):void
-    function get alignItems():String
-    function set alignItems(value:String):void
-    function get alignSelf():String
-    function set alignSelf(value:String):void
-    function get alignmentBaseline():String
-    function set alignmentBaseline(value:String):void
-    function get all():String
-    function set all(value:String):void
-    function get animation():String
-    function set animation(value:String):void
-    function get animationComposition():String
-    function set animationComposition(value:String):void
-    function get animationDelay():String
-    function set animationDelay(value:String):void
-    function get animationDirection():String
-    function set animationDirection(value:String):void
-    function get animationDuration():String
-    function set animationDuration(value:String):void
-    function get animationFillMode():String
-    function set animationFillMode(value:String):void
-    function get animationIterationCount():String
-    function set animationIterationCount(value:String):void
-    function get animationName():String
-    function set animationName(value:String):void
-    function get animationPlayState():String
-    function set animationPlayState(value:String):void
-    function get animationTimingFunction():String
-    function set animationTimingFunction(value:String):void
-    function get appearance():String
-    function set appearance(value:String):void
-    function get aspectRatio():String
-    function set aspectRatio(value:String):void
-    function get backdropFilter():String
-    function set backdropFilter(value:String):void
-    function get backfaceVisibility():String
-    function set backfaceVisibility(value:String):void
-    function get background():String
-    function set background(value:String):void
-    function get backgroundAttachment():String
-    function set backgroundAttachment(value:String):void
-    function get backgroundBlendMode():String
-    function set backgroundBlendMode(value:String):void
-    function get backgroundClip():String
-    function set backgroundClip(value:String):void
-    function get backgroundColor():String
-    function set backgroundColor(value:String):void
-    function get backgroundImage():String
-    function set backgroundImage(value:String):void
-    function get backgroundOrigin():String
-    function set backgroundOrigin(value:String):void
-    function get backgroundPosition():String
-    function set backgroundPosition(value:String):void
-    function get backgroundPositionX():String
-    function set backgroundPositionX(value:String):void
-    function get backgroundPositionY():String
-    function set backgroundPositionY(value:String):void
-    function get backgroundRepeat():String
-    function set backgroundRepeat(value:String):void
-    function get backgroundSize():String
-    function set backgroundSize(value:String):void
-    function get baselineShift():String
-    function set baselineShift(value:String):void
-    function get baselineSource():String
-    function set baselineSource(value:String):void
-    function get blockSize():String
-    function set blockSize(value:String):void
-    function get border():String
-    function set border(value:String):void
-    function get borderBlock():String
-    function set borderBlock(value:String):void
-    function get borderBlockColor():String
-    function set borderBlockColor(value:String):void
-    function get borderBlockEnd():String
-    function set borderBlockEnd(value:String):void
-    function get borderBlockEndColor():String
-    function set borderBlockEndColor(value:String):void
-    function get borderBlockEndStyle():String
-    function set borderBlockEndStyle(value:String):void
-    function get borderBlockEndWidth():String
-    function set borderBlockEndWidth(value:String):void
-    function get borderBlockStart():String
-    function set borderBlockStart(value:String):void
-    function get borderBlockStartColor():String
-    function set borderBlockStartColor(value:String):void
-    function get borderBlockStartStyle():String
-    function set borderBlockStartStyle(value:String):void
-    function get borderBlockStartWidth():String
-    function set borderBlockStartWidth(value:String):void
-    function get borderBlockStyle():String
-    function set borderBlockStyle(value:String):void
-    function get borderBlockWidth():String
-    function set borderBlockWidth(value:String):void
-    function get borderBottom():String
-    function set borderBottom(value:String):void
-    function get borderBottomColor():String
-    function set borderBottomColor(value:String):void
-    function get borderBottomLeftRadius():String
-    function set borderBottomLeftRadius(value:String):void
-    function get borderBottomRightRadius():String
-    function set borderBottomRightRadius(value:String):void
-    function get borderBottomStyle():String
-    function set borderBottomStyle(value:String):void
-    function get borderBottomWidth():String
-    function set borderBottomWidth(value:String):void
-    function get borderCollapse():String
-    function set borderCollapse(value:String):void
-    function get borderColor():String
-    function set borderColor(value:String):void
-    function get borderEndEndRadius():String
-    function set borderEndEndRadius(value:String):void
-    function get borderEndStartRadius():String
-    function set borderEndStartRadius(value:String):void
-    function get borderImage():String
-    function set borderImage(value:String):void
-    function get borderImageOutset():String
-    function set borderImageOutset(value:String):void
-    function get borderImageRepeat():String
-    function set borderImageRepeat(value:String):void
-    function get borderImageSlice():String
-    function set borderImageSlice(value:String):void
-    function get borderImageSource():String
-    function set borderImageSource(value:String):void
-    function get borderImageWidth():String
-    function set borderImageWidth(value:String):void
-    function get borderInline():String
-    function set borderInline(value:String):void
-    function get borderInlineColor():String
-    function set borderInlineColor(value:String):void
-    function get borderInlineEnd():String
-    function set borderInlineEnd(value:String):void
-    function get borderInlineEndColor():String
-    function set borderInlineEndColor(value:String):void
-    function get borderInlineEndStyle():String
-    function set borderInlineEndStyle(value:String):void
-    function get borderInlineEndWidth():String
-    function set borderInlineEndWidth(value:String):void
-    function get borderInlineStart():String
-    function set borderInlineStart(value:String):void
-    function get borderInlineStartColor():String
-    function set borderInlineStartColor(value:String):void
-    function get borderInlineStartStyle():String
-    function set borderInlineStartStyle(value:String):void
-    function get borderInlineStartWidth():String
-    function set borderInlineStartWidth(value:String):void
-    function get borderInlineStyle():String
-    function set borderInlineStyle(value:String):void
-    function get borderInlineWidth():String
-    function set borderInlineWidth(value:String):void
-    function get borderLeft():String
-    function set borderLeft(value:String):void
-    function get borderLeftColor():String
-    function set borderLeftColor(value:String):void
-    function get borderLeftStyle():String
-    function set borderLeftStyle(value:String):void
-    function get borderLeftWidth():String
-    function set borderLeftWidth(value:String):void
-    function get borderRadius():String
-    function set borderRadius(value:String):void
-    function get borderRight():String
-    function set borderRight(value:String):void
-    function get borderRightColor():String
-    function set borderRightColor(value:String):void
-    function get borderRightStyle():String
-    function set borderRightStyle(value:String):void
-    function get borderRightWidth():String
-    function set borderRightWidth(value:String):void
-    function get borderSpacing():String
-    function set borderSpacing(value:String):void
-    function get borderStartEndRadius():String
-    function set borderStartEndRadius(value:String):void
-    function get borderStartStartRadius():String
-    function set borderStartStartRadius(value:String):void
-    function get borderStyle():String
-    function set borderStyle(value:String):void
-    function get borderTop():String
-    function set borderTop(value:String):void
-    function get borderTopColor():String
-    function set borderTopColor(value:String):void
-    function get borderTopLeftRadius():String
-    function set borderTopLeftRadius(value:String):void
-    function get borderTopRightRadius():String
-    function set borderTopRightRadius(value:String):void
-    function get borderTopStyle():String
-    function set borderTopStyle(value:String):void
-    function get borderTopWidth():String
-    function set borderTopWidth(value:String):void
-    function get borderWidth():String
-    function set borderWidth(value:String):void
-    function get bottom():String
-    function set bottom(value:String):void
-    function get boxDecorationBreak():String
-    function set boxDecorationBreak(value:String):void
-    function get boxShadow():String
-    function set boxShadow(value:String):void
-    function get boxSizing():String
-    function set boxSizing(value:String):void
-    function get breakAfter():String
-    function set breakAfter(value:String):void
-    function get breakBefore():String
-    function set breakBefore(value:String):void
-    function get breakInside():String
-    function set breakInside(value:String):void
-    function get captionSide():String
-    function set captionSide(value:String):void
-    function get caretColor():String
-    function set caretColor(value:String):void
-    function get clear():String
-    function set clear(value:String):void
-    function get clip():String
-    function set clip(value:String):void
-    function get clipPath():String
-    function set clipPath(value:String):void
-    function get clipRule():String
-    function set clipRule(value:String):void
-    function get color():String
-    function set color(value:String):void
-    function get colorInterpolation():String
-    function set colorInterpolation(value:String):void
-    function get colorInterpolationFilters():String
-    function set colorInterpolationFilters(value:String):void
-    function get colorScheme():String
-    function set colorScheme(value:String):void
-    function get columnCount():String
-    function set columnCount(value:String):void
-    function get columnFill():String
-    function set columnFill(value:String):void
-    function get columnGap():String
-    function set columnGap(value:String):void
-    function get columnRule():String
-    function set columnRule(value:String):void
-    function get columnRuleColor():String
-    function set columnRuleColor(value:String):void
-    function get columnRuleStyle():String
-    function set columnRuleStyle(value:String):void
-    function get columnRuleWidth():String
-    function set columnRuleWidth(value:String):void
-    function get columnSpan():String
-    function set columnSpan(value:String):void
-    function get columnWidth():String
-    function set columnWidth(value:String):void
-    function get columns():String
-    function set columns(value:String):void
-    function get contain():String
-    function set contain(value:String):void
-    function get containIntrinsicBlockSize():String
-    function set containIntrinsicBlockSize(value:String):void
-    function get containIntrinsicHeight():String
-    function set containIntrinsicHeight(value:String):void
-    function get containIntrinsicInlineSize():String
-    function set containIntrinsicInlineSize(value:String):void
-    function get containIntrinsicSize():String
-    function set containIntrinsicSize(value:String):void
-    function get containIntrinsicWidth():String
-    function set containIntrinsicWidth(value:String):void
-    function get container():String
-    function set container(value:String):void
-    function get containerName():String
-    function set containerName(value:String):void
-    function get containerType():String
-    function set containerType(value:String):void
-    function get content():String
-    function set content(value:String):void
-    function get contentVisibility():String
-    function set contentVisibility(value:String):void
-    function get counterIncrement():String
-    function set counterIncrement(value:String):void
-    function get counterReset():String
-    function set counterReset(value:String):void
-    function get counterSet():String
-    function set counterSet(value:String):void
-    function get cssFloat():String
-    function set cssFloat(value:String):void
-    function get cssText():String
-    function set cssText(value:String):void
-    function get cursor():String
-    function set cursor(value:String):void
-    function get cx():String
-    function set cx(value:String):void
-    function get cy():String
-    function set cy(value:String):void
-    function get d():String
-    function set d(value:String):void
-    function get direction():String
-    function set direction(value:String):void
-    function get display():String
-    function set display(value:String):void
-    function get dominantBaseline():String
-    function set dominantBaseline(value:String):void
-    function get emptyCells():String
-    function set emptyCells(value:String):void
-    function get fill():String
-    function set fill(value:String):void
-    function get fillOpacity():String
-    function set fillOpacity(value:String):void
-    function get fillRule():String
-    function set fillRule(value:String):void
-    function get filter():String
-    function set filter(value:String):void
-    function get flex():String
-    function set flex(value:String):void
-    function get flexBasis():String
-    function set flexBasis(value:String):void
-    function get flexDirection():String
-    function set flexDirection(value:String):void
-    function get flexFlow():String
-    function set flexFlow(value:String):void
-    function get flexGrow():String
-    function set flexGrow(value:String):void
-    function get flexShrink():String
-    function set flexShrink(value:String):void
-    function get flexWrap():String
-    function set flexWrap(value:String):void
-    function get float():String
-    function set float(value:String):void
-    function get floodColor():String
-    function set floodColor(value:String):void
-    function get floodOpacity():String
-    function set floodOpacity(value:String):void
-    function get font():String
-    function set font(value:String):void
-    function get fontFamily():String
-    function set fontFamily(value:String):void
-    function get fontFeatureSettings():String
-    function set fontFeatureSettings(value:String):void
-    function get fontKerning():String
-    function set fontKerning(value:String):void
-    function get fontOpticalSizing():String
-    function set fontOpticalSizing(value:String):void
-    function get fontPalette():String
-    function set fontPalette(value:String):void
-    function get fontSize():String
-    function set fontSize(value:String):void
-    function get fontSizeAdjust():String
-    function set fontSizeAdjust(value:String):void
-    function get fontStretch():String
-    function set fontStretch(value:String):void
-    function get fontStyle():String
-    function set fontStyle(value:String):void
-    function get fontSynthesis():String
-    function set fontSynthesis(value:String):void
-    function get fontSynthesisSmallCaps():String
-    function set fontSynthesisSmallCaps(value:String):void
-    function get fontSynthesisStyle():String
-    function set fontSynthesisStyle(value:String):void
-    function get fontSynthesisWeight():String
-    function set fontSynthesisWeight(value:String):void
-    function get fontVariant():String
-    function set fontVariant(value:String):void
-    function get fontVariantAlternates():String
-    function set fontVariantAlternates(value:String):void
-    function get fontVariantCaps():String
-    function set fontVariantCaps(value:String):void
-    function get fontVariantEastAsian():String
-    function set fontVariantEastAsian(value:String):void
-    function get fontVariantLigatures():String
-    function set fontVariantLigatures(value:String):void
-    function get fontVariantNumeric():String
-    function set fontVariantNumeric(value:String):void
-    function get fontVariantPosition():String
-    function set fontVariantPosition(value:String):void
-    function get fontVariationSettings():String
-    function set fontVariationSettings(value:String):void
-    function get fontWeight():String
-    function set fontWeight(value:String):void
-    function get forcedColorAdjust():String
-    function set forcedColorAdjust(value:String):void
-    function get gap():String
-    function set gap(value:String):void
-    function get grid():String
-    function set grid(value:String):void
-    function get gridArea():String
-    function set gridArea(value:String):void
-    function get gridAutoColumns():String
-    function set gridAutoColumns(value:String):void
-    function get gridAutoFlow():String
-    function set gridAutoFlow(value:String):void
-    function get gridAutoRows():String
-    function set gridAutoRows(value:String):void
-    function get gridColumn():String
-    function set gridColumn(value:String):void
-    function get gridColumnEnd():String
-    function set gridColumnEnd(value:String):void
-    function get gridColumnGap():String
-    function set gridColumnGap(value:String):void
-    function get gridColumnStart():String
-    function set gridColumnStart(value:String):void
-    function get gridGap():String
-    function set gridGap(value:String):void
-    function get gridRow():String
-    function set gridRow(value:String):void
-    function get gridRowEnd():String
-    function set gridRowEnd(value:String):void
-    function get gridRowGap():String
-    function set gridRowGap(value:String):void
-    function get gridRowStart():String
-    function set gridRowStart(value:String):void
-    function get gridTemplate():String
-    function set gridTemplate(value:String):void
-    function get gridTemplateAreas():String
-    function set gridTemplateAreas(value:String):void
-    function get gridTemplateColumns():String
-    function set gridTemplateColumns(value:String):void
-    function get gridTemplateRows():String
-    function set gridTemplateRows(value:String):void
-    function get height():String
-    function set height(value:String):void
-    function get hyphenateCharacter():String
-    function set hyphenateCharacter(value:String):void
-    function get hyphenateLimitChars():String
-    function set hyphenateLimitChars(value:String):void
-    function get hyphens():String
-    function set hyphens(value:String):void
-    function get imageOrientation():String
-    function set imageOrientation(value:String):void
-    function get imageRendering():String
-    function set imageRendering(value:String):void
-    function get inlineSize():String
-    function set inlineSize(value:String):void
-    function get inset():String
-    function set inset(value:String):void
-    function get insetBlock():String
-    function set insetBlock(value:String):void
-    function get insetBlockEnd():String
-    function set insetBlockEnd(value:String):void
-    function get insetBlockStart():String
-    function set insetBlockStart(value:String):void
-    function get insetInline():String
-    function set insetInline(value:String):void
-    function get insetInlineEnd():String
-    function set insetInlineEnd(value:String):void
-    function get insetInlineStart():String
-    function set insetInlineStart(value:String):void
-    function get isolation():String
-    function set isolation(value:String):void
-    function get justifyContent():String
-    function set justifyContent(value:String):void
-    function get justifyItems():String
-    function set justifyItems(value:String):void
-    function get justifySelf():String
-    function set justifySelf(value:String):void
-    function get left():String
-    function set left(value:String):void
-    function get length():int
-    function get letterSpacing():String
-    function set letterSpacing(value:String):void
-    function get lightingColor():String
-    function set lightingColor(value:String):void
-    function get lineBreak():String
-    function set lineBreak(value:String):void
-    function get lineHeight():String
-    function set lineHeight(value:String):void
-    function get listStyle():String
-    function set listStyle(value:String):void
-    function get listStyleImage():String
-    function set listStyleImage(value:String):void
-    function get listStylePosition():String
-    function set listStylePosition(value:String):void
-    function get listStyleType():String
-    function set listStyleType(value:String):void
-    function get margin():String
-    function set margin(value:String):void
-    function get marginBlock():String
-    function set marginBlock(value:String):void
-    function get marginBlockEnd():String
-    function set marginBlockEnd(value:String):void
-    function get marginBlockStart():String
-    function set marginBlockStart(value:String):void
-    function get marginBottom():String
-    function set marginBottom(value:String):void
-    function get marginInline():String
-    function set marginInline(value:String):void
-    function get marginInlineEnd():String
-    function set marginInlineEnd(value:String):void
-    function get marginInlineStart():String
-    function set marginInlineStart(value:String):void
-    function get marginLeft():String
-    function set marginLeft(value:String):void
-    function get marginRight():String
-    function set marginRight(value:String):void
-    function get marginTop():String
-    function set marginTop(value:String):void
-    function get marker():String
-    function set marker(value:String):void
-    function get markerEnd():String
-    function set markerEnd(value:String):void
-    function get markerMid():String
-    function set markerMid(value:String):void
-    function get markerStart():String
-    function set markerStart(value:String):void
-    function get mask():String
-    function set mask(value:String):void
-    function get maskClip():String
-    function set maskClip(value:String):void
-    function get maskComposite():String
-    function set maskComposite(value:String):void
-    function get maskImage():String
-    function set maskImage(value:String):void
-    function get maskMode():String
-    function set maskMode(value:String):void
-    function get maskOrigin():String
-    function set maskOrigin(value:String):void
-    function get maskPosition():String
-    function set maskPosition(value:String):void
-    function get maskRepeat():String
-    function set maskRepeat(value:String):void
-    function get maskSize():String
-    function set maskSize(value:String):void
-    function get maskType():String
-    function set maskType(value:String):void
-    function get mathDepth():String
-    function set mathDepth(value:String):void
-    function get mathStyle():String
-    function set mathStyle(value:String):void
-    function get maxBlockSize():String
-    function set maxBlockSize(value:String):void
-    function get maxHeight():String
-    function set maxHeight(value:String):void
-    function get maxInlineSize():String
-    function set maxInlineSize(value:String):void
-    function get maxWidth():String
-    function set maxWidth(value:String):void
-    function get minBlockSize():String
-    function set minBlockSize(value:String):void
-    function get minHeight():String
-    function set minHeight(value:String):void
-    function get minInlineSize():String
-    function set minInlineSize(value:String):void
-    function get minWidth():String
-    function set minWidth(value:String):void
-    function get mixBlendMode():String
-    function set mixBlendMode(value:String):void
-    function get objectFit():String
-    function set objectFit(value:String):void
-    function get objectPosition():String
-    function set objectPosition(value:String):void
-    function get offset():String
-    function set offset(value:String):void
-    function get offsetAnchor():String
-    function set offsetAnchor(value:String):void
-    function get offsetDistance():String
-    function set offsetDistance(value:String):void
-    function get offsetPath():String
-    function set offsetPath(value:String):void
-    function get offsetPosition():String
-    function set offsetPosition(value:String):void
-    function get offsetRotate():String
-    function set offsetRotate(value:String):void
-    function get opacity():String
-    function set opacity(value:String):void
-    function get order():String
-    function set order(value:String):void
-    function get orphans():String
-    function set orphans(value:String):void
-    function get outline():String
-    function set outline(value:String):void
-    function get outlineColor():String
-    function set outlineColor(value:String):void
-    function get outlineOffset():String
-    function set outlineOffset(value:String):void
-    function get outlineStyle():String
-    function set outlineStyle(value:String):void
-    function get outlineWidth():String
-    function set outlineWidth(value:String):void
-    function get overflow():String
-    function set overflow(value:String):void
-    function get overflowAnchor():String
-    function set overflowAnchor(value:String):void
-    function get overflowBlock():String
-    function set overflowBlock(value:String):void
-    function get overflowClipMargin():String
-    function set overflowClipMargin(value:String):void
-    function get overflowInline():String
-    function set overflowInline(value:String):void
-    function get overflowWrap():String
-    function set overflowWrap(value:String):void
-    function get overflowX():String
-    function set overflowX(value:String):void
-    function get overflowY():String
-    function set overflowY(value:String):void
-    function get overscrollBehavior():String
-    function set overscrollBehavior(value:String):void
-    function get overscrollBehaviorBlock():String
-    function set overscrollBehaviorBlock(value:String):void
-    function get overscrollBehaviorInline():String
-    function set overscrollBehaviorInline(value:String):void
-    function get overscrollBehaviorX():String
-    function set overscrollBehaviorX(value:String):void
-    function get overscrollBehaviorY():String
-    function set overscrollBehaviorY(value:String):void
-    function get padding():String
-    function set padding(value:String):void
-    function get paddingBlock():String
-    function set paddingBlock(value:String):void
-    function get paddingBlockEnd():String
-    function set paddingBlockEnd(value:String):void
-    function get paddingBlockStart():String
-    function set paddingBlockStart(value:String):void
-    function get paddingBottom():String
-    function set paddingBottom(value:String):void
-    function get paddingInline():String
-    function set paddingInline(value:String):void
-    function get paddingInlineEnd():String
-    function set paddingInlineEnd(value:String):void
-    function get paddingInlineStart():String
-    function set paddingInlineStart(value:String):void
-    function get paddingLeft():String
-    function set paddingLeft(value:String):void
-    function get paddingRight():String
-    function set paddingRight(value:String):void
-    function get paddingTop():String
-    function set paddingTop(value:String):void
-    function get page():String
-    function set page(value:String):void
-    function get pageBreakAfter():String
-    function set pageBreakAfter(value:String):void
-    function get pageBreakBefore():String
-    function set pageBreakBefore(value:String):void
-    function get pageBreakInside():String
-    function set pageBreakInside(value:String):void
-    function get paintOrder():String
-    function set paintOrder(value:String):void
-    function get parentRule():*
-    function get perspective():String
-    function set perspective(value:String):void
-    function get perspectiveOrigin():String
-    function set perspectiveOrigin(value:String):void
-    function get placeContent():String
-    function set placeContent(value:String):void
-    function get placeItems():String
-    function set placeItems(value:String):void
-    function get placeSelf():String
-    function set placeSelf(value:String):void
-    function get pointerEvents():String
-    function set pointerEvents(value:String):void
-    function get position():String
-    function set position(value:String):void
-    function get printColorAdjust():String
-    function set printColorAdjust(value:String):void
-    function get quotes():String
-    function set quotes(value:String):void
-    function get r():String
-    function set r(value:String):void
-    function get resize():String
-    function set resize(value:String):void
-    function get right():String
-    function set right(value:String):void
-    function get rotate():String
-    function set rotate(value:String):void
-    function get rowGap():String
-    function set rowGap(value:String):void
-    function get rubyAlign():String
-    function set rubyAlign(value:String):void
-    function get rubyPosition():String
-    function set rubyPosition(value:String):void
-    function get rx():String
-    function set rx(value:String):void
-    function get ry():String
-    function set ry(value:String):void
-    function get scale():String
-    function set scale(value:String):void
-    function get scrollBehavior():String
-    function set scrollBehavior(value:String):void
-    function get scrollMargin():String
-    function set scrollMargin(value:String):void
-    function get scrollMarginBlock():String
-    function set scrollMarginBlock(value:String):void
-    function get scrollMarginBlockEnd():String
-    function set scrollMarginBlockEnd(value:String):void
-    function get scrollMarginBlockStart():String
-    function set scrollMarginBlockStart(value:String):void
-    function get scrollMarginBottom():String
-    function set scrollMarginBottom(value:String):void
-    function get scrollMarginInline():String
-    function set scrollMarginInline(value:String):void
-    function get scrollMarginInlineEnd():String
-    function set scrollMarginInlineEnd(value:String):void
-    function get scrollMarginInlineStart():String
-    function set scrollMarginInlineStart(value:String):void
-    function get scrollMarginLeft():String
-    function set scrollMarginLeft(value:String):void
-    function get scrollMarginRight():String
-    function set scrollMarginRight(value:String):void
-    function get scrollMarginTop():String
-    function set scrollMarginTop(value:String):void
-    function get scrollPadding():String
-    function set scrollPadding(value:String):void
-    function get scrollPaddingBlock():String
-    function set scrollPaddingBlock(value:String):void
-    function get scrollPaddingBlockEnd():String
-    function set scrollPaddingBlockEnd(value:String):void
-    function get scrollPaddingBlockStart():String
-    function set scrollPaddingBlockStart(value:String):void
-    function get scrollPaddingBottom():String
-    function set scrollPaddingBottom(value:String):void
-    function get scrollPaddingInline():String
-    function set scrollPaddingInline(value:String):void
-    function get scrollPaddingInlineEnd():String
-    function set scrollPaddingInlineEnd(value:String):void
-    function get scrollPaddingInlineStart():String
-    function set scrollPaddingInlineStart(value:String):void
-    function get scrollPaddingLeft():String
-    function set scrollPaddingLeft(value:String):void
-    function get scrollPaddingRight():String
-    function set scrollPaddingRight(value:String):void
-    function get scrollPaddingTop():String
-    function set scrollPaddingTop(value:String):void
-    function get scrollSnapAlign():String
-    function set scrollSnapAlign(value:String):void
-    function get scrollSnapStop():String
-    function set scrollSnapStop(value:String):void
-    function get scrollSnapType():String
-    function set scrollSnapType(value:String):void
-    function get scrollbarColor():String
-    function set scrollbarColor(value:String):void
-    function get scrollbarGutter():String
-    function set scrollbarGutter(value:String):void
-    function get scrollbarWidth():String
-    function set scrollbarWidth(value:String):void
-    function get shapeImageThreshold():String
-    function set shapeImageThreshold(value:String):void
-    function get shapeMargin():String
-    function set shapeMargin(value:String):void
-    function get shapeOutside():String
-    function set shapeOutside(value:String):void
-    function get shapeRendering():String
-    function set shapeRendering(value:String):void
-    function get stopColor():String
-    function set stopColor(value:String):void
-    function get stopOpacity():String
-    function set stopOpacity(value:String):void
-    function get stroke():String
-    function set stroke(value:String):void
-    function get strokeDasharray():String
-    function set strokeDasharray(value:String):void
-    function get strokeDashoffset():String
-    function set strokeDashoffset(value:String):void
-    function get strokeLinecap():String
-    function set strokeLinecap(value:String):void
-    function get strokeLinejoin():String
-    function set strokeLinejoin(value:String):void
-    function get strokeMiterlimit():String
-    function set strokeMiterlimit(value:String):void
-    function get strokeOpacity():String
-    function set strokeOpacity(value:String):void
-    function get strokeWidth():String
-    function set strokeWidth(value:String):void
-    function get tabSize():String
-    function set tabSize(value:String):void
-    function get tableLayout():String
-    function set tableLayout(value:String):void
-    function get textAlign():String
-    function set textAlign(value:String):void
-    function get textAlignLast():String
-    function set textAlignLast(value:String):void
-    function get textAnchor():String
-    function set textAnchor(value:String):void
-    function get textBox():String
-    function set textBox(value:String):void
-    function get textBoxEdge():String
-    function set textBoxEdge(value:String):void
-    function get textBoxTrim():String
-    function set textBoxTrim(value:String):void
-    function get textCombineUpright():String
-    function set textCombineUpright(value:String):void
-    function get textDecoration():String
-    function set textDecoration(value:String):void
-    function get textDecorationColor():String
-    function set textDecorationColor(value:String):void
-    function get textDecorationLine():String
-    function set textDecorationLine(value:String):void
-    function get textDecorationSkipInk():String
-    function set textDecorationSkipInk(value:String):void
-    function get textDecorationStyle():String
-    function set textDecorationStyle(value:String):void
-    function get textDecorationThickness():String
-    function set textDecorationThickness(value:String):void
-    function get textEmphasis():String
-    function set textEmphasis(value:String):void
-    function get textEmphasisColor():String
-    function set textEmphasisColor(value:String):void
-    function get textEmphasisPosition():String
-    function set textEmphasisPosition(value:String):void
-    function get textEmphasisStyle():String
-    function set textEmphasisStyle(value:String):void
-    function get textIndent():String
-    function set textIndent(value:String):void
-    function get textOrientation():String
-    function set textOrientation(value:String):void
-    function get textOverflow():String
-    function set textOverflow(value:String):void
-    function get textRendering():String
-    function set textRendering(value:String):void
-    function get textShadow():String
-    function set textShadow(value:String):void
-    function get textTransform():String
-    function set textTransform(value:String):void
-    function get textUnderlineOffset():String
-    function set textUnderlineOffset(value:String):void
-    function get textUnderlinePosition():String
-    function set textUnderlinePosition(value:String):void
-    function get textWrap():String
-    function set textWrap(value:String):void
-    function get textWrapMode():String
-    function set textWrapMode(value:String):void
-    function get textWrapStyle():String
-    function set textWrapStyle(value:String):void
-    function get top():String
-    function set top(value:String):void
-    function get touchAction():String
-    function set touchAction(value:String):void
-    function get transform():String
-    function set transform(value:String):void
-    function get transformBox():String
-    function set transformBox(value:String):void
-    function get transformOrigin():String
-    function set transformOrigin(value:String):void
-    function get transformStyle():String
-    function set transformStyle(value:String):void
-    function get transition():String
-    function set transition(value:String):void
-    function get transitionBehavior():String
-    function set transitionBehavior(value:String):void
-    function get transitionDelay():String
-    function set transitionDelay(value:String):void
-    function get transitionDuration():String
-    function set transitionDuration(value:String):void
-    function get transitionProperty():String
-    function set transitionProperty(value:String):void
-    function get transitionTimingFunction():String
-    function set transitionTimingFunction(value:String):void
-    function get translate():String
-    function set translate(value:String):void
-    function get unicodeBidi():String
-    function set unicodeBidi(value:String):void
-    function get userSelect():String
-    function set userSelect(value:String):void
-    function get vectorEffect():String
-    function set vectorEffect(value:String):void
-    function get verticalAlign():String
-    function set verticalAlign(value:String):void
-    function get viewTransitionClass():String
-    function set viewTransitionClass(value:String):void
-    function get viewTransitionName():String
-    function set viewTransitionName(value:String):void
-    function get visibility():String
-    function set visibility(value:String):void
-    function get webkitAlignContent():String
-    function set webkitAlignContent(value:String):void
-    function get webkitAlignItems():String
-    function set webkitAlignItems(value:String):void
-    function get webkitAlignSelf():String
-    function set webkitAlignSelf(value:String):void
-    function get webkitAnimation():String
-    function set webkitAnimation(value:String):void
-    function get webkitAnimationDelay():String
-    function set webkitAnimationDelay(value:String):void
-    function get webkitAnimationDirection():String
-    function set webkitAnimationDirection(value:String):void
-    function get webkitAnimationDuration():String
-    function set webkitAnimationDuration(value:String):void
-    function get webkitAnimationFillMode():String
-    function set webkitAnimationFillMode(value:String):void
-    function get webkitAnimationIterationCount():String
-    function set webkitAnimationIterationCount(value:String):void
-    function get webkitAnimationName():String
-    function set webkitAnimationName(value:String):void
-    function get webkitAnimationPlayState():String
-    function set webkitAnimationPlayState(value:String):void
-    function get webkitAnimationTimingFunction():String
-    function set webkitAnimationTimingFunction(value:String):void
-    function get webkitAppearance():String
-    function set webkitAppearance(value:String):void
-    function get webkitBackfaceVisibility():String
-    function set webkitBackfaceVisibility(value:String):void
-    function get webkitBackgroundClip():String
-    function set webkitBackgroundClip(value:String):void
-    function get webkitBackgroundOrigin():String
-    function set webkitBackgroundOrigin(value:String):void
-    function get webkitBackgroundSize():String
-    function set webkitBackgroundSize(value:String):void
-    function get webkitBorderBottomLeftRadius():String
-    function set webkitBorderBottomLeftRadius(value:String):void
-    function get webkitBorderBottomRightRadius():String
-    function set webkitBorderBottomRightRadius(value:String):void
-    function get webkitBorderRadius():String
-    function set webkitBorderRadius(value:String):void
-    function get webkitBorderTopLeftRadius():String
-    function set webkitBorderTopLeftRadius(value:String):void
-    function get webkitBorderTopRightRadius():String
-    function set webkitBorderTopRightRadius(value:String):void
-    function get webkitBoxAlign():String
-    function set webkitBoxAlign(value:String):void
-    function get webkitBoxFlex():String
-    function set webkitBoxFlex(value:String):void
-    function get webkitBoxOrdinalGroup():String
-    function set webkitBoxOrdinalGroup(value:String):void
-    function get webkitBoxOrient():String
-    function set webkitBoxOrient(value:String):void
-    function get webkitBoxPack():String
-    function set webkitBoxPack(value:String):void
-    function get webkitBoxShadow():String
-    function set webkitBoxShadow(value:String):void
-    function get webkitBoxSizing():String
-    function set webkitBoxSizing(value:String):void
-    function get webkitFilter():String
-    function set webkitFilter(value:String):void
-    function get webkitFlex():String
-    function set webkitFlex(value:String):void
-    function get webkitFlexBasis():String
-    function set webkitFlexBasis(value:String):void
-    function get webkitFlexDirection():String
-    function set webkitFlexDirection(value:String):void
-    function get webkitFlexFlow():String
-    function set webkitFlexFlow(value:String):void
-    function get webkitFlexGrow():String
-    function set webkitFlexGrow(value:String):void
-    function get webkitFlexShrink():String
-    function set webkitFlexShrink(value:String):void
-    function get webkitFlexWrap():String
-    function set webkitFlexWrap(value:String):void
-    function get webkitJustifyContent():String
-    function set webkitJustifyContent(value:String):void
-    function get webkitLineClamp():String
-    function set webkitLineClamp(value:String):void
-    function get webkitMask():String
-    function set webkitMask(value:String):void
-    function get webkitMaskBoxImage():String
-    function set webkitMaskBoxImage(value:String):void
-    function get webkitMaskBoxImageOutset():String
-    function set webkitMaskBoxImageOutset(value:String):void
-    function get webkitMaskBoxImageRepeat():String
-    function set webkitMaskBoxImageRepeat(value:String):void
-    function get webkitMaskBoxImageSlice():String
-    function set webkitMaskBoxImageSlice(value:String):void
-    function get webkitMaskBoxImageSource():String
-    function set webkitMaskBoxImageSource(value:String):void
-    function get webkitMaskBoxImageWidth():String
-    function set webkitMaskBoxImageWidth(value:String):void
-    function get webkitMaskClip():String
-    function set webkitMaskClip(value:String):void
-    function get webkitMaskComposite():String
-    function set webkitMaskComposite(value:String):void
-    function get webkitMaskImage():String
-    function set webkitMaskImage(value:String):void
-    function get webkitMaskOrigin():String
-    function set webkitMaskOrigin(value:String):void
-    function get webkitMaskPosition():String
-    function set webkitMaskPosition(value:String):void
-    function get webkitMaskRepeat():String
-    function set webkitMaskRepeat(value:String):void
-    function get webkitMaskSize():String
-    function set webkitMaskSize(value:String):void
-    function get webkitOrder():String
-    function set webkitOrder(value:String):void
-    function get webkitPerspective():String
-    function set webkitPerspective(value:String):void
-    function get webkitPerspectiveOrigin():String
-    function set webkitPerspectiveOrigin(value:String):void
-    function get webkitTextFillColor():String
-    function set webkitTextFillColor(value:String):void
-    function get webkitTextSizeAdjust():String
-    function set webkitTextSizeAdjust(value:String):void
-    function get webkitTextStroke():String
-    function set webkitTextStroke(value:String):void
-    function get webkitTextStrokeColor():String
-    function set webkitTextStrokeColor(value:String):void
-    function get webkitTextStrokeWidth():String
-    function set webkitTextStrokeWidth(value:String):void
-    function get webkitTransform():String
-    function set webkitTransform(value:String):void
-    function get webkitTransformOrigin():String
-    function set webkitTransformOrigin(value:String):void
-    function get webkitTransformStyle():String
-    function set webkitTransformStyle(value:String):void
-    function get webkitTransition():String
-    function set webkitTransition(value:String):void
-    function get webkitTransitionDelay():String
-    function set webkitTransitionDelay(value:String):void
-    function get webkitTransitionDuration():String
-    function set webkitTransitionDuration(value:String):void
-    function get webkitTransitionProperty():String
-    function set webkitTransitionProperty(value:String):void
-    function get webkitTransitionTimingFunction():String
-    function set webkitTransitionTimingFunction(value:String):void
-    function get webkitUserSelect():String
-    function set webkitUserSelect(value:String):void
-    function get whiteSpace():String
-    function set whiteSpace(value:String):void
-    function get whiteSpaceCollapse():String
-    function set whiteSpaceCollapse(value:String):void
-    function get widows():String
-    function set widows(value:String):void
-    function get width():String
-    function set width(value:String):void
-    function get willChange():String
-    function set willChange(value:String):void
-    function get wordBreak():String
-    function set wordBreak(value:String):void
-    function get wordSpacing():String
-    function set wordSpacing(value:String):void
-    function get wordWrap():String
-    function set wordWrap(value:String):void
-    function get writingMode():String
-    function set writingMode(value:String):void
-    function get x():String
-    function set x(value:String):void
-    function get y():String
-    function set y(value:String):void
-    function get zIndex():String
-    function set zIndex(value:String):void
-    function get zoom():String
-    function set zoom(value:String):void
+    var accentColor:String
+    var alignContent:String
+    var alignItems:String
+    var alignSelf:String
+    var alignmentBaseline:String
+    var all:String
+    var animation:String
+    var animationComposition:String
+    var animationDelay:String
+    var animationDirection:String
+    var animationDuration:String
+    var animationFillMode:String
+    var animationIterationCount:String
+    var animationName:String
+    var animationPlayState:String
+    var animationTimingFunction:String
+    var appearance:String
+    var aspectRatio:String
+    var backdropFilter:String
+    var backfaceVisibility:String
+    var background:String
+    var backgroundAttachment:String
+    var backgroundBlendMode:String
+    var backgroundClip:String
+    var backgroundColor:String
+    var backgroundImage:String
+    var backgroundOrigin:String
+    var backgroundPosition:String
+    var backgroundPositionX:String
+    var backgroundPositionY:String
+    var backgroundRepeat:String
+    var backgroundSize:String
+    var baselineShift:String
+    var baselineSource:String
+    var blockSize:String
+    var border:String
+    var borderBlock:String
+    var borderBlockColor:String
+    var borderBlockEnd:String
+    var borderBlockEndColor:String
+    var borderBlockEndStyle:String
+    var borderBlockEndWidth:String
+    var borderBlockStart:String
+    var borderBlockStartColor:String
+    var borderBlockStartStyle:String
+    var borderBlockStartWidth:String
+    var borderBlockStyle:String
+    var borderBlockWidth:String
+    var borderBottom:String
+    var borderBottomColor:String
+    var borderBottomLeftRadius:String
+    var borderBottomRightRadius:String
+    var borderBottomStyle:String
+    var borderBottomWidth:String
+    var borderCollapse:String
+    var borderColor:String
+    var borderEndEndRadius:String
+    var borderEndStartRadius:String
+    var borderImage:String
+    var borderImageOutset:String
+    var borderImageRepeat:String
+    var borderImageSlice:String
+    var borderImageSource:String
+    var borderImageWidth:String
+    var borderInline:String
+    var borderInlineColor:String
+    var borderInlineEnd:String
+    var borderInlineEndColor:String
+    var borderInlineEndStyle:String
+    var borderInlineEndWidth:String
+    var borderInlineStart:String
+    var borderInlineStartColor:String
+    var borderInlineStartStyle:String
+    var borderInlineStartWidth:String
+    var borderInlineStyle:String
+    var borderInlineWidth:String
+    var borderLeft:String
+    var borderLeftColor:String
+    var borderLeftStyle:String
+    var borderLeftWidth:String
+    var borderRadius:String
+    var borderRight:String
+    var borderRightColor:String
+    var borderRightStyle:String
+    var borderRightWidth:String
+    var borderSpacing:String
+    var borderStartEndRadius:String
+    var borderStartStartRadius:String
+    var borderStyle:String
+    var borderTop:String
+    var borderTopColor:String
+    var borderTopLeftRadius:String
+    var borderTopRightRadius:String
+    var borderTopStyle:String
+    var borderTopWidth:String
+    var borderWidth:String
+    var bottom:String
+    var boxDecorationBreak:String
+    var boxShadow:String
+    var boxSizing:String
+    var breakAfter:String
+    var breakBefore:String
+    var breakInside:String
+    var captionSide:String
+    var caretColor:String
+    var clear:String
+    var clip:String
+    var clipPath:String
+    var clipRule:String
+    var color:String
+    var colorInterpolation:String
+    var colorInterpolationFilters:String
+    var colorScheme:String
+    var columnCount:String
+    var columnFill:String
+    var columnGap:String
+    var columnRule:String
+    var columnRuleColor:String
+    var columnRuleStyle:String
+    var columnRuleWidth:String
+    var columnSpan:String
+    var columnWidth:String
+    var columns:String
+    var contain:String
+    var containIntrinsicBlockSize:String
+    var containIntrinsicHeight:String
+    var containIntrinsicInlineSize:String
+    var containIntrinsicSize:String
+    var containIntrinsicWidth:String
+    var container:String
+    var containerName:String
+    var containerType:String
+    var content:String
+    var contentVisibility:String
+    var counterIncrement:String
+    var counterReset:String
+    var counterSet:String
+    var cssFloat:String
+    var cssText:String
+    var cursor:String
+    var cx:String
+    var cy:String
+    var d:String
+    var direction:String
+    var display:String
+    var dominantBaseline:String
+    var emptyCells:String
+    var fill:String
+    var fillOpacity:String
+    var fillRule:String
+    var filter:String
+    var flex:String
+    var flexBasis:String
+    var flexDirection:String
+    var flexFlow:String
+    var flexGrow:String
+    var flexShrink:String
+    var flexWrap:String
+    var float:String
+    var floodColor:String
+    var floodOpacity:String
+    var font:String
+    var fontFamily:String
+    var fontFeatureSettings:String
+    var fontKerning:String
+    var fontOpticalSizing:String
+    var fontPalette:String
+    var fontSize:String
+    var fontSizeAdjust:String
+    var fontStretch:String
+    var fontStyle:String
+    var fontSynthesis:String
+    var fontSynthesisSmallCaps:String
+    var fontSynthesisStyle:String
+    var fontSynthesisWeight:String
+    var fontVariant:String
+    var fontVariantAlternates:String
+    var fontVariantCaps:String
+    var fontVariantEastAsian:String
+    var fontVariantLigatures:String
+    var fontVariantNumeric:String
+    var fontVariantPosition:String
+    var fontVariationSettings:String
+    var fontWeight:String
+    var forcedColorAdjust:String
+    var gap:String
+    var grid:String
+    var gridArea:String
+    var gridAutoColumns:String
+    var gridAutoFlow:String
+    var gridAutoRows:String
+    var gridColumn:String
+    var gridColumnEnd:String
+    var gridColumnGap:String
+    var gridColumnStart:String
+    var gridGap:String
+    var gridRow:String
+    var gridRowEnd:String
+    var gridRowGap:String
+    var gridRowStart:String
+    var gridTemplate:String
+    var gridTemplateAreas:String
+    var gridTemplateColumns:String
+    var gridTemplateRows:String
+    var height:String
+    var hyphenateCharacter:String
+    var hyphenateLimitChars:String
+    var hyphens:String
+    var imageOrientation:String
+    var imageRendering:String
+    var inlineSize:String
+    var inset:String
+    var insetBlock:String
+    var insetBlockEnd:String
+    var insetBlockStart:String
+    var insetInline:String
+    var insetInlineEnd:String
+    var insetInlineStart:String
+    var isolation:String
+    var justifyContent:String
+    var justifyItems:String
+    var justifySelf:String
+    var left:String
+    final length:int
+    var letterSpacing:String
+    var lightingColor:String
+    var lineBreak:String
+    var lineHeight:String
+    var listStyle:String
+    var listStyleImage:String
+    var listStylePosition:String
+    var listStyleType:String
+    var margin:String
+    var marginBlock:String
+    var marginBlockEnd:String
+    var marginBlockStart:String
+    var marginBottom:String
+    var marginInline:String
+    var marginInlineEnd:String
+    var marginInlineStart:String
+    var marginLeft:String
+    var marginRight:String
+    var marginTop:String
+    var marker:String
+    var markerEnd:String
+    var markerMid:String
+    var markerStart:String
+    var mask:String
+    var maskClip:String
+    var maskComposite:String
+    var maskImage:String
+    var maskMode:String
+    var maskOrigin:String
+    var maskPosition:String
+    var maskRepeat:String
+    var maskSize:String
+    var maskType:String
+    var mathDepth:String
+    var mathStyle:String
+    var maxBlockSize:String
+    var maxHeight:String
+    var maxInlineSize:String
+    var maxWidth:String
+    var minBlockSize:String
+    var minHeight:String
+    var minInlineSize:String
+    var minWidth:String
+    var mixBlendMode:String
+    var objectFit:String
+    var objectPosition:String
+    var offset:String
+    var offsetAnchor:String
+    var offsetDistance:String
+    var offsetPath:String
+    var offsetPosition:String
+    var offsetRotate:String
+    var opacity:String
+    var order:String
+    var orphans:String
+    var outline:String
+    var outlineColor:String
+    var outlineOffset:String
+    var outlineStyle:String
+    var outlineWidth:String
+    var overflow:String
+    var overflowAnchor:String
+    var overflowBlock:String
+    var overflowClipMargin:String
+    var overflowInline:String
+    var overflowWrap:String
+    var overflowX:String
+    var overflowY:String
+    var overscrollBehavior:String
+    var overscrollBehaviorBlock:String
+    var overscrollBehaviorInline:String
+    var overscrollBehaviorX:String
+    var overscrollBehaviorY:String
+    var padding:String
+    var paddingBlock:String
+    var paddingBlockEnd:String
+    var paddingBlockStart:String
+    var paddingBottom:String
+    var paddingInline:String
+    var paddingInlineEnd:String
+    var paddingInlineStart:String
+    var paddingLeft:String
+    var paddingRight:String
+    var paddingTop:String
+    var page:String
+    var pageBreakAfter:String
+    var pageBreakBefore:String
+    var pageBreakInside:String
+    var paintOrder:String
+    final parentRule:*
+    var perspective:String
+    var perspectiveOrigin:String
+    var placeContent:String
+    var placeItems:String
+    var placeSelf:String
+    var pointerEvents:String
+    var position:String
+    var printColorAdjust:String
+    var quotes:String
+    var r:String
+    var resize:String
+    var right:String
+    var rotate:String
+    var rowGap:String
+    var rubyAlign:String
+    var rubyPosition:String
+    var rx:String
+    var ry:String
+    var scale:String
+    var scrollBehavior:String
+    var scrollMargin:String
+    var scrollMarginBlock:String
+    var scrollMarginBlockEnd:String
+    var scrollMarginBlockStart:String
+    var scrollMarginBottom:String
+    var scrollMarginInline:String
+    var scrollMarginInlineEnd:String
+    var scrollMarginInlineStart:String
+    var scrollMarginLeft:String
+    var scrollMarginRight:String
+    var scrollMarginTop:String
+    var scrollPadding:String
+    var scrollPaddingBlock:String
+    var scrollPaddingBlockEnd:String
+    var scrollPaddingBlockStart:String
+    var scrollPaddingBottom:String
+    var scrollPaddingInline:String
+    var scrollPaddingInlineEnd:String
+    var scrollPaddingInlineStart:String
+    var scrollPaddingLeft:String
+    var scrollPaddingRight:String
+    var scrollPaddingTop:String
+    var scrollSnapAlign:String
+    var scrollSnapStop:String
+    var scrollSnapType:String
+    var scrollbarColor:String
+    var scrollbarGutter:String
+    var scrollbarWidth:String
+    var shapeImageThreshold:String
+    var shapeMargin:String
+    var shapeOutside:String
+    var shapeRendering:String
+    var stopColor:String
+    var stopOpacity:String
+    var stroke:String
+    var strokeDasharray:String
+    var strokeDashoffset:String
+    var strokeLinecap:String
+    var strokeLinejoin:String
+    var strokeMiterlimit:String
+    var strokeOpacity:String
+    var strokeWidth:String
+    var tabSize:String
+    var tableLayout:String
+    var textAlign:String
+    var textAlignLast:String
+    var textAnchor:String
+    var textBox:String
+    var textBoxEdge:String
+    var textBoxTrim:String
+    var textCombineUpright:String
+    var textDecoration:String
+    var textDecorationColor:String
+    var textDecorationLine:String
+    var textDecorationSkipInk:String
+    var textDecorationStyle:String
+    var textDecorationThickness:String
+    var textEmphasis:String
+    var textEmphasisColor:String
+    var textEmphasisPosition:String
+    var textEmphasisStyle:String
+    var textIndent:String
+    var textOrientation:String
+    var textOverflow:String
+    var textRendering:String
+    var textShadow:String
+    var textTransform:String
+    var textUnderlineOffset:String
+    var textUnderlinePosition:String
+    var textWrap:String
+    var textWrapMode:String
+    var textWrapStyle:String
+    var top:String
+    var touchAction:String
+    var transform:String
+    var transformBox:String
+    var transformOrigin:String
+    var transformStyle:String
+    var transition:String
+    var transitionBehavior:String
+    var transitionDelay:String
+    var transitionDuration:String
+    var transitionProperty:String
+    var transitionTimingFunction:String
+    var translate:String
+    var unicodeBidi:String
+    var userSelect:String
+    var vectorEffect:String
+    var verticalAlign:String
+    var viewTransitionClass:String
+    var viewTransitionName:String
+    var visibility:String
+    var webkitAlignContent:String
+    var webkitAlignItems:String
+    var webkitAlignSelf:String
+    var webkitAnimation:String
+    var webkitAnimationDelay:String
+    var webkitAnimationDirection:String
+    var webkitAnimationDuration:String
+    var webkitAnimationFillMode:String
+    var webkitAnimationIterationCount:String
+    var webkitAnimationName:String
+    var webkitAnimationPlayState:String
+    var webkitAnimationTimingFunction:String
+    var webkitAppearance:String
+    var webkitBackfaceVisibility:String
+    var webkitBackgroundClip:String
+    var webkitBackgroundOrigin:String
+    var webkitBackgroundSize:String
+    var webkitBorderBottomLeftRadius:String
+    var webkitBorderBottomRightRadius:String
+    var webkitBorderRadius:String
+    var webkitBorderTopLeftRadius:String
+    var webkitBorderTopRightRadius:String
+    var webkitBoxAlign:String
+    var webkitBoxFlex:String
+    var webkitBoxOrdinalGroup:String
+    var webkitBoxOrient:String
+    var webkitBoxPack:String
+    var webkitBoxShadow:String
+    var webkitBoxSizing:String
+    var webkitFilter:String
+    var webkitFlex:String
+    var webkitFlexBasis:String
+    var webkitFlexDirection:String
+    var webkitFlexFlow:String
+    var webkitFlexGrow:String
+    var webkitFlexShrink:String
+    var webkitFlexWrap:String
+    var webkitJustifyContent:String
+    var webkitLineClamp:String
+    var webkitMask:String
+    var webkitMaskBoxImage:String
+    var webkitMaskBoxImageOutset:String
+    var webkitMaskBoxImageRepeat:String
+    var webkitMaskBoxImageSlice:String
+    var webkitMaskBoxImageSource:String
+    var webkitMaskBoxImageWidth:String
+    var webkitMaskClip:String
+    var webkitMaskComposite:String
+    var webkitMaskImage:String
+    var webkitMaskOrigin:String
+    var webkitMaskPosition:String
+    var webkitMaskRepeat:String
+    var webkitMaskSize:String
+    var webkitOrder:String
+    var webkitPerspective:String
+    var webkitPerspectiveOrigin:String
+    var webkitTextFillColor:String
+    var webkitTextSizeAdjust:String
+    var webkitTextStroke:String
+    var webkitTextStrokeColor:String
+    var webkitTextStrokeWidth:String
+    var webkitTransform:String
+    var webkitTransformOrigin:String
+    var webkitTransformStyle:String
+    var webkitTransition:String
+    var webkitTransitionDelay:String
+    var webkitTransitionDuration:String
+    var webkitTransitionProperty:String
+    var webkitTransitionTimingFunction:String
+    var webkitUserSelect:String
+    var whiteSpace:String
+    var whiteSpaceCollapse:String
+    var widows:String
+    var width:String
+    var willChange:String
+    var wordBreak:String
+    var wordSpacing:String
+    var wordWrap:String
+    var writingMode:String
+    var x:String
+    var y:String
+    var zIndex:String
+    var zoom:String
 
     function getPropertyPriority(property:String):String
     function getPropertyValue(property:String):String

@@ -16,12 +16,12 @@ package xenon {
     static function isView(value:*):Boolean
 
     /** The size in bytes (0 once detached). */
-    function get byteLength():int
+    final byteLength:int
     /** The largest size `resize` allows (`byteLength` for a fixed-size buffer). */
-    function get maxByteLength():int
-    function get resizable():Boolean
+    final maxByteLength:int
+    final resizable:Boolean
     /** Has `transfer` moved the bytes out? A detached buffer can't be used. */
-    function get detached():Boolean
+    final detached:Boolean
 
     /** A copy of the bytes from `start` up to (not including) `end`; negative positions count from the end. */
     function slice():ArrayBuffer

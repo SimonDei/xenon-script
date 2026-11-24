@@ -14,26 +14,25 @@ package xenon {
 
     // ---- what it is ----
     /** `'text/html'`, `'application/xml'`, … (as passed to `DOMParser`). */
-    function get contentType():String
-    function get URL():String
-    function get documentURI():String
+    final contentType:String
+    final URL:String
+    final documentURI:String
     /** The encoding: `'UTF-8'`. */
-    function get characterSet():String
+    final characterSet:String
     /** The `<!DOCTYPE …>` node, or `null`. */
-    function get doctype():*
+    final doctype:*
 
     // ---- the tree ----
     /** The root element: `<html>`, or an XML file's top element (`<w:document>`); `null` if there is none. */
-    function get documentElement():Element?
+    final documentElement:Element?
     /** `<body>` of an HTML document; `null` in XML. */
-    function get body():Element?
-    function get head():Element?
-    function get title():String
-    function set title(value:String):void
-    function get children():HTMLCollection
-    function get firstElementChild():Element?
-    function get lastElementChild():Element?
-    function get childElementCount():int
+    final body:Element?
+    final head:Element?
+    var title:String
+    final children:HTMLCollection
+    final firstElementChild:Element?
+    final lastElementChild:Element?
+    final childElementCount:int
 
     // ---- finding elements ----
     function getElementById(id:String):Element?

@@ -6,7 +6,7 @@ package xenon {
   public native class NodeList<T> implements Iterable<T> {
     private function NodeList()
 
-    function get length():int
+    final length:int
     /** The node at `index`, or `null` past the end. */
     function item(index:int):T?
     function forEach(callback:(node:T, index:int, list:NodeList<T>) -> Void):void

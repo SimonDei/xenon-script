@@ -20,7 +20,7 @@ package xenon {
     static function groupBy<T, K>(items:Array<T>, callback:(item:T, index:int) -> K):Map<K, Array<T>>
 
     /** How many keys the map holds. */
-    function get size():int
+    final size:int
     /** The value for `key`, or `null` if there is none. */
     function get(key:K):V?
     /** Sets the value for `key` (replacing an old one); returns the map, so calls chain. */

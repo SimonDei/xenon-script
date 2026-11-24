@@ -25,19 +25,19 @@ package xenon {
     function toString():String
 
     /** The pattern text, without the slashes. */
-    function get source():String
+    final source:String
     /** The flags in canonical order, e.g. `'gi'`. */
-    function get flags():String
-    function get global():Boolean
-    function get ignoreCase():Boolean
-    function get multiline():Boolean
+    final flags:String
+    final global:Boolean
+    final ignoreCase:Boolean
+    final multiline:Boolean
     /** `.` also matches line breaks (`s` flag). */
-    function get dotAll():Boolean
-    function get unicode():Boolean
-    function get unicodeSets():Boolean
-    function get sticky():Boolean
+    final dotAll:Boolean
+    final unicode:Boolean
+    final unicodeSets:Boolean
+    final sticky:Boolean
     /** Match indices are recorded (`d` flag). */
-    function get hasIndices():Boolean
+    final hasIndices:Boolean
 
     /** Where the next `g`/`y` search starts. Assignable. */
     var lastIndex:int

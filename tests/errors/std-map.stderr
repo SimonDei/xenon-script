@@ -110,16 +110,16 @@ help: convert the value with `String()`
 11 |     trace(ages.contains('ann'), ages.length, new Map(5), ages.keys().toArray().join(String(1)))
    |                                                                                     +++++++ +
 
-error[X0504]: `size` has a getter but no setter
+error[X0504]: `size` is read-only
   --> std-map.xn:12:10
    |
 12 |     ages.size = 3
    |          ^^^^
    |
-  ::: <xenon prelude>/xenon/Map.xn:23:18
+  ::: <xenon prelude>/xenon/Map.xn:23:11
    |
-23 |     function get size():int
-   |                  ---- getter declared here
+23 |     final size:int
+   |           ---- declared `final` here
 
 error[X0422]: `Map` needs 2 type arguments
   --> std-map.xn:14:14

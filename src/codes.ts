@@ -159,7 +159,7 @@ export const CODES: Record<string, CodeInfo> = {
     "final id:String = 'a'\nid = 'b'", "var id:String = 'a'\nid = 'b'"),
   X0502: c("final field assigned outside its constructor", "A `final` field is assigned in its own class's constructor (or a `static { }` block for static ones)."),
   X0503: c("uninitialized constant", "`const` needs a value where it is declared; `final` can be assigned later."),
-  X0504: c("read-only property", "The property has a getter but no setter."),
+  X0504: c("read-only property", "The property has a getter but no setter, or is a `final` property of a native (JavaScript) class, like TypeScript's `readonly`."),
   X0505: c("assignment to a method", "Methods can't be replaced."),
   X0506: c("write-only property", "The property has a setter but no getter."),
   X0510: c("used before assignment", "The `final` value is read before anything was assigned to it."),

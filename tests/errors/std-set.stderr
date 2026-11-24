@@ -91,16 +91,16 @@ error[X0604]: no overload of `new Set` accepts (Int)
   = note: `new Set(values:Array<T>)`
   = note: `new Set(other:Set<T>)`
 
-error[X0504]: `size` has a getter but no setter
+error[X0504]: `size` is read-only
   --> std-set.xn:10:9
    |
 10 |     ids.size = 3
    |         ^^^^
    |
-  ::: <xenon prelude>/xenon/Set.xn:14:18
+  ::: <xenon prelude>/xenon/Set.xn:14:11
    |
-14 |     function get size():int
-   |                  ---- getter declared here
+14 |     final size:int
+   |           ---- declared `final` here
 
 error[X0422]: `Set` needs 1 type argument
   --> std-set.xn:11:14

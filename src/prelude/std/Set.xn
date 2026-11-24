@@ -11,7 +11,7 @@ package xenon {
     function Set(other:Set<T>)
 
     /** How many values the set holds. */
-    function get size():int
+    final size:int
     /** Adds `value` unless it is already there; returns the set, so calls chain. */
     function add(value:T):Set<T>
     function has(value:T):Boolean

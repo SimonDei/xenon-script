@@ -22,25 +22,25 @@ package xenon {
     static inline const DOCUMENT_FRAGMENT_NODE:int = 11
 
     /** One of the `*_NODE` constants: `Node.ELEMENT_NODE` for an element, `Node.TEXT_NODE` for text. */
-    function get nodeType():int
+    final nodeType:int
     /** The tag name for an element (`'w:p'`, upper case in HTML documents), `'#text'` for text, `'#document'`, … */
-    function get nodeName():String
-    function get baseURI():String
+    final nodeName:String
+    final baseURI:String
     /** Is the node part of a document? */
-    function get isConnected():Boolean
+    final isConnected:Boolean
     /** The document the node belongs to (`null` for a document itself). */
     function get ownerDocument():Document?
 
     // ---- the tree ----
-    function get parentNode():Node?
+    final parentNode:Node?
     /** The parent if it is an element, else `null`. */
-    function get parentElement():Element?
+    final parentElement:Element?
     /** All children (elements, text, comments), live: it changes with the tree. */
-    function get childNodes():NodeList<Node>
-    function get firstChild():Node?
-    function get lastChild():Node?
-    function get previousSibling():Node?
-    function get nextSibling():Node?
+    final childNodes:NodeList<Node>
+    final firstChild:Node?
+    final lastChild:Node?
+    final previousSibling:Node?
+    final nextSibling:Node?
     function hasChildNodes():Boolean
     /** The topmost ancestor (the document, or the root of a detached tree); `composed` crosses shadow roots. */
     function getRootNode():Node
@@ -48,8 +48,7 @@ package xenon {
 
     // ---- content ----
     /** The text of a text or comment node; `null` for elements and documents. */
-    function get nodeValue():String?
-    function set nodeValue(value:String?):void
+    var nodeValue:String?
     /** All text inside the node, concatenated; setting it replaces the children with one text node. */
     function get textContent():String?
     function set textContent(value:String?):void

@@ -12,74 +12,48 @@ package xenon {
     private function HTMLInputElement()
 
     // ---- value ----
-    function get value():String
-    function set value(value:String):void
+    var value:String
     /** The value in the markup (`value="…"`); what a form reset restores. */
-    function get defaultValue():String
-    function set defaultValue(value:String):void
+    var defaultValue:String
     /** The value as a number (`NaN` when it isn't one): for `number`, `range`, `date`, `time` … */
-    function get valueAsNumber():Float
-    function set valueAsNumber(value:Float):void
+    var valueAsNumber:Float
     /** The value as a date: for `date`, `month`, `week`, `time` and `datetime-local`, else `null`. */
-    function get valueAsDate():Date?
-    function set valueAsDate(value:Date?):void
+    var valueAsDate:Date?
     /** `'text'`, `'checkbox'`, `'file'`, … (an unknown type reads as `'text'`). */
-    function get type():String
-    function set type(value:String):void
-    function get name():String
-    function set name(value:String):void
-    function get placeholder():String
-    function set placeholder(value:String):void
-    function get autocomplete():String
-    function set autocomplete(value:String):void
-    function get dirName():String
-    function set dirName(value:String):void
+    var type:String
+    var name:String
+    var placeholder:String
+    var autocomplete:String
+    var dirName:String
 
     // ---- checkbox and radio ----
-    function get checked():Boolean
-    function set checked(value:Boolean):void
-    function get defaultChecked():Boolean
-    function set defaultChecked(value:Boolean):void
+    var checked:Boolean
+    var defaultChecked:Boolean
     /** A checkbox that is neither on nor off (shown with a dash); `checked` doesn't change. */
-    function get indeterminate():Boolean
-    function set indeterminate(value:Boolean):void
+    var indeterminate:Boolean
 
     // ---- file ----
     /** The chosen files of a `type="file"` input, else `null`. */
-    function get files():FileList?
-    function set files(value:FileList?):void
-    function get accept():String
-    function set accept(value:String):void
-    function get capture():String
-    function set capture(value:String):void
-    function get multiple():Boolean
-    function set multiple(value:Boolean):void
+    var files:FileList?
+    var accept:String
+    var capture:String
+    var multiple:Boolean
 
     // ---- constraints ----
-    function get disabled():Boolean
-    function set disabled(value:Boolean):void
-    function get readOnly():Boolean
-    function set readOnly(value:Boolean):void
-    function get required():Boolean
-    function set required(value:Boolean):void
-    function get min():String
-    function set min(value:String):void
-    function get max():String
-    function set max(value:String):void
-    function get step():String
-    function set step(value:String):void
-    function get minLength():int
-    function set minLength(value:int):void
-    function get maxLength():int
-    function set maxLength(value:int):void
-    function get pattern():String
-    function set pattern(value:String):void
-    function get size():int
-    function set size(value:int):void
+    var disabled:Boolean
+    var readOnly:Boolean
+    var required:Boolean
+    var min:String
+    var max:String
+    var step:String
+    var minLength:int
+    var maxLength:int
+    var pattern:String
+    var size:int
     /** Why the value is invalid, or `''`. */
-    function get validationMessage():String
-    function get validity():*
-    function get willValidate():Boolean
+    final validationMessage:String
+    final validity:*
+    final willValidate:Boolean
     function checkValidity():Boolean
     /** Like `checkValidity()`, and shows the message to the user. */
     function reportValidity():Boolean
@@ -91,40 +65,28 @@ package xenon {
     function stepUp(n:int):void
 
     // ---- image ----
-    function get alt():String
-    function set alt(value:String):void
-    function get src():String
-    function set src(value:String):void
-    function get width():int
-    function set width(value:int):void
-    function get height():int
-    function set height(value:int):void
+    var alt:String
+    var src:String
+    var width:int
+    var height:int
 
     // ---- form submission ----
-    function get form():HTMLElement?
-    function get formAction():String
-    function set formAction(value:String):void
-    function get formEnctype():String
-    function set formEnctype(value:String):void
-    function get formMethod():String
-    function set formMethod(value:String):void
-    function get formNoValidate():Boolean
-    function set formNoValidate(value:Boolean):void
-    function get formTarget():String
-    function set formTarget(value:String):void
+    final form:HTMLElement?
+    var formAction:String
+    var formEnctype:String
+    var formMethod:String
+    var formNoValidate:Boolean
+    var formTarget:String
     /** The `<label>`s of the input (`null` for a hidden input). */
-    function get labels():NodeList<HTMLElement>?
+    final labels:NodeList<HTMLElement>?
     /** The `<datalist>` the `list` attribute points at. */
-    function get list():HTMLElement?
+    final list:HTMLElement?
 
     // ---- text selection ----
-    function get selectionStart():int?
-    function set selectionStart(value:int?):void
-    function get selectionEnd():int?
-    function set selectionEnd(value:int?):void
+    var selectionStart:int?
+    var selectionEnd:int?
     /** `'forward'`, `'backward'` or `'none'`. */
-    function get selectionDirection():String?
-    function set selectionDirection(value:String?):void
+    var selectionDirection:String?
     /** Selects all the text. */
     function select():void
     function setSelectionRange(start:int?, end:int?):void

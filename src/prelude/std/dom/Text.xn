@@ -4,7 +4,7 @@ package xenon {
     private function Text()
 
     /** All adjacent text nodes joined in document order. */
-    function get wholeText():String
+    final wholeText:String
     function splitText(offset:int):Text
   }
 }

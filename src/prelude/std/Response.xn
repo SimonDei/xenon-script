@@ -32,25 +32,25 @@ package xenon {
 
     // ---- status ----
     /** Is `status` in 200–299? */
-    function get ok():Boolean
+    final ok:Boolean
     /** The HTTP status code: `200`, `404`, … */
-    function get status():int
+    final status:int
     /** The status message (`'OK'`, `'Not Found'`); often empty over HTTP/2. */
-    function get statusText():String
+    final statusText:String
     /** The final URL, after redirects; empty for a constructed response. */
-    function get url():String
+    final url:String
     /** Did `fetch` follow a redirect to get here? */
-    function get redirected():Boolean
+    final redirected:Boolean
     /** `'basic'`, `'cors'`, `'default'`, `'error'`, `'opaque'` or `'opaqueredirect'`. */
-    function get type():String
+    final type:String
     /** The headers (a `Headers`): `res.headers.get('content-type')`. */
-    function get headers():*
+    final headers:*
 
     // ---- body (each of these reads it; a body can be read once) ----
     /** The body as a stream (`ReadableStream`), or `null` if there is none. */
-    function get body():*
+    final body:*
     /** Has the body been read already? */
-    function get bodyUsed():Boolean
+    final bodyUsed:Boolean
     /** The body parsed as JSON; rejects if it isn't valid JSON. */
     function json():Promise<*>
     /** The body as text (decoded as UTF-8). */

@@ -3,12 +3,11 @@ package xenon {
   public native class Attr extends Node {
     private function Attr()
 
-    function get name():String
-    function get localName():String
-    function get prefix():String?
-    function get namespaceURI():String?
-    function get ownerElement():Element?
-    function get value():String
-    function set value(value:String):void
+    final name:String
+    final localName:String
+    final prefix:String?
+    final namespaceURI:String?
+    final ownerElement:Element?
+    var value:String
   }
 }

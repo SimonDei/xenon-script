@@ -7,75 +7,52 @@ package xenon {
     private function HTMLElement()
 
     // ---- global HTML attributes ----
-    function get accessKey():String
-    function set accessKey(value:String):void
-    function get accessKeyLabel():String
-    function get anchorElement():Element?
+    var accessKey:String
+    final accessKeyLabel:String
+    final anchorElement:Element?
     /** Typed CSS declarations from the `style` attribute. */
-    function get attributeStyleMap():*
+    final attributeStyleMap:*
     /** The live inline styles. Assigning a `String` replaces `cssText`. */
     public override function get style():CSSStyleProperties
-    function get autocapitalize():String
-    function set autocapitalize(value:String):void
-    function get autocorrect():Boolean
-    function set autocorrect(value:Boolean):void
-    function get autofocus():Boolean
-    function set autofocus(value:Boolean):void
-    function get containerTiming():String
-    function set containerTiming(value:String):void
-    function get containerTimingIgnore():Boolean
-    function set containerTimingIgnore(value:Boolean):void
-    function get contentEditable():String
-    function set contentEditable(value:String):void
+    /** `el.style = 'color: red'`: replaces all inline styles (the `style` attribute). */
+    public override function set style(cssText:String):void
+    var autocapitalize:String
+    var autocorrect:Boolean
+    var autofocus:Boolean
+    var containerTiming:String
+    var containerTimingIgnore:Boolean
+    var contentEditable:String
     /**
      * The `data-*` attributes by their camel-cased names: `data-user-id` is `dataset.userId` (or
      * `dataset['userId']`). Reading gives `String?` (missing: `null`); writing sets the attribute.
      */
-    function get dataset():DOMStringMap
-    function get dir():String
-    function set dir(value:String):void
-    function get draggable():Boolean
-    function set draggable(value:Boolean):void
-    function get editContext():*
-    function set editContext(value:*):void
-    function get enterKeyHint():String
-    function set enterKeyHint(value:String):void
-    function get hidden():Boolean | String
-    function set hidden(value:Boolean | String):void
-    function get inert():Boolean
-    function set inert(value:Boolean):void
-    function get innerText():String
-    function set innerText(value:String):void
-    function get inputMode():String
-    function set inputMode(value:String):void
-    function get isContentEditable():Boolean
-    function get lang():String
-    function set lang(value:String):void
-    function get nonce():String
-    function set nonce(value:String):void
-    function get outerText():String
-    function set outerText(value:String):void
-    function get popover():String?
-    function set popover(value:String?):void
-    function get spellcheck():Boolean
-    function set spellcheck(value:Boolean):void
-    function get tabIndex():int
-    function set tabIndex(value:int):void
-    function get title():String
-    function set title(value:String):void
-    function get translate():Boolean
-    function set translate(value:Boolean):void
-    function get virtualKeyboardPolicy():String
-    function set virtualKeyboardPolicy(value:String):void
-    function get writingSuggestions():String
-    function set writingSuggestions(value:String):void
+    final dataset:DOMStringMap
+    var dir:String
+    var draggable:Boolean
+    var editContext:*
+    var enterKeyHint:String
+    var hidden:Boolean | String
+    var inert:Boolean
+    var innerText:String
+    var inputMode:String
+    final isContentEditable:Boolean
+    var lang:String
+    var nonce:String
+    var outerText:String
+    var popover:String?
+    var spellcheck:Boolean
+    var tabIndex:int
+    var title:String
+    var translate:Boolean
+    var virtualKeyboardPolicy:String
+    var writingSuggestions:String
 
     // ---- layout ----
-    function get offsetHeight():Float
-    function get offsetLeft():Float
-    function get offsetParent():Element?
-    function get offsetTop():Float
-    function get offsetWidth():Float
+    final offsetHeight:Float
+    final offsetLeft:Float
+    final offsetParent:Element?
+    final offsetTop:Float
+    final offsetWidth:Float
 
     // ---- interaction ----
     function attachInternals():*

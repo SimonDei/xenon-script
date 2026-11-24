@@ -26,7 +26,7 @@ package xenon {
     static final unscopables:Symbol
 
     // ---- instance behavior ----
-    function get description():String?
+    final description:String?
     function toString():String
     override function valueOf():Symbol
     function [Symbol.toPrimitive](hint:String):Symbol

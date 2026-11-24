@@ -3,11 +3,10 @@ package xenon {
   public native class TreeWalker {
     private function TreeWalker()
 
-    function get root():Node
-    function get whatToShow():uint
-    function get filter():*
-    function get currentNode():Node
-    function set currentNode(value:Node):void
+    final root:Node
+    final whatToShow:uint
+    final filter:*
+    var currentNode:Node
 
     function parentNode():Node?
     function firstChild():Node?

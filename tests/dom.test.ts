@@ -480,3 +480,28 @@ test("HTMLTemplateElement and DocumentFragment: clone a template's content into 
   const ts = compileProject([{ path: "Main.xn", text: code }], { main: "Main", target: "ts" });
   expect(typeCheck(ts.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
 });
+
+test("native properties: fields to read and write, `final` ones read-only, a setter taking another type than its getter gives", () => {
+  const code = `public class Main {
+  public function Main() {}
+  public static function f(el:HTMLElement, e:Element, input:HTMLInputElement, s:Set<Int>):Void {
+    el.style = 'color: red'
+    el.style.color = 'blue'
+    var st:CSSStyleProperties = el.style
+    e.textContent = null
+    var t:String = e.textContent
+    input.value = 'x'
+    el.style = 5
+    s.size = 1
+    input.validationMessage = 'no'
+    trace(st, t)
+  }
+}
+`;
+  const result = compileProject([{ path: "Main.xn", text: code }], { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => `${d.code} ${d.message}`)).toEqual([
+    "X0308 mismatched types",
+    "X0504 `size` is read-only",
+    "X0504 `validationMessage` is read-only",
+  ]);
+});

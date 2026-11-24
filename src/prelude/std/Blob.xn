@@ -24,9 +24,9 @@ package xenon {
     function Blob(parts:Array<*>, options:BlobOptions)
 
     /** The size in bytes. */
-    function get size():int
+    final size:int
     /** The media type given when it was made (`'text/csv'`), or `''`. */
-    function get type():String
+    final type:String
 
     /**
      * The bytes from `start` up to (not including) `end`, as a new blob with `contentType`

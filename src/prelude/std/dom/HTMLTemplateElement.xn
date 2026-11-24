@@ -10,17 +10,13 @@ package xenon {
     private function HTMLTemplateElement()
 
     /** The template's children, kept out of the page: clone it with `cloneNode(true)` or `document.importNode(content, true)`. */
-    function get content():DocumentFragment
+    final content:DocumentFragment
 
     // ---- declarative shadow root ----
     /** `'open'` or `'closed'` attaches the template as a shadow root of its parent; `''` (the default) doesn't. */
-    function get shadowRootMode():String
-    function set shadowRootMode(value:String):void
-    function get shadowRootClonable():Boolean
-    function set shadowRootClonable(value:Boolean):void
-    function get shadowRootDelegatesFocus():Boolean
-    function set shadowRootDelegatesFocus(value:Boolean):void
-    function get shadowRootSerializable():Boolean
-    function set shadowRootSerializable(value:Boolean):void
+    var shadowRootMode:String
+    var shadowRootClonable:Boolean
+    var shadowRootDelegatesFocus:Boolean
+    var shadowRootSerializable:Boolean
   }
 }

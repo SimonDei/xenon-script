@@ -6,7 +6,7 @@ package xenon {
   public native class FileList implements Iterable<File> {
     private function FileList()
 
-    function get length():int
+    final length:int
     /** The file at `index`, or `null` past the end. */
     function item(index:int):File?
   }

@@ -98,6 +98,26 @@ Native declarations may have:
 - overloads
 - `constexpr` on members whose JavaScript implementation is safe for constant evaluation
 
+Properties are declared as fields, like TypeScript's `.d.ts` files: `var value:String` for one that
+can be written, `final length:Int` for a read-only one (assigning it is X0504). Accessors are for the
+cases fields can't express: a property that takes another type than it gives, and an override that
+narrows a type:
+
+```actionscript
+native class Widget extends Element {
+  var label:String
+  final count:Int
+  /** Reads the style object; assigning a `String` replaces all inline styles. */
+  function get style():CSSStyleProperties
+  function set style(cssText:String):void
+  public override function get textContent():String   // never null here (Node's is `String?`)
+  public override function set textContent(value:String?):void
+}
+```
+
+Only native classes may give a getter and its setter different types; in classes of your own they
+must match (X0207).
+
 XenonScript classes can extend JavaScript/native classes when the parent accepts that shape.
 Implementations in native declarations do not contain executable Xenon code.
 

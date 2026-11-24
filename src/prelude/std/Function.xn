@@ -18,8 +18,8 @@ package xenon {
     function bind(thisArg:*, ...args:Array<*>):Function
 
     /** The number of declared parameters before the first optional or rest one. */
-    function get length():int
+    final length:int
     /** The declared name (`''` for anonymous arrows). */
-    function get name():String
+    final name:String
   }
 }

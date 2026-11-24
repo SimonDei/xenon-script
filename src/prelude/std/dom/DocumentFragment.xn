@@ -14,7 +14,7 @@ package xenon {
 
     /** The fragment's text, the text of all its descendants. */
     public override function get textContent():String
-    public override function set textContent(value:String):void
+    public override function set textContent(value:String?):void
 
     // ---- finding elements ----
     /** The element with this `id`, or `null`. */
@@ -24,10 +24,10 @@ package xenon {
     function querySelectorAll(selectors:String):NodeList<Element>
 
     // ---- children that are elements ----
-    function get children():HTMLCollection
-    function get firstElementChild():Element?
-    function get lastElementChild():Element?
-    function get childElementCount():int
+    final children:HTMLCollection
+    final firstElementChild:Element?
+    final lastElementChild:Element?
+    final childElementCount:int
 
     // ---- changing the tree (nodes or strings, which become text) ----
     function append(...nodes:Array<*>):void

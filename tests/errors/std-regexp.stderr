@@ -50,16 +50,16 @@ help: convert the value with `Int()`
  9 |     digits.lastIndex = Int('zero')
    |                        ++++      +
 
-error[X0504]: `global` has a getter but no setter
+error[X0504]: `global` is read-only
   --> std-regexp.xn:10:12
    |
 10 |     digits.global = true                           // flags can't change after creation
    |            ^^^^^^
    |
-  ::: <xenon prelude>/xenon/RegExp.xn:31:18
+  ::: <xenon prelude>/xenon/RegExp.xn:31:11
    |
-31 |     function get global():Boolean
-   |                  ------ getter declared here
+31 |     final global:Boolean
+   |           ------ declared `final` here
 
 error[X0426]: no member `tset` on `RegExp`
   --> std-regexp.xn:11:18

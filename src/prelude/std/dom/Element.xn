@@ -13,23 +13,21 @@ package xenon {
 
     // ---- names ----
     /** The qualified name as written (`'w:p'`; upper case for HTML elements in an HTML document). */
-    function get tagName():String
+    final tagName:String
     /** The name without the prefix: `'p'` for `<w:p>`. */
-    function get localName():String
+    final localName:String
     /** The prefix: `'w'` for `<w:p>`, else `null`. */
-    function get prefix():String?
-    function get namespaceURI():String?
-    function get id():String
-    function set id(value:String):void
-    function get className():String
-    function set className(value:String):void
+    final prefix:String?
+    final namespaceURI:String?
+    var id:String
+    var className:String
     /** The class names as a `DOMTokenList` (`add`, `remove`, `toggle`, `contains`). */
-    function get classList():*
+    final classList:*
     /** Inline CSS properties; dynamic because CSSStyleDeclaration has hundreds of properties. */
     function get style():*
 
     // ---- attributes ----
-    function get attributes():NamedNodeMap
+    final attributes:NamedNodeMap
     function hasAttributes():Boolean
     function getAttributeNames():Array<String>
     /** The attribute's value, or `null` if the element doesn't have it: `br.getAttribute('w:type')`. */
@@ -58,12 +56,12 @@ package xenon {
     function matches(selectors:String):Boolean
 
     // ---- children and siblings that are elements ----
-    function get children():HTMLCollection
-    function get firstElementChild():Element?
-    function get lastElementChild():Element?
-    function get childElementCount():int
-    function get previousElementSibling():Element?
-    function get nextElementSibling():Element?
+    final children:HTMLCollection
+    final firstElementChild:Element?
+    final lastElementChild:Element?
+    final childElementCount:int
+    final previousElementSibling:Element?
+    final nextElementSibling:Element?
 
     // ---- changing the tree (nodes or strings, which become text) ----
     function append(...nodes:Array<*>):void
@@ -81,14 +79,12 @@ package xenon {
 
     /** The element's text, or `''` when it has no text. */
     public override function get textContent():String
-    public override function set textContent(value:String):void
+    public override function set textContent(value:String?):void
 
     // ---- markup ----
     /** The children as HTML or XML text; setting it parses and replaces them. */
-    function get innerHTML():String
-    function set innerHTML(value:String):void
+    var innerHTML:String
     /** The element itself and its children as text. */
-    function get outerHTML():String
-    function set outerHTML(value:String):void
+    var outerHTML:String
   }
 }
