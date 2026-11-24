@@ -39,6 +39,8 @@ export type ConstLookup = (e: A.Expr, args?: ConstValue[], self?: ConstValue) =>
 const CASTS: Record<string, (v: number | string | boolean | null) => ConstValue> = {
   Int: (v) => (v as number) | 0,
   UInt: (v) => (v as number) >>> 0,
+  Byte: (v) => ((v as number) << 24) >> 24,
+  Short: (v) => ((v as number) << 16) >> 16,
   Float: (v) => Number(v),
   String: (v) => String(v),
   Bool: (v) => Boolean(v),
@@ -248,6 +250,8 @@ export function fits(v: ConstValue, t: Type): boolean {
       switch (t.name) {
         case "Int": return typeof v === "number" && Number.isInteger(v) && v >= -0x80000000 && v <= 0x7fffffff;
         case "UInt": return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
+        case "Byte": return typeof v === "number" && Number.isInteger(v) && v >= -0x80 && v <= 0x7f;
+        case "Short": return typeof v === "number" && Number.isInteger(v) && v >= -0x8000 && v <= 0x7fff;
         case "Float": return typeof v === "number";
         case "Bool": return typeof v === "boolean";
         case "String": return typeof v === "string" || v === null;
@@ -297,7 +301,7 @@ class Failed {
 /** The value a local gets without an initializer, as at runtime: `0`, `NaN`, `false` or `null`. */
 function defaultOf(type: A.TypeNode | undefined): ConstValue {
   const name = type?.kind === "TypeName" && type.name.length === 1 ? type.name[0]!.name : undefined;
-  if (name === "int" || name === "uint" || name === "Int" || name === "UInt") return 0;
+  if (name === "int" || name === "uint" || name === "Int" || name === "UInt" || name === "Byte" || name === "Short") return 0;
   if (name === "Float") return NaN;
   if (name === "Boolean" || name === "Bool") return false;
   return null;

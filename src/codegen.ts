@@ -108,11 +108,14 @@ function templateText(value: string): string {
     .replaceAll("\r", "\\r");
 }
 
+/** The integer types whose arithmetic the output wraps. */
+type IntKind = "Int" | "UInt" | "Byte" | "Short";
+
 /** Default value for a field/variable of the given declared type (AS3 semantics). */
 function defaultValue(type?: A.TypeNode): string {
   if (type?.kind === "TypeName" && type.name.length === 1) {
     switch (type.name[0]!.name) {
-      case "int": case "uint": case "Int": case "UInt": return "0";
+      case "int": case "uint": case "Int": case "UInt": case "Byte": case "Short": return "0";
       case "Float": return "NaN";
       case "Boolean": case "Bool": return "false";
     }
@@ -1634,6 +1637,8 @@ class ModuleGen {
       case "typeof": return { code: `typeof ${first} === ${jsString(check.tag)}`, prec: P.eq };
       case "int": return { code: `Number.isInteger(${first})`, prec: P.call };
       case "uint": return { code: `Number.isInteger(${first}) && ${dyn(again)} >= 0`, prec: P.and };
+      // `x is Byte`: a number that survives wrapping to 8 bits unchanged (a string or a fraction doesn't).
+      case "bits": return { code: `${first} === (${dyn(again)} << ${32 - check.bits} >> ${32 - check.bits})`, prec: P.eq };
       case "array": return { code: `Array.isArray(${first})`, prec: P.call };
       case "object": return { code: `${first} != null`, prec: P.eq };
     }
@@ -1659,7 +1664,7 @@ class ModuleGen {
     const check = this.check.typeChecks.get(e);
     if (!check) return this.expr(e.expr); // `x as Shape`: an unchecked cast to a structural type
     if (e.op === "is") {
-      if (check.kind !== "uint") {
+      if (check.kind !== "uint" && check.kind !== "bits") {
         const v = this.wrap(this.expr(e.expr), check.kind === "typeof" ? P.unary : check.kind === "interface" ? P.call : P.rel + 1);
         return this.runtimeTest(check, v, v);
       }
@@ -1709,7 +1714,7 @@ class ModuleGen {
         if (r?.kind === "function") return { code: this.tok(e.span, r.decl.modifiers.nativeName ?? e.name), prec: P.primary };
         if (r?.kind === "builtin" && r.name === "trace") return { code: this.tok(e.span, "console.log"), prec: P.call };
         // A cast through an alias (`Bool(x)`) calls the real JS function.
-        if (r?.kind === "builtin") return { code: this.tok(e.span, r.name === "Float" || r.name === "Int" || r.name === "UInt" ? "Number" : r.name === "Bool" ? "Boolean" : r.name), prec: P.primary };
+        if (r?.kind === "builtin") return { code: this.tok(e.span, r.name === "Float" || r.name === "Int" || r.name === "UInt" || r.name === "Byte" || r.name === "Short" ? "Number" : r.name === "Bool" ? "Boolean" : r.name), prec: P.primary };
         return { code: name, prec: P.primary };
       }
       case "This": return { code: "this", prec: P.primary };
@@ -1821,10 +1826,11 @@ class ModuleGen {
         this.writeTargets.add(e.target);
         if (e.op !== "=") this.readWrites.add(e.target);
         {
-          // `n += k` on an `Int`: `n = (n + k) | 0` (see `wrapInt`).
-          const kind = (e.op === "+=" || e.op === "-=" || e.op === "*=") ? this.intKind(e.target) : undefined;
+          // `n += k` on an `Int`: `n = (n + k) | 0`; on a `Byte`, `b %= k` stays in range but still converts a fraction (see `wrapInt`).
+          const narrow = this.intKind(e.target) === "Byte" || this.intKind(e.target) === "Short";
+          const kind = (e.op === "+=" || e.op === "-=" || e.op === "*=" || (e.op === "%=" && narrow)) ? this.intKind(e.target) : undefined;
           if (kind && this.intKind(e) !== undefined) {
-            const op = e.op[0] as "+" | "-" | "*";
+            const op = e.op[0] as "+" | "-" | "*" | "%";
             const value = this.wrap(this.expr(e.value), op === "*" ? P.assign : BINARY_JS_PREC[op]! + 1);
             return this.readModifyWrite(e.target, (read) => this.wrap(this.wrapInt(kind, op, read, value), P.assign));
           }
@@ -1879,12 +1885,15 @@ class ModuleGen {
       let arg = this.expr(e.args[0]!);
       // TypeScript only takes numbers in arithmetic: `int('12')` converts a string.
       const t = this.check.exprTypes.get(e.args[0]!);
-      if (this.ts && (r.name === "Int" || r.name === "UInt") && !(t?.kind === "any" || (t?.kind === "prim" && t.name !== "String" && t.name !== "Bool"))) {
+      if (this.ts && (r.name === "Int" || r.name === "UInt" || r.name === "Byte" || r.name === "Short") && !(t?.kind === "any" || (t?.kind === "prim" && t.name !== "String" && t.name !== "Bool"))) {
         arg = { code: `(${arg.code} as any)`, prec: P.primary };
       }
       switch (r.name) {
         case "Int": return { code: `${this.wrap(arg, P.bitor + 1)} | 0`, prec: P.bitor };
         case "UInt": return { code: `${this.wrap(arg, P.shift + 1)} >>> 0`, prec: P.shift };
+        // `Byte(x)`: the low 8 bits as a signed number (`Byte(200)` is -56); `Short(x)` the low 16.
+        case "Byte": return { code: `${this.wrap(arg, P.shift + 1)} << 24 >> 24`, prec: P.shift };
+        case "Short": return { code: `${this.wrap(arg, P.shift + 1)} << 16 >> 16`, prec: P.shift };
         case "Float": return { code: `Number(${this.wrap(arg, P.assign)})`, prec: P.call };
       }
     }
@@ -1944,14 +1953,20 @@ class ModuleGen {
    * inexact `Float`: `a + b` → `(a + b) | 0`, `a * b` → `Math.imul(a, b)` (exact), `UInt` with `>>> 0`.
    * `kind`: the result's type when it needs wrapping (`+`, `-`, `*` and negation of integers).
    */
-  private intKind(e: A.Expr): "Int" | "UInt" | undefined {
+  private intKind(e: A.Expr): IntKind | undefined {
     const t = this.check.exprTypes.get(e);
-    return t?.kind === "prim" && t.literal === undefined && (t.name === "Int" || t.name === "UInt") ? t.name : undefined;
+    return t?.kind === "prim" && t.literal === undefined && (t.name === "Int" || t.name === "UInt" || t.name === "Byte" || t.name === "Short") ? t.name : undefined;
   }
 
-  private wrapInt(kind: "Int" | "UInt", op: "+" | "-" | "*", l: string, r: string): Code {
-    if (op === "*") return kind === "Int" ? { code: `Math.imul(${l}, ${r})`, prec: P.call } : { code: `Math.imul(${l}, ${r}) >>> 0`, prec: P.shift };
-    return kind === "Int" ? { code: `(${l} ${op} ${r}) | 0`, prec: P.bitor } : { code: `(${l} ${op} ${r}) >>> 0`, prec: P.shift };
+  /** `l op r` wrapped into `kind`'s range: `| 0` (`Int`), `>>> 0` (`UInt`), `<< 24 >> 24` (`Byte`), `<< 16 >> 16` (`Short`). */
+  private wrapInt(kind: IntKind, op: "+" | "-" | "*" | "%", l: string, r: string): Code {
+    const value = op === "*" ? `Math.imul(${l}, ${r})` : `(${l} ${op} ${r})`;
+    switch (kind) {
+      case "Int": return op === "*" ? { code: value, prec: P.call } : { code: `${value} | 0`, prec: P.bitor };
+      case "UInt": return { code: `${value} >>> 0`, prec: P.shift };
+      case "Byte": return { code: `${value} << 24 >> 24`, prec: P.shift };
+      case "Short": return { code: `${value} << 16 >> 16`, prec: P.shift };
+    }
   }
 
   /**

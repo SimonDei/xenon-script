@@ -6,6 +6,8 @@
 |---|---|
 | `Int` | signed 32-bit integer (`int` is an alias) |
 | `UInt` | unsigned 32-bit integer (`uint` is an alias) |
+| `Short` | signed 16-bit integer (-32768 to 32767) |
+| `Byte` | signed 8-bit integer (-128 to 127) |
 | `Float` | JavaScript-style number |
 | `String` | text |
 | `Bool` | Boolean (`Boolean` is an alias) |
@@ -112,6 +114,26 @@ typedef Predicate<T> = (value:T) -> Bool
 ```
 
 Parameters of function types are contravariant and return values are covariant.
+
+## Integer sizes
+
+`Int`, `UInt`, `Short`, and `Byte` are two's complement integers of 32, 32 (unsigned), 16, and 8
+bits; at runtime all are JavaScript numbers, and arithmetic wraps instead of growing:
+
+```actionscript
+var b:Byte = 127
+b++                      // -128: wraps around
+var c:Byte = Byte(200)   // -56: Byte(x) keeps the low 8 bits
+var sum:Int = b + c      // arithmetic on Byte and Short computes as Int, as in Java and C#
+var d:Byte = Byte(b + c) // back into a Byte explicitly
+b += 10                  // compound assignment, ++ and -- keep the type (and wrap)
+```
+
+A smaller type widens to a larger one without a conversion: `Byte` → `Short` → `Int` → `Float`
+(and `UInt` → `Float`). The other direction needs `Byte(x)`, `Short(x)`, `Int(x)` or `UInt(x)`. A
+number literal fits any integer type whose range holds it (`var b:Byte = 100`). `x is Byte` checks
+that a value is a whole number in range. `Byte.MIN_VALUE`/`MAX_VALUE` and `Short.MIN_VALUE`/`MAX_VALUE`
+are compile-time constants.
 
 ## Tuples
 

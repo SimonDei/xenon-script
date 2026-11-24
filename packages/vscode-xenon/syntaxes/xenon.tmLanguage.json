@@ -596,7 +596,7 @@
       "patterns": [
         {
           "name": "support.type.primitive.xenon",
-          "match": "\\b(?:int|uint|void|Float|String|Boolean|Int|UInt|Bool|Void|Any)\\b"
+          "match": "\\b(?:int|uint|void|Float|String|Boolean|Int|UInt|Byte|Short|Bool|Void|Any)\\b"
         },
         {
           "name": "support.type.builtin.xenon",

@@ -123,6 +123,7 @@ export type RuntimeCheck =
   | { kind: "iterable" } // typeof x?.[Symbol.iterator] === 'function': `is Iterable` (arrays, strings, … have no marker)
   | { kind: "int" } // Number.isInteger(x)
   | { kind: "uint" } // Number.isInteger(x) && x >= 0
+  | { kind: "bits"; bits: 8 | 16 } // x === (x << 24 >> 24): `is Byte` (`is Short` with 16)
   | { kind: "array" } // Array.isArray(x)
   | { kind: "object" }; // x != null
 
@@ -138,11 +139,15 @@ export type Resolution =
   | { kind: "function"; decl: A.Method }
   | { kind: "builtin"; name: BuiltinFn };
 
-type BuiltinFn = "trace" | "Int" | "UInt" | "Float" | "String" | "Bool";
+type BuiltinFn = "trace" | "Int" | "UInt" | "Byte" | "Short" | "Float" | "String" | "Bool";
 /** `trace` and the conversions, by every spelling (`int(x)` is `Int(x)`), to their canonical name. */
-const BUILTIN_FN_NAMES: Record<string, BuiltinFn> = { trace: "trace", Int: "Int", UInt: "UInt", Float: "Float", String: "String", Bool: "Bool", int: "Int", uint: "UInt", Boolean: "Bool" };
+const BUILTIN_FN_NAMES: Record<string, BuiltinFn> = { trace: "trace", Int: "Int", UInt: "UInt", Byte: "Byte", Short: "Short", Float: "Float", String: "String", Bool: "Bool", int: "Int", uint: "UInt", Boolean: "Bool" };
 const BUILTIN_FNS = new Set<string>(Object.keys(BUILTIN_FN_NAMES));
-const CASTS: Record<string, Type> = { Int: T.int, UInt: T.uint, Float: T.Float, String: T.String, Bool: T.Boolean };
+const CASTS: Record<string, Type> = { Int: T.int, UInt: T.uint, Byte: T.byte, Short: T.short, Float: T.Float, String: T.String, Bool: T.Boolean };
+
+/** The integer types a conversion like `Int(x)` makes from any number (wrapping it). */
+const INTEGERS = ["Int", "UInt", "Byte", "Short"] as const;
+const integerName = (t: Type) => INTEGERS.find((n) => isPrim(t, n));
 
 export interface CheckResult {
   /**
@@ -261,7 +266,7 @@ function constexprOverload(m: MemberSig, chosen: A.Method | undefined, argc: num
 /** The value a field gets without an initializer: `0`, `NaN`, `false` or `null`. */
 function defaultValueOf(type: A.TypeNode | undefined): ConstValue {
   const name = type?.kind === "TypeName" && type.name.length === 1 ? type.name[0]!.name : undefined;
-  if (name === "int" || name === "uint" || name === "Int" || name === "UInt") return 0;
+  if (name === "int" || name === "uint" || name === "Int" || name === "UInt" || name === "Byte" || name === "Short") return 0;
   if (name === "Float") return NaN;
   if (name === "Boolean" || name === "Bool") return false;
   return null;
@@ -763,7 +768,7 @@ class Env {
   primClass(name: string): ClassInfo | undefined {
     const natives = [...this.classes.values()].filter((c) => isNative(c));
     return natives.find((c) => c.decl.name.name === name) ??
-      (name === "Int" || name === "UInt" ? natives.find((c) => c.decl.name.name === "Float") : undefined);
+      (name === "Int" || name === "UInt" || name === "Byte" || name === "Short" ? natives.find((c) => c.decl.name.name === "Float") : undefined);
   }
 
 
@@ -2906,7 +2911,7 @@ class BodyChecker {
     // Values a compile-time evaluation can hold: primitives, and objects (of classes with a `constexpr` constructor).
     const constType = (t: Type) => {
       const n = nonNull(t);
-      return (n.kind === "prim" && ["Int", "UInt", "Float", "String", "Bool"].includes(n.name)) || n.kind === "class";
+      return (n.kind === "prim" && ["Int", "UInt", "Byte", "Short", "Float", "String", "Bool"].includes(n.name)) || n.kind === "class";
     };
     const what = "a number, `String`, `Bool` or an object";
     if (type) {
@@ -3052,8 +3057,8 @@ class BodyChecker {
     if (!enumOk && !fits(f.value, type)) {
       const d = this.diags.error("X0525", `the value of \`${name.name}\` doesn't fit \`${typeToString(type)}\``, name.span, `evaluates to ${JSON.stringify(f.value)}`);
       if (typeSpan) d.secondary(typeSpan, "declared type");
-      if ((isPrim(type, "Int") || isPrim(type, "UInt")) && typeof f.value === "number") {
-        const fn = isPrim(type, "Int") ? "Int" : "UInt";
+      const fn = integerName(type);
+      if (fn && typeof f.value === "number") {
         d.help(`convert the value with \`${fn}()\``, [
           { span: span(init.span.file, init.span.start, init.span.start), text: `${fn}(` },
           { span: span(init.span.file, init.span.end, init.span.end), text: ")" },
@@ -4073,8 +4078,11 @@ class BodyChecker {
     if (literalOf(expected) !== undefined) {
       // One value fits: no conversion helps.
       d.note(`\`${typeToString(nonNull(expected))}\` is a literal type: it takes only the value ${typeToString(nonNull(expected))}`);
-    } else if ((isPrim(expected, "Int") || isPrim(expected, "UInt")) && (isNumeric(value) || isPrim(value, "String")) && !sameType(value, expected)) {
-      const fn = isPrim(expected, "Int") ? "Int" : "UInt";
+    } else if (integerName(expected) && (isNumeric(value) || isPrim(value, "String")) && !sameType(value, expected)) {
+      const fn = integerName(expected)!;
+      // `var b:Byte = a + c`: arithmetic on `Byte`s gives an `Int` (as in Java and C#).
+      const arithmetic = (e.kind === "Binary" && ["+", "-", "*", "%", "&", "|", "^", "<<", ">>", ">>>"].includes(e.op)) || (e.kind === "Unary" && (e.op === "-" || e.op === "~"));
+      if ((fn === "Byte" || fn === "Short") && isPrim(value, "Int") && arithmetic) d.note(`arithmetic on \`Byte\` and \`Short\` values gives an \`Int\`; \`${fn}()\` wraps it back`);
       d.help(`convert the value with \`${fn}()\``, wrap(fn));
     } else if (isPrim(expected, "Float") && isPrim(value, "String")) {
       d.help("convert the value with `Float()`", wrap("Float"));
@@ -4428,7 +4436,7 @@ class BodyChecker {
       if (concrete?.kind === "class" && concrete.info === info) args = concrete.args ?? args;
     }
     const primitive = ([
-      ["Int", T.int], ["UInt", T.uint], ["Float", T.Float], ["String", T.String], ["Bool", T.Boolean],
+      ["Int", T.int], ["UInt", T.uint], ["Byte", T.byte], ["Short", T.short], ["Float", T.Float], ["String", T.String], ["Bool", T.Boolean],
     ] as const).find(([name]) => this.env.primClass(name) === info)?.[1];
     const receiver: Type = primitive ?? (info === this.env.arrayClass ? arrayOf(args[0] ?? T.any) : { kind: "class", info, args });
     const memberType = memberTypeIn(info, args, m.owner, m.type);
@@ -5797,7 +5805,7 @@ class BodyChecker {
     }
     if (type.kind === "builtin" || isDynamic(type)) return type;
     const d = this.diags.error("X0415", `\`${typeToString(type)}\` can't be instantiated with \`new\``, t.span);
-    if (type.kind === "prim" && type.name in CASTS && type.name !== "Int" && type.name !== "UInt") {
+    if (type.kind === "prim" && type.name in CASTS && !integerName(type)) {
       d.note("in JavaScript this creates a wrapper object, which is always truthy and never `==` a primitive value")
         .help(`to convert a value, call \`${type.name}(x)\` without \`new\``, [{ span: span(e.span.file, e.span.start, t.span.start), text: "" }]);
     }
@@ -5819,7 +5827,8 @@ class BodyChecker {
           this.opError(opSpan, `cannot apply unary \`${e.op}\` to \`${typeToString(t)}\``, e.arg, t);
           return T.error;
         }
-        return isPrim(t, "UInt") && e.op === "-" ? T.int : t;
+        // `-u` of a `UInt` may be negative; `-b` of a `Byte` or `Short` computes as an `Int` (`-(-128)` is 128).
+        return (isPrim(t, "UInt") || isPrim(t, "Byte") || isPrim(t, "Short")) && e.op === "-" ? T.int : t;
       case "~":
         if (!isNumeric(t) && !isDynamic(t)) this.opError(opSpan, "`~` needs a number", e.arg, t);
         return T.int;
@@ -6245,7 +6254,10 @@ class BodyChecker {
     const overloaded = OVERLOADABLE.has(op) ? this.operatorCall(e, op, targetType, r, e.target, e.value, e.opSpan) : undefined;
     const result = overloaded ?? this.binaryResult(op, targetType, r, e.opSpan, e.target, e.value);
     this.assigned(e.target, result, scope);
-    if (result && !assignable(result, targetType)) {
+    // `b += 1` on a `Byte` or `Short`: computed as an `Int`, wrapped back into the target's range (Java's
+    // compound assignment); `%=` can't leave it. Other operators need an explicit conversion.
+    const narrows = (isPrim(targetType, "Byte") || isPrim(targetType, "Short")) && ["+", "-", "*", "%"].includes(op) && !!result && isPrim(result, "Int");
+    if (result && !narrows && !assignable(result, targetType)) {
       const d = this.diags.error("X0308", "mismatched types", e.span, `\`${e.op}\` produces \`${typeToString(result)}\`, but the target is \`${typeToString(targetType)}\``);
       if (origin) d.secondary(origin.span, origin.label);
       if (isPrim(targetType, "Int") && op === "/") d.help("use `x = Int(x / y)` for integer division");
@@ -6485,6 +6497,8 @@ function runtimeCheck(t: Type): RuntimeCheck | undefined {
         case "Bool": return { kind: "typeof", tag: "boolean" };
         case "Int": return { kind: "int" };
         case "UInt": return { kind: "uint" };
+        case "Byte": return { kind: "bits", bits: 8 };
+        case "Short": return { kind: "bits", bits: 16 };
       }
       return undefined;
     case "builtin":

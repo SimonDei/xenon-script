@@ -1,0 +1,19 @@
+// Standard library: `Short`, 16-bit signed two's complement integers (-32768 to 32767), as Java's and
+// C#'s `short`. At runtime they're JavaScript numbers, so the members are `Float`'s. See also `Byte.xn`.
+//
+// Arithmetic on `Short`s computes as `Int` (`s + 1` is an `Int`); `Short(x)` wraps any number into the
+// range (`Short(40000)` is -25536). Compound assignment and `++`/`--` keep the type, wrapping. A `Short`
+// widens to `Int` and `Float`; a `Byte` widens to it.
+package xenon {
+  public native('Number') class Short extends Float {
+    private function Short()
+
+    /** The value itself, still a `Short`. */
+    override function valueOf():Short
+
+    /** 32767 (2^15 − 1), the largest `Short`. */
+    public static inline const MAX_VALUE:Short = 32767
+    /** -32768 (−2^15), the smallest `Short`. */
+    public static inline const MIN_VALUE:Short = -32768
+  }
+}

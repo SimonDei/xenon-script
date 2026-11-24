@@ -119,7 +119,7 @@ the important edge cases.
 | Properties | `function get color()` / `function set color(v)`; the setter may be narrower (`private set`) | [`interfaces`](examples/interfaces) |
 | Interfaces | `interface IShape { function area():Float }`, checked `implements` | [`interfaces`](examples/interfaces) |
 | Variables | `var` (compiles to `let`), `final` and `const` (assigned once: `const`), `inline final` (pasted as its value) | [`basics`](examples/basics) |
-| Types | `Int`, `UInt`, `Float`, `String`, `Bool`, `Void`, `Array<T>`, `*` (untyped); the lowercase ActionScript spellings `int`, `uint`, `Boolean`, and `void` remain aliases; local variables take their value's type (`var names = ['a']` is an `Array<String>`) | [`types`](examples/types) |
+| Types | `Int`, `UInt`, `Short`, `Byte` (16- and 8-bit, arithmetic as `Int`, `b++`/`b += 1` wrap), `Float`, `String`, `Bool`, `Void`, `Array<T>`, `*` (untyped); the lowercase ActionScript spellings `int`, `uint`, `Boolean`, and `void` remain aliases; local variables take their value's type (`var names = ['a']` is an `Array<String>`) | [`types`](examples/types) |
 | Unions and literals | `Int \| String`, `typedef Encoding = 'utf8' \| 'ascii'`; narrowed by `is`, `==` and null checks | [`types`](examples/types) |
 | Tuples | `Tuple<String, Int>`: one type per position, `var [key, value] = pair`; `Object.entries` and map entries are tuples | [`tuples`](examples/tuples) |
 | Records | `Record<String, V>`: a plain object as a dictionary (`ages['ann']` / `ages.ann` read an `Int?`, `Object.entries` is typed); `Record<'id' \| 'name', V>` is a shape; `element.dataset` is one | |

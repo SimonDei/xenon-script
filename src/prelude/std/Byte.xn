@@ -1,0 +1,19 @@
+// Standard library: `Byte`, 8-bit signed two's complement integers (-128 to 127), as Java's `byte`
+// and C#'s `sbyte`. At runtime they're JavaScript numbers, so the members are `Float`'s. See also `Short.xn`.
+//
+// Arithmetic on `Byte`s computes as `Int` (`b + 1` is an `Int`, as in Java and C#); `Byte(x)` wraps
+// any number into the range (`Byte(200)` is -56). Compound assignment and `++`/`--` keep the type,
+// wrapping: a `Byte` holding 127 is -128 after `b++`. A `Byte` widens to `Short`, `Int` and `Float`.
+package xenon {
+  public native('Number') class Byte extends Float {
+    private function Byte()
+
+    /** The value itself, still a `Byte`. */
+    override function valueOf():Byte
+
+    /** 127 (2^7 − 1), the largest `Byte`. */
+    public static inline const MAX_VALUE:Byte = 127
+    /** -128 (−2^7), the smallest `Byte`. */
+    public static inline const MIN_VALUE:Byte = -128
+  }
+}

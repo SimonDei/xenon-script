@@ -2,7 +2,7 @@ import type { ClassInfo, TypedefInfo } from "./checker.ts";
 import type { Span } from "./source.ts";
 
 /** The primitive types, by their canonical names (`int`, `uint` and `Boolean` are prelude typedefs of them). */
-export type PrimName = "Int" | "UInt" | "Float" | "String" | "Bool";
+export type PrimName = "Int" | "UInt" | "Byte" | "Short" | "Float" | "String" | "Bool";
 
 /** Built-in reference types that are not (yet) modelled member by member. */
 export type BuiltinName = "Object" | "Array" | "Function" | "Class" | "Tuple" | "Record";
@@ -89,6 +89,8 @@ export type Type =
 export const T = {
   int: { kind: "prim", name: "Int" } as Type,
   uint: { kind: "prim", name: "UInt" } as Type,
+  byte: { kind: "prim", name: "Byte" } as Type,
+  short: { kind: "prim", name: "Short" } as Type,
   Float: { kind: "prim", name: "Float" } as Type,
   String: { kind: "prim", name: "String" } as Type,
   Boolean: { kind: "prim", name: "Bool" } as Type,
@@ -114,6 +116,8 @@ export const BUILTIN_TYPES: Record<string, Type> = {
   Array: T.Array,
   Function: T.Function,
   Class: { kind: "builtin", name: "Class", args: [] },
+  Byte: T.byte,
+  Short: T.short,
 };
 
 /** `Array<T>`: the typed array (one element type). A bare `Array` is `Array<*>`. */
@@ -158,7 +162,7 @@ export function elementOf(t: Type): Type | undefined {
 }
 
 export function isNumeric(t: Type): boolean {
-  return t.kind === "prim" && (t.name === "Int" || t.name === "UInt" || t.name === "Float");
+  return t.kind === "prim" && (t.name === "Int" || t.name === "UInt" || t.name === "Byte" || t.name === "Short" || t.name === "Float");
 }
 
 /** The value of a literal type. */
@@ -175,10 +179,20 @@ export function literalType(value: LiteralValue, float = false): Type {
   return { kind: "prim", name: float || !Number.isInteger(value) ? "Float" : value >= -0x80000000 && value <= 0x7fffffff ? "Int" : value >= 0 && value <= 0xffffffff ? "UInt" : "Float", literal: value };
 }
 
+/** The numeric types a value of each type fits without a conversion. */
+const WIDENS_TO: Partial<Record<PrimName, PrimName[]>> = {
+  Byte: ["Short", "Int", "Float"],
+  Short: ["Int", "Float"],
+  Int: ["Float"],
+  UInt: ["Float"],
+};
+
 /** Does the number `v` fit the numeric type `name` (`int` range, `uint` sign)? */
 function numberFits(v: number, name: PrimName): boolean {
   if (name === "Int") return Number.isInteger(v) && v >= -0x80000000 && v <= 0x7fffffff;
   if (name === "UInt") return Number.isInteger(v) && v >= 0 && v <= 0xffffffff;
+  if (name === "Byte") return Number.isInteger(v) && v >= -0x80 && v <= 0x7f;
+  if (name === "Short") return Number.isInteger(v) && v >= -0x8000 && v <= 0x7fff;
   return name === "Float";
 }
 
@@ -439,8 +453,8 @@ export function assignable(from: Type, to: Type): boolean {
     // A number literal fits every numeric type its value fits: `1` is an `int`, a `uint` and a `Float`.
     if (typeof from.literal === "number" && isNumeric(to)) return numberFits(from.literal, to.name);
     if (from.name === to.name) return true;
-    // Widening only: int/uint → Float. Everything else needs a cast.
-    return to.name === "Float" && (from.name === "Int" || from.name === "UInt");
+    // Widening only: Byte → Short → Int, and every integer → Float. Everything else needs a conversion.
+    return WIDENS_TO[from.name]?.includes(to.name) ?? false;
   }
   if (to.kind === "class" && to.info.decl.isInterface && (from.kind === "builtin" || from.kind === "prim")) {
     const c = stdClassOf.fn?.(from);
@@ -766,8 +780,10 @@ export function numberLiteralType(raw: string, value: number): Type {
 /** Result type of an arithmetic operator on two numeric types. */
 export function arithmeticResult(a: Type, b: Type): Type {
   // Literal types compute as their base type: `1 + n` of a literal `1` and an `int` is an `int`.
-  a = widen(a);
-  b = widen(b);
+  // `Byte` and `Short` compute as `Int`, as in Java and C# (`b + 1` is an `Int`; `b += 1` stays a `Byte`).
+  const promote = (t: Type) => (isPrim(t, "Byte") || isPrim(t, "Short") ? T.int : t);
+  a = promote(widen(a));
+  b = promote(widen(b));
   if (isPrim(a, "Float") || isPrim(b, "Float")) return T.Float;
   if (sameType(a, b)) return a;
   return T.Float; // int mixed with uint

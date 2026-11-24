@@ -119,7 +119,7 @@ name. Like other keywords, it remains valid as a member name (`obj.nameof()`).
 ## Primitive and built-in type notation
 
 ```text
-Int, UInt, Float, String, Bool, Void
+Int, UInt, Short, Byte, Float, String, Bool, Void
 Object, Array<T>, Function, Class<T>, RegExp
 PropertyReference<Owner, Value>
 Tuple<A, B, ...>

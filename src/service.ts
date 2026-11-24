@@ -1198,7 +1198,7 @@ export class XenonProject {
         add({ label: p.name, kind: "typeParameter", detail: `type parameter ${p.name}${constraint}` });
       }
     }
-    for (const t of ["Int", "UInt", "Float", "String", "Bool", "Void"]) add({ label: t, kind: "class" });
+    for (const t of ["Int", "UInt", "Byte", "Short", "Float", "String", "Bool", "Void"]) add({ label: t, kind: "class" });
     add({ label: "Tuple", kind: "class", detail: "Tuple<A, B, …>: an array with one type per position" });
     add({ label: "Record", kind: "class", detail: "Record<String, V>: an object used as a dictionary" });
     const { classes, typedefs } = this.visibleTypes(a, ast);
@@ -1304,7 +1304,7 @@ export class XenonProject {
         : k === "nameof" ? "checked compile-time name of a symbol as String"
         : undefined,
     });
-    for (const t of ["Int", "UInt", "Float", "String", "Bool"]) add({ label: t, kind: "class" });
+    for (const t of ["Int", "UInt", "Byte", "Short", "Float", "String", "Bool"]) add({ label: t, kind: "class" });
     return [...items.values()];
   }
 }
