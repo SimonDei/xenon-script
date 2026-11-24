@@ -477,9 +477,10 @@ export class Parser {
           if (!m.modifiers.visibility) m.modifiers.visibility = { value: "public", span: m.name.span };
           m.modifiers.native = modifiers.native;
         }
-        members.push(m);
+        members.push(m, ...this.extraMembers.splice(0));
       } catch (e) {
         if (!(e instanceof ParseError)) throw e;
+        this.extraMembers = [];
         this.syncMember(memberStart);
       }
     }
@@ -541,9 +542,10 @@ export class Parser {
         // Interface members are public; an explicit visibility other than `public` is reported by the checker.
         if (m.kind !== "StaticBlock" && !m.modifiers.visibility) m.modifiers.visibility = { value: "public", span: m.name.span };
         if (modifiers.native && m.kind !== "StaticBlock") m.modifiers.native = modifiers.native;
-        members.push(m);
+        members.push(m, ...this.extraMembers.splice(0));
       } catch (e) {
         if (!(e instanceof ParseError)) throw e;
+        this.extraMembers = [];
         this.syncMember(memberStart);
       }
     }
@@ -563,6 +565,99 @@ export class Parser {
       if (depth === 0 && this.tok.nl && this.tok.kind === "keyword" && (MODIFIERS.has(this.tok.value) || ["var", "const", "function"].includes(this.tok.value))) return;
       this.advance();
     }
+  }
+
+  /** Members a declaration produced besides the one it returned (a property's setter and storage). */
+  private extraMembers: A.Member[] = [];
+
+  /**
+   * `var label:String = '' { get => …; set => … }`: the accessors, each `=> expr` or `=> { … }`. In
+   * `set`, `value` is the new value. Inside the accessors the property's own name is its storage, a
+   * private field (`$label`); a missing `get` reads it, a missing `set` writes it. Desugared here into
+   * that field and a getter/setter pair, so the rest of the compiler sees ordinary members.
+   */
+  private parseProperty(modifiers: A.Modifiers, decl: A.Field["decl"], declSpan: Span, name: A.Ident, type: A.TypeNode | undefined, init: A.Expr | undefined, start: number): A.Member {
+    const open = this.expect("{");
+    type Half = { body: A.Block; expr: boolean };
+    const halves: { get?: Half; set?: Half } = {};
+    while (!this.is("}") && this.tok.kind !== "eof") {
+      if (!this.isIdent("get") && !this.isIdent("set")) this.unexpected("`get =>` or `set =>`");
+      const word = this.advance();
+      const which = word.value as "get" | "set";
+      if (halves[which]) this.diags.error("X0201", `\`${name.name}\` has two \`${which}\`s`, word.span, "declared twice");
+      this.expect("=>");
+      const bodyStart = this.tok.span.start;
+      let body: A.Block;
+      let expr = false;
+      if (this.is("{")) body = this.parseBlock();
+      else {
+        const e = this.parseAssign();
+        const stmt: A.Stmt = which === "set" ? { kind: "ExprStmt", expr: e, span: e.span } : { kind: "Return", value: e, span: e.span };
+        body = { kind: "Block", body: [stmt], span: this.sp(bodyStart) };
+        expr = true;
+      }
+      halves[which] = { body, expr };
+      this.eat(";");
+    }
+    this.expectClose("}", open);
+    const span = this.sp(start);
+    if (decl !== "var") this.diags.error("X0886", "a property with `get`/`set` is declared with `var`", declSpan, `not \`${decl}\``);
+    if (!type) {
+      this.diags.error("X0886", `the property \`${name.name}\` needs a type`, name.span, "add `:Type` after the name");
+      type = { kind: "AnyType", span: name.span }; // reported once, not again for each accessor
+    }
+
+    // Inside its accessors the property's name is its storage: `label = value` writes the field.
+    const storage = `$${name.name}`;
+    let uses = 0;
+    const visit = (node: unknown): void => {
+      if (!node || typeof node !== "object") return;
+      if (Array.isArray(node)) {
+        for (const n of node) visit(n);
+        return;
+      }
+      const n = node as Record<string, unknown> & { kind?: string };
+      if (n.kind === "Ident" && n.name === name.name) {
+        n.name = storage;
+        uses++;
+      } else if (n.kind === "Member" && (n.object as { kind?: string }).kind === "This" && (n.name as A.Ident).name === name.name) {
+        n.name = { ...(n.name as A.Ident), name: storage };
+        uses++;
+      }
+      for (const [k, v] of Object.entries(n)) if (k !== "span") visit(v);
+    };
+    visit(halves.get?.body);
+    visit(halves.set?.body);
+    const read = (): A.Expr => ({ kind: "Ident", name: storage, span: name.span });
+    const needsStorage = !halves.get || !halves.set || uses > 0;
+    if (!needsStorage && init) {
+      this.diags.error("X0886", `\`${name.name}\` has no storage, so its initial value is never used`, init.span, "both accessors are given and neither uses the storage")
+        .help(`read or write \`${name.name}\` inside an accessor, or remove the value`);
+    }
+    const getter: A.Method = {
+      kind: "Method", modifiers: { ...modifiers }, name, accessor: "get", isConstructor: false, params: [], returnType: type, isConst: false,
+      body: halves.get?.body ?? { kind: "Block", body: [{ kind: "Return", value: read(), span: name.span }], span: name.span },
+      exprBody: halves.get?.expr ?? true, property: true, span,
+    };
+    const setter: A.Method = {
+      kind: "Method", modifiers: { ...modifiers }, name, accessor: "set", isConstructor: false,
+      params: [{ name: { name: "value", span: name.span }, type, rest: false, final: false, span: name.span }], isConst: false,
+      body: halves.set?.body ?? {
+        kind: "Block",
+        body: [{ kind: "ExprStmt", expr: { kind: "Assign", op: "=", target: read(), value: { kind: "Ident", name: "value", span: name.span }, opSpan: name.span, span: name.span }, span: name.span }],
+        span: name.span,
+      },
+      exprBody: halves.set?.expr ?? true, property: true, span,
+    };
+    this.extraMembers.push(setter);
+    if (needsStorage) {
+      const visibility = { value: "private" as const, span: name.span };
+      this.extraMembers.push({
+        kind: "Field", modifiers: { ...(modifiers.static ? { static: modifiers.static } : {}), visibility }, decl: "var",
+        name: { name: storage, span: name.span }, type, init, span, storageOf: name.name,
+      });
+    }
+    return getter;
   }
 
   private parseMember(className: string): A.Member {
@@ -586,10 +681,13 @@ export class Parser {
     }
 
     if (this.is("var") || this.is("const") || this.is("final")) {
-      const decl = this.advance().value as A.Field["decl"];
+      const declTok = this.advance();
+      const decl = declTok.value as A.Field["decl"];
       const name = this.memberName(); // keywords allowed, as in JS (`var default:int`)
       const type = this.eat(":") ? this.parseType() : undefined;
       const init = this.eat("=") ? this.parseExpr() : undefined;
+      // `var label:String = '' { set => label = value.trim() }`: a property with accessors.
+      if (this.is("{")) return this.parseProperty(modifiers, decl, declTok.span, name, type, init, start);
       this.endStatement();
       return { kind: "Field", modifiers, decl, name, type, init, span: this.sp(start) };
     }

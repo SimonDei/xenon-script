@@ -2859,8 +2859,11 @@ class BodyChecker {
 
   /** X0819: a non-null field that would stay `null` (no value, no assignment). */
   private nonNullFieldError(m: MemberSig, help: string, at?: Span, label?: string) {
-    const d = this.diags.error("X0819", `field \`${m.name}\` needs a value: \`${typeToString(m.type)}\` can't be null`, at ?? m.decl.name.span, label);
-    if (at) d.secondary(m.decl.name.span, `\`${m.name}\` declared here without a value`);
+    // A property's storage (`var label:String { set => … }`) is shown as the property.
+    const shown = (m.decl.kind === "Field" && m.decl.storageOf) || m.name;
+    const what = m.decl.kind === "Field" && m.decl.storageOf ? "property" : "field";
+    const d = this.diags.error("X0819", `${what} \`${shown}\` needs a value: \`${typeToString(m.type)}\` can't be null`, at ?? m.decl.name.span, label);
+    if (at) d.secondary(m.decl.name.span, `\`${shown}\` declared here without a value`);
     const typeSpan = m.typeSpan;
     d.help(help);
     if (typeSpan) d.help("make it nullable", [{ span: span(typeSpan.file, typeSpan.end, typeSpan.end), text: "?" }]);

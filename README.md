@@ -133,6 +133,7 @@ the important edge cases.
 | Functions | arrows with lexical `this`, closures, `async`/`await`, function types `(a:Int) -> Int`, expression bodies `function area():Float => w * h` | [`functions`](examples/functions), [`closures`](examples/closures) |
 | Control flow | ranges `for (var n:Int of 0..10)`, `0..=10 step 5`, `for … of`, `switch`, and LIFO `defer` cleanup | [`control`](examples/control) |
 | Object literals | methods and accessors in the literal, written like a class's: `{ count: 0, function get double():Int { return this.count * 2 }, function bump():Void { … } }` (`this` is the object; checked against a typedef when there is one); handy for Alpine components | |
+| Properties | `public var label:String = '' { set => label = value.trim() }`: accessors on the property, `value` the new value, the property's own name its storage inside them; a missing half reads or writes the storage | |
 | Destructuring | `var [first, , third, ...tail] = list`, `var { name, address: { city } } = user` | [`destructuring`](examples/destructuring) |
 | Exceptions | `Exception` and its subclasses; anything JavaScript throws is normalized | [`exceptions`](examples/exceptions) |
 | Resources | destructors `function ~Connection() { … }`: destroyed when their scope ends (scoped classes), or `implements IDisposable` with a `dispose()` method for `using` / `await using` | [`destructors`](examples/destructors) |

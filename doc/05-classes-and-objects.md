@@ -62,6 +62,37 @@ public function set name(value:String):Void {
 The setter name and its type can differ from the getter's writable type. A setter without a getter
 cannot be read.
 
+A property can also carry its accessors, without a separate storage field:
+
+```actionscript
+public var label:String = '' {
+  set => label = value.trim()          // `value` is the new value
+}
+
+public var age:Int = 0 {
+  set => {
+    if (value < 0) throw new ArgumentException(nameof(value))
+    age = value
+  }
+}
+
+public var fullName:String {
+  get => $'{first} {last}'
+  set => {
+    var parts = value.split(' ')
+    first = parts[0]
+    last = parts.slice(1).join(' ')
+  }
+}
+```
+
+Each accessor is `get => expr` / `set => expr`, or `=> { … }` with statements; they are separated by
+line breaks or `;`. Inside its own accessors, the property's name is its storage, so `label = value`
+assigns the storage instead of calling the setter again. A missing `get` reads the storage, a missing
+`set` writes it. When both are given and neither uses the storage (like `fullName`), the property has
+none, and an initial value is an error (X0886). The property needs a type and `var`; it compiles to a
+private `#$label` field and a JavaScript getter/setter pair.
+
 ## Static members and blocks
 
 ```actionscript

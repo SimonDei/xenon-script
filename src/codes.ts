@@ -273,6 +273,7 @@ export const CODES: Record<string, CodeInfo> = {
   X0883: c("type argument inferred as `*` from an untyped parameter", "A generic call's type parameter appears only in a callback's parameter, and the arrow given for it has no parameter type, so nothing decides it and it becomes `*` (untyped): `by(d => d.name)` with `by<T, K>(key:(T) -> K)`. Annotate the parameter (`(d:Dog) => d.name`) or pass a property reference (`Dog::name`), which carries its owner type."),
   X0884: c("missing semicolon", "The project ends every statement with `;` (`\"semicolons\": \"always\"` in xenon.json or `--semicolons always`). The quick fix adds it."),
   X0885: c("unnecessary semicolon", "The project ends statements with line breaks (`\"semicolons\": \"never\"` in xenon.json or `--semicolons never`): a `;` is only needed between two statements on one line. The quick fix removes it."),
+  X0886: c("invalid property", "A property with accessors is a `var` with a type (`var label:String = '' { set => label = value.trim() }`). Inside its `get`/`set` the property's own name is its storage; when both accessors are given and neither uses it, there is no storage, so an initial value would be lost."),
 
   // ---- destructors ----
   X0800: c("invalid destructor placement", "A class has at most one destructor; interfaces have none."),

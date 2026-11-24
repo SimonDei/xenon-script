@@ -90,6 +90,8 @@ export interface Field {
   type?: TypeNode;
   init?: Expr;
   span: Span;
+  /** The storage of a property with accessors (`var label:String { set => … }`): the property's name. */
+  storageOf?: string;
 }
 
 /**
@@ -121,6 +123,8 @@ export interface Method {
   span: Span;
   /** Written with an expression body (`function area():Float => w * h`); `body` holds its one statement. */
   exprBody?: boolean;
+  /** An accessor of a property declared with `var x:T { get => …; set => … }` (desugared by the parser). */
+  property?: boolean;
 }
 
 /** `static { … }` — runs once when the class is defined. */
