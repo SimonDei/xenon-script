@@ -1,0 +1,25 @@
+// Browser: an `<option>` of a `<select>` (or a `<datalist>`). Browser-only: Bun has no DOM.
+// Create one with `document.createElement('option') as HTMLOptionElement`.
+//
+// Typing: `value` is the `value` attribute, or the text when there is none. `form` is `HTMLElement?`
+// until `HTMLFormElement` exists.
+package xenon {
+  public native class HTMLOptionElement extends HTMLElement {
+    private function HTMLOptionElement()
+
+    /** What the form submits: the `value` attribute, or `text` when it has none. */
+    var value:String
+    /** The option's text (whitespace collapsed). */
+    var text:String
+    /** The `label` attribute, or `text`. */
+    var label:String
+    /** Whether it's selected now (setting it selects it). */
+    var selected:Bool
+    /** Selected in the markup (the `selected` attribute): what a form reset restores. */
+    var defaultSelected:Bool
+    var disabled:Bool
+    /** The position in its `<select>`'s options, `0` when it's in none. */
+    final index:Int
+    final form:HTMLElement?
+  }
+}

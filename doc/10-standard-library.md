@@ -175,6 +175,8 @@ Declared DOM families include:
 - `NodeList<T>`
 - `HTMLCollection`
 - `FileList`
+- `HTMLSelectElement` (`value`, `selectedIndex`, `options`, `item(i)`, `add`/`remove`) and
+  `HTMLOptionElement` (`value`, `text`, `selected`)
 - `DOMTokenList` (`element.classList`: `add`, `remove`, `toggle`, `contains`; assigning a `String`
   replaces the `class` attribute)
 - `FileReader` (event-based; `await file.text()` is usually simpler)

@@ -1,0 +1,63 @@
+// Browser: a `<select>` element. Browser-only: Bun has no DOM.
+//
+//   var select:HTMLSelectElement? = document.querySelector('#mode') as HTMLSelectElement
+//   select?.value = 'Smtp'
+//
+// Typing: `value` is the first selected option's value (`''` when none is); `selectedIndex` is `-1`
+// then. `options` and `selectedOptions` are live `HTMLCollection`s of `HTMLOptionElement`s, read with
+// `item(i)` or iterated (`for (var o:Element of select.options)`); `select.item(i)` gives an
+// `HTMLOptionElement?` directly. `form` and `labels` are loosely typed until their classes exist,
+// `validity` is `*`. Not declared: `<optgroup>`s (`add` takes options).
+package xenon {
+  public native class HTMLSelectElement extends HTMLElement {
+    private function HTMLSelectElement()
+
+    // ---- value ----
+    /** The first selected option's value; setting it selects the option with that value (none if there is none). */
+    var value:String
+    /** The first selected option's position, `-1` when none is selected; setting it selects that option. */
+    var selectedIndex:Int
+    /** The options (live). */
+    final options:HTMLCollection
+    /** The selected options (live): several with `multiple`. */
+    final selectedOptions:HTMLCollection
+    /** The number of options; setting it adds empty options or removes the last ones. */
+    var length:Int
+    /** `'select-one'`, or `'select-multiple'` with `multiple`. */
+    final type:String
+
+    // ---- attributes ----
+    var name:String
+    var multiple:Bool
+    var disabled:Bool
+    var required:Bool
+    /** How many rows show at once (`0`: the browser's default, a drop-down for a single select). */
+    var size:Int
+    var autocomplete:String
+
+    // ---- options ----
+    /** The option at `index`, or `null` past the end. */
+    function item(index:Int):HTMLOptionElement?
+    /** The option with this `id` or `name`, or `null`. */
+    function namedItem(name:String):HTMLOptionElement?
+    /** Appends an option, or inserts it before `before` (an option or a position). */
+    function add(element:HTMLOptionElement):Void
+    function add(element:HTMLOptionElement, before:HTMLElement?):Void
+    function add(element:HTMLOptionElement, before:Int):Void
+    /** Removes the option at `index` (without an argument: the element itself, as `Element.remove()`). */
+    public override function remove():Void
+    public function remove(index:Int):Void
+
+    // ---- validation and forms ----
+    final validationMessage:String
+    final validity:*
+    final willValidate:Bool
+    final form:HTMLElement?
+    final labels:NodeList<HTMLElement>
+    function checkValidity():Bool
+    function reportValidity():Bool
+    function setCustomValidity(error:String):Void
+    /** Opens the browser's option list; needs a user action. */
+    function showPicker():Void
+  }
+}

@@ -171,7 +171,7 @@ need no import, and are checked against the JavaScript runtime by the tests:
 - **Async and the web platform:** `Promise<T>` (including `all`, `any`, `withResolvers`, …), `fetch`,
   `Response`, `Blob`, `File`, `FormData`, `ArrayBuffer`, `URL`, `URLSearchParams`
 - **Events:** `EventTarget` (extend it for events of your own), `Event<T = EventTarget>` (`T` is the type of `target`/`currentTarget`: `Event<HTMLInputElement>`), `CustomEvent<D>` (a typed `detail`)
-- **Browser DOM:** `Node` (extends `EventTarget`), `Element` and `Document` (extend `Node`), `HTMLElement`, `HTMLInputElement`, `DOMParser`, `XMLSerializer`,
+- **Browser DOM:** `Node` (extends `EventTarget`), `Element` and `Document` (extend `Node`), `HTMLElement`, `HTMLInputElement`, `HTMLSelectElement`, `HTMLOptionElement`, `DOMParser`, `XMLSerializer`,
   `NodeList<T>`, `HTMLCollection`, `FileList`, `DOMTokenList` (`classList`), `FileReader`; browser-only,
   and their names stay free for your own classes (`class Node` in your program shadows the DOM's)
 - **Globals:** `console`, timers, `queueMicrotask`, `structuredClone`, `encodeURIComponent` & co.,

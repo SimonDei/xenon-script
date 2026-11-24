@@ -505,3 +505,45 @@ test("native properties: fields to read and write, `final` ones read-only, a set
     "X0504 `validationMessage` is read-only",
   ]);
 });
+
+test("HTMLSelectElement and HTMLOptionElement: read and change the selection (and the TypeScript output checks)", async () => {
+  const code = `public class Main {
+  public function Main() {}
+
+  public static function mode(doc:Document):String {
+    var select:HTMLSelectElement? = doc.querySelector('#mode') as HTMLSelectElement
+    if (select == null) return '-'
+    var before:String = $'{select.value}:{select.selectedIndex}:{select.length}:{select.type}'
+    select.value = 'Smtp'
+    var chosen:HTMLOptionElement? = select.item(select.selectedIndex)
+    var after:String = $'{select.value}:{chosen?.text ?? '-'}:{chosen?.selected ?? false}'
+    // (Read before adding and removing: happy-dom loses the selection when the options change.)
+    var extra:HTMLOptionElement? = doc.createElement('option') as HTMLOptionElement
+    if (extra != null) {
+      extra.value = 'Test'
+      extra.text = 'Testadresse'
+      select.add(extra)
+    }
+    var names:Array<String> = []
+    for (var o:Element of select.options) names.push(o.textContent)
+    select.remove(0)
+    return $'{before}|{after}|{names.join(',')}|{select.length}'
+  }
+}
+`;
+  const result = compileProject([{ path: "Main.xn", text: code }], { main: "Main" });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => d.message)).toEqual([]);
+  const source = result.outputs.find((o) => o.path === "Main.js")!.text;
+  const window = new Window();
+  try {
+    const Main = new Function("HTMLSelectElement", "HTMLOptionElement", `${source.replace(/^export /m, "").replace(/\/\/# sourceMappingURL.*$/m, "")}; return Main;`)(window.HTMLSelectElement, window.HTMLOptionElement);
+    window.document.body.innerHTML = `<select id="mode"><option value="Pickup">Ablage</option><option value="Smtp">SMTP</option></select>`;
+    expect(Main.mode(window.document)).toBe("Pickup:0:2:select-one|Smtp:SMTP:true|Ablage,SMTP,Testadresse|2");
+  } finally {
+    await window.happyDOM.close();
+  }
+  const { typeCheck } = await import("./tsemit.ts");
+  const { join } = await import("node:path");
+  const ts = compileProject([{ path: "Main.xn", text: code }], { main: "Main", target: "ts" });
+  expect(typeCheck(ts.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
+});
