@@ -37,10 +37,14 @@ export type Fold =
 export type ConstLookup = (e: A.Expr, args?: ConstValue[], self?: ConstValue) => Fold | undefined;
 
 const CASTS: Record<string, (v: number | string | boolean | null) => ConstValue> = {
-  int: (v) => (v as number) | 0,
-  uint: (v) => (v as number) >>> 0,
+  Int: (v) => (v as number) | 0,
+  UInt: (v) => (v as number) >>> 0,
   Float: (v) => Number(v),
   String: (v) => String(v),
+  Bool: (v) => Boolean(v),
+  // The ActionScript spellings (prelude aliases).
+  int: (v) => (v as number) | 0,
+  uint: (v) => (v as number) >>> 0,
   Boolean: (v) => Boolean(v),
 };
 

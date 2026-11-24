@@ -31,9 +31,9 @@ error[X0604]: no overload of `hasOwn` accepts (Object)
 6 |     trace(Object.keyz(o), Object.hasOwn(o), Object.hasOwn(o, true))
   |                           ^^^^^^^^^^^^^ no matching overload
   |
-  = note: `hasOwn(object:Object, key:String):Boolean`
-  = note: `hasOwn(object:Object, index:Float):Boolean`
-  = note: `hasOwn(object:Object, key:Symbol):Boolean`
+  = note: `hasOwn(object:Object, key:String):Bool`
+  = note: `hasOwn(object:Object, index:Float):Bool`
+  = note: `hasOwn(object:Object, key:Symbol):Bool`
 
 error[X0604]: no overload of `hasOwn` accepts (Object, Bool)
  --> std-object.xn:6:45
@@ -41,9 +41,9 @@ error[X0604]: no overload of `hasOwn` accepts (Object, Bool)
 6 |     trace(Object.keyz(o), Object.hasOwn(o), Object.hasOwn(o, true))
   |                                             ^^^^^^^^^^^^^ no matching overload
   |
-  = note: `hasOwn(object:Object, key:String):Boolean`
-  = note: `hasOwn(object:Object, index:Float):Boolean`
-  = note: `hasOwn(object:Object, key:Symbol):Boolean`
+  = note: `hasOwn(object:Object, key:String):Bool`
+  = note: `hasOwn(object:Object, index:Float):Bool`
+  = note: `hasOwn(object:Object, key:Symbol):Bool`
 
 error[X0604]: no overload of `entries` accepts (Object, Int)
  --> std-object.xn:7:11
@@ -92,5 +92,5 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/Object.xn:73:57
    |
-73 |     static function groupBy<T>(items:Array<T>, callback:(item:T, index:int) -> String):Object
+73 |     static function groupBy<T>(items:Array<T>, callback:(item:T, index:Int) -> String):Object
    |                                                         ----------------------------- parameter declared here

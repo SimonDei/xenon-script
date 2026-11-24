@@ -5,6 +5,6 @@ package xenon {
 
     /** All adjacent text nodes joined in document order. */
     final wholeText:String
-    function splitText(offset:int):Text
+    function splitText(offset:Int):Text
   }
 }

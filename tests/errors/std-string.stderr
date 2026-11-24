@@ -19,7 +19,7 @@ error[X0504]: `length` has a getter but no setter
    |
   ::: <xenon prelude>/xenon/String.xn:27:28
    |
-27 |     constexpr function get length():int
+27 |     constexpr function get length():Int
    |                            ------ getter declared here
 
 error[X0426]: no member `lenght` on `String`
@@ -76,7 +76,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/String.xn:30:37
    |
-30 |     constexpr function charAt(index:int = 0):String
+30 |     constexpr function charAt(index:Int = 0):String
    |                                     --- parameter declared here
    |
 help: convert the value with `Int()`
@@ -92,7 +92,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/String.xn:92:37
    |
-92 |     constexpr function repeat(count:int):String
+92 |     constexpr function repeat(count:Int):String
    |                                     --- parameter declared here
    |
 help: convert the value with `Int()`
@@ -108,7 +108,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/String.xn:39:39
    |
-39 |     constexpr function indexOf(search:String, from:int = 0):int
+39 |     constexpr function indexOf(search:String, from:Int = 0):Int
    |                                       ------ parameter declared here
    |
 help: convert the value with `String()`
@@ -122,8 +122,8 @@ error[X0604]: no overload of `slice` accepts (String)
 7 |     trace(s.charAt('1'), s.repeat('2'), s.indexOf(1), s.slice('a'), s.padStart(5, 0))
   |                                                       ^^^^^^^ no matching overload
   |
-  = note: `slice(start:int):String`
-  = note: `slice(start:int, end:int):String`
+  = note: `slice(start:Int):String`
+  = note: `slice(start:Int, end:Int):String`
 
 error[X0308]: mismatched types
   --> std-string.xn:7:83
@@ -133,7 +133,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/String.xn:94:50
    |
-94 |     constexpr function padStart(length:int, fill:String = ' '):String
+94 |     constexpr function padStart(length:Int, fill:String = ' '):String
    |                                                  ------ parameter declared here
    |
 help: convert the value with `String()`
@@ -170,9 +170,9 @@ error[X0604]: no overload of `split` accepts (Int)
   |                                                 ^^^^^^^ no matching overload
   |
   = note: `split(separator:String):Array<String>`
-  = note: `split(separator:String, limit:int):Array<String>`
+  = note: `split(separator:String, limit:Int):Array<String>`
   = note: `split(separator:RegExp):Array<String>`
-  = note: `split(separator:RegExp, limit:int):Array<String>`
+  = note: `split(separator:RegExp, limit:Int):Array<String>`
 
 error[X0604]: no overload of `match` accepts (Int)
  --> std-string.xn:8:61
@@ -191,7 +191,7 @@ error[X0601]: this call takes 1 argument but 0 were given
    |
   ::: <xenon prelude>/xenon/String.xn:32:14
    |
-32 |     function at(index:int):String?
+32 |     function at(index:Int):String?
    |              -- `at` defined here
 
 error[X0415]: `String` can't be instantiated with `new`

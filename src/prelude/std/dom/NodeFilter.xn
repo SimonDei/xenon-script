@@ -3,22 +3,22 @@ package xenon {
   public native class NodeFilter {
     private function NodeFilter()
 
-    static inline const FILTER_ACCEPT:int = 1
-    static inline const FILTER_REJECT:int = 2
-    static inline const FILTER_SKIP:int = 3
+    static inline const FILTER_ACCEPT:Int = 1
+    static inline const FILTER_REJECT:Int = 2
+    static inline const FILTER_SKIP:Int = 3
 
-    static inline const SHOW_ALL:uint = 0xffffffff
-    static inline const SHOW_ELEMENT:uint = 0x1
-    static inline const SHOW_ATTRIBUTE:uint = 0x2
-    static inline const SHOW_TEXT:uint = 0x4
-    static inline const SHOW_CDATA_SECTION:uint = 0x8
-    static inline const SHOW_ENTITY_REFERENCE:uint = 0x10
-    static inline const SHOW_ENTITY:uint = 0x20
-    static inline const SHOW_PROCESSING_INSTRUCTION:uint = 0x40
-    static inline const SHOW_COMMENT:uint = 0x80
-    static inline const SHOW_DOCUMENT:uint = 0x100
-    static inline const SHOW_DOCUMENT_TYPE:uint = 0x200
-    static inline const SHOW_DOCUMENT_FRAGMENT:uint = 0x400
-    static inline const SHOW_NOTATION:uint = 0x800
+    static inline const SHOW_ALL:UInt = 0xffffffff
+    static inline const SHOW_ELEMENT:UInt = 0x1
+    static inline const SHOW_ATTRIBUTE:UInt = 0x2
+    static inline const SHOW_TEXT:UInt = 0x4
+    static inline const SHOW_CDATA_SECTION:UInt = 0x8
+    static inline const SHOW_ENTITY_REFERENCE:UInt = 0x10
+    static inline const SHOW_ENTITY:UInt = 0x20
+    static inline const SHOW_PROCESSING_INSTRUCTION:UInt = 0x40
+    static inline const SHOW_COMMENT:UInt = 0x80
+    static inline const SHOW_DOCUMENT:UInt = 0x100
+    static inline const SHOW_DOCUMENT_TYPE:UInt = 0x200
+    static inline const SHOW_DOCUMENT_FRAGMENT:UInt = 0x400
+    static inline const SHOW_NOTATION:UInt = 0x800
   }
 }

@@ -14,7 +14,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/console.xn:25:33
    |
-25 |     static function count(label:String = 'default'):void
+25 |     static function count(label:String = 'default'):Void
    |                                 ------ parameter declared here
    |
 help: convert the value with `String()`
@@ -30,8 +30,8 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/console.xn:21:38
    |
-21 |     static function assert(condition:Boolean = false, ...data:Array):void
-   |                                      ------- parameter declared here
+21 |     static function assert(condition:Bool = false, ...data:Array):Void
+   |                                      ---- parameter declared here
 
 error[X0604]: no overload of `table` accepts (array literal, String)
  --> std-console.xn:6:5
@@ -39,8 +39,8 @@ error[X0604]: no overload of `table` accepts (array literal, String)
 6 |     console.table([1], 'a')
   |     ^^^^^^^^^^^^^ no matching overload
   |
-  = note: `table(data:*):void`
-  = note: `table(data:*, columns:Array<String>):void`
+  = note: `table(data:*):Void`
+  = note: `table(data:*, columns:Array<String>):Void`
 
 error[X0415]: `console` can't be instantiated with `new`
  --> std-console.xn:8:19

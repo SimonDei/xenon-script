@@ -24,26 +24,26 @@ package xenon {
     /** The class names as a `DOMTokenList` (`add`, `remove`, `toggle`, `contains`). */
     /** The CSS classes (`add`, `remove`, `toggle`, `contains`); assigning a `String` replaces the `class` attribute. */
     function get classList():DOMTokenList
-    function set classList(value:String):void
+    function set classList(value:String):Void
     /** Inline CSS properties; dynamic because CSSStyleDeclaration has hundreds of properties. */
     function get style():*
 
     // ---- attributes ----
     final attributes:NamedNodeMap
-    function hasAttributes():Boolean
+    function hasAttributes():Bool
     function getAttributeNames():Array<String>
     /** The attribute's value, or `null` if the element doesn't have it: `br.getAttribute('w:type')`. */
     function getAttribute(name:String):String?
     function getAttributeNS(ns:String?, localName:String):String?
-    function hasAttribute(name:String):Boolean
-    function hasAttributeNS(ns:String?, localName:String):Boolean
-    function setAttribute(name:String, value:String):void
-    function setAttributeNS(ns:String?, qualifiedName:String, value:String):void
-    function removeAttribute(name:String):void
-    function removeAttributeNS(ns:String?, localName:String):void
+    function hasAttribute(name:String):Bool
+    function hasAttributeNS(ns:String?, localName:String):Bool
+    function setAttribute(name:String, value:String):Void
+    function setAttributeNS(ns:String?, qualifiedName:String, value:String):Void
+    function removeAttribute(name:String):Void
+    function removeAttributeNS(ns:String?, localName:String):Void
     /** Adds the attribute if it's missing, removes it if present (or as `force` says); whether it's there now. */
-    function toggleAttribute(name:String):Boolean
-    function toggleAttribute(name:String, force:Boolean):Boolean
+    function toggleAttribute(name:String):Bool
+    function toggleAttribute(name:String, force:Bool):Bool
 
     // ---- finding elements ----
     /** All descendants with this qualified name (`'w:br'`, `'*'` for all), live. */
@@ -55,33 +55,33 @@ package xenon {
     function querySelectorAll(selectors:String):NodeList<Element>
     /** The element itself or its nearest ancestor matching the selector, or `null`. */
     function closest(selectors:String):Element?
-    function matches(selectors:String):Boolean
+    function matches(selectors:String):Bool
 
     // ---- children and siblings that are elements ----
     final children:HTMLCollection
     final firstElementChild:Element?
     final lastElementChild:Element?
-    final childElementCount:int
+    final childElementCount:Int
     final previousElementSibling:Element?
     final nextElementSibling:Element?
 
     // ---- changing the tree (nodes or strings, which become text) ----
-    function append(...nodes:Array<*>):void
-    function prepend(...nodes:Array<*>):void
-    function replaceChildren(...nodes:Array<*>):void
-    function before(...nodes:Array<*>):void
-    function after(...nodes:Array<*>):void
-    function replaceWith(...nodes:Array<*>):void
+    function append(...nodes:Array<*>):Void
+    function prepend(...nodes:Array<*>):Void
+    function replaceChildren(...nodes:Array<*>):Void
+    function before(...nodes:Array<*>):Void
+    function after(...nodes:Array<*>):Void
+    function replaceWith(...nodes:Array<*>):Void
     /** Takes the element out of its parent. */
-    function remove():void
+    function remove():Void
     /** `where`: `'beforebegin'`, `'afterbegin'`, `'beforeend'` or `'afterend'`. */
     function insertAdjacentElement(where:String, element:Element):Element?
-    function insertAdjacentText(where:String, text:String):void
-    function insertAdjacentHTML(where:String, html:String):void
+    function insertAdjacentText(where:String, text:String):Void
+    function insertAdjacentHTML(where:String, html:String):Void
 
     /** The element's text, or `''` when it has no text. */
     public override function get textContent():String
-    public override function set textContent(value:String?):void
+    public override function set textContent(value:String?):Void
 
     // ---- markup ----
     /** The children as HTML or XML text; setting it parses and replaces them. */

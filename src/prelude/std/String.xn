@@ -19,35 +19,35 @@ package xenon {
     private function String()
 
     /** `String.fromCharCode(72, 105)` is `'Hi'`; each code is a UTF-16 unit (0–65535). */
-    static constexpr function fromCharCode(...codes:Array<int>):String
+    static constexpr function fromCharCode(...codes:Array<Int>):String
     /** `String.fromCodePoint(128512)` is `'😀'`; each point is 0–1114111. */
-    static constexpr function fromCodePoint(...points:Array<int>):String
+    static constexpr function fromCodePoint(...points:Array<Int>):String
 
     /** Number of UTF-16 code units. */
-    constexpr function get length():int
+    constexpr function get length():Int
 
     // ---- characters ----
-    constexpr function charAt(index:int = 0):String
+    constexpr function charAt(index:Int = 0):String
     /** Like `s[index]`, but negative indexes count from the end: `'abc'.at(-1)` is `'c'`. */
-    function at(index:int):String?
+    function at(index:Int):String?
     /** The UTF-16 code unit at `index` (0–65535); NaN if out of range. */
-    constexpr function charCodeAt(index:int):int
+    constexpr function charCodeAt(index:Int):Int
     /** The full code point at `index` (surrogate pairs combined); `null` if out of range. */
-    constexpr function codePointAt(index:int):int?
+    constexpr function codePointAt(index:Int):Int?
 
     // ---- searching ----
-    constexpr function indexOf(search:String, from:int = 0):int
+    constexpr function indexOf(search:String, from:Int = 0):Int
     /** Last position of `search`, or -1. */
-    constexpr function lastIndexOf(search:String):int
-    constexpr function lastIndexOf(search:String, from:int):int
-    constexpr function includes(search:String, from:int = 0):Boolean
-    constexpr function startsWith(search:String, from:int = 0):Boolean
-    constexpr function endsWith(search:String):Boolean
+    constexpr function lastIndexOf(search:String):Int
+    constexpr function lastIndexOf(search:String, from:Int):Int
+    constexpr function includes(search:String, from:Int = 0):Bool
+    constexpr function startsWith(search:String, from:Int = 0):Bool
+    constexpr function endsWith(search:String):Bool
     /** Only the first `length` characters are considered. */
-    constexpr function endsWith(search:String, length:int):Boolean
+    constexpr function endsWith(search:String, length:Int):Bool
     /** Position of the first regex match, or -1. */
-    constexpr function search(pattern:RegExp):int
-    constexpr function search(pattern:String):int
+    constexpr function search(pattern:RegExp):Int
+    constexpr function search(pattern:String):Int
 
     // ---- regular expressions ----
     /** The match (see `RegExp.exec`), or `null`. With the `g` flag: all matched texts, or `null`. */
@@ -59,18 +59,18 @@ package xenon {
 
     // ---- extracting ----
     [NoDiscard('returns a new string; this one is unchanged')]
-    constexpr function slice(start:int):String
+    constexpr function slice(start:Int):String
     /** From `start` up to (not including) `end`; negative values count from the end. */
-    constexpr function slice(start:int, end:int):String
+    constexpr function slice(start:Int, end:Int):String
     [NoDiscard('returns a new string; this one is unchanged')]
-    constexpr function substring(start:int):String
+    constexpr function substring(start:Int):String
     /** Like `slice`, but swaps the arguments if `start > end` and clamps negatives to 0. */
-    constexpr function substring(start:int, end:int):String
+    constexpr function substring(start:Int, end:Int):String
     function split(separator:String):Array<String>
     /** At most `limit` pieces. */
-    function split(separator:String, limit:int):Array<String>
+    function split(separator:String, limit:Int):Array<String>
     function split(separator:RegExp):Array<String>
-    function split(separator:RegExp, limit:int):Array<String>
+    function split(separator:RegExp, limit:Int):Array<String>
 
     // ---- changing ----
     /** Replaces the first occurrence; `$&`, `$1`, … in `replacement` insert the match and groups. */
@@ -89,11 +89,11 @@ package xenon {
     [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function concat(...parts:Array<String>):String
     [NoDiscard('returns a new string; this one is unchanged')]
-    constexpr function repeat(count:int):String
+    constexpr function repeat(count:Int):String
     [NoDiscard('returns a new string; this one is unchanged')]
-    constexpr function padStart(length:int, fill:String = ' '):String
+    constexpr function padStart(length:Int, fill:String = ' '):String
     [NoDiscard('returns a new string; this one is unchanged')]
-    constexpr function padEnd(length:int, fill:String = ' '):String
+    constexpr function padEnd(length:Int, fill:String = ' '):String
     [NoDiscard('returns a new string; this one is unchanged')]
     constexpr function trim():String
     [NoDiscard('returns a new string; this one is unchanged')]
@@ -116,12 +116,12 @@ package xenon {
 
     // ---- comparing and converting ----
     /** Negative, 0 or positive: `a.localeCompare(b)` orders by the default locale's rules. */
-    function localeCompare(other:String):int
-    function localeCompare(other:String, locale:String):int
+    function localeCompare(other:String):Int
+    function localeCompare(other:String, locale:String):Int
     /** `options` are `Intl.Collator` options, e.g. `{ numeric: true }`. */
-    function localeCompare(other:String, locale:String, options:*):int
+    function localeCompare(other:String, locale:String, options:*):Int
     /** Does the string have no lone surrogates? */
-    constexpr function isWellFormed():Boolean
+    constexpr function isWellFormed():Bool
     /** Lone surrogates replaced by U+FFFD. */
     constexpr function toWellFormed():String
     constexpr function toString():String

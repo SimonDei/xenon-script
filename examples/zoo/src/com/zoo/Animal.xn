@@ -2,7 +2,7 @@ package com.zoo {
   import com.zoo.food.Food
 
   public class Animal {
-    private static var count:int = 0
+    private static var count:Int = 0
     public final name:String
     private var eaten:Array<Food> = []
 
@@ -11,17 +11,17 @@ package com.zoo {
       count++
     }
 
-    public function feed(food:Food):void {
+    public function feed(food:Food):Void {
       eaten.push(food)
       food.eatenBy = this
     }
 
-    public function get calories():int {
-      var total:int = 0
+    public function get calories():Int {
+      var total:Int = 0
       for (var f:Food of eaten) total += f.calories
       return total
     }
 
-    public static function get population():int { return count }
+    public static function get population():Int { return count }
   }
 }

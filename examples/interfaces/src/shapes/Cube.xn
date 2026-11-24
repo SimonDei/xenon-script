@@ -3,6 +3,6 @@ package shapes {
   public class Cube extends Square implements IScalable {
     override public function area():Float { return 6 * side * side }
     override public function get name():String { return 'cube' }
-    public function scale(factor:Float):void { side *= factor }
+    public function scale(factor:Float):Void { side *= factor }
   }
 }

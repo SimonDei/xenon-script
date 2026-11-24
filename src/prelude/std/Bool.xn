@@ -12,6 +12,6 @@ package xenon {
     constexpr function toString():String
 
     /** The primitive value itself. */
-    function valueOf():Boolean
+    function valueOf():Bool
   }
 }

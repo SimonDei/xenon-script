@@ -2,16 +2,16 @@
 // its `constexpr` methods evaluated on them. A `constexpr` method is always `const` (it never
 // changes its object), so writing `const` is optional.
 public class Size {
-  public final width:int
-  public final height:int
+  public final width:Int
+  public final height:Int
 
-  public constexpr function Size(width:int, height:int) {
+  public constexpr function Size(width:Int, height:Int) {
     this.width = width
     this.height = height
   }
 
-  public constexpr function area():int const => width * height
-  public constexpr function scaled(factor:int):Size => new Size(width * factor, height * factor)
+  public constexpr function area():Int const => width * height
+  public constexpr function scaled(factor:Int):Size => new Size(width * factor, height * factor)
   public constexpr function operator+(other:Size):Size => new Size(width + other.width, height + other.height)
-  public constexpr function operator==(other:Size):Boolean const => width == other.width && height == other.height
+  public constexpr function operator==(other:Size):Bool const => width == other.width && height == other.height
 }

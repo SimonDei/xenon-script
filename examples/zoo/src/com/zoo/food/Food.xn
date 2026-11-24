@@ -3,10 +3,10 @@ package com.zoo.food {
 
   public class Food {
     public final kind:String
-    public final calories:int
+    public final calories:Int
     public var eatenBy:Animal? = null
 
-    public function Food(kind:String, calories:int) {
+    public function Food(kind:String, calories:Int) {
       this.kind = kind
       this.calories = calories
     }

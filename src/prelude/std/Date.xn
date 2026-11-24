@@ -17,83 +17,83 @@ package xenon {
     /** A copy of another date. */
     function Date(date:Date)
     /** From local-time parts; `month` is 0–11. */
-    function Date(year:int, month:int, day:int = 1, hours:int = 0, minutes:int = 0, seconds:int = 0, milliseconds:int = 0)
+    function Date(year:Int, month:Int, day:Int = 1, hours:Int = 0, minutes:Int = 0, seconds:Int = 0, milliseconds:Int = 0)
 
     /** Milliseconds since 1970-01-01 UTC, for the current moment. */
     static function now():Float
     /** Milliseconds for a date string, or NaN if it isn't valid. */
     static function parse(text:String):Float
     /** Milliseconds for UTC parts; `month` is 0–11. */
-    static function UTC(year:int, month:int = 0, day:int = 1, hours:int = 0, minutes:int = 0, seconds:int = 0, milliseconds:int = 0):Float
+    static function UTC(year:Int, month:Int = 0, day:Int = 1, hours:Int = 0, minutes:Int = 0, seconds:Int = 0, milliseconds:Int = 0):Float
 
     // ---- reading (local time) ----
     /** Year, e.g. 2024 */
-    function getFullYear():int
+    function getFullYear():Int
     /** 0–11 */
-    function getMonth():int
+    function getMonth():Int
     /** Day of the month, 1–31 */
-    function getDate():int
+    function getDate():Int
     /** Day of the week, 0 (Sunday) – 6 */
-    function getDay():int
+    function getDay():Int
     /** 0–23 */
-    function getHours():int
+    function getHours():Int
     /** 0–59 */
-    function getMinutes():int
+    function getMinutes():Int
     /** 0–59 */
-    function getSeconds():int
+    function getSeconds():Int
     /** 0–999 */
-    function getMilliseconds():int
+    function getMilliseconds():Int
     /** Milliseconds since 1970-01-01 UTC. */
     function getTime():Float
     /** Same as `getTime()`. */
     function valueOf():Float
     /** Minutes UTC is ahead of local time (negative east of Greenwich). */
-    function getTimezoneOffset():int
+    function getTimezoneOffset():Int
 
     // ---- reading (UTC) ----
-    function getUTCFullYear():int
-    function getUTCMonth():int
-    function getUTCDate():int
-    function getUTCDay():int
-    function getUTCHours():int
-    function getUTCMinutes():int
-    function getUTCSeconds():int
-    function getUTCMilliseconds():int
+    function getUTCFullYear():Int
+    function getUTCMonth():Int
+    function getUTCDate():Int
+    function getUTCDay():Int
+    function getUTCHours():Int
+    function getUTCMinutes():Int
+    function getUTCSeconds():Int
+    function getUTCMilliseconds():Int
 
     // ---- writing: each returns the new time value; omitted trailing parts stay as they are ----
     function setTime(time:Float):Float
-    function setFullYear(year:int):Float
-    function setFullYear(year:int, month:int):Float
-    function setFullYear(year:int, month:int, day:int):Float
-    function setMonth(month:int):Float
-    function setMonth(month:int, day:int):Float
-    function setDate(day:int):Float
-    function setHours(hours:int):Float
-    function setHours(hours:int, minutes:int):Float
-    function setHours(hours:int, minutes:int, seconds:int):Float
-    function setHours(hours:int, minutes:int, seconds:int, milliseconds:int):Float
-    function setMinutes(minutes:int):Float
-    function setMinutes(minutes:int, seconds:int):Float
-    function setMinutes(minutes:int, seconds:int, milliseconds:int):Float
-    function setSeconds(seconds:int):Float
-    function setSeconds(seconds:int, milliseconds:int):Float
-    function setMilliseconds(milliseconds:int):Float
-    function setUTCFullYear(year:int):Float
-    function setUTCFullYear(year:int, month:int):Float
-    function setUTCFullYear(year:int, month:int, day:int):Float
-    function setUTCMonth(month:int):Float
-    function setUTCMonth(month:int, day:int):Float
-    function setUTCDate(day:int):Float
-    function setUTCHours(hours:int):Float
-    function setUTCHours(hours:int, minutes:int):Float
-    function setUTCHours(hours:int, minutes:int, seconds:int):Float
-    function setUTCHours(hours:int, minutes:int, seconds:int, milliseconds:int):Float
-    function setUTCMinutes(minutes:int):Float
-    function setUTCMinutes(minutes:int, seconds:int):Float
-    function setUTCMinutes(minutes:int, seconds:int, milliseconds:int):Float
-    function setUTCSeconds(seconds:int):Float
-    function setUTCSeconds(seconds:int, milliseconds:int):Float
-    function setUTCMilliseconds(milliseconds:int):Float
+    function setFullYear(year:Int):Float
+    function setFullYear(year:Int, month:Int):Float
+    function setFullYear(year:Int, month:Int, day:Int):Float
+    function setMonth(month:Int):Float
+    function setMonth(month:Int, day:Int):Float
+    function setDate(day:Int):Float
+    function setHours(hours:Int):Float
+    function setHours(hours:Int, minutes:Int):Float
+    function setHours(hours:Int, minutes:Int, seconds:Int):Float
+    function setHours(hours:Int, minutes:Int, seconds:Int, milliseconds:Int):Float
+    function setMinutes(minutes:Int):Float
+    function setMinutes(minutes:Int, seconds:Int):Float
+    function setMinutes(minutes:Int, seconds:Int, milliseconds:Int):Float
+    function setSeconds(seconds:Int):Float
+    function setSeconds(seconds:Int, milliseconds:Int):Float
+    function setMilliseconds(milliseconds:Int):Float
+    function setUTCFullYear(year:Int):Float
+    function setUTCFullYear(year:Int, month:Int):Float
+    function setUTCFullYear(year:Int, month:Int, day:Int):Float
+    function setUTCMonth(month:Int):Float
+    function setUTCMonth(month:Int, day:Int):Float
+    function setUTCDate(day:Int):Float
+    function setUTCHours(hours:Int):Float
+    function setUTCHours(hours:Int, minutes:Int):Float
+    function setUTCHours(hours:Int, minutes:Int, seconds:Int):Float
+    function setUTCHours(hours:Int, minutes:Int, seconds:Int, milliseconds:Int):Float
+    function setUTCMinutes(minutes:Int):Float
+    function setUTCMinutes(minutes:Int, seconds:Int):Float
+    function setUTCMinutes(minutes:Int, seconds:Int, milliseconds:Int):Float
+    function setUTCSeconds(seconds:Int):Float
+    function setUTCSeconds(seconds:Int, milliseconds:Int):Float
+    function setUTCMilliseconds(milliseconds:Int):Float
 
     // ---- formatting ----
     /** `'2024-02-29T12:00:00.000Z'`; throws a `RangeError` (caught as `RangeException`) for an invalid date. */

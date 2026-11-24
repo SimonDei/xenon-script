@@ -12,12 +12,12 @@ package xenon {
   /** Calls `callback` once after `ms` milliseconds (at the earliest); returns a handle for `clearTimeout`. */
   native function setTimeout(callback:() -> Void, ms:Float = 0):*
   /** Cancels a pending `setTimeout`; a finished or `null` handle is ignored. */
-  native function clearTimeout(handle:*):void
+  native function clearTimeout(handle:*):Void
   /** Calls `callback` every `ms` milliseconds until `clearInterval`. */
   native function setInterval(callback:() -> Void, ms:Float = 0):*
-  native function clearInterval(handle:*):void
+  native function clearInterval(handle:*):Void
   /** Runs `callback` after the current task, before any timer. */
-  native function queueMicrotask(callback:() -> Void):void
+  native function queueMicrotask(callback:() -> Void):Void
 
   // ---- values ----
   /** A deep copy (objects, arrays, maps, sets, dates, …); throws for functions and class instances lose their class. */
@@ -47,7 +47,7 @@ package xenon {
   public typedef RequestInit = {
     ?method:String, ?headers:*, ?body:*, ?signal:*,
     ?redirect:String, ?credentials:String, ?mode:String, ?cache:String,
-    ?referrer:String, ?referrerPolicy:String, ?integrity:String, ?keepalive:Boolean, ?priority:String
+    ?referrer:String, ?referrerPolicy:String, ?integrity:String, ?keepalive:Bool, ?priority:String
   }
 
   // ---- text encoding ----

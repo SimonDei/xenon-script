@@ -4,7 +4,7 @@ package xenon {
     private function TreeWalker()
 
     final root:Node
-    final whatToShow:uint
+    final whatToShow:UInt
     final filter:*
     var currentNode:Node
 

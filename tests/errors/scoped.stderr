@@ -245,7 +245,7 @@ error[X0787]: `Escape` doesn't implement `dispose`
    |
   ::: <xenon prelude>/xenon/Prelude.xn:19:14
    |
-19 |     function dispose():void
+19 |     function dispose():Void
    |              ------- required by `IDisposable`
    |
 help: add the missing members (the stubs throw `NotImplementedException`)

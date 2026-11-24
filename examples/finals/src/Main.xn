@@ -1,17 +1,17 @@
 package {
   public class Main {
     public static final STARTED:String
-    public static final PRIMES:Array<int> = []
-    private static var instances:int = 0
+    public static final PRIMES:Array<Int> = []
+    private static var instances:Int = 0
 
     static {
       STARTED = 'boot'
-      for (var n:int of 2..20) {
+      for (var n:Int of 2..20) {
         if (Main.isPrime(n)) PRIMES.push(n)
       }
     }
 
-    private final id:int
+    private final id:Int
     private final label:String
 
     public function Main(name:String = 'main') {
@@ -24,7 +24,7 @@ package {
       describe(-2)
     }
 
-    private function describe(n:int):void {
+    private function describe(n:Int):Void {
       final kind:String
       switch (n) {
         case 7:
@@ -39,8 +39,8 @@ package {
       trace(n, kind, parity)
     }
 
-    private static function isPrime(n:int):Boolean {
-      for (var d:int of 2..n) {
+    private static function isPrime(n:Int):Bool {
+      for (var d:Int of 2..n) {
         if (d * d > n) break
         if (n % d == 0) return false
       }

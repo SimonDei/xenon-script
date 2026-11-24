@@ -8,7 +8,7 @@ error[X0604]: no overload of `new Date` accepts (Bool)
   = note: `new Date(time:Float)`
   = note: `new Date(text:String)`
   = note: `new Date(date:Date)`
-  = note: `new Date(year:int, month:int, day:int = 1, hours:int = 0, minutes:int = 0, seconds:int = 0, milliseconds:int = 0)`
+  = note: `new Date(year:Int, month:Int, day:Int = 1, hours:Int = 0, minutes:Int = 0, seconds:Int = 0, milliseconds:Int = 0)`
 
 error[X0315]: cannot apply `>` to `Date` and `Date`
  --> std-date.xn:6:36
@@ -45,10 +45,10 @@ error[X0604]: no overload of `setHours` accepts (String)
 9 |     d.setHours('5')
   |     ^^^^^^^^^^ no matching overload
   |
-  = note: `setHours(hours:int):Float`
-  = note: `setHours(hours:int, minutes:int):Float`
-  = note: `setHours(hours:int, minutes:int, seconds:int):Float`
-  = note: `setHours(hours:int, minutes:int, seconds:int, milliseconds:int):Float`
+  = note: `setHours(hours:Int):Float`
+  = note: `setHours(hours:Int, minutes:Int):Float`
+  = note: `setHours(hours:Int, minutes:Int, seconds:Int):Float`
+  = note: `setHours(hours:Int, minutes:Int, seconds:Int, milliseconds:Int):Float`
 
 error[X0604]: no overload of `setMinutes` accepts ()
   --> std-date.xn:10:5
@@ -56,9 +56,9 @@ error[X0604]: no overload of `setMinutes` accepts ()
 10 |     d.setMinutes()
    |     ^^^^^^^^^^^^ no matching overload
    |
-   = note: `setMinutes(minutes:int):Float`
-   = note: `setMinutes(minutes:int, seconds:int):Float`
-   = note: `setMinutes(minutes:int, seconds:int, milliseconds:int):Float`
+   = note: `setMinutes(minutes:Int):Float`
+   = note: `setMinutes(minutes:Int, seconds:Int):Float`
+   = note: `setMinutes(minutes:Int, seconds:Int, milliseconds:Int):Float`
 
 error[X0308]: mismatched types
   --> std-date.xn:11:47

@@ -8,7 +8,7 @@ package {
 
       // primitives get their members from native classes (`Float` and `String` are in the standard library)
       var price:Float = 3.14159
-      var count:int = 42
+      var count:Int = 42
       trace(price.toFixed(2), count.toFixed(1), Float.MAX_SAFE_INTEGER > 1e15)
 
       var csv:String = 'a,b;c'
@@ -17,9 +17,9 @@ package {
       trace(byComma.length, byAny.length, csv.toUpperCase().padStart(7, '*'))
 
       // a generic native class from the standard library, and a Xenon class extending it
-      var ages:Map<String, int> = new Map<String, int>()
+      var ages:Map<String, Int> = new Map<String, Int>()
       ages.set('ann', 31).set('bob', 27)
-      var annNextYear:int = (ages.get('ann') ?? 0) + 1      // get() is `int?`: null for a missing key
+      var annNextYear:Int = (ages.get('ann') ?? 0) + 1      // get() is `int?`: null for a missing key
       trace(ages.size, annNextYear, ages.has('cid'))
 
       var reg:Registry = new Registry()
@@ -33,6 +33,6 @@ package {
   }
 }
 
-class Registry extends Map<String, int> {
-  public function add(key:String):void { set(key, size) }
+class Registry extends Map<String, Int> {
+  public function add(key:String):Void { set(key, size) }
 }

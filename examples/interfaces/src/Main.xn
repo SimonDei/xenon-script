@@ -5,13 +5,13 @@ package {
     public function Main() {
       var all:Array<IShape> = [new Circle(1), new Square(2), new Cube(1)]
       for (var s:IShape of all) {
-        trace(s.name, s.draw(), int(s.area() * 100) / 100, s is IScalable, s is Cube)
+        trace(s.name, s.draw(), Int(s.area() * 100) / 100, s is IScalable, s is Cube)
       }
 
       for (var s:IShape of all) {
         if (var sc:IScalable = s as IScalable) sc.scale(2)
       }
-      trace(all.map((s:IShape):String => s.name + '=' + int(s.area())).join(' '))
+      trace(all.map((s:IShape):String => s.name + '=' + Int(s.area())).join(' '))
 
       var d:IDrawable = all[1]
       var text:* = 'text'

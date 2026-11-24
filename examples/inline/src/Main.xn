@@ -2,22 +2,22 @@ package {
   import game.Config
 
   public class Main {
-    private static inline final HALF_HP:int = Config.MAX_HP / 2
+    private static inline final HALF_HP:Int = Config.MAX_HP / 2
     private static inline final RATIO:Float = HALF_HP / 3
-    private static inline final DEBUG:Boolean = HALF_HP > 40 && !false
-    private static inline const NEG:int = -HALF_HP
+    private static inline final DEBUG:Bool = HALF_HP > 40 && !false
+    private static inline const NEG:Int = -HALF_HP
 
     public function Main() {
-      inline const LOW:int = HALF_HP - Config.STEP
+      inline const LOW:Int = HALF_HP - Config.STEP
       trace(Config.TITLE, Config.MAX_HP, HALF_HP, LOW, NEG)
-      trace(RATIO, DEBUG, int(RATIO * 10) / 10)
-      for (var hp:int of 0..=Config.MAX_HP step Config.STEP) trace(hp, describe(hp))
-      var big:uint = 2 ** 31
+      trace(RATIO, DEBUG, Int(RATIO * 10) / 10)
+      for (var hp:Int of 0..=Config.MAX_HP step Config.STEP) trace(hp, describe(hp))
+      var big:UInt = 2 ** 31
       trace(big, 5 - NEG)
 
       // `constexpr` functions: computed at compile time when the arguments are constants
       // (`kib(64)` becomes 65536 in the output), an ordinary call otherwise
-      var n:int = 3
+      var n:Int = 3
       trace(BUFFER, kib(2), fact(10), percent(Config.MAX_HP, HALF_HP), kib(n), fact(n))
       trace(fib(30), fib(n))
 
@@ -26,25 +26,25 @@ package {
       trace(SCREEN, new Size(4, 3).scaled(2).area(), (new Size(1, 1) + new Size(2, 3)).width, new Size(2, 2) == new Size(2, 2), tile.area())
     }
 
-    private static inline final BUFFER:int = kib(64)
-    private static inline final SCREEN:int = new Size(320, 200).area()
-    private static constexpr function kib(n:int):int => n * 1024
-    private static constexpr function fact(n:int):int => n <= 1 ? 1 : n * fact(n - 1)
-    private static constexpr function percent(total:int, part:int):String => $'{Math.round(part / total * 100)}%'
+    private static inline final BUFFER:Int = kib(64)
+    private static inline final SCREEN:Int = new Size(320, 200).area()
+    private static constexpr function kib(n:Int):Int => n * 1024
+    private static constexpr function fact(n:Int):Int => n <= 1 ? 1 : n * fact(n - 1)
+    private static constexpr function percent(total:Int, part:Int):String => $'{Math.round(part / total * 100)}%'
 
     // A block body: locals, loops and `if` run at compile time too.
-    private static constexpr function fib(n:int):int {
-      var a:int = 0
-      var b:int = 1
-      for (var i:int of 0..n) {
-        var next:int = a + b
+    private static constexpr function fib(n:Int):Int {
+      var a:Int = 0
+      var b:Int = 1
+      for (var i:Int of 0..n) {
+        var next:Int = a + b
         a = b
         b = next
       }
       return a
     }
 
-    private function describe(hp:int):String {
+    private function describe(hp:Int):String {
       switch (hp) {
         case Config.MAX_HP: return 'full'
         case HALF_HP: return 'half'

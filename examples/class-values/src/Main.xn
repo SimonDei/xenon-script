@@ -13,8 +13,8 @@ public class Main {
     trace(shape.name, any.name)
   }
 
-  private function count(list:Array<Animal>, kind:Class<Animal>):int {
-    var n:int = 0
+  private function count(list:Array<Animal>, kind:Class<Animal>):Int {
+    var n:Int = 0
     for (var a:Animal of list) if (a is kind) n++
     return n
   }

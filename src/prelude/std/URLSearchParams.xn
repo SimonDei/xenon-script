@@ -16,26 +16,26 @@ package xenon {
     function URLSearchParams(init:Array<Tuple<String, String>>)
 
     /** The number of name/value pairs (a repeated name counts each time). */
-    final size:int
+    final size:Int
 
     /** Adds a pair; an existing pair with the same name stays. */
-    function append(name:String, value:String):void
+    function append(name:String, value:String):Void
     /** Removes every pair with this name (only the one with this value, when given). */
-    function delete(name:String):void
-    function delete(name:String, value:String):void
+    function delete(name:String):Void
+    function delete(name:String, value:String):Void
     /** The first value for `name`, or `null`. */
     function get(name:String):String?
     function getAll(name:String):Array<String>
-    function has(name:String):Boolean
-    function has(name:String, value:String):Boolean
+    function has(name:String):Bool
+    function has(name:String, value:String):Bool
     /** Replaces all pairs with this name by one. */
-    function set(name:String, value:String):void
+    function set(name:String, value:String):Void
     /** Sorts the pairs by name (stable: the values of a name keep their order). */
-    function sort():void
+    function sort():Void
     /** The encoded query, without `?`: `'q=xenon+lang&page=2'`. */
     function toString():String
 
-    function forEach(callback:(value:String, name:String, params:URLSearchParams) -> Void):void
+    function forEach(callback:(value:String, name:String, params:URLSearchParams) -> Void):Void
     function keys():Iterator<String>
     function values():Iterator<String>
     function entries():Iterator<Tuple<String, String>>

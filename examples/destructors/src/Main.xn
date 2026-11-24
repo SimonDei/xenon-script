@@ -17,7 +17,7 @@ package {
       var opened:FileHandle = open('made.txt')   // `open` hands its value on: destroyed at the end of Main()
       log.push('got ' + opened.name)
       new FileHandle('temp.txt').touch()         // a temporary: destroyed when the statement ends
-      for (var i:int of 0..2) {
+      for (var i:Int of 0..2) {
         var part:FileHandle = new FileHandle('part' + i)
         part.touch()
       }                                          // one destruction per iteration
@@ -39,12 +39,12 @@ package {
       void run()                             // starts the async part; nothing waits for it
     }
 
-    private static function flush():void {
+    private static function flush():Void {
       trace(log.join(' | '))
       log = []
     }
 
-    private function scoped():void {
+    private function scoped():Void {
       var first:FileHandle = new FileHandle('first')
       var second:Lock = new Lock('second')
       log.push('working')
@@ -56,7 +56,7 @@ package {
       return handle                             // the caller owns it now: not destroyed here
     }
 
-    private async function run():Promise<void> {
+    private async function run():Promise<Void> {
       var conn:Connection = new Connection()     // async destructor: awaited when run() ends
       log.push('connected')
     }
@@ -67,7 +67,7 @@ package {
 class FileHandle {
   public final name:String
   public function FileHandle(name:String) { this.name = name }
-  public function touch():void { Main.log.push('touch ' + name) }
+  public function touch():Void { Main.log.push('touch ' + name) }
   public function ~FileHandle() { Main.log.push('close ' + name) }
 }
 
@@ -91,9 +91,9 @@ class Connection {
 /** Manual: no destructor; `using` (or a call) runs its `dispose()`. */
 class Socket implements IDisposable {
   private final name:String
-  private var closed:Boolean = false
+  private var closed:Bool = false
   public function Socket(name:String) { this.name = name }
-  public function dispose():void {
+  public function dispose():Void {
     if (closed) return
     closed = true
     Main.log.push('close socket ' + name)

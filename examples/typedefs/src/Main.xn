@@ -15,7 +15,7 @@ package {
 
       // function types: contextual parameter types for arrows
       var add:Reducer = (acc, n) => acc + n
-      var mul:Reducer = (acc:int, n:int):int => acc * n
+      var mul:Reducer = (acc:Int, n:Int):Int => acc * n
       trace(fold([1, 2, 3, 4], add, 0), fold([1, 2, 3, 4], mul, 1))
 
       var log:Array = []
@@ -30,13 +30,13 @@ package {
 
       // recursive shapes and inline types
       var list:Node? = { value: 1, next: { value: 2, next: { value: 3 } } }
-      var total:int = 0
+      var total:Int = 0
       while (var n:Node = list) {
         total += n.value
         list = n.next
       }
-      var pair:{ first:String, second:int } = { first: 'sum', second: total }
-      var twice:(int) -> int = (n) => n * 2
+      var pair:{ first:String, second:Int } = { first: 'sum', second: total }
+      var twice:(Int) -> Int = (n) => n * 2
       trace(pair.first, pair.second, twice(pair.second))
     }
 
@@ -44,15 +44,15 @@ package {
       return Math.hypot(q.x - p.x, q.y - p.y)
     }
 
-    private function fold(xs:Array<int>, f:Reducer, start:int):int {
-      var acc:int = start
-      for (var x:int of xs) acc = f(acc, x)
+    private function fold(xs:Array<Int>, f:Reducer, start:Int):Int {
+      var acc:Int = start
+      for (var x:Int of xs) acc = f(acc, x)
       return acc
     }
   }
 }
 
-typedef Node = { value:int, ?next:Node }
+typedef Node = { value:Int, ?next:Node }
 
 class Vec {
   public var x:Float

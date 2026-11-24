@@ -1,5 +1,5 @@
 package shapes {
   public interface IScalable {
-    function scale(factor:Float):void
+    function scale(factor:Float):Void
   }
 }

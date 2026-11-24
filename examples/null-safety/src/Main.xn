@@ -14,8 +14,8 @@ public class Main {
     }
 
     // Results that may be missing are `T?`; a check or `if (var …)` makes them usable.
-    var ages:Map<String, int> = new Map([['ann', 31]])
-    var found:User? = users.find((u:User):Boolean => u.name == 'Bob')
+    var ages:Map<String, Int> = new Map([['ann', 31]])
+    var found:User? = users.find((u:User):Bool => u.name == 'Bob')
     if (found != null) trace(found.name.toUpperCase())
     if (var m:Array<String> = ~/(\d+)-(\d+)/.exec('call 12-34')) trace(m[1], m[2])
     trace(ages.get('bob') ?? 0, initials('Ann Lee'), initials(null), describe(lastSeen))

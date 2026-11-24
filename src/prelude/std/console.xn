@@ -8,40 +8,40 @@ package xenon {
     private function console()
 
     /** Prints values separated by spaces. A first argument like `'%s is %d'` is a format string. */
-    static function log(...data:Array):void
-    static function info(...data:Array):void
-    static function debug(...data:Array):void
+    static function log(...data:Array):Void
+    static function info(...data:Array):Void
+    static function debug(...data:Array):Void
     /** Like `log`, to the error stream. */
-    static function warn(...data:Array):void
-    static function error(...data:Array):void
+    static function warn(...data:Array):Void
+    static function error(...data:Array):Void
     /** Like `log`, followed by the current call stack. (Not Xenon's `trace(…)`.) */
-    static function trace(...data:Array):void
+    static function trace(...data:Array):Void
 
     /** Prints `data` only if `condition` is false. Doesn't throw. */
-    static function assert(condition:Boolean = false, ...data:Array):void
-    static function clear():void
+    static function assert(condition:Bool = false, ...data:Array):Void
+    static function clear():Void
 
     /** Prints how often it was called with this label (default `'default'`). */
-    static function count(label:String = 'default'):void
-    static function countReset(label:String = 'default'):void
+    static function count(label:String = 'default'):Void
+    static function countReset(label:String = 'default'):Void
 
     /** Prints an object's structure; `options` are the runtime's inspect options. */
-    static function dir(value:*, options:* = null):void
-    static function dirxml(...data:Array):void
+    static function dir(value:*, options:* = null):Void
+    static function dirxml(...data:Array):Void
     /** Prints rows of an array or object as a table, limited to the given column names. */
-    static function table(data:*):void
-    static function table(data:*, columns:Array<String>):void
+    static function table(data:*):Void
+    static function table(data:*, columns:Array<String>):Void
 
     /** Indents everything printed until the matching `groupEnd()`. */
-    static function group(...label:Array):void
+    static function group(...label:Array):Void
     /** Like `group`, collapsed in browser consoles. */
-    static function groupCollapsed(...label:Array):void
-    static function groupEnd():void
+    static function groupCollapsed(...label:Array):Void
+    static function groupEnd():Void
 
     /** Starts a timer; `timeEnd` prints the elapsed time and stops it. */
-    static function time(label:String = 'default'):void
-    static function timeEnd(label:String = 'default'):void
+    static function time(label:String = 'default'):Void
+    static function timeEnd(label:String = 'default'):Void
     /** Prints the elapsed time without stopping the timer, followed by `data`. */
-    static function timeLog(label:String = 'default', ...data:Array):void
+    static function timeLog(label:String = 'default', ...data:Array):Void
   }
 }

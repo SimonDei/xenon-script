@@ -32,7 +32,7 @@ package xenon {
     final children:HTMLCollection
     final firstElementChild:Element?
     final lastElementChild:Element?
-    final childElementCount:int
+    final childElementCount:Int
 
     // ---- finding elements ----
     function getElementById(id:String):Element?
@@ -44,9 +44,9 @@ package xenon {
     function querySelectorAll(selectors:String):NodeList<Element>
     /** Walks the logical subtree rooted at `root`. */
     function createTreeWalker(root:Node):TreeWalker
-    function createTreeWalker(root:Node, whatToShow:uint):TreeWalker
-    function createTreeWalker(root:Node, whatToShow:uint, filter:(node:Node) -> int):TreeWalker
-    function createTreeWalker(root:Node, whatToShow:uint, filter:{ acceptNode:(node:Node) -> int }):TreeWalker
+    function createTreeWalker(root:Node, whatToShow:UInt):TreeWalker
+    function createTreeWalker(root:Node, whatToShow:UInt, filter:(node:Node) -> Int):TreeWalker
+    function createTreeWalker(root:Node, whatToShow:UInt, filter:{ acceptNode:(node:Node) -> Int }):TreeWalker
 
     // ---- making nodes (they belong to this document; insert them with `append` & co.) ----
     function createElement(localName:String):HTMLElement
@@ -60,13 +60,13 @@ package xenon {
     /** A lightweight container: appending it moves its children, not itself. */
     function createDocumentFragment():DocumentFragment
     /** A copy of a node from another document, owned by this one (`deep`: with its subtree). */
-    function importNode(node:Node, deep:Boolean = false):Node
+    function importNode(node:Node, deep:Bool = false):Node
     /** Moves a node from another document into this one. */
     function adoptNode(node:Node):Node
 
     // ---- changing the top level ----
-    function append(...nodes:Array<*>):void
-    function prepend(...nodes:Array<*>):void
-    function replaceChildren(...nodes:Array<*>):void
+    function append(...nodes:Array<*>):Void
+    function prepend(...nodes:Array<*>):Void
+    function replaceChildren(...nodes:Array<*>):Void
   }
 }

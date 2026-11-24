@@ -34,7 +34,7 @@ package xenon {
 
     // ---- creating settled promises ----
     /** An already fulfilled `Promise<void>`. */
-    static function resolve():Promise<void>
+    static function resolve():Promise<Void>
     /** The promise itself (`Promise.resolve(p)` is `p`). */
     static function resolve<T>(value:Promise<T>):Promise<T>
     /** An already fulfilled promise of `value`. */

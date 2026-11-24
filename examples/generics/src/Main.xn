@@ -4,13 +4,13 @@ package {
   public class Main {
     public function Main() {
       // explicit and inferred type arguments
-      var a:Box<int> = new Box<int>(5)
+      var a:Box<Int> = new Box<Int>(5)
       var b:Box<String> = a.map((n) => 'n=' + n)          // U inferred as String
       var c:Box<Float> = new Box(2.5)                      // T inferred from the argument
-      var d:Box<Array<int>> = Box.of([1, 2, 3])            // V inferred from the array
+      var d:Box<Array<Int>> = Box.of([1, 2, 3])            // V inferred from the array
       trace(a.get() + 1, b.get().toUpperCase(), c.get() * 2, d.get().length)
 
-      var lengths:Box<int> = b.map((s) => s.length).map((n) => n * 10)
+      var lengths:Box<Int> = b.map((s) => s.length).map((n) => n * 10)
       trace(lengths.get())
 
       // generic interface with concrete arguments
@@ -27,17 +27,17 @@ package {
 
       // `*` as a type argument is a wildcard: any `Box<T>` fits a `Box<*>`, any array fits `Array`
       var boxes:Array<Box<*>> = [a, b, c]
-      var ints:Array<int> = [4, 5, 6]
+      var ints:Array<Int> = [4, 5, 6]
       trace(boxes.length, total(ints), total([1.5, 2.5]))
 
       // generic typedefs, including a recursive one
-      var p:Pair<String, int> = { first: 'age', second: 31 }
+      var p:Pair<String, Int> = { first: 'age', second: 31 }
       var list:Chain<String> = { value: 'a', next: { value: 'b' } }
       trace(p.first, p.second + 1, list.value + list.next?.value)
 
       // local generic function and swap
       function swap<A, B>(x:Pair<A, B>):Pair<B, A> { return { first: x.second, second: x.first } }
-      var q:Pair<int, String> = swap(p)
+      var q:Pair<Int, String> = swap(p)
       trace(q.first, q.second)
 
       // the expected type fills in what the arguments can't
@@ -69,12 +69,12 @@ typedef Chain<T> = { value:T, ?next:Chain<T> }
 class Word implements IComparable<Word> {
   public final text:String
   public function Word(text:String) { this.text = text }
-  public function compareTo(other:Word):int { return text.length - other.text.length }
+  public function compareTo(other:Word):Int { return text.length - other.text.length }
 }
 
-class Counter extends Box<int> {
+class Counter extends Box<Int> {
   public function Counter() { super(0) }
-  public function bump():void { set(get() + 1) }
+  public function bump():Void { set(get() + 1) }
 }
 
 class Tagged<T> extends Box<T> {

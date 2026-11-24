@@ -2,9 +2,9 @@ package {
   import { basename } from 'node:path'
 
   public class Main {
-    private var count:int
+    private var count:Int
     private var ratio:Float
-    private var ready:Boolean
+    private var ready:Bool
     public static const GREETING:String = 'Hello'
 
     public function Main() {
@@ -17,7 +17,7 @@ package {
       trace(label, count)
       trace(Main.GREETING + ', ' + name('world'))
 
-      var i:int = 0
+      var i:Int = 0
       while (i < 3) {
         if (i == 0) trace('zero')
         else if (i == 1) trace('one')
@@ -27,7 +27,7 @@ package {
 
       var loose:* = '1'
       trace(loose == 1, loose != 1, null == null)
-      trace(int(7 / 2), uint(-1), Float('2.5') + 1)
+      trace(Int(7 / 2), UInt(-1), Float('2.5') + 1)
       trace(2 ** 3 ** 2, (1 + 2) * 3, -(-4))
       trace('a\tb', 'it\'s', $'braces \{ok\}')
       trace(~/^b\w+/i.test('Basics'), basename('/x/y/file.xn'))
@@ -40,7 +40,7 @@ package {
       return who.toUpperCase()
     }
 
-    public static function twice(n:int):int {
+    public static function twice(n:Int):Int {
       return n * 2
     }
   }

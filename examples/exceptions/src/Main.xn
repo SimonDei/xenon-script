@@ -6,7 +6,7 @@ package {
 
     public function Main() {
       // typed catches, most specific first
-      for (var i:int of 0..4) trace(i, attempt(i))
+      for (var i:Int of 0..4) trace(i, attempt(i))
 
       // JavaScript errors arrive as Xenon exceptions, the original is kept in `cause`
       try {
@@ -44,7 +44,7 @@ package {
       trace(String(save), save.path, save.name)
     }
 
-    private function attempt(i:int):String {
+    private function attempt(i:Int):String {
       try {
         risky(i)
         return 'ok'
@@ -59,7 +59,7 @@ package {
       }
     }
 
-    private function risky(i:int):void {
+    private function risky(i:Int):Void {
       switch (i) {
         case 1: throw new SaveException('/data/db', 'disk full')
         case 2: throw new ArgumentException('i must not be 2')

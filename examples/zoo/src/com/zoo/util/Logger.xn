@@ -2,7 +2,7 @@ package com.zoo.util {
   import { format } from 'node:util'
 
   public class Logger {
-    public static function log(...parts:Array):void {
+    public static function log(...parts:Array):Void {
       trace(Formatter.prefix() + format(...parts))
     }
   }

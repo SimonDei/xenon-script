@@ -3,7 +3,7 @@ package {
 
   // A Xenon class extending a JavaScript class (declared as `native` in the standard library).
   public class Registry extends Map<String, Animal> {
-    public function add(a:Animal):void {
+    public function add(a:Animal):Void {
       set(a.id(), a)
     }
   }

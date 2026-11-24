@@ -118,7 +118,7 @@ error[X0504]: `size` is read-only
    |
   ::: <xenon prelude>/xenon/Map.xn:23:11
    |
-23 |     final size:int
+23 |     final size:Int
    |           ---- declared `final` here
 
 error[X0422]: `Map` needs 2 type arguments

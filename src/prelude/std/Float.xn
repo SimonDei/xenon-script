@@ -9,17 +9,17 @@ package xenon {
     private function Float()
 
     /** Digits in base `radix` (2–36): `(255).toString(16)` is `'ff'`. */
-    constexpr function toString(radix:int = 10):String
+    constexpr function toString(radix:Int = 10):String
     /** Fixed-point notation with `digits` (0–100) after the point, rounded: `(1.005).toFixed(2)`. */
-    constexpr function toFixed(digits:int = 0):String
+    constexpr function toFixed(digits:Int = 0):String
     /** Exponential notation with as many digits as needed: `(1234).toExponential()` is `'1.234e+3'`. */
     constexpr function toExponential():String
     /** Exponential notation with `digits` (0–100) after the point. */
-    constexpr function toExponential(digits:int):String
+    constexpr function toExponential(digits:Int):String
     /** Same as `toString()`. */
     constexpr function toPrecision():String
     /** `precision` (1–100) significant digits, in fixed or exponential notation. */
-    constexpr function toPrecision(precision:int):String
+    constexpr function toPrecision(precision:Int):String
     /** Formatted for the default locale, e.g. `'1,234.5'`. */
     function toLocaleString():String
     /** Formatted for a locale tag like `'de-DE'`; `options` are `Intl.NumberFormat` options. */
@@ -45,16 +45,16 @@ package xenon {
     static inline const NEGATIVE_INFINITY:Float = -1.0 / 0
 
     /** Is `value` a number other than NaN and ±Infinity? (No conversion: `isFinite('1')` is false.) */
-    static constexpr function isFinite(value:*):Boolean
+    static constexpr function isFinite(value:*):Bool
     /** Is `value` a whole number? (`2.0` is, `'2'` isn't.) */
-    static constexpr function isInteger(value:*):Boolean
+    static constexpr function isInteger(value:*):Bool
     /** Is `value` NaN? (No conversion: `isNaN('x')` is false.) */
-    static constexpr function isNaN(value:*):Boolean
+    static constexpr function isNaN(value:*):Bool
     /** Is `value` a whole number between `MIN_SAFE_INTEGER` and `MAX_SAFE_INTEGER`? */
-    static constexpr function isSafeInteger(value:*):Boolean
+    static constexpr function isSafeInteger(value:*):Bool
     /** Leading number in `text` (`'3.5kg'` → 3.5), or NaN. */
     static constexpr function parseFloat(text:String):Float
     /** Leading integer in `text` in base `radix` (`'ff'`, 16 → 255), or NaN. */
-    static constexpr function parseInt(text:String, radix:int = 10):Float
+    static constexpr function parseInt(text:String, radix:Int = 10):Float
   }
 }

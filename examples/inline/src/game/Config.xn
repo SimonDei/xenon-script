@@ -1,9 +1,9 @@
 package game {
   public class Config {
-    public static inline final MAX_HP:int = 100
+    public static inline final MAX_HP:Int = 100
     public static inline const TITLE:String = $'Xenon Quest v{MAJOR}.{MINOR}'
-    private static inline final MAJOR:int = 1
-    private static inline final MINOR:int = MAJOR + 1
-    public static inline final STEP:int = 25
+    private static inline final MAJOR:Int = 1
+    private static inline final MINOR:Int = MAJOR + 1
+    public static inline final STEP:Int = 25
   }
 }

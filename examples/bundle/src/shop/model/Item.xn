@@ -1,9 +1,9 @@
 package shop.model {
   public class Item {
     public final var name:String
-    public final var cents:int
+    public final var cents:Int
 
-    public function Item(name:String, cents:int) {
+    public function Item(name:String, cents:Int) {
       this.name = name
       this.cents = cents
     }

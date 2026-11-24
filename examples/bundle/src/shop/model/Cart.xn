@@ -2,13 +2,13 @@ package shop.model {
   public class Cart implements Iterable<Item> {
     private var items:Array<Item> = []
 
-    public function add(item:Item, count:int = 1):Cart {
-      for (var i:int of 0..count) items.push(item)
+    public function add(item:Item, count:Int = 1):Cart {
+      for (var i:Int of 0..count) items.push(item)
       return this
     }
 
-    public function get total():int {
-      return items.reduce((sum:int, item:Item):int => sum + item.cents, 0)
+    public function get total():Int {
+      return items.reduce((sum:Int, item:Item):Int => sum + item.cents, 0)
     }
 
     public function [Symbol.iterator]():Iterator<Item> {

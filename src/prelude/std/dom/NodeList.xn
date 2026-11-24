@@ -6,14 +6,14 @@ package xenon {
   public native class NodeList<T> implements Iterable<T> {
     private function NodeList()
 
-    final length:int
+    final length:Int
     /** The node at `index`, or `null` past the end. */
-    function item(index:int):T?
-    function forEach(callback:(node:T, index:int, list:NodeList<T>) -> Void):void
+    function item(index:Int):T?
+    function forEach(callback:(node:T, index:Int, list:NodeList<T>) -> Void):Void
     /** With `thisArg` as the callback's `this` (for `function` callbacks). */
-    function forEach(callback:(node:T, index:int, list:NodeList<T>) -> Void, thisArg:*):void
-    function keys():Iterator<int>
+    function forEach(callback:(node:T, index:Int, list:NodeList<T>) -> Void, thisArg:*):Void
+    function keys():Iterator<Int>
     function values():Iterator<T>
-    function entries():Iterator<Tuple<int, T>>
+    function entries():Iterator<Tuple<Int, T>>
   }
 }

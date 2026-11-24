@@ -2,19 +2,19 @@ package {
   import { setTimeout as delay } from 'node:timers/promises'
 
   public class Main {
-    private var total:int = 0
+    private var total:Int = 0
     private var label:String = 'sum'
 
     public function Main() {
       // arrows: lexical `this`, expression or block bodies
-      var double:(int) -> int = (x:int):int => x * 2
+      var double:(Int) -> Int = (x:Int):Int => x * 2
       var nums:Array = [1, 2, 3, 4]
-      trace(nums.map(double).join(','), nums.filter((n:int):Boolean => n % 2 == 0).join(','))
+      trace(nums.map(double).join(','), nums.filter((n:Int):Bool => n % 2 == 0).join(','))
 
       // methods, getters and setters with an expression body: `=> expr`
       width = -3
       trace(width, Main.square(7), describe2(), counter()(), counter()())
-      nums.forEach((n:int):void => {
+      nums.forEach((n:Int):Void => {
         total += n
       })
       trace(label, total)
@@ -25,11 +25,11 @@ package {
 
       // local functions are hoisted and can be recursive
       trace(fib(10), isEven(10), isOdd(7))
-      function fib(n:int):int {
+      function fib(n:Int):Int {
         return n < 2 ? n : fib(n - 1) + fib(n - 2)
       }
-      function isEven(n:int):Boolean { return n == 0 ? true : isOdd(n - 1) }
-      function isOdd(n:int):Boolean { return n == 0 ? false : isEven(n - 1) }
+      function isEven(n:Int):Bool { return n == 0 ? true : isOdd(n - 1) }
+      function isOdd(n:Int):Bool { return n == 0 ? false : isEven(n - 1) }
 
       // closures capture locals
       var counter:Function = makeCounter(10)
@@ -38,44 +38,44 @@ package {
       trace('counter', counter())
 
       // a named function expression can call itself
-      var fact:Function = function f(n:int):int { return n <= 1 ? 1 : n * f(n - 1) }
+      var fact:Function = function f(n:Int):Int { return n <= 1 ? 1 : n * f(n - 1) }
       trace('5! =', fact(5))
 
       void run()                     // starts the async part; nothing waits for it
     }
 
-    private function makeCounter(start:int):Function {
-      var count:int = start
-      return ():int => ++count
+    private function makeCounter(start:Int):Function {
+      var count:Int = start
+      return ():Int => ++count
     }
 
-    private async function run():Promise<void> {
-      var a:int = await slowAdd(1, 2)
+    private async function run():Promise<Void> {
+      var a:Int = await slowAdd(1, 2)
       var b:String = await describe(a)
       trace('async', a, b)
       var results:Array = await Promise.all([slowAdd(1, 1), slowAdd(2, 2)])
       trace('all', results.join(','))
-      var later:Function = async (ms:int):Promise<String> => {
+      var later:Function = async (ms:Int):Promise<String> => {
         await delay(ms)
         return 'waited ' + ms
       }
       trace(await later(5))
     }
 
-    private var _width:int = 1
-    private var calls:int = 0
-    public function get width():int => _width
-    public function set width(value:int):void => _width = value < 0 ? 0 : value
-    public static function square(n:int):int => n * n
+    private var _width:Int = 1
+    private var calls:Int = 0
+    public function get width():Int => _width
+    public function set width(value:Int):Void => _width = value < 0 ? 0 : value
+    public static function square(n:Int):Int => n * n
     private function describe2():String => $'{label} {total} {width}'
-    private function counter():() -> int => () => ++calls
+    private function counter():() -> Int => () => ++calls
 
-    private async function slowAdd(a:int, b:int):Promise<int> {
+    private async function slowAdd(a:Int, b:Int):Promise<Int> {
       await delay(1)
       return a + b
     }
 
-    private async function describe(n:int):Promise<String> {
+    private async function describe(n:Int):Promise<String> {
       return n > 2 ? 'big' : 'small'
     }
   }

@@ -11,15 +11,15 @@ package xenon {
     function Set(other:Set<T>)
 
     /** How many values the set holds. */
-    final size:int
+    final size:Int
     /** Adds `value` unless it is already there; returns the set, so calls chain. */
     function add(value:T):Set<T>
-    function has(value:T):Boolean
+    function has(value:T):Bool
     /** Removes `value`; returns whether it was there. */
-    function delete(value:T):Boolean
-    function clear():void
+    function delete(value:T):Bool
+    function clear():Void
     /** Calls `callback(value, value, set)` for each value in insertion order (the value is passed twice, as in `Map.forEach`). */
-    function forEach(callback:(value:T, key:T, set:Set<T>) -> Void):void
+    function forEach(callback:(value:T, key:T, set:Set<T>) -> Void):Void
 
     /** The values in insertion order (single-use). */
     function values():Iterator<T>
@@ -35,8 +35,8 @@ package xenon {
     function difference(other:Set<T>):Set<T>
     /** Values in exactly one of the two sets. */
     function symmetricDifference(other:Set<T>):Set<T>
-    function isSubsetOf(other:Set<T>):Boolean
-    function isSupersetOf(other:Set<T>):Boolean
-    function isDisjointFrom(other:Set<T>):Boolean
+    function isSubsetOf(other:Set<T>):Bool
+    function isSupersetOf(other:Set<T>):Bool
+    function isDisjointFrom(other:Set<T>):Bool
   }
 }

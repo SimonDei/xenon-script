@@ -25,7 +25,7 @@ package {
 
       // Extending a typed class: inherited members are typed, the subclass is an `EventEmitter`.
       var bell:Bell = new Bell()
-      bell.on('ring', (times:*):void => trace('ring', times))
+      bell.on('ring', (times:*):Void => trace('ring', times))
       bell.ring(2)
       var emitter:EventEmitter = bell
       trace(emitter.listenerCount('ring'))
@@ -43,7 +43,7 @@ package {
 }
 
 class Bell extends EventEmitter {
-  public function ring(times:int):void {
+  public function ring(times:Int):Void {
     emit('ring', times)
   }
 }

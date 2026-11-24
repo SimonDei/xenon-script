@@ -16,12 +16,12 @@ package xenon {
    * scope owning the value ends). A class is one or the other.
    */
   public interface IDisposable {
-    function dispose():void
+    function dispose():Void
   }
 
   /** `IDisposable` with an async `dispose()`: `await using`, `await x.dispose()`. */
   public interface IAsyncDisposable {
-    function dispose():Promise<void>
+    function dispose():Promise<Void>
   }
 
   /**
@@ -52,7 +52,7 @@ package xenon {
    */
   public class Usage implements IAttribute {
     public final targets:Array<AttributeTarget>
-    public var multiple:Boolean = false
+    public var multiple:Bool = false
 
     public function Usage(...targets:Array<AttributeTarget>) {
       this.targets = targets

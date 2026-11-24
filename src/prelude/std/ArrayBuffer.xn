@@ -8,32 +8,32 @@
 package xenon {
   public native class ArrayBuffer {
     /** `length` zero bytes. */
-    function ArrayBuffer(length:int)
+    function ArrayBuffer(length:Int)
     /** A resizable buffer: `length` bytes now, up to `maxByteLength` with `resize`. */
-    function ArrayBuffer(length:int, options:{ maxByteLength:int })
+    function ArrayBuffer(length:Int, options:{ maxByteLength:Int })
 
     /** Is `value` a view on a buffer (a typed array such as `Uint8Array`, or a `DataView`)? */
-    static function isView(value:*):Boolean
+    static function isView(value:*):Bool
 
     /** The size in bytes (0 once detached). */
-    final byteLength:int
+    final byteLength:Int
     /** The largest size `resize` allows (`byteLength` for a fixed-size buffer). */
-    final maxByteLength:int
-    final resizable:Boolean
+    final maxByteLength:Int
+    final resizable:Bool
     /** Has `transfer` moved the bytes out? A detached buffer can't be used. */
-    final detached:Boolean
+    final detached:Bool
 
     /** A copy of the bytes from `start` up to (not including) `end`; negative positions count from the end. */
     function slice():ArrayBuffer
-    function slice(start:int):ArrayBuffer
-    function slice(start:int, end:int):ArrayBuffer
+    function slice(start:Int):ArrayBuffer
+    function slice(start:Int, end:Int):ArrayBuffer
     /** Changes the size of a resizable buffer (new bytes are zero); throws a `RangeException` beyond `maxByteLength`. */
-    function resize(newLength:int):void
+    function resize(newLength:Int):Void
     /** Moves the bytes into a new buffer (of `newLength` bytes, cut or zero-filled), detaching this one; keeps resizability. */
     function transfer():ArrayBuffer
-    function transfer(newLength:int):ArrayBuffer
+    function transfer(newLength:Int):ArrayBuffer
     /** Like `transfer`, but the new buffer is fixed-size. */
     function transferToFixedLength():ArrayBuffer
-    function transferToFixedLength(newLength:int):ArrayBuffer
+    function transferToFixedLength(newLength:Int):ArrayBuffer
   }
 }

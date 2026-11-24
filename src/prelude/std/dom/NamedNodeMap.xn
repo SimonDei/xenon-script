@@ -3,8 +3,8 @@ package xenon {
   public native class NamedNodeMap implements Iterable<Attr> {
     private function NamedNodeMap()
 
-    final length:int
-    function item(index:int):Attr?
+    final length:Int
+    function item(index:Int):Attr?
     function getNamedItem(qualifiedName:String):Attr?
     function getNamedItemNS(ns:String?, localName:String):Attr?
   }

@@ -1,8 +1,8 @@
 package zoo {
   public class Dog extends Animal {
-    private var _tricks:int
+    private var _tricks:Int
 
-    public function Dog(name:String, tricks:int = 0) {
+    public function Dog(name:String, tricks:Int = 0) {
       super(name)
       _tricks = tricks
     }
@@ -12,6 +12,6 @@ package zoo {
     // Only the getter is overridden; the inherited setter keeps working.
     override public function get name():String { return 'Dog ' + super.name }
 
-    public function get tricks():int { return _tricks }
+    public function get tricks():Int { return _tricks }
   }
 }

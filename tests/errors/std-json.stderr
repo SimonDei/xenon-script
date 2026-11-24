@@ -4,9 +4,9 @@ error[X0604]: no overload of `stringify` accepts (*, Int)
 5 |       trace(JSON.stringify(data, 2))                  // JS habit: indent without a replacer
   |             ^^^^^^^^^^^^^^ no matching overload
   |
-  = note: `stringify(value:*, replacer:Null<(key:String, value:*) -> *> = null, space:int = 0):String`
+  = note: `stringify(value:*, replacer:Null<(key:String, value:*) -> *> = null, space:Int = 0):String`
   = note: `stringify(value:*, replacer:Null<(key:String, value:*) -> *>, space:String):String`
-  = note: `stringify(value:*, keys:Array<String>, space:int = 0):String`
+  = note: `stringify(value:*, keys:Array<String>, space:Int = 0):String`
   = note: `stringify(value:*, keys:Array<String>, space:String):String`
 
 error[X0604]: no overload of `parse` accepts (Int)

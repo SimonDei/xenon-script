@@ -7,7 +7,7 @@
 // Not declared: the deprecated `initCustomEvent`.
 package xenon {
   /** `new CustomEvent(type, init)`: `Event`'s options plus the `detail`. */
-  public typedef CustomEventInit<D> = { ?bubbles:Boolean, ?cancelable:Boolean, ?composed:Boolean, ?detail:D }
+  public typedef CustomEventInit<D> = { ?bubbles:Bool, ?cancelable:Bool, ?composed:Bool, ?detail:D }
 
   public native class CustomEvent<D = *, T = EventTarget> extends Event<T> {
     /** An event without data: `detail` is `null`. */

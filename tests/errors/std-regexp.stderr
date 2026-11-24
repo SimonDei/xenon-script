@@ -42,7 +42,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/RegExp.xn:43:19
    |
-43 |     var lastIndex:int
+43 |     var lastIndex:Int
    |                   --- `lastIndex` declared as `Int` here
    |
 help: convert the value with `Int()`
@@ -58,7 +58,7 @@ error[X0504]: `global` is read-only
    |
   ::: <xenon prelude>/xenon/RegExp.xn:31:11
    |
-31 |     final global:Boolean
+31 |     final global:Bool
    |           ------ declared `final` here
 
 error[X0426]: no member `tset` on `RegExp`
@@ -80,7 +80,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/RegExp.xn:21:24
    |
-21 |     function test(text:String):Boolean
+21 |     function test(text:String):Bool
    |                        ------ parameter declared here
    |
 help: convert the value with `String()`

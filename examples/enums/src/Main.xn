@@ -3,7 +3,7 @@ package {
 
   public class Main {
     private static inline final START:Direction = Direction.Up
-    private static inline const FIRST_ERROR:int = int(Status.NotFound) + 0
+    private static inline const FIRST_ERROR:Int = Int(Status.NotFound) + 0
     private var heading:Direction = START
 
     public function Main() {

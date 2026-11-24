@@ -15,8 +15,8 @@ package xenon {
     // ---- declarative shadow root ----
     /** `'open'` or `'closed'` attaches the template as a shadow root of its parent; `''` (the default) doesn't. */
     var shadowRootMode:String
-    var shadowRootClonable:Boolean
-    var shadowRootDelegatesFocus:Boolean
-    var shadowRootSerializable:Boolean
+    var shadowRootClonable:Bool
+    var shadowRootDelegatesFocus:Bool
+    var shadowRootSerializable:Bool
   }
 }

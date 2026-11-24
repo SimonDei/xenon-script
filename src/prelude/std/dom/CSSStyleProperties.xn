@@ -228,7 +228,7 @@ package xenon {
     var justifyItems:String
     var justifySelf:String
     var left:String
-    final length:int
+    final length:Int
     var letterSpacing:String
     var lightingColor:String
     var lineBreak:String
@@ -517,8 +517,8 @@ package xenon {
 
     function getPropertyPriority(property:String):String
     function getPropertyValue(property:String):String
-    function item(index:int):String
+    function item(index:Int):String
     function removeProperty(property:String):String
-    function setProperty(property:String, value:String?, priority:String = ''):void
+    function setProperty(property:String, value:String?, priority:String = ''):Void
   }
 }

@@ -99,7 +99,7 @@ error[X0504]: `size` is read-only
    |
   ::: <xenon prelude>/xenon/Set.xn:14:11
    |
-14 |     final size:int
+14 |     final size:Int
    |           ---- declared `final` here
 
 error[X0422]: `Set` needs 1 type argument

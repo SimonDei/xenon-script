@@ -21,13 +21,13 @@ package xenon {
     /** The primitive value of the object (the object itself unless overridden); used by comparisons. */
     function valueOf():*
     /** Prefer `Object.hasOwn(o, key)`, which also works for objects without a prototype. */
-    function hasOwnProperty(key:String):Boolean
-    function hasOwnProperty(index:Float):Boolean
-    function hasOwnProperty(key:Symbol):Boolean
+    function hasOwnProperty(key:String):Bool
+    function hasOwnProperty(index:Float):Bool
+    function hasOwnProperty(key:Symbol):Bool
     /** Is this object somewhere in `object`'s prototype chain? */
-    function isPrototypeOf(object:*):Boolean
-    function propertyIsEnumerable(key:String):Boolean
-    function propertyIsEnumerable(key:Symbol):Boolean
+    function isPrototypeOf(object:*):Bool
+    function propertyIsEnumerable(key:String):Bool
+    function propertyIsEnumerable(key:Symbol):Bool
 
     // ---- reading ----
     /** The own enumerable property names. */
@@ -41,16 +41,16 @@ package xenon {
     /** All own property names, enumerable or not (but no symbols). */
     static function getOwnPropertyNames(object:Object):Array<String>
     /** Does `object` have `key` itself, not through its prototype? Safer than `key in object`. */
-    static function hasOwn(object:Object, key:String):Boolean
-    static function hasOwn(object:Object, index:Float):Boolean
-    static function hasOwn(object:Object, key:Symbol):Boolean
+    static function hasOwn(object:Object, key:String):Bool
+    static function hasOwn(object:Object, index:Float):Bool
+    static function hasOwn(object:Object, key:Symbol):Bool
     /** The descriptor (`{ value, writable, enumerable, configurable }` or `{ get, set, … }`), `undefined` when missing. */
     static function getOwnPropertyDescriptor(object:Object, key:String):*
     static function getOwnPropertyDescriptor(object:Object, key:Symbol):*
     /** All own symbol-keyed properties, in insertion order. */
     static function getOwnPropertySymbols(object:Object):Array<Symbol>
     /** `SameValue`: like `==`, but `NaN` equals `NaN` and `0` differs from `-0`. */
-    static function is(a:*, b:*):Boolean
+    static function is(a:*, b:*):Bool
 
     // ---- building ----
     /**
@@ -70,9 +70,9 @@ package xenon {
      * Groups the items by the key `callback` returns: `{ even: [2, 4], odd: [1, 3] }`. Keys are
      * `String`s (JS would convert numbers: write `String(n % 2)`). The result has no prototype.
      */
-    static function groupBy<T>(items:Array<T>, callback:(item:T, index:int) -> String):Object
-    static function groupBy<T>(items:Set<T>, callback:(item:T, index:int) -> String):Object
-    static function groupBy<T>(items:Iterator<T>, callback:(item:T, index:int) -> String):Object
+    static function groupBy<T>(items:Array<T>, callback:(item:T, index:Int) -> String):Object
+    static function groupBy<T>(items:Set<T>, callback:(item:T, index:Int) -> String):Object
+    static function groupBy<T>(items:Iterator<T>, callback:(item:T, index:Int) -> String):Object
     static function defineProperty<T>(object:T, key:String, descriptor:*):T
 
     // ---- prototypes ----
@@ -83,12 +83,12 @@ package xenon {
     // ---- locking ----
     /** Makes `object` read-only (shallow) and returns it. Later writes throw a `TypeException` (the output modules are strict). */
     static function freeze<T>(object:T):T
-    static function isFrozen(object:Object):Boolean
+    static function isFrozen(object:Object):Bool
     /** No properties can be added or removed, but the existing ones stay writable. */
     static function seal<T>(object:T):T
-    static function isSealed(object:Object):Boolean
+    static function isSealed(object:Object):Bool
     /** No properties can be added. */
     static function preventExtensions<T>(object:T):T
-    static function isExtensible(object:Object):Boolean
+    static function isExtensible(object:Object):Bool
   }
 }

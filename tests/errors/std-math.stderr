@@ -6,7 +6,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/Math.xn:77:38
    |
-77 |     static constexpr function imul(a:int, b:int):int
+77 |     static constexpr function imul(a:Int, b:Int):Int
    |                                      --- parameter declared here
    |
 help: convert the value with `Int()`

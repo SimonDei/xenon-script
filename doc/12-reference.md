@@ -48,12 +48,12 @@ read-only with respect to `this`.
 
 | Word | Meaning |
 |---|---|
-| `if` | Executes a statement or expression branch when a `Boolean` condition is true. |
+| `if` | Executes a statement or expression branch when a `Bool` condition is true. |
 | `else` | Selects the alternative branch of an `if`. |
 | `switch` | Dispatches to cases according to a value. |
 | `case` | Introduces one value-matching branch of a `switch`. |
 | `default` | Introduces the fallback branch of a `switch`. |
-| `while` | Repeats a body while a `Boolean` condition is true. |
+| `while` | Repeats a body while a `Bool` condition is true. |
 | `do` | Starts a loop whose condition is checked after each iteration. |
 | `for` | Starts a C-style, `for … of`, `for … in`, or range loop. |
 | `in` | Iterates object keys, or tests whether a key/property exists in an object with the `in` operator. |
@@ -78,8 +78,8 @@ read-only with respect to `this`.
 | `delete` | Deletes a property from a dynamic/`*` or `Object` value. |
 | `await` | Pauses an async function until a promise settles and produces its value. |
 | `nameof` | Produces the checked source name of a local, parameter, class, member, or enum member as a string constant. |
-| `true` | The true `Boolean` literal. |
-| `false` | The false `Boolean` literal. |
+| `true` | The true `Bool` literal. |
+| `false` | The false `Bool` literal. |
 | `null` | The null/no-value literal and the value handled by nullable types. |
 | `undefined` | JavaScript's undefined value. Supported for compatibility, but every use warns; use `null`. |
 | `void` | Names a function result with no value. Outside ordinary value positions, it is also supported as `Promise<void>`. |

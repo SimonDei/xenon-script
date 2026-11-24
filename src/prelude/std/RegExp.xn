@@ -18,7 +18,7 @@ package xenon {
     function RegExp(source:RegExp, flags:String)
 
     /** Is there a match anywhere in `text`? */
-    function test(text:String):Boolean
+    function test(text:String):Bool
     /** The match (see the file header), or `null`. With `g`/`y`, searches from `lastIndex`. */
     function exec(text:String):Array<String>?
     /** `'/pattern/flags'` */
@@ -28,18 +28,18 @@ package xenon {
     final source:String
     /** The flags in canonical order, e.g. `'gi'`. */
     final flags:String
-    final global:Boolean
-    final ignoreCase:Boolean
-    final multiline:Boolean
+    final global:Bool
+    final ignoreCase:Bool
+    final multiline:Bool
     /** `.` also matches line breaks (`s` flag). */
-    final dotAll:Boolean
-    final unicode:Boolean
-    final unicodeSets:Boolean
-    final sticky:Boolean
+    final dotAll:Bool
+    final unicode:Bool
+    final unicodeSets:Bool
+    final sticky:Bool
     /** Match indices are recorded (`d` flag). */
-    final hasIndices:Boolean
+    final hasIndices:Bool
 
     /** Where the next `g`/`y` search starts. Assignable. */
-    var lastIndex:int
+    var lastIndex:Int
   }
 }

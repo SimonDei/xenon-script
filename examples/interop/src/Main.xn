@@ -16,7 +16,7 @@ package {
       trace(me.length > 100, path.extname('Main.xn'))
 
       // JS globals
-      var seen:Map<String, int> = new Map()
+      var seen:Map<String, Int> = new Map()
       seen.set('a', 1)
       trace(seen.get('a'), JSON.stringify({ ok: true, list: [1, 2] }), Math.max(3, 9))
 
@@ -25,7 +25,7 @@ package {
       for (var t:* of things) trace(describe(t))
 
       var c:Circle? = pending as Circle
-      trace(c != null, (pending as Shape) == null, int((c?.area() ?? 0) * 100))
+      trace(c != null, (pending as Shape) == null, Int((c?.area() ?? 0) * 100))
       if (var circle:Circle = things[0] as Circle) trace('first is a circle with r =', circle.r)
 
       // dynamic objects
@@ -38,10 +38,10 @@ package {
       if (x is Circle) return 'Circle'
       if (x is Shape) return 'Shape ' + (x as Shape)?.name
       if (x is String) return 'String'
-      if (x is uint) return 'uint'
-      if (x is int) return 'int'
+      if (x is UInt) return 'uint'
+      if (x is Int) return 'int'
       if (x is Float) return 'Float'
-      if (x is Boolean) return 'Boolean'
+      if (x is Bool) return 'Boolean'
       if (x is Map) return 'Map'
       if (x is Array) return 'Array'
       if (x is RegExp) return 'RegExp'

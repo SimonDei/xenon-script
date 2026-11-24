@@ -6,7 +6,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/Array.xn:39:28
    |
-39 |     function push(...items:Array<T>):int
+39 |     function push(...items:Array<T>):Int
    |                            -------- parameter declared here
    |
 help: convert the value with `Int()`
@@ -125,8 +125,8 @@ error[X0308]: mismatched types
     |
    ::: <xenon prelude>/xenon/Array.xn:100:26
     |
-100 |     function filter(test:(item:T, index:int, array:Array<T>) -> Boolean):Array<T>
-    |                          ---------------------------------------------- parameter declared here
+100 |     function filter(test:(item:T, index:Int, array:Array<T>) -> Bool):Array<T>
+    |                          ------------------------------------------- parameter declared here
 
 error[X0308]: mismatched types
    --> std-array.xn:11:52
@@ -136,8 +136,8 @@ error[X0308]: mismatched types
     |
    ::: <xenon prelude>/xenon/Array.xn:104:24
     |
-104 |     function find(test:(item:T, index:int, array:Array<T>) -> Boolean):T?
-    |                        ---------------------------------------------- parameter declared here
+104 |     function find(test:(item:T, index:Int, array:Array<T>) -> Bool):T?
+    |                        ------------------------------------------- parameter declared here
 
 error[X0604]: no overload of `reduce` accepts ()
   --> std-array.xn:11:56
@@ -145,8 +145,8 @@ error[X0604]: no overload of `reduce` accepts ()
 11 |     trace(nums.filter((x:int):int => x), nums.find(3), nums.reduce(), nums.forEach(5), Array.from(5))
    |                                                        ^^^^^^^^^^^ no matching overload
    |
-   = note: `reduce(callback:(accumulator:T, item:T, index:int, array:Array<T>) -> T):T`
-   = note: `reduce(callback:(accumulator:U, item:T, index:int, array:Array<T>) -> U, initial:U):U`
+   = note: `reduce(callback:(accumulator:T, item:T, index:Int, array:Array<T>) -> T):T`
+   = note: `reduce(callback:(accumulator:U, item:T, index:Int, array:Array<T>) -> U, initial:U):U`
 
 error[X0311]: this expression has no value
   --> std-array.xn:11:71
@@ -162,7 +162,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/Array.xn:94:31
    |
-94 |     function forEach(callback:(item:T, index:int, array:Array<T>) -> Void):void
+94 |     function forEach(callback:(item:T, index:Int, array:Array<T>) -> Void):Void
    |                               ------------------------------------------- parameter declared here
 
 error[X0604]: no overload of `from` accepts (Int)
@@ -176,11 +176,11 @@ error[X0604]: no overload of `from` accepts (Int)
    = note: `from(source:Iterator<T>):Array<T>`
    = note: `from(source:Iterable<T>):Array<T>`
    = note: `from(source:String):Array<String>`
-   = note: `from(source:Array<T>, mapper:(item:T, index:int) -> U):Array<U>`
-   = note: `from(source:Set<T>, mapper:(item:T, index:int) -> U):Array<U>`
-   = note: `from(source:Iterator<T>, mapper:(item:T, index:int) -> U):Array<U>`
-   = note: `from(source:Iterable<T>, mapper:(item:T, index:int) -> U):Array<U>`
-   = note: `from(source:{ length:int }, mapper:(item:*, index:int) -> U):Array<U>`
+   = note: `from(source:Array<T>, mapper:(item:T, index:Int) -> U):Array<U>`
+   = note: `from(source:Set<T>, mapper:(item:T, index:Int) -> U):Array<U>`
+   = note: `from(source:Iterator<T>, mapper:(item:T, index:Int) -> U):Array<U>`
+   = note: `from(source:Iterable<T>, mapper:(item:T, index:Int) -> U):Array<U>`
+   = note: `from(source:{ length:Int }, mapper:(item:*, index:Int) -> U):Array<U>`
 
 error[X0604]: no overload of `slice` accepts (String)
   --> std-array.xn:12:11
@@ -189,8 +189,8 @@ error[X0604]: no overload of `slice` accepts (String)
    |           ^^^^^^^^^^ no matching overload
    |
    = note: `slice():Array<T>`
-   = note: `slice(start:int):Array<T>`
-   = note: `slice(start:int, end:int):Array<T>`
+   = note: `slice(start:Int):Array<T>`
+   = note: `slice(start:Int, end:Int):Array<T>`
 
 error[X0604]: no overload of `splice` accepts ()
   --> std-array.xn:12:28
@@ -198,9 +198,9 @@ error[X0604]: no overload of `splice` accepts ()
 12 |     trace(nums.slice('a'), nums.splice(), nums.indexOf('x'), nums.fill())
    |                            ^^^^^^^^^^^ no matching overload
    |
-   = note: `splice(start:int):Array<T>`
-   = note: `splice(start:int, deleteCount:int):Array<T>`
-   = note: `splice(start:int, deleteCount:int, ...items:Array<T>):Array<T>`
+   = note: `splice(start:Int):Array<T>`
+   = note: `splice(start:Int, deleteCount:Int):Array<T>`
+   = note: `splice(start:Int, deleteCount:Int, ...items:Array<T>):Array<T>`
 
 error[X0308]: mismatched types
   --> std-array.xn:12:56
@@ -210,7 +210,7 @@ error[X0308]: mismatched types
    |
   ::: <xenon prelude>/xenon/Array.xn:85:27
    |
-85 |     function indexOf(item:T, from:int = 0):int
+85 |     function indexOf(item:T, from:Int = 0):Int
    |                           - parameter declared here
    |
 help: convert the value with `Int()`
@@ -225,5 +225,5 @@ error[X0604]: no overload of `fill` accepts ()
    |                                                              ^^^^^^^^^ no matching overload
    |
    = note: `fill(value:T):Array<T>`
-   = note: `fill(value:T, start:int):Array<T>`
-   = note: `fill(value:T, start:int, end:int):Array<T>`
+   = note: `fill(value:T, start:Int):Array<T>`
+   = note: `fill(value:T, start:Int, end:Int):Array<T>`

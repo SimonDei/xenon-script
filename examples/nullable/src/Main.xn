@@ -1,19 +1,19 @@
 // Nullable types: `int?` (or `Null<int>`) is an `int` that may also be `null`.
 // `String`, arrays and class types can always be null; `?` matters for numbers and `Boolean`.
 public class Main {
-  private var best:int?                               // defaults to null (a plain `int` would be 0)
-  private var seen:Null<Boolean>
+  private var best:Int?                               // defaults to null (a plain `int` would be 0)
+  private var seen:Null<Bool>
 
   public function Main() {
     trace(best, seen, best == null)
 
     // results that may be missing are `T?`: give a default, or bind the value when it's there
-    var scores:Map<String, int> = new Map([['ann', 0], ['bob', 7]])
+    var scores:Map<String, Int> = new Map([['ann', 0], ['bob', 7]])
     trace(scores.get('ann') ?? -1, scores.get('zed') ?? -1)  // 0 is a value, not "missing"
-    if (var bob:int = scores.get('bob')) trace('bob has', bob + 1)
-    var nums:Array<int> = [3, 8, 5]
-    var big:int? = nums.find((n:int):Boolean => n > 4)
-    var huge:int? = nums.find((n:int):Boolean => n > 100)
+    if (var bob:Int = scores.get('bob')) trace('bob has', bob + 1)
+    var nums:Array<Int> = [3, 8, 5]
+    var big:Int? = nums.find((n:Int):Bool => n > 4)
+    var huge:Int? = nums.find((n:Int):Bool => n > 100)
     trace(big, huge == null, nums.pop(), nums.pop(), nums.pop(), nums.pop() ?? -1)  // (JS gives `undefined`; `== null` covers it)
 
     // `?.` reaches into a nullable value; the result may be null too
@@ -25,13 +25,13 @@ public class Main {
     // a null check narrows a local or parameter: after it, the value is an `int`
     if (big != null && big > 5) trace('big doubled', big * 2)
     trace(describe(null), describe(4), describe(12))
-    var next:int? = scores.get('cid')
+    var next:Int? = scores.get('cid')
     next ??= 0                                         // assigning a value narrows too
     trace(next + 1, huge != null ? huge + 1 : -1)
 
     // `as int?` is a checked cast: null for anything that isn't an int
     var raw:* = JSON.parse('[4, "four", 4.5]')
-    for (var item:* of raw as Array) trace(item as int?, item as String)
+    for (var item:* of raw as Array) trace(item as Int?, item as String)
 
     // an optional shape member reads as `T?`
     var opts:Options = { name: 'demo' }
@@ -40,25 +40,25 @@ public class Main {
     trace(opts.retries ?? 3)
 
     // generics: `T?` is `int?` in a Box<int>, and just `String` in a Box<String>
-    var counter:Box<int> = new Box<int>()
+    var counter:Box<Int> = new Box<Int>()
     counter.value = 41
     var text:Box<String> = new Box<String>()
     trace((counter.value ?? 0) + 1, text.value, text.or('fallback'), counter.or(0))
   }
 
-  private function describe(n:int?):String {
+  private function describe(n:Int?):String {
     if (n == null) return 'nothing'                    // early return: below, `n` is an `int`
     return n > 9 ? $'big {n}' : $'small {n * 10}'
   }
 
-  private function record(score:int?):void {
+  private function record(score:Int?):Void {
     var shown:String = score == null ? 'none' : String(score)
-    if (var s:int = score) best = s > (best ?? 0) ? s : best
+    if (var s:Int = score) best = s > (best ?? 0) ? s : best
     trace('record', shown, 'best', best)
   }
 }
 
-typedef Options = { name:String, ?retries:int }
+typedef Options = { name:String, ?retries:Int }
 
 class Box<T> {
   public var value:T?

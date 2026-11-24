@@ -1,6 +1,6 @@
 package {
   public class Main {
-    private static var calls:int = 0
+    private static var calls:Int = 0
     private var pos:Vec2 = new Vec2(0, 0)
 
     public function Main() {
@@ -47,7 +47,7 @@ package {
       return v
     }
 
-    private function index():int {
+    private function index():Int {
       Main.calls++
       return 1
     }
@@ -67,7 +67,7 @@ class Vec2 implements IAddable {
   public function operator-(other:Vec2):Vec2 const => new Vec2(x - other.x, y - other.y)
   public function operator*(factor:Float):Vec2 const => new Vec2(x * factor, y * factor)
   public function operator/(divisor:Float):Vec2 const => new Vec2(x / divisor, y / divisor)
-  public function operator==(other:Vec2):Boolean const => x == other.x && y == other.y
+  public function operator==(other:Vec2):Bool const => x == other.x && y == other.y
 
   override public function toString():String { return $'({x}, {y})' }
 }
@@ -77,13 +77,13 @@ class Scaled extends Vec2 {
 }
 
 class Coins {
-  private final n:int
-  public function Coins(n:int) { this.n = n }
+  private final n:Int
+  public function Coins(n:Int) { this.n = n }
   public function operator+(other:Coins):Money const { return new Money((n + other.n) * 25) }
 }
 
 class Money {
-  private final cents:int
-  public function Money(cents:int) { this.cents = cents }
-  override public function toString():String { return '$' + int(cents / 100) + '.' + cents % 100 }
+  private final cents:Int
+  public function Money(cents:Int) { this.cents = cents }
+  override public function toString():String { return '$' + Int(cents / 100) + '.' + cents % 100 }
 }

@@ -24,7 +24,7 @@ package xenon {
     function Blob(parts:Array<*>, options:BlobOptions)
 
     /** The size in bytes. */
-    final size:int
+    final size:Int
     /** The media type given when it was made (`'text/csv'`), or `''`. */
     final type:String
 
@@ -33,9 +33,9 @@ package xenon {
      * (default `''`); negative positions count from the end.
      */
     function slice():Blob
-    function slice(start:int):Blob
-    function slice(start:int, end:int):Blob
-    function slice(start:int, end:int, contentType:String):Blob
+    function slice(start:Int):Blob
+    function slice(start:Int, end:Int):Blob
+    function slice(start:Int, end:Int, contentType:String):Blob
 
     /** The bytes decoded as UTF-8 text. */
     function text():Promise<String>

@@ -17,25 +17,25 @@ package xenon {
     function FormData()
 
     /** Adds a text value under `name` (after any others of that name). */
-    function append(name:String, value:String):void
+    function append(name:String, value:String):Void
     /** Adds a file under `name`; `fileName` is the name the server sees (default `'blob'`, or the `File`'s own). */
-    function append(name:String, value:Blob):void
-    function append(name:String, value:Blob, fileName:String):void
+    function append(name:String, value:Blob):Void
+    function append(name:String, value:Blob, fileName:String):Void
     /** Replaces all values of `name` with this text. */
-    function set(name:String, value:String):void
+    function set(name:String, value:String):Void
     /** Replaces all values of `name` with this file. */
-    function set(name:String, value:Blob):void
-    function set(name:String, value:Blob, fileName:String):void
+    function set(name:String, value:Blob):Void
+    function set(name:String, value:Blob, fileName:String):Void
     /** Removes all values of `name`. */
-    function delete(name:String):void
+    function delete(name:String):Void
 
-    function has(name:String):Boolean
+    function has(name:String):Bool
     /** The first value of `name` (a `String` or a `File`), or `null`. */
     function get(name:String):*
     /** All values of `name`, in the order they were added. */
     function getAll(name:String):Array<*>
     /** Calls `callback(value, name, form)` for each pair in order. */
-    function forEach(callback:(value:*, name:String, form:FormData) -> Void):void
+    function forEach(callback:(value:*, name:String, form:FormData) -> Void):Void
 
     /** The names, once per value (a name added twice comes twice). */
     function keys():Iterator<String>

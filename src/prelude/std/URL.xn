@@ -17,14 +17,14 @@ package xenon {
     function URL(url:String, base:URL)
 
     /** Whether `new URL(url, base)` would succeed. */
-    static function canParse(url:String):Boolean
-    static function canParse(url:String, base:String):Boolean
+    static function canParse(url:String):Bool
+    static function canParse(url:String, base:String):Bool
     /** The parsed URL, or `null` when it isn't valid (where `new URL` would throw). */
     static function parse(url:String):URL?
     static function parse(url:String, base:String):URL?
     /** A `blob:` URL for a `Blob` or `File` (for `<a href>`, `<img src>`); free it with `revokeObjectURL`. */
     static function createObjectURL(blob:Blob):String
-    static function revokeObjectURL(url:String):void
+    static function revokeObjectURL(url:String):Void
 
     /** The whole URL; setting it parses a new one. */
     var href:String

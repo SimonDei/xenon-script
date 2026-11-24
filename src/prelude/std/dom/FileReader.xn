@@ -14,26 +14,26 @@ package xenon {
     function FileReader()
 
     // ---- states (`readyState`) ----
-    static inline const EMPTY:int = 0
-    static inline const LOADING:int = 1
-    static inline const DONE:int = 2
+    static inline const EMPTY:Int = 0
+    static inline const LOADING:Int = 1
+    static inline const DONE:Int = 2
 
     /** `EMPTY`, `LOADING` or `DONE`. */
-    final readyState:int
+    final readyState:Int
     /** The file's content once read: a `String` (`readAsText`, `readAsDataURL`) or an `ArrayBuffer`; `null` before. */
     final result:String | ArrayBuffer | null
     /** Why reading failed (a `DOMException`), else `null`. */
     final error:*
 
     /** Reads the bytes: `result` becomes an `ArrayBuffer`. */
-    function readAsArrayBuffer(blob:Blob):void
+    function readAsArrayBuffer(blob:Blob):Void
     /** Reads text (UTF-8 unless `encoding` says otherwise): `result` becomes a `String`. */
-    function readAsText(blob:Blob):void
-    function readAsText(blob:Blob, encoding:String):void
+    function readAsText(blob:Blob):Void
+    function readAsText(blob:Blob, encoding:String):Void
     /** Reads a `data:` URL (base64): `result` becomes a `String`, usable as an `<img src>`. */
-    function readAsDataURL(blob:Blob):void
+    function readAsDataURL(blob:Blob):Void
     /** Stops reading; `onabort` and `onloadend` run. */
-    function abort():void
+    function abort():Void
 
     // ---- events (or `addEventListener('load', …)`) ----
     /** The content is read: `result` holds it. */

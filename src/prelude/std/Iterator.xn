@@ -6,7 +6,7 @@
 // Not declared: `Iterator.concat` (too new), `return()` / `throw()`.
 package xenon {
   /** A JavaScript iterator step. `value` is optional after completion. */
-  public typedef IteratorResult<T> = { ?done:Boolean, ?value:T }
+  public typedef IteratorResult<T> = { ?done:Bool, ?value:T }
 
   public native class Iterator<T> implements Iterable<T> {
     // `Iterator` can't be constructed directly (it throws); get one from `values()`, `Iterator.from(…)`, …
@@ -23,25 +23,25 @@ package xenon {
 
     /** All remaining values, as an array. */
     function toArray():Array<T>
-    function forEach(callback:(value:T, index:int) -> Void):void
+    function forEach(callback:(value:T, index:Int) -> Void):Void
 
     // lazy transformations (return a new iterator)
-    function map<U>(mapper:(value:T, index:int) -> U):Iterator<U>
-    function filter(test:(value:T, index:int) -> Boolean):Iterator<T>
+    function map<U>(mapper:(value:T, index:Int) -> U):Iterator<U>
+    function filter(test:(value:T, index:Int) -> Bool):Iterator<T>
     /** At most the first `limit` values. */
-    function take(limit:int):Iterator<T>
+    function take(limit:Int):Iterator<T>
     /** Everything after the first `count` values. */
-    function drop(count:int):Iterator<T>
+    function drop(count:Int):Iterator<T>
     /** Maps each value to an iterator and joins them. */
-    function flatMap<U>(mapper:(value:T, index:int) -> Iterator<U>):Iterator<U>
+    function flatMap<U>(mapper:(value:T, index:Int) -> Iterator<U>):Iterator<U>
 
     // consuming operations
     /** Folds without a start value (throws a `TypeError` on an empty iterator). */
-    function reduce(reducer:(accumulator:T, value:T, index:int) -> T):T
-    function reduce<U>(reducer:(accumulator:U, value:T, index:int) -> U, initial:U):U
-    function some(test:(value:T, index:int) -> Boolean):Boolean
-    function every(test:(value:T, index:int) -> Boolean):Boolean
+    function reduce(reducer:(accumulator:T, value:T, index:Int) -> T):T
+    function reduce<U>(reducer:(accumulator:U, value:T, index:Int) -> U, initial:U):U
+    function some(test:(value:T, index:Int) -> Bool):Bool
+    function every(test:(value:T, index:Int) -> Bool):Bool
     /** The first value passing `test`, or `null`. */
-    function find(test:(value:T, index:int) -> Boolean):T?
+    function find(test:(value:T, index:Int) -> Bool):T?
   }
 }

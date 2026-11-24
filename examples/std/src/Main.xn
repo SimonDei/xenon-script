@@ -23,48 +23,48 @@ package {
       functions()
     }
 
-    private function functions():void {
+    private function functions():Void {
       // function values have call/apply/bind, length and name (results unchecked: `*`)
-      var add:(a:int, b:int) -> int = (a:int, b:int):int => a + b
+      var add:(a:Int, b:Int) -> Int = (a:Int, b:Int):Int => a + b
       trace(add.name, add.length, add.call(null, 1, 2), add.apply(null, [3, 4]), this.functions.name)
       var addTen:Function = add.bind(null, 10)
       trace(addTen.call(null, 5), addTen.name)
 
       // a string destructures like an object: its members are typed
       var { length } = 'xenon'
-      var size:int = length
+      var size:Int = length
       trace(size)
     }
 
     // Promises: `then`/`catch` wait for a returned promise; the combinators take an array, a
     // set or any `Iterable`. Runs after the other timers, so its lines come last.
-    private function promises():void {
+    private function promises():Void {
       setTimeout(async () => {
-        var id:Promise<int> = Promise.resolve(7)
+        var id:Promise<Int> = Promise.resolve(7)
         var label:String = await id.then(n => Promise.resolve('#' + n))   // not a Promise<Promise<String>>
-        var doubled:int = await id.then(n => n * 2)
-        var failing:Promise<int> = Promise.reject(new Exception('offline'))
-        var fallback:int = await failing.catch(_ => -1)
-        var logged:int? = await failing.catch(e => trace('caught:', Exception.from(e).message))
+        var doubled:Int = await id.then(n => n * 2)
+        var failing:Promise<Int> = Promise.reject(new Exception('offline'))
+        var fallback:Int = await failing.catch(_ => -1)
+        var logged:Int? = await failing.catch(e => trace('caught:', Exception.from(e).message))
         trace(label, doubled, fallback, logged == null)
 
-        var both:Array<int> = await Promise.all([id, Promise.resolve(8)])
+        var both:Array<Int> = await Promise.all([id, Promise.resolve(8)])
         var mixed:Array<*> = await Promise.all([id, Promise.resolve('eight')])   // mixed types: `*`
-        var settled:Array<PromiseSettledResult<int>> = await Promise.allSettled(new Set<Promise<int>>([id, failing]))
-        var first:int = await Promise.any([failing, id])
+        var settled:Array<PromiseSettledResult<Int>> = await Promise.allSettled(new Set<Promise<Int>>([id, failing]))
+        var first:Int = await Promise.any([failing, id])
         var fastest:String = await Promise.race([Main.delay(30, 'slow'), Main.delay(1, 'fast')])
         trace(both.join(','), mixed.join(','), settled.map((s, i) => s.status).join(','), first, fastest)
 
         var later:PromiseWithResolvers<String> = Promise.withResolvers()
         setTimeout(() => later.resolve('resolved from outside'), 1)
         var parsed:String = await Promise.try(() => JSON.parse('{')).then(_ => 'parsed', e => 'parse failed')
-        await new Promise<void>((resolve, reject) => setTimeout(() => resolve(), 1))
+        await new Promise<Void>((resolve, reject) => setTimeout(() => resolve(), 1))
         trace(await later.promise, parsed, await id.finally(() => trace('finally')))
       }, 20)
     }
 
     // `Response` (what `fetch` resolves to; built here without a network) and `ArrayBuffer`.
-    private function responses():void {
+    private function responses():Void {
       setTimeout(async () => {
         var res:Response = new Response('{"items":[1,2,3]}', { status: 201, statusText: 'Created' })
         var copy:Response = res.clone()
@@ -109,11 +109,11 @@ package {
       return new Promise((resolve, reject) => setTimeout(() => resolve(value), ms))
     }
 
-    private function globals():void {
+    private function globals():Void {
       // the global functions are typed: encoding, Base64 and deep copies
       trace(encodeURIComponent('a b&c'), decodeURIComponent('%C3%A4'), encodeURI('/a b?q=1'), btoa('xenon'), atob('eGVub24='))
-      var original:Array<Array<int>> = [[1, 2], [3]]
-      var copy:Array<Array<int>> = structuredClone(original)
+      var original:Array<Array<Int>> = [[1, 2], [3]]
+      var copy:Array<Array<Int>> = structuredClone(original)
       copy[0].push(9)
       trace(original[0].join(','), copy[0].join(','))
 
@@ -122,18 +122,18 @@ package {
       clearTimeout(cancelled)
       queueMicrotask(() => trace('microtask: before any timer'))
       setTimeout(async () => {
-        var later:int = await Promise.resolve(3)
+        var later:Int = await Promise.resolve(3)
         trace('timeout, async callback:', later)
       }, 5)
     }
 
-    private function booleans():void {
-      var ready:Boolean = 3 > 2
+    private function booleans():Void {
+      var ready:Bool = 3 > 2
       var label:String = ready.toString()                  // 'true'
       trace(label, label.length, (1 > 2).toString(), false.valueOf())
 
       // Boolean(x) is the conversion, not a constructor call
-      trace(Boolean(0), Boolean('x'), Boolean(null))
+      trace(Bool(0), Bool('x'), Bool(null))
 
       // methods used as values stay bound to their primitive
       var show:() -> String = ready.toString
@@ -145,7 +145,7 @@ package {
       trace(flag.toString(), Bool(1))                        // `Bool(x)` is the `Boolean(x)` conversion
     }
 
-    private function objects():void {
+    private function objects():Void {
       // Object.keys/values/entries read the own enumerable properties
       var config:Object = { host: 'localhost', port: 8080 }
       trace(Object.keys(config).join(','), Object.values(config).join(','), Object.entries(config)[1].join('='))
@@ -161,11 +161,11 @@ package {
       trace(origin.y, Object.isFrozen(fixed), Object.isFrozen(origin))
 
       // fromEntries builds an object from pairs or a map; groupBy sorts items into lists
-      var ages:Map<String, int> = new Map([['ann', 31], ['bob', 27]])
+      var ages:Map<String, Int> = new Map([['ann', 31], ['bob', 27]])
       var pairs:Array<Array<String>> = [['en', 'hello'], ['de', 'hallo']]
       trace(JSON.stringify(Object.fromEntries(ages)), JSON.stringify(Object.fromEntries([['a', 1], ['b', 2]])))
       trace(JSON.stringify(Object.fromEntries(pairs)), JSON.stringify(Object.fromEntries(ages.entries())))
-      var parity:Object = Object.groupBy([1, 2, 3, 4, 5], (n:int, _:int):String => n % 2 == 0 ? 'even' : 'odd')
+      var parity:Object = Object.groupBy([1, 2, 3, 4, 5], (n:Int, _:Int):String => n % 2 == 0 ? 'even' : 'odd')
       trace(JSON.stringify(parity), Object.getPrototypeOf(parity) == null)
       trace(JSON.stringify(Object.groupBy(new Set(['ant', 'bee', 'asp']), (word:String):String => word.charAt(0))))
 
@@ -174,7 +174,7 @@ package {
       trace(badge.toString(), 'label: ' + badge, badge.hasOwnProperty('text'), origin.hasOwnProperty('x'), config.toString())
     }
 
-    private function json():void {
+    private function json():Void {
       // parse gives `*`: an unchecked `as` gives it a shape
       var p:Point = JSON.parse('{"x": 1, "y": 2.5}') as Point
       trace(p.x + p.y)
@@ -187,7 +187,7 @@ package {
 
       // replacer and reviver are typed functions
       trace(JSON.stringify(data, (key:String, value:*):* => key == 'age' ? value * 7 : value))
-      var doubled:Array<int> = JSON.parse('[1, 2, 3]', (key:String, value:*):* => value is int ? value * 2 : value)   // `*` assigns to any type
+      var doubled:Array<Int> = JSON.parse('[1, 2, 3]', (key:String, value:*):* => value is Int ? value * 2 : value)   // `*` assigns to any type
       trace(doubled.length, doubled[2])
 
       // invalid input throws a JS SyntaxError, caught as an Exception
@@ -198,10 +198,10 @@ package {
       }
     }
 
-    private function numbers():void {
+    private function numbers():Void {
       // `Float`, `int` and `uint` share the members of JavaScript's Number
       var price:Float = 1234.5678
-      var mask:int = 255
+      var mask:Int = 255
       trace(price.toFixed(2), price.toPrecision(3), price.toExponential(1), mask.toString(16), mask.toString(2))
       trace((0.1 + 0.2).toFixed(2), 3.75.toFixed(1), (255).toString(16))
       trace(price.toLocaleString('en-US'), price.toLocaleString(['de-DE'], { maximumFractionDigits: 1 }))
@@ -215,29 +215,29 @@ package {
       for (var v:* of raw) trace(v, Float.isInteger(v), Float.isFinite(v), Float.isSafeInteger(v))
 
       // parseInt can be NaN or beyond the int range: it's a Float, convert explicitly
-      var count:int = int(Float.parseInt('42'))
+      var count:Int = Int(Float.parseInt('42'))
       trace(count + 1)
     }
 
-    private static inline final HALF:int = (int.MAX_VALUE >> 1) + 1   // range constants fold at compile time
+    private static inline final HALF:Int = (Int.MAX_VALUE >> 1) + 1   // range constants fold at compile time
 
-    private function integers():void {
+    private function integers():Void {
       // AS3-style range constants (inline: they compile to literals)
-      trace(int.MIN_VALUE, int.MAX_VALUE, uint.MIN_VALUE, uint.MAX_VALUE, HALF)
+      trace(Int.MIN_VALUE, Int.MAX_VALUE, UInt.MIN_VALUE, UInt.MAX_VALUE, HALF)
       trace(Int.MAX_VALUE, UInt.MAX_VALUE)                         // the prelude aliases work too
 
       // int and uint keep the number members, with whole-number results where guaranteed
-      var flags:uint = 0xF0
-      var same:uint = flags.valueOf()
-      trace(flags.toString(2), same, (-42).toString(16), Int(7.9), UInt(-1) == uint.MAX_VALUE)
+      var flags:UInt = 0xF0
+      var same:UInt = flags.valueOf()
+      trace(flags.toString(2), same, (-42).toString(16), Int(7.9), UInt(-1) == UInt.MAX_VALUE)
 
       // clamping with the constants
       var big:Float = 1e12
-      var clamped:int = big > int.MAX_VALUE ? int.MAX_VALUE : int(big)
+      var clamped:Int = big > Int.MAX_VALUE ? Int.MAX_VALUE : Int(big)
       trace(clamped)
     }
 
-    private function logging():void {
+    private function logging():Void {
       // `console` is a namespace of typed static methods; `trace(…)` is the short form of `console.log(…)`
       console.log('values:', 1, true, [1, 2])
       console.info('%s has %d items', 'cart', 3)           // printf-style formatting
@@ -251,9 +251,9 @@ package {
       write('as a value')
     }
 
-    private function maths():void {
+    private function maths():Void {
       // rounding gives a Float (it can be NaN or exceed the int range): convert when it fits
-      var cell:int = int(Math.floor(7.9))
+      var cell:Int = Int(Math.floor(7.9))
       trace(cell, Math.round(-1.5), Math.ceil(2.1), Math.trunc(-2.9), Math.abs(-4), Math.sign(-8))
 
       // max/min/hypot take any number of values; an array is spread
@@ -261,11 +261,11 @@ package {
       trace(Math.max(1, cell, 2.5), Math.min(...scores), Math.hypot(3, 4), Math.max())
 
       trace(Math.pow(2, 10), Math.sqrt(144), Math.PI > 3.14, Math.atan2(1, 1) * 4 == Math.PI)
-      var roll:int = 1 + int(Math.random() * 6)
+      var roll:Int = 1 + Int(Math.random() * 6)
       trace(roll >= 1 && roll <= 6, Math.imul(65536, 65536), Math.clz32(1))
     }
 
-    private function dates():void {
+    private function dates():Void {
       // constructors: parts (local time), text, milliseconds, copy. Months count from 0.
       var leap:Date = new Date('2024-02-29T12:00:00Z')
       var epoch:Date = new Date(0)
@@ -292,21 +292,21 @@ package {
       }
     }
 
-    private function sets():void {
+    private function sets():Void {
       // T is inferred from the array; duplicates collapse; add() returns the set, so calls chain
-      var ids:Set<int> = new Set([3, 1, 3, 2])
+      var ids:Set<Int> = new Set([3, 1, 3, 2])
       var tags:Set<String> = new Set<String>()
       tags.add('red').add('green').add('red')
       trace(ids.size, tags.size, ids.has(2), tags.delete('green'), tags.delete('blue'), tags.size)
 
       // for…of is typed: n is an int
-      var total:int = 0
-      for (var n:int of ids) total += n
+      var total:Int = 0
+      for (var n:Int of ids) total += n
       trace(total)
-      ids.forEach((value:int, key:int, owner:Set<int>):Void => trace('each', value))
+      ids.forEach((value:Int, key:Int, owner:Set<Int>):Void => trace('each', value))
 
       // set algebra returns new sets; spread them into arrays to print
-      var other:Set<int> = new Set([2, 3, 4])
+      var other:Set<Int> = new Set([2, 3, 4])
       trace([...ids.union(other)].join(','), [...ids.intersection(other)].join(','), [...ids.difference(other)].join(','))
       trace(new Set([1]).isSubsetOf(ids), ids.isSupersetOf(other), ids.isDisjointFrom(new Set([9])))
 
@@ -317,25 +317,25 @@ package {
       trace(new Set([Float.NaN, Float.NaN]).size)      // NaN is equal to NaN inside a Set
     }
 
-    private function iterators():void {
+    private function iterators():Void {
       // values()/keys()/entries() return an Iterator<T>: single-use, consumed by for…of, toArray() or next()
-      var ids:Set<int> = new Set([3, 1, 2, 5, 4])
-      var it:Iterator<int> = ids.values()
-      var first:IteratorResult<int> = it.next()
+      var ids:Set<Int> = new Set([3, 1, 2, 5, 4])
+      var it:Iterator<Int> = ids.values()
+      var first:IteratorResult<Int> = it.next()
       trace(first.done, first.value)
-      for (var n:int of it) trace('rest', n)
+      for (var n:Int of it) trace('rest', n)
       trace(it.next().done)                       // used up
 
       // lazy helpers: nothing runs until the end of the chain is consumed; U is inferred from the callback
-      var big:Array<int> = ids.values().map((n:int, i:int):int => n * 2).filter((n:int, i:int):Boolean => n > 4).toArray()
+      var big:Array<Int> = ids.values().map((n:Int, i:Int):Int => n * 2).filter((n:Int, i:Int):Bool => n > 4).toArray()
       trace(big.join(','), ids.values().take(2).toArray().join(','), ids.values().drop(3).toArray().join(','))
-      for (var w:String of Iterator.from(['a', 'b']).map((s:String, i:int):String => s + i)) trace(w)
-      trace(ids.values().some((n:int, i:int):Boolean => n > 4), ids.values().every((n:int, i:int):Boolean => n > 4))
-      trace(ids.values().find((n:int, i:int):Boolean => n > 3), ids.values().reduce((sum:int, n:int, i:int):int => sum + n))
-      for (var pair:Array<int> of ids.entries()) trace(pair.join('/'))
+      for (var w:String of Iterator.from(['a', 'b']).map((s:String, i:Int):String => s + i)) trace(w)
+      trace(ids.values().some((n:Int, i:Int):Bool => n > 4), ids.values().every((n:Int, i:Int):Bool => n > 4))
+      trace(ids.values().find((n:Int, i:Int):Bool => n > 3), ids.values().reduce((sum:Int, n:Int, i:Int):Int => sum + n))
+      for (var pair:Array<Int> of ids.entries()) trace(pair.join('/'))
     }
 
-    private function regexps():void {
+    private function regexps():Void {
       // `~/…/flags` literals and `new RegExp(text, flags)` are both a RegExp
       var date:RegExp = ~/(\d{4})-(\d{2})/
       var m:Array<String> = date.exec('on 2024-02-29') ?? []
@@ -344,7 +344,7 @@ package {
 
       // a global regex remembers where it stopped: lastIndex
       var word:RegExp = new RegExp('\\w+', 'g')
-      var count:int = 0
+      var count:Int = 0
       while (word.exec('a bb ccc') != null) count++
       trace(count, word.global, word.ignoreCase, word.lastIndex, word.toString())
       word.lastIndex = 2
@@ -356,15 +356,15 @@ package {
       trace(copy.flags, (named as *).groups.year, 'a-b-c'.split(~/-/).length)
     }
 
-    private function maps():void {
+    private function maps():Void {
       // set() returns the map, so calls chain; get() returns `V?`: null for a missing key
-      var ages:Map<String, int> = new Map<String, int>()
+      var ages:Map<String, Int> = new Map<String, Int>()
       ages.set('ann', 31).set('bob', 27).set('cid', 40)
       trace(ages.size, (ages.get('ann') ?? 0) + 1, ages.get('zed') ?? -1, ages.has('zed'), ages.delete('bob'), ages.delete('bob'), ages.size)
-      if (var cid:int = ages.get('cid')) trace('cid is', cid)
+      if (var cid:Int = ages.get('cid')) trace('cid is', cid)
 
       // destructuring a map loop types the pair: name is a String, age an int
-      var total:int = 0
+      var total:Int = 0
       for (var [name, age]:* of ages) {
         total += age
         trace(name.toUpperCase(), age)
@@ -372,21 +372,21 @@ package {
       trace(total)
 
       // constructors: from [key, value] pairs (declare the types) and as a copy
-      var pairs:Map<String, int> = new Map([['x', 1], ['y', 2]])
-      var copy:Map<String, int> = new Map(pairs)
+      var pairs:Map<String, Int> = new Map([['x', 1], ['y', 2]])
+      var copy:Map<String, Int> = new Map(pairs)
       copy.set('z', 3)
       trace(pairs.size, copy.size)
 
       // keys(), values() and entries() are iterators
       trace(ages.keys().toArray().join(','), ages.values().toArray().join(','), ages.entries().toArray().length)
-      ages.forEach((value:int, key:String, owner:Map<String, int>):Void => trace(key, value))
+      ages.forEach((value:Int, key:String, owner:Map<String, Int>):Void => trace(key, value))
 
       // Map.groupBy builds a Map<K, Array<T>> from a function of each item
-      var byLength:Map<int, Array<String>> = Map.groupBy(['a', 'bb', 'cc', 'd'], (w:String, i:int):int => w.length)
+      var byLength:Map<Int, Array<String>> = Map.groupBy(['a', 'bb', 'cc', 'd'], (w:String, i:Int):Int => w.length)
       trace((byLength.get(1) ?? []).join(''), (byLength.get(2) ?? []).join(''), byLength.size)
     }
 
-    private function strings():void {
+    private function strings():Void {
       var t:String = '  Hello, World  '.trim()
       trace(t.length, t.charAt(1), t.at(-1), t.charCodeAt(0), t[4], String.fromCharCode(72, 105), '😀'.length)
 
@@ -406,32 +406,32 @@ package {
       trace('ab'.repeat(3), '7'.padStart(3, '0'), '7'.padEnd(3, '.'), 'Hi'.toUpperCase(), 'b'.localeCompare('a'), 'é'.normalize('NFD').length)
 
       // a method used as a value stays bound to its string
-      var has:(String) -> Boolean = t.includes
+      var has:(String) -> Bool = t.includes
       trace(has('World'), has('xyz'))
     }
 
-    private function arrays():void {
+    private function arrays():Void {
       // mutating methods: push/pop/shift/unshift/splice/reverse/sort/fill change the array
-      var nums:Array<int> = [3, 1, 2, 10]
+      var nums:Array<Int> = [3, 1, 2, 10]
       trace(nums.push(5, 6), nums.pop(), nums.shift(), nums.unshift(0), nums.join('-'), nums.at(-1))
       nums.sort()                                                   // by text: 0,1,10,2,3,5
       trace(nums.join(','))
-      nums.sort((a:int, b:int):int => a - b)                        // numbers need a comparator
-      trace(nums.join(','), nums.toSorted((a:int, b:int):int => b - a).join(','), nums.join(','))
+      nums.sort((a:Int, b:Int):Int => a - b)                        // numbers need a comparator
+      trace(nums.join(','), nums.toSorted((a:Int, b:Int):Int => b - a).join(','), nums.join(','))
 
       // callbacks are typed; map<U> infers U from what the callback returns
-      var labels:Array<String> = nums.map((x:int, i:int):String => 'n' + x)
-      trace(labels.join(','), nums.filter((x:int, i:int):Boolean => x > 2).length)
-      trace(nums.reduce((acc:int, x:int, i:int, all:Array<int>):int => acc + x), nums.reduce((acc:String, x:int, i:int, all:Array<int>):String => acc + x, ''))
-      trace(nums.some((x:int):Boolean => x > 9), nums.every((x:int):Boolean => x > 9), nums.find((x:int):Boolean => x > 2), nums.findIndex((x:int):Boolean => x > 2))
+      var labels:Array<String> = nums.map((x:Int, i:Int):String => 'n' + x)
+      trace(labels.join(','), nums.filter((x:Int, i:Int):Bool => x > 2).length)
+      trace(nums.reduce((acc:Int, x:Int, i:Int, all:Array<Int>):Int => acc + x), nums.reduce((acc:String, x:Int, i:Int, all:Array<Int>):String => acc + x, ''))
+      trace(nums.some((x:Int):Bool => x > 9), nums.every((x:Int):Bool => x > 9), nums.find((x:Int):Bool => x > 2), nums.findIndex((x:Int):Bool => x > 2))
 
       // copies leave the array alone; splice removes and inserts
-      var removed:Array<int> = nums.splice(1, 2, 7, 8, 9)
+      var removed:Array<Int> = nums.splice(1, 2, 7, 8, 9)
       trace(removed.join(','), nums.join(','), nums.slice(-2).join(','), nums.concat([1], [2]).join(','), nums.toReversed().join(','), nums.with(0, 99)[0])
 
       // statics: Array.isArray, Array.of, Array.from (array, set, iterator, string, or length + mapper)
       trace(Array.isArray(nums), Array.of(1, 2).length, Array.from('abc').join('+'), Array.from(new Set([5, 6])).join(','))
-      trace(Array.from({ length: 3 }, (_:*, i:int):int => i * i).join(','), [[1], [2]].flat().length)
+      trace(Array.from({ length: 3 }, (_:*, i:Int):Int => i * i).join(','), [[1], [2]].flat().length)
 
       // iterators, and length is assignable (it cuts the array)
       trace(nums.keys().toArray().join(','), nums.entries().toArray()[0].join(':'))

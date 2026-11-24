@@ -109,9 +109,9 @@ native class Widget extends Element {
   final count:Int
   /** Reads the style object; assigning a `String` replaces all inline styles. */
   function get style():CSSStyleProperties
-  function set style(cssText:String):void
+  function set style(cssText:String):Void
   public override function get textContent():String   // never null here (Node's is `String?`)
-  public override function set textContent(value:String?):void
+  public override function set textContent(value:String?):Void
 }
 ```
 

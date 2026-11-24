@@ -6,9 +6,9 @@ package xenon {
   public native class HTMLCollection implements Iterable<Element> {
     private function HTMLCollection()
 
-    final length:int
+    final length:Int
     /** The element at `index`, or `null` past the end. */
-    function item(index:int):Element?
+    function item(index:Int):Element?
     /** The element with this `id` or `name`, or `null`. */
     function namedItem(name:String):Element?
   }

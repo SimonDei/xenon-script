@@ -72,8 +72,8 @@ package xenon {
     /** A random number from 0 (included) up to 1 (excluded). */
     static function random():Float
     /** Leading zero bits of `x` as a 32-bit unsigned number (0–32). */
-    static constexpr function clz32(x:Float):int
+    static constexpr function clz32(x:Float):Int
     /** 32-bit integer multiplication, wrapping around on overflow. */
-    static constexpr function imul(a:int, b:int):int
+    static constexpr function imul(a:Int, b:Int):Int
   }
 }

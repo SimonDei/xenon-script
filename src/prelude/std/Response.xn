@@ -15,7 +15,7 @@
 // member of the same name): `new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } })`.
 package xenon {
   /** The options of `new Response(body, init)`. `headers`: an object of names to values, or `Headers`. */
-  public typedef ResponseInit = { ?status:int, ?statusText:String, ?headers:* }
+  public typedef ResponseInit = { ?status:Int, ?statusText:String, ?headers:* }
 
   public native class Response {
     /** An empty `200 OK` response. */
@@ -28,19 +28,19 @@ package xenon {
     static function error():Response
     /** A redirect to `url`; `status` is 301, 302 (the default), 303, 307 or 308. */
     static function redirect(url:String):Response
-    static function redirect(url:String, status:int):Response
+    static function redirect(url:String, status:Int):Response
 
     // ---- status ----
     /** Is `status` in 200–299? */
-    final ok:Boolean
+    final ok:Bool
     /** The HTTP status code: `200`, `404`, … */
-    final status:int
+    final status:Int
     /** The status message (`'OK'`, `'Not Found'`); often empty over HTTP/2. */
     final statusText:String
     /** The final URL, after redirects; empty for a constructed response. */
     final url:String
     /** Did `fetch` follow a redirect to get here? */
-    final redirected:Boolean
+    final redirected:Bool
     /** `'basic'`, `'cors'`, `'default'`, `'error'`, `'opaque'` or `'opaqueredirect'`. */
     final type:String
     /** The headers (a `Headers`): `res.headers.get('content-type')`. */
@@ -50,7 +50,7 @@ package xenon {
     /** The body as a stream (`ReadableStream`), or `null` if there is none. */
     final body:*
     /** Has the body been read already? */
-    final bodyUsed:Boolean
+    final bodyUsed:Bool
     /** The body parsed as JSON; rejects if it isn't valid JSON. */
     function json():Promise<*>
     /** The body as text (decoded as UTF-8). */

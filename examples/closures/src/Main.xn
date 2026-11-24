@@ -1,6 +1,6 @@
 package {
   public class Main {
-    private var clicks:int = 0
+    private var clicks:Int = 0
     private var prefix:String = '#'
 
     public function Main() {
@@ -24,11 +24,11 @@ package {
       trace(t.fahrenheit)
     }
 
-    private function onClick(e:*):void {
+    private function onClick(e:*):Void {
       clicks++
     }
 
-    private function format(n:int):String {
+    private function format(n:Int):String {
       return prefix + n
     }
   }
@@ -47,6 +47,6 @@ class Loud extends Base {
 class Temperature {
   private var _c:Float = 0
 
-  public function set celsius(v:Float):void { _c = v }
+  public function set celsius(v:Float):Void { _c = v }
   public function get fahrenheit():Float { return _c * 9 / 5 + 32 }
 }

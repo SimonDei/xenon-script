@@ -25,16 +25,16 @@ class Item {
 class Inventory implements IReport {
   private var items:Array<Item> = []
   private var total:Float = 0
-  public static var reports:int = 0
+  public static var reports:Int = 0
 
-  public function add(i:Item):void {
+  public function add(i:Item):Void {
     items.push(i)
     total += i.price
   }
 
-  public function count():int const { return items.length }
+  public function count():Int const { return items.length }
 
-  public function get isEmpty():Boolean const { return items.length == 0 }
+  public function get isEmpty():Bool const { return items.length == 0 }
 
   public function report():String const {
     Inventory.reports++                      // static state isn't `this`

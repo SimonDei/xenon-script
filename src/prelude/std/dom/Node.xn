@@ -11,23 +11,23 @@ package xenon {
     private function Node()
 
     // ---- node types (`node.nodeType == Node.ELEMENT_NODE`) ----
-    static inline const ELEMENT_NODE:int = 1
-    static inline const ATTRIBUTE_NODE:int = 2
-    static inline const TEXT_NODE:int = 3
-    static inline const CDATA_SECTION_NODE:int = 4
-    static inline const PROCESSING_INSTRUCTION_NODE:int = 7
-    static inline const COMMENT_NODE:int = 8
-    static inline const DOCUMENT_NODE:int = 9
-    static inline const DOCUMENT_TYPE_NODE:int = 10
-    static inline const DOCUMENT_FRAGMENT_NODE:int = 11
+    static inline const ELEMENT_NODE:Int = 1
+    static inline const ATTRIBUTE_NODE:Int = 2
+    static inline const TEXT_NODE:Int = 3
+    static inline const CDATA_SECTION_NODE:Int = 4
+    static inline const PROCESSING_INSTRUCTION_NODE:Int = 7
+    static inline const COMMENT_NODE:Int = 8
+    static inline const DOCUMENT_NODE:Int = 9
+    static inline const DOCUMENT_TYPE_NODE:Int = 10
+    static inline const DOCUMENT_FRAGMENT_NODE:Int = 11
 
     /** One of the `*_NODE` constants: `Node.ELEMENT_NODE` for an element, `Node.TEXT_NODE` for text. */
-    final nodeType:int
+    final nodeType:Int
     /** The tag name for an element (`'w:p'`, upper case in HTML documents), `'#text'` for text, `'#document'`, … */
     final nodeName:String
     final baseURI:String
     /** Is the node part of a document? */
-    final isConnected:Boolean
+    final isConnected:Bool
     /** The document the node belongs to (`null` for a document itself). */
     function get ownerDocument():Document?
 
@@ -41,19 +41,19 @@ package xenon {
     final lastChild:Node?
     final previousSibling:Node?
     final nextSibling:Node?
-    function hasChildNodes():Boolean
+    function hasChildNodes():Bool
     /** The topmost ancestor (the document, or the root of a detached tree); `composed` crosses shadow roots. */
     function getRootNode():Node
-    function getRootNode(options:{ ?composed:Boolean }):Node
+    function getRootNode(options:{ ?composed:Bool }):Node
 
     // ---- content ----
     /** The text of a text or comment node; `null` for elements and documents. */
     var nodeValue:String?
     /** All text inside the node, concatenated; setting it replaces the children with one text node. */
     function get textContent():String?
-    function set textContent(value:String?):void
+    function set textContent(value:String?):Void
     /** Joins adjacent text nodes and removes empty ones, below this node. */
-    function normalize():void
+    function normalize():Void
 
     // ---- changing the tree (each returns the node it inserted or removed) ----
     function appendChild(node:Node):Node
@@ -62,18 +62,18 @@ package xenon {
     function replaceChild(node:Node, child:Node):Node
     function removeChild(child:Node):Node
     /** A copy; with `deep`, of its whole subtree too. */
-    function cloneNode(deep:Boolean = false):Node
+    function cloneNode(deep:Bool = false):Node
 
     // ---- comparing ----
-    function contains(other:Node?):Boolean
+    function contains(other:Node?):Bool
     /** Same type, attributes and children (structurally equal). */
-    function isEqualNode(other:Node?):Boolean
+    function isEqualNode(other:Node?):Bool
     /** The very same node (like `==`). */
-    function isSameNode(other:Node?):Boolean
+    function isSameNode(other:Node?):Bool
     /** A bit mask of the `DOCUMENT_POSITION_*` flags (preceding 2, following 4, contains 8, contained by 16). */
-    function compareDocumentPosition(other:Node):int
+    function compareDocumentPosition(other:Node):Int
     function lookupPrefix(ns:String?):String?
     function lookupNamespaceURI(prefix:String?):String?
-    function isDefaultNamespace(ns:String?):Boolean
+    function isDefaultNamespace(ns:String?):Bool
   }
 }

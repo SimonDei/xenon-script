@@ -8,7 +8,7 @@ error[X0604]: no overload of `new Date` accepts (Bool)
   = note: `new Date(time:Float)`
   = note: `new Date(text:String)`
   = note: `new Date(date:Date)`
-  = note: `new Date(year:int, month:int, day:int = 1, hours:int = 0, minutes:int = 0, seconds:int = 0, milliseconds:int = 0)`
+  = note: `new Date(year:Int, month:Int, day:Int = 1, hours:Int = 0, minutes:Int = 0, seconds:Int = 0, milliseconds:Int = 0)`
 
 error[X0426]: no member `toUppercase` on `String`
  --> natives.xn:6:15
@@ -44,9 +44,9 @@ error[X0604]: no overload of `split` accepts (Int)
   |                                                       ^^^^^^^ no matching overload
   |
   = note: `split(separator:String):Array<String>`
-  = note: `split(separator:String, limit:int):Array<String>`
+  = note: `split(separator:String, limit:Int):Array<String>`
   = note: `split(separator:RegExp):Array<String>`
-  = note: `split(separator:RegExp, limit:int):Array<String>`
+  = note: `split(separator:RegExp, limit:Int):Array<String>`
 
 error[X0820]: native members can't have a body
   --> natives.xn:16:23

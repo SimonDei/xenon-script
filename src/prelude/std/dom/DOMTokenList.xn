@@ -8,30 +8,30 @@ package xenon {
     private function DOMTokenList()
 
     /** The number of tokens. */
-    final length:int
+    final length:Int
     /** The attribute's text (`'a b'`); setting it replaces all tokens. */
     var value:String
 
     /** The token at `index`, or `null` past the end. */
-    function item(index:int):String?
-    function contains(token:String):Boolean
+    function item(index:Int):String?
+    function contains(token:String):Bool
     /** Adds the tokens that aren't there yet: `el.classList.add('active', 'wide')`. */
-    function add(...tokens:Array<String>):void
-    function remove(...tokens:Array<String>):void
+    function add(...tokens:Array<String>):Void
+    function remove(...tokens:Array<String>):Void
     /** Removes the token if present, else adds it (`force`: add when `true`, remove when `false`); whether it's there now. */
-    function toggle(token:String):Boolean
-    function toggle(token:String, force:Boolean):Boolean
+    function toggle(token:String):Bool
+    function toggle(token:String, force:Bool):Bool
     /** Replaces `token` by `newToken`; `false` when `token` wasn't there. */
-    function replace(token:String, newToken:String):Boolean
+    function replace(token:String, newToken:String):Bool
     /** Whether the attribute accepts the token (for `relList` & co.; `classList` throws). */
-    function supports(token:String):Boolean
+    function supports(token:String):Bool
     function toString():String
 
-    function forEach(callback:(token:String, index:int, list:DOMTokenList) -> Void):void
+    function forEach(callback:(token:String, index:Int, list:DOMTokenList) -> Void):Void
     /** With `thisArg` as the callback's `this` (for `function` callbacks). */
-    function forEach(callback:(token:String, index:int, list:DOMTokenList) -> Void, thisArg:*):void
-    function keys():Iterator<int>
+    function forEach(callback:(token:String, index:Int, list:DOMTokenList) -> Void, thisArg:*):Void
+    function keys():Iterator<Int>
     function values():Iterator<String>
-    function entries():Iterator<Tuple<int, String>>
+    function entries():Iterator<Tuple<Int, String>>
   }
 }

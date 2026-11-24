@@ -15,12 +15,12 @@ package xenon {
     /** The live inline styles. Assigning a `String` replaces `cssText`. */
     public override function get style():CSSStyleProperties
     /** `el.style = 'color: red'`: replaces all inline styles (the `style` attribute). */
-    public override function set style(cssText:String):void
+    public override function set style(cssText:String):Void
     var autocapitalize:String
-    var autocorrect:Boolean
-    var autofocus:Boolean
+    var autocorrect:Bool
+    var autofocus:Bool
     var containerTiming:String
-    var containerTimingIgnore:Boolean
+    var containerTimingIgnore:Bool
     var contentEditable:String
     /**
      * The `data-*` attributes by their camel-cased names: `data-user-id` is `dataset.userId` (or
@@ -28,22 +28,22 @@ package xenon {
      */
     final dataset:DOMStringMap
     var dir:String
-    var draggable:Boolean
+    var draggable:Bool
     var editContext:*
     var enterKeyHint:String
-    var hidden:Boolean | String
-    var inert:Boolean
+    var hidden:Bool | String
+    var inert:Bool
     var innerText:String
     var inputMode:String
-    final isContentEditable:Boolean
+    final isContentEditable:Bool
     var lang:String
     var nonce:String
     var outerText:String
     var popover:String?
-    var spellcheck:Boolean
-    var tabIndex:int
+    var spellcheck:Bool
+    var tabIndex:Int
     var title:String
-    var translate:Boolean
+    var translate:Bool
     var virtualKeyboardPolicy:String
     var writingSuggestions:String
 
@@ -56,15 +56,15 @@ package xenon {
 
     // ---- interaction ----
     function attachInternals():*
-    function blur():void
-    function click():void
-    function focus():void
-    function focus(options:{ ?preventScroll:Boolean, ?focusVisible:Boolean }):void
-    function hidePopover():void
-    function showPopover():void
-    function showPopover(options:{ ?source:HTMLElement }):void
-    function togglePopover():Boolean
-    function togglePopover(force:Boolean):Boolean
-    function togglePopover(options:{ ?force:Boolean, ?source:HTMLElement }):Boolean
+    function blur():Void
+    function click():Void
+    function focus():Void
+    function focus(options:{ ?preventScroll:Bool, ?focusVisible:Bool }):Void
+    function hidePopover():Void
+    function showPopover():Void
+    function showPopover(options:{ ?source:HTMLElement }):Void
+    function togglePopover():Bool
+    function togglePopover(force:Bool):Bool
+    function togglePopover(options:{ ?force:Bool, ?source:HTMLElement }):Bool
   }
 }

@@ -27,7 +27,7 @@ class UserController {
   public function create():String { return 'created ' + id() }
 
   [Logged]
-  private function id():int { return 7 }
+  private function id():Int { return 7 }
 
   [Column('user_name')]
   public var name:String = 'ada'

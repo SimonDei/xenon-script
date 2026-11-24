@@ -13,16 +13,16 @@ package {
       trace('point', x, y, dist)
 
       // array patterns: holes, defaults, rest, typed vectors
-      var list:Array<int> = [10, 20, 30, 40, 50]
+      var list:Array<Int> = [10, 20, 30, 40, 50]
       var [first, , third, ...tail] = list
-      var sum:int = first + third
+      var sum:Int = first + third
       trace(first, third, tail.length, sum)
       var [only, missing = -1] = [7]
       trace(only, missing)
 
       // destructuring assignment: swap, assign into fields
-      var a:int = 1
-      var b:int = 2
+      var a:Int = 1
+      var b:Int = 2
       [a, b] = [b, a]
       trace('swapped', a, b)
       var q:Point = new Point(0, 0)
@@ -30,10 +30,10 @@ package {
       trace('q', q.x, q.y)
 
       // for-of with patterns
-      var scores:Map<String, int> = new Map([['ann', 3], ['bob', 5]])
+      var scores:Map<String, Int> = new Map([['ann', 3], ['bob', 5]])
       for (var [who, score] of scores) trace(who.toUpperCase(), score + 1)      // typed: who is a String, score an int
       var points:Array<Point> = [new Point(1, 2), new Point(3, 4)]
-      var total:int = 0
+      var total:Int = 0
       for (var { x: px, y: py } of points) total += px * py
       trace('total', total)
 
@@ -41,7 +41,7 @@ package {
       var cache:* = {}
       cache.hits ??= 0
       cache.hits += 1
-      var ok:Boolean = true
+      var ok:Bool = true
       ok &&= total > 10
       var label:String? = null
       label ??= 'none'
@@ -55,10 +55,10 @@ package {
 }
 
 class Point {
-  public var x:int
-  public var y:int
+  public var x:Int
+  public var y:Int
 
-  public function Point(x:int, y:int) {
+  public function Point(x:Int, y:Int) {
     this.x = x
     this.y = y
   }

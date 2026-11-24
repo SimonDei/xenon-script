@@ -16,11 +16,11 @@ package xenon {
      * JSON text for `value`, or `null` for values JSON can't represent (functions, `undefined`).
      * `replacer` transforms values; `space` indents by that many spaces (at most 10).
      */
-    static function stringify(value:*, replacer:Null<(key:String, value:*) -> *> = null, space:int = 0):String
+    static function stringify(value:*, replacer:Null<(key:String, value:*) -> *> = null, space:Int = 0):String
     /** Indents with the string `space` (at most 10 characters), e.g. `'\t'`. */
     static function stringify(value:*, replacer:Null<(key:String, value:*) -> *>, space:String):String
     /** Only the listed property names are included. */
-    static function stringify(value:*, keys:Array<String>, space:int = 0):String
+    static function stringify(value:*, keys:Array<String>, space:Int = 0):String
     static function stringify(value:*, keys:Array<String>, space:String):String
   }
 }

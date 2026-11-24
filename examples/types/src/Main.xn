@@ -1,15 +1,15 @@
 package {
   public class Main {
-    public static const LIMIT:uint = 4000000000
-    private static var created:int = 0
+    public static const LIMIT:UInt = 4000000000
+    private static var created:Int = 0
     private var _name:String = 'anon'
-    private final id:int
+    private final id:Int
 
     public function Main() {
       id = ++created
       trace(id, LIMIT, Main.LIMIT > 0)
 
-      var half:int = int(7 / 2)
+      var half:Int = Int(7 / 2)
       var exact:Float = 7 / 2
       var mixed:Float = half + exact
       trace(half, exact, mixed, 2 ** 10, 17 % 5, 1 << 4, -8 >> 1, -8 >>> 28)
@@ -31,34 +31,34 @@ package {
 
       // `(expr : Type)`: a compile-time type check, gone at runtime. The value is typed against
       // `Type` (a literal takes it from there) and is a `Type` from then on.
-      var pairs:Array<*> = [(['x', 1] : Tuple<String, int>), (['y', 2] : Tuple<String, int>)]
-      trace((pairs[0] : Tuple<String, int>)[0].toUpperCase(), ([] : Array<int>).length, ((total : Float) / 2 : Float))
+      var pairs:Array<*> = [(['x', 1] : Tuple<String, Int>), (['y', 2] : Tuple<String, Int>)]
+      trace((pairs[0] : Tuple<String, Int>)[0].toUpperCase(), ([] : Array<Int>).length, ((total : Float) / 2 : Float))
 
       // Unions and literal types: a value of one of several types, or one of a few values.
       // `is`, `==` and null checks narrow them.
-      var id:int | String = 'a7'
+      var id:Int | String = 'a7'
       if (id is String) trace(id.toUpperCase())
       id = 7
       trace(Main.size('s'), Main.size('l'), Main.kind(id), Main.kind('x'))
     }
 
-    private static function size(s:'s' | 'm' | 'l'):int => s == 's' ? 1 : s == 'm' ? 2 : 3
+    private static function size(s:'s' | 'm' | 'l'):Int => s == 's' ? 1 : s == 'm' ? 2 : 3
 
-    private static function kind(v:int | String):String {
-      if (v is int) return 'number ' + (v + 1)
+    private static function kind(v:Int | String):String {
+      if (v is Int) return 'number ' + (v + 1)
       return 'text ' + v.length
     }
 
     public function get name():String { return _name }
-    public function set name(value:String):void { _name = value.toUpperCase() }
+    public function set name(value:String):Void { _name = value.toUpperCase() }
 
-    private function describe(n:int, suffix:String = '.'):String {
+    private function describe(n:Int, suffix:String = '.'):String {
       return 'n=' + n + suffix
     }
 
     public static function sum(...values:Array<Float>):Float {
       var total:Float = 0
-      var i:int = 0
+      var i:Int = 0
       while (i < values.length) {
         total += values[i]
         i++
