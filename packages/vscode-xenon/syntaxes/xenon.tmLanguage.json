@@ -456,6 +456,15 @@
     "variable-declaration": {
       "patterns": [
         {
+          "comment": "`const` in a type (`e:const Event`, `Map<String, const Cart>`, `x as const Cart`) is a read-only view, not a declaration",
+          "match": "(?<=[:<,|]|\\bas|\\bis)\\s*(const)\\b",
+          "captures": {
+            "1": {
+              "name": "storage.type.const.xenon"
+            }
+          }
+        },
+        {
           "match": "\\b(var|const|using)\\s+(?!(?:namespace|use|with|yield|let|goto)\\b)([A-Za-z_$][\\w$]*)",
           "captures": {
             "1": {

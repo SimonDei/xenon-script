@@ -56,6 +56,13 @@ const cases: [string, string, string, number?][] = [
   ["final id:String = make()", "id", "variable.other.declaration.xenon"],
   ["final id:String = make()", "make", "entity.name.function.call.xenon"],
   ["var count:int = 0", "count", "variable.other.declaration.xenon"],
+  ["function pick(event:const Event<const HTMLInputElement>):Void {", "Event", "entity.name.type.xenon"],
+  ["function pick(event:const Event<const HTMLInputElement>):Void {", "HTMLInputElement", "entity.name.type.xenon"],
+  ["function pick(event: const Event):Void {", "const", "storage.type.const.xenon"],
+  ["var c:const Cart = view", "Cart", "entity.name.type.xenon"],
+  ["var m:Map<String, const Cart> = view as const Map<String, Cart>", "Cart", "entity.name.type.xenon"],
+  ["var m:Map<String, const Cart> = view as const Map<String, Cart>", "Map", "entity.name.type.xenon", 1],
+  ["const LIMIT:Int = 3", "LIMIT", "variable.other.declaration.xenon"],
   ["using u:User = new User('42')", "u", "variable.other.declaration.xenon"],
   ["private static inline final MAX_HP:int = 100", "MAX_HP", "variable.other.declaration.xenon"],
   // types
