@@ -13,6 +13,10 @@ package {
       function helper():void {}
       var f:Function = (x:int):int => x
       trace(f)
+      var target:Array<int> = [0]
+      target[0] = 1
+      var box:Main = this
+      box.written = 2
     }
 
     private function forgotten():void {}

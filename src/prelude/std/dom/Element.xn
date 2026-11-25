@@ -83,6 +83,13 @@ package xenon {
     public override function get textContent():String
     public override function set textContent(value:String?):Void
 
+    // ---- shadow DOM ----
+    /** Gives the element a shadow tree (once): `attachShadow({ mode: 'open' })`. */
+    function attachShadow(init:{ mode:String, ?delegatesFocus:Bool, ?slotAssignment:String }):ShadowRoot
+    /** The open shadow root, or `null` (none, or a closed one). */
+    final shadowRoot:ShadowRoot?
+    var slot:String
+
     // ---- markup ----
     /** The children as HTML or XML text; setting it parses and replaces them. */
     var innerHTML:String

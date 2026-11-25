@@ -46,6 +46,8 @@ export interface XenonImport {
   kind: "XenonImport";
   path: Ident[];
   wildcard: boolean;
+  /** `import static a.B.member` / `import static a.B.*`: a class's static members by their own names. */
+  isStatic?: boolean;
   span: Span;
 }
 

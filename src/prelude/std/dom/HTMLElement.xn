@@ -4,7 +4,8 @@ package xenon {
   public typedef DOMStringMap = Record<String, String>
 
   public native class HTMLElement extends Element {
-    private function HTMLElement()
+    /** Only for subclasses: a custom element (see `CustomElementRegistry`) calls `super()`. */
+    protected function HTMLElement()
 
     // ---- global HTML attributes ----
     var accessKey:String

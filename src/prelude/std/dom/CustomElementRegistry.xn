@@ -1,0 +1,23 @@
+// Browser: the registry of custom elements, `customElements`. `define('x-counter', Counter)` makes
+// every `<x-counter>` (parsed or created) an instance of `Counter`, a class extending `HTMLElement`.
+// The browser then calls these methods of the class when it has them: `connectedCallback()`,
+// `disconnectedCallback()`, `adoptedCallback()` and `attributeChangedCallback(name, old, value)` for
+// the names a static `observedAttributes` getter lists. Browser-only: Bun has no DOM.
+package xenon {
+  public native class CustomElementRegistry {
+    private function CustomElementRegistry()
+
+    /** Registers `constructor` for the tag `name` (lower case with a `-`); throws if either is taken. */
+    function define(name:String, constructor:Class<HTMLElement>):Void
+    /** `extends` makes a customized built-in (`<button is="x-fancy">`). */
+    function define(name:String, constructor:Class<HTMLElement>, options:{ ?extends:String }):Void
+    /** The class registered for `name`, or `null`. */
+    function get(name:String):Class<HTMLElement>?
+    /** The tag a class is registered for, or `null`. */
+    function getName(constructor:Class<HTMLElement>):String?
+    /** Resolves once `name` is defined. */
+    function whenDefined(name:String):Promise<Class<HTMLElement>>
+    /** Upgrades the custom elements in `root` that were created before their definition. */
+    function upgrade(root:Node):Void
+  }
+}

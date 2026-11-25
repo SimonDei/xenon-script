@@ -61,6 +61,28 @@ public class Main {
   ]);
 });
 
+test("an optional chain can't be assigned to (JavaScript has no optional assignment)", () => {
+  const bad = `class Box { public var n:Int = 0; public var inner:Box? = null }
+public class Main {
+  public function Main() {}
+  public static function f(b:Box?, list:Array<Int>?):Void {
+    b?.n = 1
+    b?.inner.n = 2
+    b?.n++
+    list?.[0] = 3
+    if (var box:Box = b) box.n = 4
+  }
+}
+`;
+  expect(errors(compileProject([{ path: "Main.xn", text: bad }], { main: "Main" }))).toEqual([
+    "X0105 contains `?.`",
+    "X0398 `Box?`", // `inner` may be null itself
+    "X0105 contains `?.`",
+    "X0105 contains `?.`",
+    "X0105 contains `?.`",
+  ]);
+});
+
 test("the TypeScript output of chains type-checks", () => {
   const result = compileProject([{ path: "Main.xn", text: code }], { main: "Main", target: "ts" });
   expect(errors(result)).toEqual([]);

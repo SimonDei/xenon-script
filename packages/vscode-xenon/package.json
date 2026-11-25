@@ -2,7 +2,7 @@
   "name": "vscode-xenon",
   "displayName": "XenonScript",
   "description": "XenonScript (.xn): syntax highlighting, diagnostics with quick fixes, hover, go to definition, completion, signature help, references, rename and outline",
-  "version": "0.10.46",
+  "version": "0.10.47",
   "publisher": "xenon",
   "license": "CC0-1.0",
   "icon": "icons/logo.png",

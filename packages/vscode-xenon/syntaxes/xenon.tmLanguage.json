@@ -161,6 +161,53 @@
       "patterns": [
         {
           "name": "meta.template.xenon",
+          "begin": "\\$'''",
+          "end": "'''",
+          "beginCaptures": {
+            "0": {
+              "name": "string.template.xenon punctuation.definition.string.template.begin.xenon"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "string.template.xenon punctuation.definition.string.template.end.xenon"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#escapes"
+            },
+            {
+              "include": "#interpolation"
+            },
+            {
+              "name": "string.template.xenon",
+              "match": "(?:[^{'\\\\]|'(?!''))+"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.multi.xenon",
+          "begin": "'''",
+          "end": "'''",
+          "beginCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.begin.xenon"
+            }
+          },
+          "endCaptures": {
+            "0": {
+              "name": "punctuation.definition.string.end.xenon"
+            }
+          },
+          "patterns": [
+            {
+              "include": "#escapes"
+            }
+          ]
+        },
+        {
+          "name": "meta.template.xenon",
           "begin": "\\$'",
           "end": "'|(?=$)",
           "beginCaptures": {
@@ -336,6 +383,26 @@
     },
     "import": {
       "patterns": [
+        {
+          "match": "\\b(import)\\s+(static)\\s+((?:[A-Za-z_$][\\w$]*\\.)*)([A-Za-z_$][\\w$]*)(\\.)([A-Za-z_$][\\w$]*|\\*)(?=\\s*(?:;|$))",
+          "captures": {
+            "1": {
+              "name": "keyword.control.import.xenon"
+            },
+            "2": {
+              "name": "storage.modifier.xenon"
+            },
+            "3": {
+              "name": "entity.name.namespace.xenon"
+            },
+            "4": {
+              "name": "entity.name.type.xenon"
+            },
+            "6": {
+              "name": "variable.other.property.xenon"
+            }
+          }
+        },
         {
           "match": "\\b(import)\\s+((?:[A-Za-z_$][\\w$]*\\.)*)([A-Za-z_$][\\w$]*|\\*)(?=\\s*(?:;|$))",
           "captures": {

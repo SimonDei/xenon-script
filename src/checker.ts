@@ -158,6 +158,8 @@ export interface CheckResult {
    * (`xlsx.WorkBook`, `JSZip.JSZipObject`) and imported classes themselves (`JSZip`).
    */
   qualifiedTypes: Map<A.XenonFile, Map<string, ClassInfo | TypedefInfo>>;
+  /** Per file, the static members its `import static`s provide, by name (for completion). */
+  staticImports: Map<A.XenonFile, Map<string, MemberSig[]>>;
   resolutions: Map<A.Expr | A.ObjectProp, Resolution>;
   /** Class referenced by a type node (`new X`, `extends X`, annotations). */
   typeResolutions: Map<A.TypeNode, ClassInfo>;
@@ -334,6 +336,10 @@ interface FileScope {
   /** The import that provides a name (for unused-import warnings). */
   importOf: Map<string, A.Import>;
   used: Set<A.Import>;
+  /** `import static`: static members by their own names, with the imports offering them (several: ambiguous when used). */
+  statics: Map<string, { member: MemberSig; imports: A.Import[] }[]>;
+  /** The file's `import static`s, resolved into `statics` once classes have their members. */
+  staticImports: A.XenonImport[];
 }
 
 type DAState = "no" | "yes" | "maybe";
@@ -446,7 +452,7 @@ class Scope {
  */
 export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typedefs: Map<string, TypedefInfo>, diags: DiagnosticBag, jsBindings?: Map<string, Map<string, JsBinding>>): CheckResult {
   const result: CheckResult = {
-    qualifiedTypes: new Map(), resolutions: new Map(), typeResolutions: new Map(), typedefResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), propertyReferences: new Map(), operatorCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
+    qualifiedTypes: new Map(), staticImports: new Map(), resolutions: new Map(), typeResolutions: new Map(), typedefResolutions: new Map(), typeNodeTypes: new Map(), exprTypes: new Map(), inlineValues: new Map(), inlineFields: new Map(), typeChecks: new Map(), methodClosures: new Set(), propertyReferences: new Map(), operatorCalls: new Set(), tsResultCasts: new Set(), overloadPicks: new Map(), classes, typedefs, bindingTypes: new Map(), typeOnlyImports: new Set(),
     expectedTypes: new Map(), scopedLocals: new Map(), scopedTemps: new Map(), scopedReturns: new Set(), attributes: new Map(), checkedIndexes: new Set(), optionalChains: new Set(),
   };
   const env = new Env(classes, typedefs, diags, result);
@@ -478,6 +484,7 @@ export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typ
   env.validateVariance(infos, typedefs);
   for (const file of files) env.collectFunctions(file, scopes.get(file)!);
   for (let i = 0; i < env.pendingShapeMembers.length; i++) env.pendingShapeMembers[i]!.type();
+  for (const scope of scopes.values()) env.resolveStaticImports(scope);
   for (const info of infos) if (!info.file.file.prelude) env.checkTypedefLeaks(info);
   for (const info of infos) env.checkOverrides(info);
   for (const info of infos) env.checkImplements(info);
@@ -554,7 +561,7 @@ class Env {
 
   fileScope(file: A.XenonFile): FileScope {
     const pkg = file.packageName.map((n) => n.name).join(".");
-    const scope: FileScope = { file, classes: new Map(), ambiguous: new Map(), jsImports: new Set(), jsMembers: new Map(), typedefs: new Map(), importOf: new Map(), used: new Set() };
+    const scope: FileScope = { file, classes: new Map(), ambiguous: new Map(), jsImports: new Set(), jsMembers: new Map(), typedefs: new Map(), importOf: new Map(), used: new Set(), statics: new Map(), staticImports: [] };
     for (const td of this.typedefs.values()) {
       if (td.pkg === pkg && !td.owner && (!td.filePrivate || td.file === file)) scope.typedefs.set(td.decl.name.name, td);
     }
@@ -591,6 +598,10 @@ class Env {
     // 2. Explicit imports: Xenon classes and JS bindings.
     const wildcards: A.XenonImport[] = [];
     for (const imp of file.imports) {
+      if (imp.kind === "XenonImport" && imp.isStatic) {
+        scope.staticImports.push(imp);
+        continue;
+      }
       if (imp.kind === "JsImport") {
         for (const n of [imp.defaultName, imp.namespace, ...imp.named.map((x) => x.alias ?? x.name)]) {
           if (!n) continue;
@@ -747,6 +758,75 @@ class Env {
       if (td.file.file.prelude && !td.filePrivate && !td.owner && !scope.typedefs.has(td.decl.name.name)) scope.typedefs.set(td.decl.name.name, td);
     }
     return scope;
+  }
+
+  /**
+   * `import static pkg.Class.member` / `import static pkg.Class.*`: the class's static members
+   * (inherited ones too) become names of the file. They rank below locals and the class's own and
+   * inherited members (see `ident`), so an import never changes what a name already means.
+   */
+  resolveStaticImports(scope: FileScope) {
+    const pkg = scope.file.packageName.map((n) => n.name).join(".");
+    for (const imp of scope.staticImports) this.staticImport(scope, imp, pkg);
+    if (scope.statics.size > 0) this.result.staticImports.set(scope.file, new Map([...scope.statics].map(([n, list]) => [n, list.map((c) => c.member)])));
+  }
+
+  private staticImport(scope: FileScope, imp: A.XenonImport, pkg: string) {
+    const classPath = imp.wildcard ? imp.path : imp.path.slice(0, -1);
+    if (classPath.length === 0) return; // reported by the parser
+    const path = classPath.map((p) => p.name).join(".");
+    const at = cover(classPath[0]!.span, classPath.at(-1)!.span);
+    const info = this.classes.get(path) ?? (classPath.length === 1 ? scope.classes.get(path) : undefined);
+    if (!info || (info.filePrivate && info.file !== scope.file)) {
+      scope.used.add(imp);
+      const d = this.diags.error("X0431", `cannot find class \`${path}\``, at, "not found");
+      const sug = suggest(path, [...this.classes.values()].filter((c) => !c.filePrivate).map((c) => c.qname));
+      if (sug) d.help(`a class with a similar name exists: \`${sug}\``, [{ span: at, text: sug }]);
+      return;
+    }
+    if (!classAccessible(info, pkg)) {
+      scope.used.add(imp);
+      this.classAccessError(info, at);
+      return;
+    }
+    const visible = (m: MemberSig) => {
+      const vis = visibilityOf(m.decl);
+      return isNative(m.owner) || vis === "public" || (vis === "internal" && m.owner.pkg === pkg);
+    };
+    const add = (m: MemberSig) => {
+      const list = scope.statics.get(m.name) ?? [];
+      const same = list.find((c) => c.member.owner === m.owner && c.member.decl === m.decl);
+      if (same) same.imports.push(imp);
+      else list.push({ member: m, imports: [imp] });
+      scope.statics.set(m.name, list);
+    };
+    if (imp.wildcard) {
+      for (const name of new Set(allMemberNames(info))) {
+        const m = findMember(info, name);
+        if (m?.isStatic && visible(m)) add(m);
+      }
+      return;
+    }
+    const name = imp.path.at(-1)!;
+    const m = findMember(info, name.name);
+    if (!m || !m.isStatic) {
+      scope.used.add(imp);
+      const d = this.diags.error("X0436", m ? `\`${name.name}\` is not a static member of \`${info.decl.name.name}\`` : `\`${info.decl.name.name}\` has no member \`${name.name}\``, name.span, m ? "an instance member" : "not found");
+      if (m) d.secondary(m.decl.name.span, "declared without `static`");
+      else {
+        const sug = suggest(name.name, allMemberNames(info).filter((n) => findMember(info, n)?.isStatic));
+        if (sug) d.help(`a static member with a similar name exists: \`${sug}\``, [{ span: name.span, text: sug }]);
+      }
+      return;
+    }
+    if (!visible(m)) {
+      scope.used.add(imp);
+      const vis = visibilityOf(m.decl);
+      this.diags.error("X0603", `\`${name.name}\` is ${VIS_DESCRIPTION[vis](m.owner)}`, name.span, `${vis} member`)
+        .secondary(m.decl.name.span, `declared \`${vis}\` here`);
+      return;
+    }
+    add(m);
   }
 
   classAccessError(info: ClassInfo, at: Span) {
@@ -1084,7 +1164,7 @@ class Env {
     for (const imp of scope.file.imports) {
       if (scope.used.has(imp)) continue;
       if (imp.kind === "JsImport" && !imp.defaultName && !imp.namespace && imp.named.length === 0) continue;
-      const what = imp.kind === "JsImport" ? `\`${imp.module}\`` : `\`${imp.path.map((p) => p.name).join(".")}${imp.wildcard ? ".*" : ""}\``;
+      const what = imp.kind === "JsImport" ? `\`${imp.module}\`` : `\`${imp.isStatic ? "static " : ""}${imp.path.map((p) => p.name).join(".")}${imp.wildcard ? ".*" : ""}\``;
       this.diags.warning("X0870", `unused import ${what}`, imp.span, "nothing in this file uses it").help("remove the import");
     }
   }
@@ -1453,7 +1533,14 @@ class Env {
   /** Suggests `import x.y.Name;` when a class of that name exists in another package. */
   missingImportHint(d: DiagnosticBuilder, name: string) {
     const other = [...this.classes.values()].find((c) => !c.filePrivate && c.decl.name.name === name);
-    if (other) d.help(`a class with this name exists in package \`${other.pkg}\`; add \`import ${other.qname};\``);
+    if (other) {
+      d.help(`a class with this name exists in package \`${other.pkg}\`; add \`import ${other.qname};\``);
+      return;
+    }
+    // `div(…)` without `import static ui.H.*`: a public static member of a program class.
+    const owners = [...this.classes.values()].filter((c) => !c.filePrivate && !c.file.file.prelude && !c.file.file.generated &&
+      c.members.get(name)?.isStatic && visibilityOf(c.members.get(name)!.decl) === "public");
+    if (owners.length === 1) d.help(`\`${owners[0]!.decl.name.name}\` has a static \`${name}\`; add \`import static ${owners[0]!.qname}.${name};\` or \`import static ${owners[0]!.qname}.*;\``);
   }
 
   /** Resolves constraints and defaults, which may refer to the declaration's own parameters. */
@@ -2777,6 +2864,14 @@ const NO_PARAMS: MethodType = { kind: "method", params: [], ret: T.void };
 
 function requiresArgs(c: CtorRef): boolean {
   return c.kind === "declared" && c.type.params.some((p) => !p.optional && !p.rest);
+}
+
+/** Whether a member can be called: a method, or a field or accessor holding a function (or `*`). */
+function callable(m: MemberSig): boolean {
+  if (m.kind === "method") return true;
+  const t = nonNull(m.type);
+  return isDynamic(t) || t.kind === "method" || (t.kind === "builtin" && t.name === "Function") ||
+    (t.kind === "union" && t.types.some((u) => u.kind === "method"));
 }
 
 function allMemberNames(info: ClassInfo): string[] {
@@ -4522,7 +4617,7 @@ class BodyChecker {
         return this.propertyReference(e, scope);
       case "Index": {
         const writing = this.writing;
-        const objType = this.valueExpr(e.object, scope);
+        const objType = this.objectOf(e, scope);
         // `a?.[i]` and `a?.b[i]`: an optional chain link (see `member`); a nullable object indexed directly is X0398.
         const chained = this.chains.has(e.object);
         let obj = this.chains.get(e.object) ?? objType;
@@ -4613,7 +4708,11 @@ class BodyChecker {
       if (seen.blocked) this.narrowingBlocked.set(e, seen.blocked);
       return seen.type;
     }
-    const member = findMember(this.info, name) ?? (hasJsAncestor(this.info) ? undefined : this.env.rootMember(name));
+    let member = findMember(this.info, name) ?? (hasJsAncestor(this.info) ? undefined : this.env.rootMember(name));
+    const imported = this.scope.statics.get(name);
+    // `slot(…)` in an element with a static import `slot`: the inherited field `slot` (a `String`)
+    // can't be called, so it doesn't hide the import. A member that can be called always wins.
+    if (member && imported && e === this.calledCallee && !callable(member)) member = undefined;
     if (member) {
       this.env.checkAccess(readDecl(member), member.owner, this.info, e.span);
       if (this.dynamicThis > 0 && this.fieldInit && !member.isStatic) {
@@ -4635,6 +4734,7 @@ class BodyChecker {
       if (isConstView(self)) this.constViewUse(e, self, member, e.span);
       return this.viewedMember(self, member, this.seenThrough(self, member));
     }
+    if (imported) return this.staticImportRef(e, imported);
     const cls = this.env.lookupClass(this.scope, name, e.span) ?? this.typedefClass(name);
     if (cls) {
       res.set(e, { kind: "class", info: cls });
@@ -4688,6 +4788,29 @@ class BodyChecker {
       d.help(`use \`${ERROR_HINTS[name]}\` (JavaScript error classes are hidden in Xenon)`, [{ span: e.span, text: ERROR_HINTS[name]! }]);
     } else this.env.missingImportHint(d, name);
     return T.error;
+  }
+
+  /** The class a name comes from when an `import static` provides it (after `ident` resolved it). */
+  private staticImportOwner(e: A.Expr & { kind: "Ident" }): ClassInfo | undefined {
+    const r = this.env.result.resolutions.get(e);
+    return r?.kind === "member" && r.isStatic && !findMember(this.info, e.name) ? r.owner : undefined;
+  }
+
+  /** A name provided by `import static`: the static member it stands for (`div` → `H.div`). */
+  private staticImportRef(e: A.Expr & { kind: "Ident" }, imported: { member: MemberSig; imports: A.Import[] }[]): Type {
+    for (const c of imported) for (const imp of c.imports) this.scope.used.add(imp);
+    if (imported.length > 1) {
+      const owners = imported.map((c) => `\`${c.member.owner.decl.name.name}.${e.name}\``);
+      const d = this.diags.error("X0433", `\`${e.name}\` is ambiguous`, e.span, `could be ${owners.join(" or ")}`);
+      d.help(`name the class: \`${imported[0]!.member.owner.decl.name.name}.${e.name}\``);
+      return T.error;
+    }
+    const m = imported[0]!.member;
+    this.env.checkAccess(readDecl(m), m.owner, this.info, e.span);
+    this.env.result.resolutions.set(e, { kind: "member", isStatic: true, owner: m.owner });
+    this.inlineRef(e, m);
+    this.memberUse(e, m, e.span);
+    return m.type;
   }
 
   /**
@@ -4824,11 +4947,22 @@ class BodyChecker {
     };
   }
 
+  /** The object of `obj.x` / `obj[i]`: read even when the member is written (`el.title = …` uses `el`). */
+  private objectOf(e: A.Expr & { kind: "Member" | "Index" }, scope: Scope): Type {
+    const saved = this.writing;
+    this.writing = false;
+    try {
+      return this.valueExpr(e.object, scope);
+    } finally {
+      this.writing = saved;
+    }
+  }
+
   private member(e: A.Expr & { kind: "Member" }, scope: Scope): Type {
     if (e.object.kind === "Super") return this.superMember(e);
     this.memberObject = e.object;
     this.memberName = e.name.name;
-    const objType = this.valueExpr(e.object, scope);
+    const objType = this.objectOf(e, scope);
     this.memberObject = undefined;
     // `a?.b.c`: if `a` is null the whole chain stops (it is `null`), so `.c` is the member of what
     // `a?.b` gives when it doesn't stop; `b` itself may still be null (X0398 then).
@@ -6601,6 +6735,14 @@ class BodyChecker {
    */
   private lvalue(target: A.Expr, scope: Scope, plain: boolean): { type: Type; commit: () => void } {
     const none = () => {};
+    // `a?.b = 1`, `a?.b.c++`: JavaScript has no optional assignment (it's a syntax error there).
+    for (let link = target; link.kind === "Member" || link.kind === "Index" || link.kind === "Call"; link = link.kind === "Call" ? link.callee : link.object) {
+      if (!link.optional) continue;
+      this.expr(target, scope);
+      this.diags.error("X0105", "an optional chain can't be assigned to", target.span, "contains `?.`")
+        .help("check the value first: `if (var x:T = …) x.member = value`, or `!= null`");
+      return { type: T.error, commit: none };
+    }
     const evalTarget = () => {
       const saved = this.writing;
       this.writing = plain;
@@ -6629,7 +6771,10 @@ class BodyChecker {
           .secondary(local.nameSpan, `declared \`${local.kind}\` here`);
         return { type, commit: none };
       }
-      if (!local) return { type, commit: this.memberWrite(target.name, this.info, target.span, true) };
+      if (!local) {
+        const owner = this.staticImportOwner(target);
+        return { type, commit: this.memberWrite(target.name, owner ?? this.info, target.span, !owner) };
+      }
       return { type, commit: none };
     }
     if (target.kind === "Member") {
@@ -6871,7 +7016,7 @@ class BodyChecker {
     if (target.kind === "Ident") {
       const local = scope.get(target.name);
       if (local) return local.typeSpan && { span: local.typeSpan, label: "declared type" };
-      m = findMember(this.info, target.name);
+      m = findMember(this.staticImportOwner(target) ?? this.info, target.name);
       name = target.name;
     } else if (target.kind === "Member") {
       const objType = this.env.result.exprTypes.get(target.object);

@@ -12,9 +12,14 @@ import type { SourceFile, Span } from "./source.ts";
  * getter, so JavaScript code can read but not assign them. Everything else is a plain property.
  * Enums, native classes and the prelude keep plain properties.
  */
-function fieldStorage(m: MemberSig | undefined): "private" | "readonly" | "plain" {
+/**
+ * How a field is stored: a JavaScript `#private` field, a `#field` behind a getter (`final`/`const`),
+ * or a plain property. A private field with a runtime attribute (`[State] private var x`) is a
+ * plain property: what reads attributes at run time (a component library) reaches it by name.
+ */
+function fieldStorage(m: MemberSig | undefined, attributes: CheckResult["attributes"]): "private" | "readonly" | "plain" {
   if (!m || m.decl.kind !== "Field" || m.owner.decl.isEnum || isNative(m.owner) || m.owner.file.file.prelude) return "plain";
-  if (visibilityOf(m.decl) === "private") return "private";
+  if (visibilityOf(m.decl) === "private" && !attributes.has(m.decl)) return "private";
   return m.decl.decl === "var" ? "plain" : "readonly";
 }
 
@@ -861,7 +866,7 @@ class ModuleGen {
     const init = folded !== undefined ? constToJs(folded, jsString).code : f.init ? this.expr(f.init).code : defaultValue(f.type);
     const type = f.type ? this.ann(f.type) : this.annType(info.members.get(f.name.name)?.type);
     const st = f.modifiers.static ? "static " : "";
-    const storage = fieldStorage(info.members.get(f.name.name));
+    const storage = fieldStorage(info.members.get(f.name.name), this.check.attributes);
     if (storage === "plain") {
       this.w.line(`${this.visibility(f)}${st}${this.name(f.name)}${type} = ${init};`);
       return;
@@ -1207,7 +1212,7 @@ class ModuleGen {
    * name otherwise.
    */
   private fieldName(m: MemberSig | undefined, access: A.Expr, id: A.Ident, plain = this.name(id)): string {
-    const storage = fieldStorage(m);
+    const storage = fieldStorage(m, this.check.attributes);
     // The `#` stays outside the mapped token: `items` in the source maps to `items` in `#items`.
     const write = this.writeTargets.has(access);
     if (storage === "private" || privateMethod(m) || (write && (storage === "readonly" || privateSetter(m)))) return `#${this.tok(id.span, id.name)}`;
@@ -1719,7 +1724,14 @@ class ModuleGen {
   }
 
   private args(args: A.Expr[]): string {
-    return args.map((a) => this.wrap(this.expr(a), P.assign)).join(", ");
+    return args.map((a) => {
+      const code = this.expr(a);
+      // A `Class<T>` value may be an abstract class, so its TypeScript type is an `abstract new`;
+      // JavaScript APIs that create instances (`customElements.define`) want a concrete one.
+      const t = this.ts && a.kind !== "Spread" ? this.check.exprTypes.get(a) : undefined;
+      if (t && nonNull(t).kind === "builtin" && (nonNull(t) as { name: string }).name === "Class") return `(${code.code} as any)`;
+      return this.wrap(code, P.assign);
+    }).join(", ");
   }
 
   expr(e: A.Expr): Code {

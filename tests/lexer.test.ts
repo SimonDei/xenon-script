@@ -90,3 +90,42 @@ test("unterminated string reports at the opening quote", () => {
   expect(diags.items[0]!.code).toBe("X0362");
   expect(diags.items[0]!.labels[0]!.span.start).toBe(4);
 });
+
+/** `'''…'''` and `$'''…'''`: multi-line strings, indentation removed as in Java's text blocks. */
+const block = (text: string) => {
+  const { toks, diags } = tokens(text);
+  const t = toks[0]!;
+  const value = t.kind === "template" ? t.parts!.map((p) => (p.kind === "text" ? p.value : "{…}")).join("") : t.value;
+  return { value, kind: t.kind, errors: diags.items.map((d) => `${d.code} ${d.message}`), next: toks[1] };
+};
+
+test("a multi-line string loses the indentation its lines share with the closing quotes", () => {
+  expect(block("'''\n    a\n      b\n    '''").value).toBe("a\n  b\n");
+  // The closing quotes further left keep the lines' extra indentation.
+  expect(block("'''\n    a\n  '''").value).toBe("  a\n");
+  // Text on the closing line: no final line break.
+  expect(block("'''\n    a\n    b'''").value).toBe("a\nb");
+  // Whitespace at line ends goes; blank lines stay (and don't count for the indentation).
+  expect(block("'''\n    a   \n\n    b\n    '''").value).toBe("a\n\nb\n");
+  expect(block("'''\n    '''").value).toBe("");
+  // `'` and `''` need no escape; `'''` ends the string.
+  expect(block("'''\n  it's ''quoted''\n  '''").value).toBe("it's ''quoted''\n");
+  expect(block("'''\n  x\n  ''' + 1").next?.value).toBe("+");
+});
+
+test("escapes in a multi-line string are never taken for indentation or trailing whitespace", () => {
+  expect(block("'''\n    \\tkeep\n    a \\t\n    '''").value).toBe("\tkeep\na \t\n");
+});
+
+test("`$'''` interpolates like `$'…'`", () => {
+  const { toks, diags } = tokens("$'''\n    <p>{name}</p>\n      {a + 1}\n    '''");
+  expect(diags.items).toEqual([]);
+  expect(toks[0]!.parts!.map((p) => (p.kind === "text" ? `text:${p.value}` : `expr:${p.tokens.slice(0, -1).map((t) => t.value).join(" ")}`))).toEqual([
+    "text:<p>", "expr:name", "text:</p>\n  ", "expr:a + 1", "text:\n",
+  ]);
+});
+
+test("a multi-line string's text starts on the next line, and it needs its closing quotes", () => {
+  expect(block("var s = '''text\n  more\n'''".slice(8)).errors).toEqual(["X0368 a `'''` string starts on the line after its opening quotes"]);
+  expect(block("'''\n  never closed\n").errors).toEqual(["X0362 unterminated string"]);
+});

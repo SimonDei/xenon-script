@@ -241,7 +241,10 @@ member's visibility, and, for `_name` fields with a public `name` accessor, sugg
 
 `private` members compile to JavaScript `#private` fields and methods, so they are private at
 runtime too: JavaScript code can't read or change them. `protected` and `internal` exist only at
-compile time.
+compile time. One exception: a private field with an attribute read at run time (`[State] private
+var draft`, see [attributes](06-interfaces-and-generics.md#attributes)) is a plain property, so
+the code reading the attribute can reach the field by its name. Compile-time attributes such as
+`[Deprecated]` don't change it.
 
 ## Static members
 

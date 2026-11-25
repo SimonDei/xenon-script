@@ -1385,6 +1385,10 @@ export class XenonProject {
         if (this.visible(m, cls)) add({ label: m.name, kind: memberKind(m), detail: memberText(m), documentation: docComment(m.decl.span.file, m.decl.span.start) });
       }
     }
+    // `import static ui.H.*`: the imported static members (an ambiguous name isn't offered).
+    for (const [, [m, ...others]] of check.staticImports.get(ast) ?? []) {
+      if (m && others.length === 0) add({ label: m.name, kind: memberKind(m), detail: memberText(m), documentation: docComment(m.decl.span.file, m.decl.span.start) });
+    }
     for (const c of this.visibleTypes(a, ast).classes) add(classItem(c));
     for (const f of a.result.asts.filter((f) => f.file.prelude).flatMap((f) => f.functions)) {
       add({ label: f.name.name, kind: "function", documentation: docComment(f.span.file, f.span.start) });

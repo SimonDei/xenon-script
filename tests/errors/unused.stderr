@@ -45,17 +45,17 @@ help: remove it, or prefix the name with `_` if that's intended
    |                +
 
 warning[X0862]: private method `forgotten` is never used
-  --> unused.xn:18:22
+  --> unused.xn:22:22
    |
-18 |     private function forgotten():void {}
+22 |     private function forgotten():void {}
    |                      ^^^^^^^^^ declared here
    |
 help: remove it, or use it
 
 warning[X0862]: private property `secret` is never used
-  --> unused.xn:19:26
+  --> unused.xn:23:26
    |
-19 |     private function get secret():int { return 1 }
+23 |     private function get secret():int { return 1 }
    |                          ^^^^^^ declared here
    |
 help: remove it, or use it

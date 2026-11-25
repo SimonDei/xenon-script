@@ -133,6 +133,8 @@ class Lexer {
 
     const c = this.peek();
 
+    if (c === "$" && this.text.startsWith("'''", this.pos + 1)) return this.textBlock(start, nl, true);
+    if (c === "'" && this.text.startsWith("'''", this.pos)) return this.textBlock(start, nl, false);
     if (c === "$" && this.peek(1) === "'") return this.template(start, nl);
     if (c === "'") return this.string(start, nl);
     if (c === '"' || c === "`") return this.foreignString(start, nl);
@@ -242,7 +244,7 @@ class Lexer {
 
   private unterminated(start: number) {
     this.diags.error("X0362", "unterminated string", this.sp(start, start + 1), "string starts here")
-      .note("strings can't span lines; use `\\n` for a line break");
+      .note("`'…'` strings can't span lines; use `\\n` for a line break, or a multi-line `'''` string");
   }
 
   private string(start: number, nl: boolean): Token {
@@ -283,28 +285,8 @@ class Lexer {
       }
       if (c === "{") {
         flushText();
-        const exprStart = this.pos;
         this.pos++;
-        const tokens: Token[] = [];
-        let depth = 0;
-        for (;;) {
-          const t = this.next();
-          if (t.kind === "eof") {
-            this.diags.error("X0366", "unclosed `{` in template string", this.sp(exprStart, exprStart + 1), "interpolation starts here");
-            tokens.push(t);
-            break;
-          }
-          if (t.kind === "punct" && t.value === "{") depth++;
-          if (t.kind === "punct" && t.value === "}") {
-            if (depth === 0) break;
-            depth--;
-          }
-          tokens.push(t);
-        }
-        const exprSpan = this.sp(exprStart);
-        if (tokens.length === 0) this.diags.error("X0367", "empty interpolation in template string", exprSpan);
-        tokens.push({ kind: "eof", value: "", span: this.sp(this.pos - 1, this.pos - 1), nl: false });
-        parts.push({ kind: "expr", tokens, span: exprSpan });
+        parts.push(this.interpolation(this.pos - 1));
         textStart = this.pos;
         continue;
       }
@@ -312,6 +294,127 @@ class Lexer {
       text += c === "\\" ? this.escape() : c;
     }
     return { kind: "template", value: "", parts, span: this.sp(start), nl };
+  }
+
+  /**
+   * A multi-line string, `'''` or `$'''` (with `{expr}`s), as Java's text blocks: the text starts on
+   * the line after the opening quotes and ends before the closing ones. Indentation shared by its
+   * lines (and the line of the closing quotes) is removed, as is whitespace at line ends; a line
+   * break before the closing quotes stays. Escapes and interpolations are never stripped: only
+   * whitespace written in the source is.
+   */
+  private textBlock(start: number, nl: boolean, template: boolean): Token {
+    this.pos += template ? 4 : 3;
+    // The opening quotes end their line.
+    const rest = /^[ \t]*(\r?\n|$)/.exec(this.text.slice(this.pos));
+    if (!rest || rest[1] === "") {
+      const at = this.sp(start, this.pos);
+      const lineStart = this.text.lastIndexOf("\n", start) + 1;
+      const indent = /^[ \t]*/.exec(this.text.slice(lineStart))![0];
+      this.diags.error("X0368", "a `'''` string starts on the line after its opening quotes", at, "text follows here")
+        .help("start a new line after the quotes", [{ span: this.sp(this.pos, this.pos), text: `\n${indent}  ` }]);
+    } else {
+      this.pos += rest[0].length;
+    }
+    type Chunk = { kind: "raw" | "esc"; value: string; start: number } | { kind: "expr"; part: TemplatePart & { kind: "expr" } };
+    const lines: Chunk[][] = [[]];
+    const line = () => lines[lines.length - 1]!;
+    const raw = (ch: string) => {
+      const last = line().at(-1);
+      if (last?.kind === "raw") last.value += ch;
+      else line().push({ kind: "raw", value: ch, start: this.pos - 1 });
+    };
+    let closed = false;
+    for (;;) {
+      const c = this.peek();
+      if (c === "") break;
+      if (this.text.startsWith("'''", this.pos)) {
+        this.pos += 3;
+        closed = true;
+        break;
+      }
+      this.pos++;
+      if (c === "\r" && this.peek() === "\n") continue;
+      if (c === "\n") {
+        lines.push([]);
+        continue;
+      }
+      if (c === "\\") {
+        const escStart = this.pos - 1;
+        line().push({ kind: "esc", value: this.escape(), start: escStart });
+        continue;
+      }
+      if (template && c === "{") {
+        line().push({ kind: "expr", part: this.interpolation(this.pos - 1) });
+        continue;
+      }
+      raw(c);
+    }
+    if (!closed) {
+      this.diags.error("X0362", "unterminated string", this.sp(start, start + (template ? 4 : 3)), "string starts here")
+        .note("a `'''` string ends with `'''`");
+    }
+
+    // The closing quotes on their own line set the indentation and add no text.
+    const blank = (l: Chunk[]) => l.every((ch) => ch.kind === "raw" && ch.value.trim() === "");
+    const lead = (l: Chunk[]) => l[0]?.kind === "raw" ? /^[ \t]*/.exec(l[0].value)![0].length : 0;
+    const last = lines[lines.length - 1]!;
+    const closingAlone = closed && blank(last);
+    const measured = lines.filter((l, i) => !blank(l) || (closingAlone && i === lines.length - 1));
+    const indent = measured.length === 0 ? 0 : Math.min(...measured.map(lead));
+    if (closingAlone) lines.pop();
+
+    const parts: TemplatePart[] = [];
+    let text = "";
+    let textStart = start;
+    const flush = () => {
+      if (text !== "") parts.push({ kind: "text", value: text, span: this.sp(textStart, Math.max(textStart, this.pos)) });
+      text = "";
+    };
+    lines.forEach((l, i) => {
+      if (i > 0) text += "\n";
+      // Whitespace at the end of a line goes, unless an escape or interpolation follows it.
+      const tail = l.at(-1);
+      if (tail?.kind === "raw") tail.value = tail.value.replace(/[ \t]+$/, "");
+      l.forEach((ch, j) => {
+        if (ch.kind === "expr") {
+          flush();
+          parts.push(ch.part);
+          textStart = ch.part.span.end;
+          return;
+        }
+        if (text === "") textStart = ch.start;
+        text += j === 0 && ch.kind === "raw" ? ch.value.slice(Math.min(indent, lead(l))) : ch.value;
+      });
+    });
+    if (closingAlone && lines.length > 0) text += "\n";
+    flush();
+    if (template) return { kind: "template", value: "", parts, span: this.sp(start), nl };
+    return { kind: "string", value: parts.map((p) => (p.kind === "text" ? p.value : "")).join(""), span: this.sp(start), nl };
+  }
+
+  /** `{expr}` in a template string, from its `{` (at `exprStart`, already consumed) to the matching `}`. */
+  private interpolation(exprStart: number): TemplatePart & { kind: "expr" } {
+    const tokens: Token[] = [];
+    let depth = 0;
+    for (;;) {
+      const t = this.next();
+      if (t.kind === "eof") {
+        this.diags.error("X0366", "unclosed `{` in template string", this.sp(exprStart, exprStart + 1), "interpolation starts here");
+        tokens.push(t);
+        break;
+      }
+      if (t.kind === "punct" && t.value === "{") depth++;
+      if (t.kind === "punct" && t.value === "}") {
+        if (depth === 0) break;
+        depth--;
+      }
+      tokens.push(t);
+    }
+    const exprSpan = this.sp(exprStart);
+    if (tokens.length === 0) this.diags.error("X0367", "empty interpolation in template string", exprSpan);
+    tokens.push({ kind: "eof", value: "", span: this.sp(this.pos - 1, this.pos - 1), nl: false });
+    return { kind: "expr", tokens, span: exprSpan };
   }
 
   /** `"…"` and `` `…` `` are not Xenon strings: report with a fix-it, then recover. */

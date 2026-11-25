@@ -131,6 +131,7 @@ Null<T>
 A | B
 'literal' | 'other'
 (A, B) -> R
+(A | B)?, ((A) -> R)?        parentheses group a type
 { field:T, ?optional:T?, final readonly:T }
 Shape & { extra:T }          shapes combined into one
 const Cart                   a read-only view (see chapter 5)

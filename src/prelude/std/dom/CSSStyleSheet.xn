@@ -1,0 +1,17 @@
+// Browser: a constructed style sheet, shared by any number of documents and shadow roots through
+// `adoptedStyleSheets`. Browser-only: Bun has no DOM.
+package xenon {
+  public native class CSSStyleSheet {
+    /** An empty sheet: fill it with `replaceSync(css)`. */
+    function CSSStyleSheet()
+
+    /** Replaces the rules with `text` (`@import` rules are ignored). */
+    function replaceSync(text:String):Void
+    /** Replaces the rules with `text`, resolving once `@import`s have loaded. */
+    function replace(text:String):Promise<CSSStyleSheet>
+    /** Adds a rule at `index` (default 0); returns its index. */
+    function insertRule(rule:String):Int
+    function insertRule(rule:String, index:Int):Int
+    function deleteRule(index:Int):Void
+  }
+}

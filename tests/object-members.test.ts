@@ -119,3 +119,19 @@ test("methods and accessors of an object literal may have an expression body (`=
   const Main = new Function(`${js.replace(/^export /m, "").replace(/\/\/# sourceMappingURL.*$/m, "")}; return Main;`)();
   expect(Main.run()).toEqual(["3 1 5 8", "noted"]);
 });
+
+test("an expression body returns its promise unless the method is `async` and gives `Promise<Void>`", async () => {
+  const text = `public class Main {
+  private var done:Promise<Void> = Promise.resolve()
+  public function Main() {}
+  public function get ready():Promise<Void> => done
+  public function wait():Promise<Void> => done
+  public async function settle():Promise<Void> => await done
+}
+`;
+  const result = compileProject([{ path: "Main.xn", text }], { main: "Main" });
+  expect(errors(result)).toEqual([]);
+  const js = result.outputs.find((o) => o.path === "Main.js")!.text;
+  expect(js).toContain("return this.#done;");
+  expect(js).not.toContain("return await");
+});

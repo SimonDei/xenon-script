@@ -178,9 +178,9 @@ var lines = 'one\ntwo'
 var unicode = 'é \u{1F600}'
 ```
 
-Escapes: `\n \r \t \0 \b \f \v`, `\'`, `\\`, `\xFF`, `\uFFFF`, `\u{1F600}`. A string can't span
-lines; use `\n`. Double quotes and backticks aren't string syntax in XenonScript; the compiler says
-so and offers to convert them.
+Escapes: `\n \r \t \0 \b \f \v`, `\'`, `\\`, `\xFF`, `\uFFFF`, `\u{1F600}`. A `'\u2026'` string can't
+span lines; use `\n` or a multi-line `'''` string (below). Double quotes and backticks aren't
+string syntax in XenonScript; the compiler says so and offers to convert them.
 
 **Template strings** start with `$'` and insert expressions in braces:
 
@@ -198,6 +198,38 @@ Braces: { and }
 
 Any expression can go inside `{…}`, including calls, conditionals and nested templates. They
 compile to JavaScript template literals.
+
+**Multi-line strings** are written between `'''` (or `$'''` with `{…}`), as Java's text blocks:
+
+```actionscript check
+var name = 'Ada'
+var css = '''
+  :host { display: block }
+    li { color: red }
+  '''
+var html = $'''
+  <p>Hello, {name}!</p>
+  <p>It's ''nice''.</p>'''
+trace(css + html)
+```
+
+```text output
+:host { display: block }
+  li { color: red }
+<p>Hello, Ada!</p>
+<p>It's ''nice''.</p>
+```
+
+- The text starts on the line after the opening quotes (X0368 otherwise) and ends before the
+  closing ones.
+- The indentation the lines share with the line of the closing quotes is removed, so the string
+  can be indented with the code. Put the closing quotes further left to keep some indentation.
+- A line break before the closing quotes stays (`css` ends with one); write the quotes after the
+  last text to leave it out (`html`).
+- Whitespace at the end of a line is removed. Escapes work as in `'…'`, and are never removed:
+  `\t` at the start of a line stays.
+- `'` and `''` need no escape inside; `'''` ends the string. In `$'''`, `{` starts an
+  interpolation, so CSS in one needs `\{`: use a plain `'''` for it.
 
 `+` concatenates when either side is a `String`: `'n=' + 3` is `'n=3'`.
 

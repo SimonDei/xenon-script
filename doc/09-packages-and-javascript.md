@@ -115,6 +115,53 @@ import com.example.model.User.Role     // a typedef declared inside class `User`
 Imports of classes are module imports in the output: `import { User } from './com/example/model/User.js'`,
 written only for what a module really uses.
 
+### Static imports
+
+`import static` makes a class's static members usable by their own names, as in Java:
+
+```actionscript check
+import static shop.Format.*            // every visible static member of `Format`
+import static shop.Prices.VAT          // just one
+
+public class Main {
+  public function Main() {
+    trace(money(100 * (1 + VAT)), calls)
+  }
+}
+// file: shop/Format.xn
+package shop {
+  public class Format {
+    public static var calls:Int = 0
+    public static function money(n:Float):String {
+      calls++
+      return n.toFixed(2)
+    }
+  }
+}
+// file: shop/Prices.xn
+package shop {
+  public class Prices {
+    public static final VAT:Float = 0.2
+  }
+}
+```
+
+```text output
+120.00 1
+```
+
+- Inherited static members are imported too; private ones (and internal ones of other packages)
+  are not. `import static a.B.member` reports a missing, non-static or hidden member (X0436, X0603).
+- An imported name ranks after locals and after the class's own and inherited members, so an
+  import never changes what a name already means. One exception makes builders work in
+  subclasses of DOM classes: when the name is **called** and the member can't be (a `String` field,
+  say), the import is used. In a custom element, `slot('name')` calls an imported `slot` function
+  while `slot` alone is still the element's `slot` attribute. A member that can be called always
+  wins, even if the call doesn't fit it: write `Class.member(…)` then.
+- A name offered by two imports from different classes is an error where it's used (X0433), and a
+  single-name import doesn't take precedence over a wildcard one.
+- The output uses the class: `money(…)` compiles to `Format.money(…)`, with `Format` imported.
+
 ## Importing JavaScript
 
 Imports with a string are JavaScript imports, in JavaScript's forms:

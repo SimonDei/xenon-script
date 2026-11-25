@@ -1,0 +1,20 @@
+// Browser: the root of an element's shadow tree (`element.attachShadow({ mode: 'open' })`). Its
+// children render in place of the host's own, and styles inside don't leak in or out; a custom
+// element usually renders into one. Browser-only: Bun has no DOM.
+package xenon {
+  public native class ShadowRoot extends DocumentFragment {
+    private function ShadowRoot()
+
+    /** The element the shadow tree is attached to. */
+    final host:Element
+    /** `'open'` (reachable as `host.shadowRoot`) or `'closed'`. */
+    final mode:String
+    final delegatesFocus:Bool
+    /** The shadow tree's markup; setting it replaces the children. */
+    var innerHTML:String
+    /** Constructed style sheets applied to this tree (`new CSSStyleSheet()`), shared without copying. */
+    var adoptedStyleSheets:Array<CSSStyleSheet>
+    /** The focused element inside this tree, or `null`. */
+    final activeElement:Element?
+  }
+}

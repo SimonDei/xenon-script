@@ -10,12 +10,13 @@ const VISIBILITY = new Set(["public", "private", "protected", "internal"]);
 
 /**
  * The statement an expression body stands for: `return expr` when the method returns a value,
- * the expression alone for `void`, `Void`, `Promise<void>`, setters and constructors.
+ * the expression alone for `void`, `Void`, an `async` method's `Promise<Void>`, setters and
+ * constructors. (A method that isn't `async` returns its `Promise<Void>`: `=> promise`.)
  */
-function exprBodyStatement(expr: A.Expr, returnType: A.TypeNode | undefined, accessor: "get" | "set" | undefined, isConstructor: boolean): A.Stmt {
+function exprBodyStatement(expr: A.Expr, returnType: A.TypeNode | undefined, accessor: "get" | "set" | undefined, isConstructor: boolean, isAsync: boolean): A.Stmt {
   const isVoid = (t: A.TypeNode | undefined): boolean =>
     t?.kind === "VoidType" || (t?.kind === "TypeName" && t.name.length === 1 && t.name[0]!.name === "Void");
-  const promiseOfVoid = returnType?.kind === "TypeName" && returnType.name.at(-1)?.name === "Promise" && isVoid(returnType.args[0]);
+  const promiseOfVoid = isAsync && returnType?.kind === "TypeName" && returnType.name.at(-1)?.name === "Promise" && isVoid(returnType.args[0]);
   if (accessor === "set" || isConstructor || isVoid(returnType) || promiseOfVoid) return { kind: "ExprStmt", expr, span: expr.span };
   return { kind: "Return", value: expr, span: expr.span };
 }
@@ -293,13 +294,14 @@ export class Parser {
 
   private parseImport(): A.Import {
     const start = this.advance().span.start; // import
+    const isStatic = !!this.eat("static");
     // JS forms: import 'm' | import x from 'm' | import { a as b } from 'm' | import * as ns from 'm'
-    if (this.tok.kind === "string") {
+    if (this.tok.kind === "string" && !isStatic) {
       const module = this.advance().value;
       this.endStatement();
       return { kind: "JsImport", named: [], module, span: this.sp(start) };
     }
-    if (this.is("{") || this.is("*") || (this.tok.kind === "ident" && (this.isIdent("from", this.peekTok()) || this.is(",", this.peekTok())))) {
+    if (!isStatic && (this.is("{") || this.is("*")) || (!isStatic && this.tok.kind === "ident" && (this.isIdent("from", this.peekTok()) || this.is(",", this.peekTok())))) {
       const imp: A.JsImport = { kind: "JsImport", named: [], module: "", span: this.tok.span };
       if (this.tok.kind === "ident") {
         imp.defaultName = this.ident();
@@ -324,8 +326,8 @@ export class Parser {
       }
       return this.finishJsImport(imp, start);
     }
-    // Xenon form: import com.zoo.Dog; / import com.zoo.*;
-    const path: A.Ident[] = [this.ident("a package path or a JS module")];
+    // Xenon form: import com.zoo.Dog; / import com.zoo.*; / import static com.zoo.Dog.create;
+    const path: A.Ident[] = [this.ident(isStatic ? "a class and a member: `import static pkg.Class.member`" : "a package path or a JS module")];
     let wildcard = false;
     while (this.eat(".")) {
       if (this.eat("*")) {
@@ -335,7 +337,10 @@ export class Parser {
       path.push(this.ident());
     }
     this.endStatement();
-    return { kind: "XenonImport", path, wildcard, span: this.sp(start) };
+    if (isStatic && !wildcard && path.length < 2) {
+      this.diags.error("X0100", "a static import names a class and its member", path[0]!.span, "add `.member` or `.*`");
+    }
+    return { kind: "XenonImport", path, wildcard, ...(isStatic && { isStatic }), span: this.sp(start) };
   }
 
   private finishJsImport(imp: A.JsImport, start: number): A.JsImport {
@@ -789,7 +794,7 @@ export class Parser {
       const arrow = this.advance();
       if (isConstructor) this.diags.error("X0108", "a constructor can't have an expression body", arrow.span).help("use a block: `{ … }`");
       const expr = this.parseExpr();
-      body = { kind: "Block", body: [exprBodyStatement(expr, returnType, accessor, isConstructor)], span: expr.span };
+      body = { kind: "Block", body: [exprBodyStatement(expr, returnType, accessor, isConstructor, !!modifiers.async)], span: expr.span };
       exprBody = true;
       this.endStatement();
     } else this.endStatement();
@@ -937,7 +942,10 @@ export class Parser {
     return { kind: "ShapeType", members, span: this.sp(open.span.start) };
   }
 
-  /** `(a:int, b:int) -> int`, `(Float, Float) -> Float`, `() -> void`. Parameter names are documentation. */
+  /**
+   * `(a:int, b:int) -> int`, `(Float, Float) -> Float`, `() -> void`. Parameter names are
+   * documentation. Without `->`, one type in parentheses is grouped: `(A | B)?`, `((Int) -> Void)?`.
+   */
   private parseFunctionType(): A.TypeNode {
     const open = this.expect("(");
     const params: { name?: A.Ident; type: A.TypeNode; rest: boolean; span: Span }[] = [];
@@ -953,6 +961,8 @@ export class Parser {
       if (!this.eat(",")) break;
     }
     this.expectClose(")", open);
+    const only = params[0];
+    if (!this.is("->") && only && params.length === 1 && !only.name && !only.rest && this.tokens[this.i - 2]?.value !== ",") return only.type;
     if (!this.is("->")) this.unexpected("`->` and a return type");
     this.advance();
     const ret = this.parseType();
@@ -1919,7 +1929,7 @@ export class Parser {
     if (this.eat("=>")) {
       const bodyStart = this.tok.span.start;
       const expr = this.parseAssign();
-      body = { kind: "Block", body: [exprBodyStatement(expr, returnType, accessor, false)], span: this.sp(bodyStart) };
+      body = { kind: "Block", body: [exprBodyStatement(expr, returnType, accessor, false, isAsync)], span: this.sp(bodyStart) };
     } else body = this.parseBlock();
     const fn: A.FunctionNode = { kind: "Function", arrow: false, async: isAsync, typeParams, params, returnType, body, span: this.sp(start) };
     if (accessor) return { kind: "Accessor", accessor, key, fn, span: this.sp(start) };

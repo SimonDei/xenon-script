@@ -20,6 +20,7 @@ export const JS_GLOBALS = new Set([
 /** Browser globals with a concrete prelude type instead of `*`. */
 export const TYPED_GLOBALS = new Map([
   ["document", "xenon.Document"],
+  ["customElements", "xenon.CustomElementRegistry"],
 ]);
 
 /** Hidden JS globals and what to use instead (reported as a hint on "cannot find"). */

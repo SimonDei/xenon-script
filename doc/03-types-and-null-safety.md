@@ -236,7 +236,9 @@ public class Main {
 
 A member of a union can be used only when every alternative has it; otherwise the error suggests
 narrowing first. `is` narrows a union in both branches of an `if`; `==` against a literal narrows
-too. `T | null` is the same as `T?`.
+too. `T | null` is the same as `T?`. Parentheses group a type, so a whole union can be nullable:
+`(Int | String)?` is `Int`, `String` or `null` (`Int | String?` reads as `Int | (String?)`, the same
+set of values).
 
 ## Type tests and casts: `is` and `as`
 
@@ -378,7 +380,9 @@ public class Main {
 42
 ```
 
-Parameter names in function types are documentation only. A function fits a function type when its
+Parameter names in function types are documentation only. A nullable function type needs parentheses
+around it: `((Int) -> Void)?` (an optional callback, called with `cb?.(1)`), while `(Int) -> Void?`
+returns a `Void?`. A function fits a function type when its
 parameters accept at least what the type passes (contravariance) and its result is at least as
 specific (covariance): a `(Animal) -> Dog` fits where a `(Dog) -> Animal` is expected.
 

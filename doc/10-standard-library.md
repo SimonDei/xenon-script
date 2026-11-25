@@ -337,6 +337,8 @@ Declared:
 - `NodeList<T>`, `HTMLCollection`, `NamedNodeMap`, `DOMTokenList` (`classList`), `TreeWalker`
 - `DOMParser`, `XMLSerializer`, `FileReader`, `FileList`
 - `CSSStyleProperties` (`element.style`)
+- custom elements: `customElements` (a `CustomElementRegistry`), `ShadowRoot` (`attachShadow`),
+  `CSSStyleSheet` (for `adoptedStyleSheets`)
 
 Some details:
 
@@ -348,6 +350,11 @@ Some details:
   `files[0]` is a `File?` like `files.item(0)` (`null` past the end), and a `const File?` read from a
   `const FileList`.
 - `querySelector` gives `Element?`; check it or use `if (var el = …)`.
+- A class can extend `HTMLElement` (its constructor is `protected`: `super()` only) and be registered
+  with `customElements.define('x-name', Cls)`. The browser calls `connectedCallback()`,
+  `disconnectedCallback()` and `attributeChangedCallback(name, old, value)` for the names a
+  `public static function get observedAttributes():Array<String>` lists. The subclass shares its
+  member names with the DOM's: a method `remove()` would override `Element.remove`.
 - The DOM's names (`Node`, `Element`, …) aren't reserved: a program's own `Node` class shadows the
   DOM's.
 - The DOM exists only in browsers. Type checking works everywhere, but running DOM code in Bun or
