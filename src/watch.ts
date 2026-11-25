@@ -1,6 +1,6 @@
 import { type FSWatcher, watch } from "node:fs";
 import { join, resolve } from "node:path";
-import { compileOptions, type Config, finalOutputs, isMap, readAssets, readSources, report, runCommand, syncOutputs } from "./build.ts";
+import { compileOptions, type Config, finalOutputs, isMap, readProjectFiles, report, runCommand, sourceRoots, syncOutputs } from "./build.ts";
 import { compileProject, type SourceInput } from "./compiler.ts";
 
 export interface WatchOptions {
@@ -24,7 +24,7 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
   let config = initial;
   let srcRoot = resolve(root, config.src);
   let outDir = resolve(root, config.out);
-  const cache = new Map<string, string>(); // source path → text
+  const cache = new Map<string, SourceInput>(); // source path → file
   const changed = new Set<string>(); // paths to re-read
   let rescan = true; // list the source directory again (files added/removed)
   let child: ReturnType<typeof Bun.spawn> | undefined;
@@ -53,22 +53,32 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
     building = true;
     try {
       const started = performance.now();
-      if (rescan) {
-        const now = await readSources(srcRoot);
-        cache.clear();
-        for (const s of now) cache.set(s.path, s.text);
-        rescan = false;
-      } else {
-        for (const path of changed) {
-          const file = Bun.file(join(srcRoot, path));
-          if (await file.exists()) cache.set(path, await file.text());
-          else cache.delete(path);
+      let assets: SourceInput[];
+      try {
+        if (rescan) {
+          const now = await readProjectFiles(config, root);
+          cache.clear();
+          for (const s of now) cache.set(s.path, s);
+          rescan = false;
+        } else {
+          for (const path of changed) {
+            const file = Bun.file(join(srcRoot, path));
+            if (await file.exists()) cache.set(path, { path, text: await file.text() });
+            else cache.delete(path);
+          }
         }
+        // JavaScript files next to the sources are copied along (re-read every time: few and small).
+        assets = await readProjectFiles(config, root, true);
+      } catch (e) {
+        rescan = true;
+        await stopChild();
+        process.stderr.write(`${paint("31", "✗")} ${(e as Error).message} — watching for changes\n`);
+        return;
+      } finally {
+        changed.clear();
       }
-      changed.clear();
-      const sources: SourceInput[] = [...cache].sort(([a], [b]) => a.localeCompare(b)).map(([path, text]) => ({ path, text }));
-      // JavaScript files next to the sources are copied along (re-read every time: few and small).
-      const result = compileProject(sources, { ...compileOptions(config, root), assets: await readAssets(srcRoot) });
+      const sources: SourceInput[] = [...cache.values()].sort((a, b) => a.path.localeCompare(b.path));
+      const result = compileProject(sources, { ...compileOptions(config, root), assets });
 
       if (opts.clear) process.stderr.write("\x1b[2J\x1b[3J\x1b[H");
       const ok = report(result, config, srcRoot);
@@ -110,14 +120,23 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
     timer = setTimeout(() => void rebuild(), 50);
   };
 
-  const watchers: FSWatcher[] = [];
+  const watchers: FSWatcher[] = []; // the project file's
+  const sourceWatchers: FSWatcher[] = [];
   const watchSources = () => {
-    watchers.push(watch(srcRoot, { recursive: true }, (_event, file) => {
+    for (const w of sourceWatchers.splice(0)) w.close();
+    sourceWatchers.push(watch(srcRoot, { recursive: true }, (_event, file) => {
       const path = file ? String(file).split("\\").join("/") : "";
       if (path.endsWith(".xn")) changed.add(path);
       else rescan = true; // a directory was added/removed/renamed
       schedule();
     }));
+    // Further source folders (`"sources"`): any change reads them again.
+    for (const dir of sourceRoots(config, root).slice(1)) {
+      sourceWatchers.push(watch(dir, { recursive: true }, () => {
+        rescan = true;
+        schedule();
+      }));
+    }
   };
   watchSources();
   if (opts.projectFile && (await Bun.file(opts.projectFile).exists())) {
@@ -128,13 +147,9 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
         process.stderr.write(`${paint("31", "✗")} ${(e as Error).message}\n`);
         return;
       }
-      const newSrc = resolve(root, config.src);
+      srcRoot = resolve(root, config.src);
       outDir = resolve(root, config.out);
-      if (newSrc !== srcRoot) {
-        srcRoot = newSrc;
-        watchers.shift()?.close();
-        watchSources();
-      }
+      watchSources(); // the source folders may have changed
       rescan = true;
       schedule();
     }));
@@ -145,7 +160,7 @@ export async function watchProject(initial: Config, root: string, opts: WatchOpt
   return new Promise<number>((done) => {
     process.once("SIGINT", async () => {
       clearTimeout(timer);
-      for (const w of watchers) w.close();
+      for (const w of [...watchers, ...sourceWatchers]) w.close();
       await stopChild();
       process.stderr.write("\n");
       done(0);

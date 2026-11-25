@@ -102,7 +102,7 @@ function defaultFor(type: string): string {
 }
 
 /** Web platform classes the standard library declares under the same name (non-generic ones). */
-const WEB_CLASSES = new Set(["Blob", "File", "FormData", "Response", "ArrayBuffer", "Event", "EventTarget", "Node", "Element", "Document", "DOMParser", "XMLSerializer", "HTMLCollection", "HTMLElement", "HTMLInputElement", "HTMLTemplateElement", "DocumentFragment", "FileList", "CustomEvent", "DOMTokenList", "FileReader", "URL", "URLSearchParams", "HTMLSelectElement", "HTMLOptionElement", "ShadowRoot", "CSSStyleSheet", "CustomElementRegistry"]);
+const WEB_CLASSES = new Set(["Blob", "File", "FormData", "Response", "ArrayBuffer", "Event", "EventTarget", "Node", "Element", "Document", "DOMParser", "XMLSerializer", "HTMLCollection", "HTMLElement", "HTMLInputElement", "HTMLTemplateElement", "DocumentFragment", "FileList", "CustomEvent", "DOMTokenList", "FileReader", "URL", "URLSearchParams", "HTMLSelectElement", "HTMLOptionElement", "ShadowRoot", "CSSStyleSheet", "CustomElementRegistry", "ElementInternals", "ValidityState"]);
 
 /** The package (and directory) of generated declarations. */
 export const GENERATED_DIR = "__js";

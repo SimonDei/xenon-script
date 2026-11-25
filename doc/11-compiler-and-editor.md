@@ -50,6 +50,9 @@ Paths are relative to `xenon.json`. Command-line options override the project fi
 |---|---|---|
 | `src`, `out` | `--src`, `--out` | source and output folders |
 | `main` | `--main` | the main class, by qualified name |
+| `dependencies` | | other Xenon projects (libraries) compiled with this one (below) |
+| `sources` | | further source folders compiled with the project (below) |
+| `library` | | `true`: no main class; `build` and `check` only (below) |
 | `target` | `--target js\|ts` | JavaScript (default) or TypeScript output |
 | `bundle` | `--bundle` | one `xenon-main.js` instead of a module per file |
 | `sourceMaps` | `--no-source-maps` | write `.js.map` files (default on) |
@@ -60,6 +63,41 @@ Paths are relative to `xenon.json`. Command-line options override the project fi
 | `globals` | | packages a page loads with `<script>` ([chapter 9](09-packages-and-javascript.md#script-globals)) |
 |  | `--format pretty\|json` | human-readable or JSON diagnostics |
 |  | `--color auto\|always\|never`, `--quiet` | terminal output |
+
+### Libraries and dependencies
+
+Code shared by several programs lives in a project of its own, marked `"library": true`: it has no
+main class, so `xenon build` and `xenon check` work on it (and the editor checks it), while `run`,
+`watch --run` and `bundle` need a program. A program names the libraries it uses in
+`"dependencies"`:
+
+```json
+{
+  "main": "Main",
+  "bundle": true,
+  "dependencies": ["../ui-lib", "@acme/xenon-charts"]
+}
+```
+
+- An entry starting with `.` or `/` is a project folder; anything else is an npm package, looked up
+  in `node_modules` folders from the project upwards. Either way the folder has a `xenon.json`.
+  To publish a library on npm, put its `xenon.json` and source folder in the package.
+- The library's sources are compiled with the program's (libraries are shipped as sources, so every
+  check, `inline` constant and `constexpr` call works across the boundary, and there is one copy of
+  the runtime). Its own dependencies come along; each library is compiled once, and a cycle is an
+  error.
+- Its `"globals"` are added to the program's; a package mapped to two different globals is an
+  error. Both must agree on `"nullSafety"`.
+- Its warnings and its semicolon style are its own project's business: the program's build doesn't
+  report them (errors it does).
+
+The files keep their paths in their folder: `ui-lib/src/ui/H.xn` is package `ui`, written to
+`out/ui/H.js`; the same path in two projects is an error. Messages, source maps and the editor's
+*Go to Definition* point at the library's files. The editor reports a library file's problems
+through the library's own project, and a change in it reaches every open program that uses it.
+
+`"sources": ["../shared/src"]` adds a plain source folder the same way, for code that isn't a
+project of its own.
 
 ### Semicolons
 

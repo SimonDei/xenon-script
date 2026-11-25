@@ -1,0 +1,19 @@
+// Browser: whether a form control's value is valid, flag by flag (`input.validity`,
+// `internals.validity`). `valid` is `true` when no other flag is. Browser-only: Bun has no DOM.
+package xenon {
+  public native class ValidityState {
+    private function ValidityState()
+
+    final valid:Bool
+    final valueMissing:Bool
+    final typeMismatch:Bool
+    final patternMismatch:Bool
+    final tooLong:Bool
+    final tooShort:Bool
+    final rangeUnderflow:Bool
+    final rangeOverflow:Bool
+    final stepMismatch:Bool
+    final badInput:Bool
+    final customError:Bool
+  }
+}

@@ -1,0 +1,49 @@
+// Browser: what a form-associated custom element tells its form (`attachInternals()`, called once,
+// by a class with a static `formAssociated` getter returning `true`): the value it submits, whether
+// it's valid, its custom states. The browser calls these methods of such an element when it has
+// them: `formAssociatedCallback(form)`, `formDisabledCallback(disabled)`, `formResetCallback()` and
+// `formStateRestoreCallback(state, mode)`. Browser-only: Bun has no DOM.
+//
+// Typing: `form` is the `<form>` element as an `HTMLElement` (no `HTMLFormElement` is declared);
+// the value is text, a `FormData` (several entries) or `null` (nothing submitted).
+package xenon {
+  /** The validity flags of `setValidity`: each one that's `true` makes the element invalid. */
+  public typedef ValidityStateFlags = {
+    ?valueMissing:Bool, ?typeMismatch:Bool, ?patternMismatch:Bool, ?tooLong:Bool, ?tooShort:Bool,
+    ?rangeUnderflow:Bool, ?rangeOverflow:Bool, ?stepMismatch:Bool, ?badInput:Bool, ?customError:Bool
+  };
+
+  public native class ElementInternals {
+    private function ElementInternals()
+
+    /** The form the element belongs to, or `null`. */
+    final form:HTMLElement?
+    /** The `<label>`s of the element. */
+    final labels:NodeList<Node>
+    /** The shadow root, also a closed one. */
+    final shadowRoot:ShadowRoot?
+
+    // ---- the submitted value ----
+    /** What the form submits under the element's `name`: text, or `null` for nothing. */
+    function setFormValue(value:String?):Void
+    /** `state`: what `formStateRestoreCallback` gets back (when the page is restored). */
+    function setFormValue(value:String?, state:String?):Void
+    /** Several entries at once (the element's `name` isn't used). */
+    function setFormValue(value:FormData):Void
+
+    // ---- validation ----
+    /** Whether the element takes part in validation (not disabled, not read-only). */
+    final willValidate:Bool
+    final validity:ValidityState
+    final validationMessage:String
+    /** Marks the element valid: `setValidity({})`. */
+    function setValidity(flags:ValidityStateFlags):Void
+    /** Marks it invalid with `message`, shown on `anchor` (an element of its shadow root) when reported. */
+    function setValidity(flags:ValidityStateFlags, message:String):Void
+    function setValidity(flags:ValidityStateFlags, message:String, anchor:HTMLElement):Void
+    /** Whether it's valid; fires `invalid` if not. */
+    function checkValidity():Bool
+    /** Like `checkValidity`, and shows the message to the user. */
+    function reportValidity():Bool
+  }
+}

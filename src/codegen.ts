@@ -301,7 +301,7 @@ export function generate(files: A.XenonFile[], check: CheckResult, mainClass: Cl
       const name = posix.basename(module);
       // The prelude has no file on disk; its map carries the text (`sourcesContent`), as all maps do.
       const up = posix.relative(posix.dirname(module), ".");
-      const source = file.file.prelude ? posix.basename(file.file.path) : posix.join(up, options.sourceMaps.sourceRoot, file.file.path);
+      const source = file.file.prelude ? posix.basename(file.file.path) : posix.join(up, file.file.root?.mapRoot ?? options.sourceMaps.sourceRoot, file.file.path);
       const map = buildSourceMap(name, source, file.file.text, lines);
       text += `//# sourceMappingURL=${name}.map\n`;
       out.push({ path: module + ".map", text: JSON.stringify(map) + "\n" });

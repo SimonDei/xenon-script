@@ -49,6 +49,9 @@ const SAMPLES: Record<string, unknown[]> = {
 const ARITY_QUIRKS = new Set(["Response.prototype.clone", "Blob.prototype.stream"]);
 
 /** Standard DOM members (every browser has them) that happy-dom doesn't implement. */
+/** Browser classes happy-dom doesn't have at all (their members can't be compared). */
+const HAPPY_DOM_MISSING_CLASSES = new Set(["ElementInternals"]);
+
 const HAPPY_DOM_GAPS = new Set([
   "HTMLInputElement.prototype.dirName",
   "HTMLOptionElement.prototype.label",
@@ -128,6 +131,7 @@ for (const file of stdFiles) {
       const hidden: Record<string, unknown> = { DOMTokenList: Object.getPrototypeOf(dom.document.createElement("div").classList).constructor };
       const ctor = (runtime[jsName] ?? (file.startsWith("dom/") ? hidden[jsName] : undefined)) as Record<string, unknown> | undefined;
       if (ctor == null) {
+        if (file.startsWith("dom/") && HAPPY_DOM_MISSING_CLASSES.has(jsName)) continue;
         problems.push(`${jsName}: no such global`);
         continue;
       }

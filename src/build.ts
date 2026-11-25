@@ -9,6 +9,14 @@ import type { Span } from "./source.ts";
 
 export interface Config {
   src: string;
+  /** A library (`"library": true`): no main class, the modules only; it can't be run or bundled. */
+  library: boolean;
+  /**
+   * Further source folders compiled with the project (`"sources": ["../ui-lib/src"]`), relative to
+   * the project folder: a library's sources, used by several programs. Also the source folders of
+   * the project's `"dependencies"` (see project.ts).
+   */
+  sources: string[];
   out: string;
   main: string;
   color: boolean;
@@ -54,7 +62,7 @@ export function runCommand(config: Config, outDir: string, args: string[]): stri
 export function compileOptions(config: Config, root: string): CompileOptions {
   const sourceRoot = relative(resolve(root, config.out), resolve(root, config.src)).split(sep).join("/");
   const sourceMaps = config.sourceMaps && config.target === "js" ? { sourceRoot } : undefined;
-  return { main: config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target, typeRoot: resolve(root, config.src), nullSafety: config.nullSafety, globals: config.globals, semicolons: config.semicolons };
+  return { main: config.library ? null : config.main, maxErrors: config.maxErrors, sourceMaps, target: config.target, typeRoot: resolve(root, config.src), nullSafety: config.nullSafety, globals: config.globals, semicolons: config.semicolons };
 }
 
 /**
@@ -81,8 +89,40 @@ export async function readSources(srcRoot: string): Promise<SourceInput[]> {
   );
 }
 
+/** The project's source folder and its further ones (`"sources"`), as absolute paths. */
+export function sourceRoots(config: Config, root: string): string[] {
+  return [resolve(root, config.src), ...config.sources.map((s) => resolve(root, s))];
+}
+
+/**
+ * Every `.xn` file of the project's source folders (or, with `assets`, its JavaScript files),
+ * paths relative to their folder. Files from a further folder carry it (`root`), for source maps
+ * and messages. The same path in two folders is an error: they would be the same module.
+ */
+export async function readProjectFiles(config: Config, root: string, assets = false): Promise<SourceInput[]> {
+  const [own, ...more] = sourceRoots(config, root);
+  const outDir = resolve(root, config.out);
+  const files = await (assets ? readAssets : readSources)(own!);
+  const seen = new Map(files.map((f) => [f.path, own!]));
+  for (const dir of more) {
+    const mapRoot = relative(outDir, dir).split(sep).join("/");
+    for (const f of await (assets ? readAssets : readSources)(dir)) {
+      const other = seen.get(f.path);
+      if (other) throw new Error(`\`${f.path}\` is in two source folders: ${relative(process.cwd(), other) || "."} and ${relative(process.cwd(), dir) || "."}`);
+      seen.set(f.path, dir);
+      files.push({ ...f, root: { dir, mapRoot } });
+    }
+  }
+  return files;
+}
+
 export function report(result: CompileResult, config: Config, srcRoot: string): boolean {
   const diags = result.diagnostics;
+  // A library's warnings are its own project's to report (they'd fail `--deny-warnings` here).
+  for (let i = diags.items.length - 1; i >= 0; i--) {
+    const d = diags.items[i]!;
+    if (d.severity !== "error" && d.labels.find((l) => l.primary)?.span.file.root) diags.items.splice(i, 1);
+  }
   if (config.denyWarnings) for (const d of diags.items) if (d.severity === "warning") d.severity = "error";
   if (config.format === "json") {
     const json = diags.sorted().map((d) => ({
@@ -92,8 +132,8 @@ export function report(result: CompileResult, config: Config, srcRoot: string): 
     }));
     console.log(JSON.stringify(json, null, 2));
   } else if (diags.items.length > 0) {
-    const displayPath = (f: { path: string; prelude: boolean }) =>
-      f.prelude ? `<xenon prelude>/${f.path}` : relative(process.cwd(), join(srcRoot, f.path)) || f.path;
+    const displayPath = (f: { path: string; prelude: boolean; root?: { dir: string } }) =>
+      f.prelude ? `<xenon prelude>/${f.path}` : relative(process.cwd(), join(f.root?.dir ?? srcRoot, f.path)) || f.path;
     process.stderr.write(renderAll(diags.sorted(), { color: config.color, displayPath }) + "\n\n");
     const summary = renderSummary(diags, config.color);
     if (summary) process.stderr.write(summary + "\n");
@@ -113,8 +153,16 @@ function spanJson(s: Span) {
 export async function build(config: Config, root: string, emit: boolean): Promise<boolean> {
   const srcRoot = resolve(root, config.src);
   const started = performance.now();
-  const sources = await readSources(srcRoot);
-  const result = compileProject(sources, { ...compileOptions(config, root), assets: emit ? await readAssets(srcRoot) : [] });
+  let sources: SourceInput[];
+  let assets: SourceInput[] = [];
+  try {
+    sources = await readProjectFiles(config, root);
+    if (emit) assets = await readProjectFiles(config, root, true);
+  } catch (e) {
+    process.stderr.write(`error: ${(e as Error).message}\n`);
+    return false;
+  }
+  const result = compileProject(sources, { ...compileOptions(config, root), assets });
   const ok = report(result, config, srcRoot);
   if (!ok) return false;
   if (emit) {

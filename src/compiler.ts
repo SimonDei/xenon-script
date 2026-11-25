@@ -7,7 +7,7 @@ import { type JsDeclarations, jsDeclarations } from "./dts.ts";
 import { BUILTIN_TYPES, withNullSafety } from "./types.ts";
 import { parseFile, type SemicolonStyle } from "./parser.ts";
 import { preludeFiles } from "./prelude/files.ts" with { type: "macro" };
-import { SourceFile, type Span } from "./source.ts";
+import { SourceFile, type SourceRoot, type Span } from "./source.ts";
 
 /** Package of the built-in prelude; reserved for the compiler. */
 export const PRELUDE_PACKAGE = "xenon";
@@ -21,11 +21,16 @@ export interface SourceInput {
   /** Path relative to the source root, using `/` (determines the expected package). */
   path: string;
   text: string;
+  /** Set for a file from another source folder (`"sources"` in xenon.json). */
+  root?: SourceRoot;
 }
 
 export interface CompileOptions {
-  /** Qualified name of the main (document) class, e.g. `Main` or `com.app.Main`. */
-  main: string;
+  /**
+   * Qualified name of the main (document) class, e.g. `Main` or `com.app.Main`; `null` for a library
+   * (`"library": true`), which has none: its modules are written without an entry module.
+   */
+  main: string | null;
   maxErrors?: number;
   /** Emit `.js.map` files; `sourceRoot` is the source root as seen from the output directory. */
   sourceMaps?: { sourceRoot: string };
@@ -76,9 +81,14 @@ function compileWith(sources: SourceInput[], options: CompileOptions): CompileRe
   const diags = new DiagnosticBag(options.maxErrors);
   const files = [
     ...PRELUDE.map((s) => new SourceFile(s.path, s.text, true)),
-    ...sources.map((s) => new SourceFile(s.path, s.text)),
+    ...sources.map((s) => {
+      const f = new SourceFile(s.path, s.text);
+      if (s.root) f.root = s.root;
+      return f;
+    }),
   ];
-  const asts = files.map((f) => parseFile(f, diags, options.semicolons));
+  // Another folder's files (a library's) follow their own project's style, not this one's.
+  const asts = files.map((f) => parseFile(f, diags, f.root ? "any" : options.semicolons));
   const userFiles = files.filter((f) => !f.prelude);
 
   // JavaScript imports: declarations generated from their `.d.ts` files.
@@ -96,7 +106,7 @@ function compileWith(sources: SourceInput[], options: CompileOptions): CompileRe
 
   const typedefs = new Map<string, TypedefInfo>();
   const classes = collectClasses(asts, diags, typedefs);
-  const mainInfo = checkMain(classes, options.main, userFiles, diags);
+  const mainInfo = options.main === null ? undefined : checkMain(classes, options.main, userFiles, diags);
   const result = check(asts, classes, typedefs, diags, jsBindings);
 
   diags.applySuppressions();
@@ -111,7 +121,7 @@ function compileWith(sources: SourceInput[], options: CompileOptions): CompileRe
   }
   const done = { diagnostics: diags, files: userFiles, asts, check: result, declarationErrors };
   if (options.tolerant) return { ...done, outputs: generate(asts, result, mainInfo, { target: options.target, tolerant: true }) };
-  if (diags.hasErrors || !mainInfo) return { ...done, outputs: [] };
+  if (diags.hasErrors || (!mainInfo && options.main !== null)) return { ...done, outputs: [] };
   const outputs = generate(asts, result, mainInfo, { sourceMaps: options.sourceMaps, target: options.target, globals: options.globals });
   // JavaScript files of the source folder are copied, unless a compiled module has their path.
   const taken = new Map(outputs.map((o) => [o.path.toLowerCase(), o]));

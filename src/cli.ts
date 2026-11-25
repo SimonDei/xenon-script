@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { join, relative, resolve } from "node:path";
 import { build, type Config, runCommand } from "./build.ts";
+import { DependencyError, dependencyList, mergedGlobals, resolveDependencies } from "./project.ts";
 import { explain } from "./codes.ts";
 import { watchProject } from "./watch.ts";
 
@@ -74,7 +75,7 @@ async function loadConfig(args: string[]): Promise<{
   let projectPath = resolve((flags.get("project") as string | undefined) ?? "xenon.json");
   if (flags.has("project") && (await isDirectory(projectPath))) projectPath = join(projectPath, "xenon.json");
   const projectFile = Bun.file(projectPath);
-  let project: Partial<Config> = {};
+  let project: Partial<Config> & { dependencies?: unknown } = {};
   if (await projectFile.exists()) {
     try {
       project = await projectFile.json();
@@ -92,11 +93,14 @@ async function loadConfig(args: string[]): Promise<{
   if (target !== "js" && target !== "ts") throw new UsageError("--target must be js or ts");
   const bundle = flags.has("bundle") || !!project.bundle;
   if (bundle && target === "ts") throw new UsageError("--bundle writes JavaScript: it can't be combined with --target ts");
+  if (project.library === true && bundle) throw new UsageError('a library ("library": true in xenon.json) has no main class to bundle from: bundle the program that uses it');
   const format = (flags.get("format") as string | undefined) ?? "pretty";
   if (format !== "pretty" && format !== "json") throw new UsageError("--format must be pretty or json");
 
   const config: Config = {
     src: (flags.get("src") as string) ?? project.src ?? "src",
+    sources: project.sources ?? [],
+    library: project.library === true,
     out: (flags.get("out") as string) ?? project.out ?? "out",
     main: (flags.get("main") as string) ?? project.main ?? "Main",
     color: colorFlag === "always" || (colorFlag === "auto" && !!process.stderr.isTTY && !process.env.NO_COLOR),
@@ -115,9 +119,28 @@ async function loadConfig(args: string[]): Promise<{
   if (!["always", "never", "any"].includes(config.semicolons)) {
     throw new UsageError(`${flags.has("semicolons") ? "--semicolons" : '"semicolons" in xenon.json'} must be always, never or any`);
   }
+  const sources = config.sources as unknown;
+  if (!Array.isArray(sources) || sources.some((s) => typeof s !== "string" || s === "")) {
+    throw new UsageError('"sources" in xenon.json lists further source folders, e.g. ["../ui-lib/src"]');
+  }
+  for (const s of config.sources) {
+    if (!(await isDirectory(resolve(root, s)))) throw new UsageError(`source folder not found: ${s} (in "sources" of ${relative(process.cwd(), projectPath)})`);
+  }
   const globals = config.globals as unknown;
   if (typeof globals !== "object" || globals === null || Array.isArray(globals) || Object.values(globals).some((v) => typeof v !== "string" || v === "")) {
     throw new UsageError('"globals" in xenon.json maps package names to global names, e.g. { "pizzip": "PizZip" }');
+  }
+  // `"dependencies"`: other projects (libraries) whose source folders are compiled with this one.
+  try {
+    const deps = resolveDependencies(root, dependencyList(project.dependencies, relative(process.cwd(), projectPath) || "xenon.json"), { nullSafety: config.nullSafety, globals: config.globals });
+    for (const d of deps) {
+      if (!(await isDirectory(d.src))) throw new UsageError(`dependency ${d.name} has no source folder ${relative(process.cwd(), d.src)}`);
+    }
+    config.sources = [...config.sources, ...deps.map((d) => d.src)];
+    config.globals = mergedGlobals(config.globals, deps);
+  } catch (e) {
+    if (e instanceof DependencyError) throw new UsageError(e.message);
+    throw e;
   }
   // `--src` names the folder of the .xn files; a project folder there is a mix-up with `--project`.
   const srcDir = resolve(root, config.src);
@@ -157,11 +180,13 @@ async function main(argv: string[]): Promise<number> {
       case "check":
         return (await build(config, root, false)) ? 0 : 1;
       case "run": {
+        if (config.library) throw new UsageError('a library ("library": true in xenon.json) has no main class to run');
         if (!(await build(config, root, true))) return 1;
         const child = Bun.spawn(runCommand(config, resolve(root, config.out), rest), { stdio: ["inherit", "inherit", "inherit"] });
         return await child.exited;
       }
       case "watch":
+        if (config.library && flags.has("run")) throw new UsageError('a library ("library": true in xenon.json) has no main class to run');
         return await watchProject(config, root, {
           run: flags.has("run"),
           clear: !flags.has("no-clear"),

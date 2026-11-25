@@ -1,6 +1,17 @@
 /** A source file with fast offset → line/column lookup. */
+/**
+ * A source folder other than the project's own (`"sources"` in xenon.json): where its files are on
+ * disk, and the folder as seen from the output directory (for source maps).
+ */
+export interface SourceRoot {
+  dir: string;
+  mapRoot?: string;
+}
+
 export class SourceFile {
   readonly lineStarts: number[];
+  /** Set for a file from another source folder (see `SourceRoot`); unset for the project's own. */
+  root?: SourceRoot;
 
   constructor(
     readonly path: string,

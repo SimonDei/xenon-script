@@ -10,7 +10,7 @@
 import type { SemicolonStyle } from "./parser.ts";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import ts from "typescript";
 import type * as A from "./ast.ts";
 import { type CheckResult, type ClassInfo, findMember, isScoped, nestedTypedefVisible, type TypedefInfo, type MemberSig, readDecl, type Resolution, usableThroughConst, visibilityOf } from "./checker.ts";
@@ -332,6 +332,8 @@ const documentRegistry = ts.createDocumentRegistry();
 export class XenonProject {
   /** Source texts by path relative to the source root. */
   private sources = new Map<string, string>();
+  /** The folder of each file from a further source folder (`sources`); the others are in `srcRoot`. */
+  private folders = new Map<string, string>();
   private cached?: Analysis;
   private version = 0;
   /** Virtual TypeScript files: absolute path → text and version. */
@@ -344,8 +346,11 @@ export class XenonProject {
     readonly main = "Main",
     /** Where the virtual `.ts` files live (TypeScript resolves npm packages from there upwards). */
     readonly virtualRoot = join(dirname(srcRoot), ".xenon", "ts"),
-    /** The project's compiler settings from `xenon.json` (`nullSafety`, on unless `false`). */
-    readonly settings: { nullSafety?: boolean; semicolons?: SemicolonStyle } = {},
+    /**
+     * The project's compiler settings from `xenon.json` (`nullSafety`, on unless `false`), and its
+     * further source folders (`sources`, absolute paths).
+     */
+    readonly settings: { nullSafety?: boolean; semicolons?: SemicolonStyle; sources?: string[]; library?: boolean } = {},
   ) {
     const host: ts.LanguageServiceHost = {
       getCompilationSettings: () => TS_OPTIONS,
@@ -373,20 +378,46 @@ export class XenonProject {
   /** Reads every `.xn` file below the source root (replacing what was set before). */
   async load() {
     const glob = new Bun.Glob("**/*.xn");
-    for await (const p of glob.scan({ cwd: this.srcRoot })) {
-      this.sources.set(p.split("\\").join("/"), await Bun.file(join(this.srcRoot, p)).text());
+    for (const dir of [this.srcRoot, ...(this.settings.sources ?? [])]) {
+      for await (const p of glob.scan({ cwd: dir })) {
+        const path = p.split("\\").join("/");
+        if (this.sources.has(path)) continue; // the same path in two folders: the build reports it
+        this.sources.set(path, await Bun.file(join(dir, p)).text());
+        if (dir !== this.srcRoot) this.folders.set(path, dir);
+      }
     }
     this.changed();
   }
 
-  /** Sets a file's text (an open editor, or a file changed on disk). */
-  set(path: string, text: string) {
+  /** The folder a source path is in: the source root, or one of the further `sources`. */
+  dirOf(path: string): string {
+    return this.folders.get(path) ?? this.srcRoot;
+  }
+
+  /** Whether a path is the project's own (its diagnostics are published for it, not by the folder's own project). */
+  isOwn(path: string): boolean {
+    return !this.folders.has(path);
+  }
+
+  /** The source path of a file on disk and its folder, if it is in one of the project's folders. */
+  pathFor(file: string): { path: string; dir: string } | undefined {
+    for (const dir of [this.srcRoot, ...(this.settings.sources ?? [])]) {
+      const rel = relative(dir, file);
+      if (!rel.startsWith("..") && !isAbsolute(rel)) return { path: rel.split(sep).join("/"), dir };
+    }
+    return undefined;
+  }
+
+  /** Sets a file's text (an open editor, or a file changed on disk); `dir`: a further source folder it is in. */
+  set(path: string, text: string, dir?: string) {
+    if (dir && dir !== this.srcRoot) this.folders.set(path, dir);
     if (this.sources.get(path) === text) return;
     this.sources.set(path, text);
     this.changed();
   }
 
   remove(path: string) {
+    this.folders.delete(path);
     if (this.sources.delete(path)) this.changed();
   }
 
@@ -416,7 +447,7 @@ export class XenonProject {
   }
 
   private compile(inputs: SourceInput[]): Analysis {
-    const result = compileProject(inputs, { main: this.main, target: "ts", tolerant: true, typeRoot: this.srcRoot, nullSafety: this.settings.nullSafety, semicolons: this.settings.semicolons });
+    const result = compileProject(inputs, { main: this.settings.library ? null : this.main, target: "ts", tolerant: true, typeRoot: this.srcRoot, nullSafety: this.settings.nullSafety, semicolons: this.settings.semicolons });
     const outputs = new Map<string, OutputFile>();
     for (const o of result.outputs) if (o.source) outputs.set(o.source.path, o);
     return { result, outputs };
@@ -428,7 +459,7 @@ export class XenonProject {
 
   /** Absolute path of a source file; the prelude's files are written to a cache directory to be opened. */
   private pathOf(file: SourceFile): string {
-    if (!file.prelude) return join(this.srcRoot, file.path);
+    if (!file.prelude) return join(this.dirOf(file.path), file.path);
     const dir = join(tmpdir(), `xenon-prelude-${Bun.hash(PRELUDE.map((p) => p.text).join("\0")).toString(36)}`);
     const path = join(dir, file.path);
     try {

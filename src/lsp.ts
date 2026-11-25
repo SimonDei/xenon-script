@@ -6,6 +6,7 @@
  * change (debounced), since a change in one file can break another.
  */
 import type { SemicolonStyle } from "./parser.ts";
+import { dependencyList, resolveDependencies } from "./project.ts";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -75,12 +76,12 @@ const SCRIPT = /\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/;
  * not Xenon (the compiler's own `src/prelude/*.xn`, for one). Files in no project (the
  * compiler's deliberately broken test files) get no diagnostics.
  */
-export function locateProject(file: string): { srcRoot: string; main: string; nullSafety?: boolean; semicolons?: SemicolonStyle } | undefined {
+export function locateProject(file: string): { srcRoot: string; main: string; nullSafety?: boolean; semicolons?: SemicolonStyle; sources?: string[]; library?: boolean } | undefined {
   let srcFolder: string | undefined;
   for (let dir = dirname(file); ; ) {
     const config = join(dir, "xenon.json");
     if (existsSync(config)) {
-      let json: { src?: string; main?: string; nullSafety?: boolean; semicolons?: SemicolonStyle } = {};
+      let json: { src?: string; main?: string; nullSafety?: boolean; semicolons?: SemicolonStyle; sources?: unknown; library?: unknown; dependencies?: unknown } = {};
       try {
         json = JSON.parse(readFileSync(config, "utf8"));
       } catch {
@@ -88,7 +89,17 @@ export function locateProject(file: string): { srcRoot: string; main: string; nu
       }
       const srcRoot = resolve(dir, json.src ?? "src");
       const semicolons = ["always", "never", "any"].includes(json.semicolons as string) ? { semicolons: json.semicolons } : {};
-      if (!relative(srcRoot, file).startsWith("..")) return { srcRoot, main: json.main ?? "Main", ...(typeof json.nullSafety === "boolean" ? { nullSafety: json.nullSafety } : {}), ...semicolons };
+      // Further source folders (`"sources"`): a library's sources compiled with the project.
+      const folders = Array.isArray(json.sources) ? json.sources.filter((s): s is string => typeof s === "string" && s !== "").map((s) => resolve(dir, s)) : [];
+      // `"dependencies"`: their source folders too (unresolvable ones are left out; the CLI says why).
+      try {
+        const deps = resolveDependencies(dir, dependencyList(json.dependencies, config), { nullSafety: json.nullSafety !== false });
+        folders.push(...deps.map((d) => d.src));
+      } catch {
+        // reported by `xenon check`
+      }
+      const sources = folders.length > 0 ? { sources: folders } : {};
+      if (!relative(srcRoot, file).startsWith("..")) return { srcRoot, main: json.main ?? "Main", ...(typeof json.nullSafety === "boolean" ? { nullSafety: json.nullSafety } : {}), ...semicolons, ...sources, ...(json.library === true ? { library: true } : {}) };
     }
     if (!srcFolder && basename(dir) === "src") {
       let scripts = false;
@@ -125,7 +136,7 @@ export function startServer(connection: Connection = createConnection(ProposedFe
     if (!p) {
       if (!create) return undefined;
       p = (async () => {
-        const project = new XenonProject(found.srcRoot, found.main, undefined, { nullSafety: found.nullSafety, semicolons: found.semicolons });
+        const project = new XenonProject(found.srcRoot, found.main, undefined, { nullSafety: found.nullSafety, semicolons: found.semicolons, sources: found.sources, library: found.library });
         await project.load();
         return project;
       })();
@@ -139,6 +150,7 @@ export function startServer(connection: Connection = createConnection(ProposedFe
     for (const p of projects.values()) {
       const project = await p;
       for (const [path, diags] of project.diagnostics()) {
+        if (!project.isOwn(path)) continue; // a library's file: its own project reports it
         const uri = pathToFileURL(join(project.srcRoot, path)).href;
         if (diags.length === 0 && !published.has(uri)) continue;
         if (diags.length > 0) published.add(uri);
@@ -188,21 +200,40 @@ export function startServer(connection: Connection = createConnection(ProposedFe
     };
   });
 
+  /**
+   * The other loaded projects that compile this file too: it's in one of their further source
+   * folders (`"sources"`, a library used by several programs).
+   */
+  const usersOf = async (uri: string, owner: XenonProject | undefined) => {
+    if (!uri.startsWith("file:") || !uri.endsWith(".xn")) return [];
+    const file = fileURLToPath(uri);
+    const users: { project: XenonProject; path: string; dir: string }[] = [];
+    for (const p of projects.values()) {
+      const project = await p;
+      const found = project === owner ? undefined : project.pathFor(file);
+      if (found && found.dir !== project.srcRoot) users.push({ project, ...found });
+    }
+    return users;
+  };
+
   // A project's diagnostics appear once one of its files is opened (all its files are checked).
   documents.onDidChangeContent(async ({ document }) => {
     const q = await projectOf(document.uri);
-    if (!q) return;
-    q.project.set(q.path, document.getText());
+    if (q) q.project.set(q.path, document.getText());
+    for (const u of await usersOf(document.uri, q?.project)) u.project.set(u.path, document.getText(), u.dir);
     schedule();
   });
 
   /** Back to the file on disk (or gone, if it was never saved). */
   const reload = async (uri: string) => {
     const q = await projectOf(uri, false);
-    if (!q) return;
     const file = Bun.file(fileURLToPath(uri));
-    if (await file.exists()) q.project.set(q.path, await file.text());
-    else q.project.remove(q.path);
+    const text = (await file.exists()) ? await file.text() : undefined;
+    const owner: { project: XenonProject; path: string; dir?: string }[] = q ? [q] : [];
+    for (const u of [...owner, ...(await usersOf(uri, q?.project))]) {
+      if (text === undefined) u.project.remove(u.path);
+      else u.project.set(u.path, text, u.dir);
+    }
   };
 
   documents.onDidClose(async ({ document }) => {
