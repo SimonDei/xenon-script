@@ -63,6 +63,11 @@ const cases: [string, string, string, number?][] = [
   ["var m:Map<String, const Cart> = view as const Map<String, Cart>", "Cart", "entity.name.type.xenon"],
   ["var m:Map<String, const Cart> = view as const Map<String, Cart>", "Map", "entity.name.type.xenon", 1],
   ["const LIMIT:Int = 3", "LIMIT", "variable.other.declaration.xenon"],
+  ["function pick(final event:const Event):Void {", "event", "source.xenon"],
+  ["function pick(a:Int, final b:Int):Void {", "b", "source.xenon"],
+  ["function pick(final event:Event):Void {", "final", "storage.type.final.xenon"],
+  ["if (final user:User = find()) {}", "user", "variable.other.declaration.xenon"],
+  ["for (final item of items) {}", "item", "variable.other.declaration.xenon"],
   ["using u:User = new User('42')", "u", "variable.other.declaration.xenon"],
   ["private static inline final MAX_HP:int = 100", "MAX_HP", "variable.other.declaration.xenon"],
   // types

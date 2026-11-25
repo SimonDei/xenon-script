@@ -476,6 +476,15 @@
           }
         },
         {
+          "comment": "a `final` parameter's name is colored like any other parameter's (not the bindings of `for`, `if` and `while` headers)",
+          "match": "(?<=[(,]|[(,]\\s)(?<!(?:for|if)\\(|(?:for|if) \\(|while\\(|while \\()(final)\\s+([A-Za-z_$][\\w$]*)(?=\\s*[:,)=])",
+          "captures": {
+            "1": {
+              "name": "storage.type.final.xenon"
+            }
+          }
+        },
+        {
           "match": "\\b(final)\\s+(?!(?:class|interface|enum|function|typedef|public|private|protected|internal|static|inline|abstract|override|dynamic|async|native|constexpr|consteval|final)\\b)([A-Za-z_$][\\w$]*)",
           "captures": {
             "1": {
