@@ -547,3 +547,52 @@ test("HTMLSelectElement and HTMLOptionElement: read and change the selection (an
   const ts = compileProject([{ path: "Main.xn", text: code }], { main: "Main", target: "ts" });
   expect(typeCheck(ts.outputs, join(import.meta.dir, ".dom-ts"))).toEqual([]);
 });
+
+test("indexing a DOM list (operator[]): typed like item(i), const through a const view, plain JS indexing", async () => {
+  const ok = compileProject([{ path: "Main.xn", text: `public class Main {
+  public function Main() {}
+  public static function first(e:const Event<HTMLInputElement>):const File? => e.target?.files?.[0]
+  public static function second(root:Element):String {
+    var kids:HTMLCollection = root.children
+    var nodes:NodeList<Node> = root.childNodes
+    var el:Element? = kids[1]
+    var n:Node? = nodes[0]
+    var attr:Attr? = root.attributes[0]
+    var cls:String? = root.classList[0]
+    return $'{el?.localName}:{n?.nodeName}:{attr?.name}:{cls}:{kids[9] == null}'
+  }
+}
+` }], { main: "Main", nullSafety: true });
+  expect(ok.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([]);
+  const js = ok.outputs.find((o) => o.path === "Main.js")!.text;
+  expect(js).not.toContain("operator[]");
+
+  const window = new Window();
+  try {
+    const root = new window.DOMParser().parseFromString(`<r id="x" class="a b"><p/><q/></r>`, "application/xml").documentElement;
+    const Main = new Function(`${js.replace(/^export /m, "").replace(/\/\/# sourceMappingURL.*$/m, "")}; return Main;`)();
+    expect(Main.second(root)).toBe("q:p:id:a:true");
+  } finally {
+    await window.happyDOM.close();
+  }
+
+  const errors = (body: string) => compileProject([{ path: "Main.xn", text: `public class Main {
+  public function Main() {}
+  public static function run(e:const Event<HTMLInputElement>, list:FileList):Void {
+${body}
+  }
+}
+` }], { main: "Main", nullSafety: true }).diagnostics.items.filter((d) => d.severity === "error").map((d) => `${d.code} ${d.labels[0]?.message ?? d.message}`);
+  expect(errors("    var f:File? = e.target?.files?.[0]\n    trace(f)")).toEqual(["X0308 expected `File?`, found `const File?`"]);
+  expect(errors("    var f:File? = list['a']\n    trace(f)")).toEqual(["X0308 expected `Int`, found `String`"]);
+  expect(errors("    list[0] = null")).toEqual(["X0374 read-only index"]);
+});
+
+test("operator[] can only be declared on a native class", () => {
+  const result = compileProject([{ path: "Main.xn", text: `public class Main {
+  public function Main() {}
+  public function operator[](i:Int):Int => i
+}
+` }], { main: "Main", nullSafety: true });
+  expect(result.diagnostics.items.filter((d) => d.severity === "error").map((d) => [d.code, d.message])).toEqual([["X0371", "`operator[]` can only be declared on a native class"]]);
+});

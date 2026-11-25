@@ -9,5 +9,7 @@ package xenon {
     final length:Int
     /** The file at `index`, or `null` past the end. */
     function item(index:Int):File?
+    /** `list[index]`: like `item(index)`, the file at `index`, or `null` past the end. */
+    function operator[](index:Int):File?
   }
 }

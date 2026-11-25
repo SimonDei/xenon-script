@@ -52,6 +52,8 @@ const cases: [string, string, string, number?][] = [
   ["public function get name():String const {", "name", "entity.name.function.xenon"],
   ["public function get name():String const {", "const", "storage.modifier.const.xenon"],
   ["public function operator+(o:Vec2):Vec2 {", "operator+", "entity.name.function.xenon"],
+  ["function operator[](index:Int):File?", "operator[]", "entity.name.function.xenon"],
+  ["public function operator==(o:Vec2):Bool const {", "operator==", "entity.name.function.xenon"],
   ["public function ~User() { conn.close() }", "User", "entity.name.function.destructor.xenon"],
   ["final id:String = make()", "id", "variable.other.declaration.xenon"],
   ["final id:String = make()", "make", "entity.name.function.call.xenon"],

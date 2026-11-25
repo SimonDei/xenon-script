@@ -218,6 +218,10 @@ $1,234.50
   that can be written, `final length:Int` for a read-only one (assigning it is X0504).
 - `constexpr` on a member says the JavaScript built-in may run at compile time with constant
   arguments (see [chapter 8](08-compile-time-programming.md)).
+- `function operator[](index:Int):File?` gives the type of `list[i]` for an object JavaScript
+  indexes itself (`FileList`, `NodeList`, …). The index is checked against the parameter, through a
+  `const` view the result is `const` too (as an array element is), and `list[i] = …` is X0374. It
+  compiles to plain `list[i]`; classes of your own can't declare it (X0371).
 
 Accessors are for the cases fields can't express: a property that takes another type than it
 gives, and an override that narrows a type:

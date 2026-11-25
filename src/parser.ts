@@ -771,7 +771,9 @@ export class Parser {
     // `function operator+(…)`: an operator method; the symbol is part of the name.
     if (name.name === "operator" && this.tok.kind === "punct" && !this.is("(") && !this.tok.nl) {
       const sym = this.advance();
-      name = { name: "operator" + sym.value, span: cover(name.span, sym.span) };
+      // `operator[]`: two tokens.
+      const end = sym.value === "[" ? this.expect("]") : sym;
+      name = { name: "operator" + sym.value + (end === sym ? "" : "]"), span: cover(name.span, end.span) };
     }
     const typeParams = this.typeParamList();
     const params = this.parseParams();

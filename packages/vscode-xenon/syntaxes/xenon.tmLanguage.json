@@ -429,7 +429,7 @@
       }
     },
     "function-declaration": {
-      "match": "\\b(function)\\b(?:\\s+(?:(get|set)\\s+(?=[A-Za-z_$][\\w$]*))?(operator\\s*\\+|[A-Za-z_$][\\w$]*))?",
+      "match": "\\b(function)\\b(?:\\s+(?:(get|set)\\s+(?=[A-Za-z_$][\\w$]*))?(operator\\s*(?:\\[\\]|==|[-+*/])|[A-Za-z_$][\\w$]*))?",
       "captures": {
         "1": {
           "name": "storage.type.function.xenon"

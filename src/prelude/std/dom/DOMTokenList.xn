@@ -14,6 +14,8 @@ package xenon {
 
     /** The token at `index`, or `null` past the end. */
     function item(index:Int):String?
+    /** `list[index]`: like `item(index)`, the token at `index`, or `null` past the end. */
+    function operator[](index:Int):String?
     function contains(token:String):Bool
     /** Adds the tokens that aren't there yet: `el.classList.add('active', 'wide')`. */
     function add(...tokens:Array<String>):Void

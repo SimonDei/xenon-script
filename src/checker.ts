@@ -2055,7 +2055,10 @@ class Env {
         if (sym === "!=") {
           this.diags.error("X0371", "`!=` can't be overloaded on its own", m.name.span, op)
             .note("`a != b` is `!(a == b)`: declare `operator==` instead");
-        } else if (!OVERLOADABLE.has(sym) && sym !== "==") {
+        } else if (sym === "[]" && !isNative(info)) {
+          this.diags.error("X0371", "`operator[]` can only be declared on a native class", m.name.span, op)
+            .note("it gives the type of `obj[i]` for a JavaScript object that is indexed natively (`files[0]` of a `FileList`); a Xenon class can declare a method like `at(i)` instead");
+        } else if (!OVERLOADABLE.has(sym) && sym !== "==" && sym !== "[]") {
           this.diags.error("X0371", `\`${sym}\` can't be overloaded`, m.name.span, op)
             .note("the operators that can be overloaded are `+`, `-`, `*`, `/` and `==` (which `!=` uses)");
         } else {
@@ -2065,7 +2068,7 @@ class Env {
           if (m.modifiers.static) this.diags.error("X0373", `${op} must be an instance method`, m.modifiers.static);
           if (m.accessor) this.diags.error("X0372", `${op} must be a method, not an accessor`, m.name.span);
           if (m.params.length !== 1 || m.params[0]!.rest || m.params[0]!.init) {
-            this.diags.error("X0372", `${op} takes exactly one (required) parameter: the right operand`, m.name.span);
+            this.diags.error("X0372", `${op} takes exactly one (required) parameter: ${sym === "[]" ? "the index" : "the right operand"}`, m.name.span);
           }
           if (isVoidNode(m.returnType)) this.diags.error("X0372", `${op} must return a value`, m.returnType!.span);
         }
@@ -4864,6 +4867,8 @@ class BodyChecker {
       }
       return writing ? recordV : nullableOf(recordV);
     }
+    const indexed = obj.kind === "class" ? this.indexOperator(e, obj, idx, writing) : undefined;
+    if (indexed) return indexed;
     const element = elementOf(obj);
     if (element && !isDynamic(element)) {
       if (!isNumeric(idx) && !isDynamic(idx)) {
@@ -4872,6 +4877,30 @@ class BodyChecker {
       return element;
     }
     return obj.kind === "error" ? T.error : T.any;
+  }
+
+  /**
+   * `obj[i]` on a class that declares `operator[]` (a native class: `files[0]` of a `FileList`). The
+   * JavaScript object is indexed as it is; the operator only gives the type. Through a `const` view the
+   * element is `const` too, as an array's is. Writing isn't declared (X0374).
+   */
+  private indexOperator(e: A.Expr & { kind: "Index" }, obj: Type & { kind: "class" }, idx: Type, writing: boolean): Type | undefined {
+    const m = findMember(obj.info, "operator[]");
+    if (!m || m.kind !== "method" || m.isStatic) return undefined;
+    this.env.usedMembers.add(m);
+    this.env.checkAccess(m.decl, m.owner, this.info, e.span);
+    const sig = this.seenThrough(obj, m) as MethodType;
+    const param = sig.params[0];
+    if (param && !assignable(idx, param.type)) {
+      const decl = m.decl as A.Method;
+      this.mismatch(e.index, idx, param.type, decl.params[0]?.type && { span: decl.params[0].type.span, label: "`operator[]` parameter declared here" });
+    }
+    if (writing) {
+      this.diags.error("X0374", `cannot assign to an index of \`${typeToString(obj)}\``, e.span, "read-only index")
+        .note(`\`${m.owner.decl.name.name}\` declares reading \`[…]\` (\`operator[]\`), not writing it`);
+      return T.error;
+    }
+    return isConstView(obj) ? constOf(sig.ret) : sig.ret;
   }
 
   /** The types of optional chain links as if the chain went on (see `CheckResult.optionalChains`). */

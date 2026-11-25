@@ -415,7 +415,9 @@ public class Main {
 (5, 8) (10, 16) true true
 ```
 
-- `+`, `-`, `*`, `/` and `==` can be defined; `!=` is the negation of `==`.
+- `+`, `-`, `*`, `/` and `==` can be defined; `!=` is the negation of `==`. A native class can
+  also declare `operator[]`, the type of indexing it (see
+  [chapter 9](09-packages-and-javascript.md#native-declarations)).
 - An operator is chosen by the type of the **left** operand at compile time, and compiles to a
   method call. `+` with a `String` on either side still concatenates.
 - `operator==` should be `const` and is also used by `!=`; `==` against `null` never calls it.

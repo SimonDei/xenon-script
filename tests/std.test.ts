@@ -143,6 +143,7 @@ for (const file of stdFiles) {
       for (const m of decl.members) {
         if (m.kind !== "Method" && m.kind !== "Field") continue;
         if (m.modifiers.inline) continue; // compile-time constant: no runtime counterpart (the checker folds and range-checks it)
+        if (m.name.name === "operator[]") continue; // native indexing (`files[0]`): not a method
         const name = m.name.name;
         const wellKnown = /^\[Symbol\.([A-Za-z_$][\w$]*)\]$/.exec(name);
         const runtimeName: PropertyKey = wellKnown ? (Symbol as any)[wellKnown[1]!] as symbol : name;

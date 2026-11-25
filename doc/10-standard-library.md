@@ -344,6 +344,9 @@ Some details:
   `String?` and writing sets the `data-user-id` attribute.
 - `HTMLInputElement` covers `value`, `checked`, `files` (a `FileList?`), the constraint properties
   (`min`, `max`, `required`, `validity`, …) and the selection methods.
+- `FileList`, `NodeList<T>`, `HTMLCollection`, `NamedNodeMap` and `DOMTokenList` can be indexed:
+  `files[0]` is a `File?` like `files.item(0)` (`null` past the end), and a `const File?` read from a
+  `const FileList`.
 - `querySelector` gives `Element?`; check it or use `if (var el = …)`.
 - The DOM's names (`Node`, `Element`, …) aren't reserved: a program's own `Node` class shadows the
   DOM's.

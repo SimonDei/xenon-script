@@ -5,6 +5,8 @@ package xenon {
 
     final length:Int
     function item(index:Int):Attr?
+    /** `list[index]`: like `item(index)`, the attribute at `index`, or `null` past the end. */
+    function operator[](index:Int):Attr?
     function getNamedItem(qualifiedName:String):Attr?
     function getNamedItemNS(ns:String?, localName:String):Attr?
   }

@@ -9,6 +9,8 @@ package xenon {
     final length:Int
     /** The node at `index`, or `null` past the end. */
     function item(index:Int):T?
+    /** `list[index]`: like `item(index)`, the node at `index`, or `null` past the end. */
+    function operator[](index:Int):T?
     function forEach(callback:(node:T, index:Int, list:NodeList<T>) -> Void):Void
     /** With `thisArg` as the callback's `this` (for `function` callbacks). */
     function forEach(callback:(node:T, index:Int, list:NodeList<T>) -> Void, thisArg:*):Void

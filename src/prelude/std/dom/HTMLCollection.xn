@@ -9,6 +9,8 @@ package xenon {
     final length:Int
     /** The element at `index`, or `null` past the end. */
     function item(index:Int):Element?
+    /** `list[index]`: like `item(index)`, the element at `index`, or `null` past the end. */
+    function operator[](index:Int):Element?
     /** The element with this `id` or `name`, or `null`. */
     function namedItem(name:String):Element?
   }
