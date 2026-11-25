@@ -4,7 +4,7 @@ import { check, type CheckResult, type ClassInfo, type TypedefInfo } from "./che
 import { generate, type OutputFile } from "./codegen.ts";
 import { type Diagnostic, DiagnosticBag } from "./diagnostics.ts";
 import { type JsDeclarations, jsDeclarations } from "./dts.ts";
-import { BUILTIN_TYPES, nullSafety } from "./types.ts";
+import { BUILTIN_TYPES, withNullSafety } from "./types.ts";
 import { parseFile, type SemicolonStyle } from "./parser.ts";
 import { preludeFiles } from "./prelude/files.ts" with { type: "macro" };
 import { SourceFile, type Span } from "./source.ts";
@@ -69,13 +69,7 @@ export interface CompileResult {
 
 /** Compiles a whole project held in memory. Never throws for user errors; check `diagnostics`. */
 export function compileProject(sources: SourceInput[], options: CompileOptions): CompileResult {
-  const before = nullSafety.on;
-  nullSafety.on = options.nullSafety !== false;
-  try {
-    return compileWith(sources, options);
-  } finally {
-    nullSafety.on = before;
-  }
+  return withNullSafety(options.nullSafety !== false, () => compileWith(sources, options));
 }
 
 function compileWith(sources: SourceInput[], options: CompileOptions): CompileResult {

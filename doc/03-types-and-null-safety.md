@@ -126,6 +126,8 @@ The tools, from the most common:
   Everything after the `?.` is skipped, as in JavaScript, and the result is nullable. Only the
   `null` that `?.` itself checks is covered: if `customer` may be null too, it needs its own `?.`.
   Calls and indexes have the same forms: `f?.()`, `list?.[0]`;
+- **`...?`** spreads nothing when the value is `null`: `[...?body?.children]` is empty when there
+  is no `body` (a plain `...` of a nullable is an error: spreading `null` throws in JavaScript);
 - **`??=`** assigns only when the variable is `null`;
 - **binding conditions** declare a non-null local when the value isn't `null`:
 

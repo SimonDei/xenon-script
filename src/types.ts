@@ -378,6 +378,17 @@ export function isDynamic(t: Type): boolean {
  */
 export const nullSafety = { on: false };
 
+/** Runs `fn` with null safety set to `on`, restoring the previous setting after. */
+export function withNullSafety<R>(on: boolean, fn: () => R): R {
+  const before = nullSafety.on;
+  nullSafety.on = on;
+  try {
+    return fn();
+  } finally {
+    nullSafety.on = before;
+  }
+}
+
 /** Types whose values can be `null`. */
 export function isNullable(t: Type): boolean {
   if (t.kind === "nullable" || t.kind === "null" || t.kind === "any" || t.kind === "error") return true;

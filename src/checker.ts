@@ -3710,7 +3710,7 @@ class BodyChecker {
     const bad = (message: string, at: Span, label: string) => {
       this.diags.error("X0876", message, at, label)
         .note("`nameof` takes a local, a parameter, a member (`user.email`, `Dog.create`), a class or an enum member");
-      for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
+      for (const a of e.args) this.elementExpr(a, scope);
       return T.String;
     };
     if (!arg) return bad("`nameof` takes exactly one name", e.span, `${e.args.length} given`);
@@ -4298,9 +4298,27 @@ class BodyChecker {
     return t;
   }
 
+  /** An array element or call argument: a spread gives its source's type (see `spreadSource`). */
+  private elementExpr(e: A.Expr, scope: Scope): Type {
+    return e.kind === "Spread" ? this.spreadSource(e, scope) : this.valueExpr(e, scope);
+  }
+
+  /**
+   * What `...source` spreads, never null: `...?source` skips a null one, a plain `...` of a `T?`
+   * is X0398 (spreading `null` throws in JavaScript).
+   */
+  private spreadSource(el: A.Expr & { kind: "Spread" }, scope: Scope): Type {
+    const t = this.valueExpr(el.arg, scope);
+    if (t.kind !== "nullable") return t;
+    if (el.nullable) return t.inner;
+    const d = this.diags.error("X0398", "this value may be null", el.arg.span, `\`${typeToString(t)}\``);
+    d.help("spread nothing when it's null with `...?`", [{ span: span(el.span.file, el.arg.span.start, el.arg.span.start), text: "?" }]);
+    return t.inner;
+  }
+
   /** `...source` in an array literal of `element`s: what it spreads must fit (an untyped source passes). */
   private spreadInto(el: A.Expr & { kind: "Spread" }, element: Type, scope: Scope) {
-    const t = this.valueExpr(el.arg, scope);
+    const t = this.spreadSource(el, scope);
     const spread = elementOf(t) ?? this.env.iterableElement(t) ?? (isPrim(t, "String") ? T.String : undefined);
     if (spread && !assignable(spread, element)) {
       this.diags.error("X0308", "mismatched types", el.arg.span, `its elements are \`${typeToString(spread)}\`, expected \`${typeToString(element)}\``);
@@ -4312,7 +4330,7 @@ class BodyChecker {
     const spread = e.elements.find((el) => el.kind === "Spread");
     if (spread) {
       this.diags.error("X0323", `a \`${typeToString(expected)}\` literal lists its elements one by one`, spread.span, "the length of a spread isn't known");
-      for (const el of e.elements) this.valueExpr(el.kind === "Spread" ? el.arg : el, scope);
+      for (const el of e.elements) this.elementExpr(el, scope);
     } else if (e.elements.length !== positions.length) {
       const extra = e.elements[positions.length];
       this.diags.error("X0323", "wrong tuple length", extra?.span ?? e.span, `\`${typeToString(expected)}\` has ${positions.length} element${positions.length === 1 ? "" : "s"}, found ${e.elements.length}`);
@@ -4468,7 +4486,7 @@ class BodyChecker {
         this.diags.error("X0734", "`super` can only be used as `super(...)` or `super.member`", e.span);
         return T.error;
       case "Array": {
-        const types = e.elements.map((el) => this.valueExpr(el.kind === "Spread" ? el.arg : el, scope));
+        const types = e.elements.map((el) => this.elementExpr(el, scope));
         // `[...text.matchAll(re)]`, `[...a, ...b]`: only spreads of typed sources give their elements' type.
         if (e.elements.length > 0 && e.elements.every((el) => el.kind === "Spread")) {
           const elements = types.map((t) => elementOf(t) ?? this.env.iterableElement(t) ?? (isPrim(t, "String") ? T.String : undefined));
@@ -5173,12 +5191,12 @@ class BodyChecker {
 
     if (res?.kind === "builtin") {
       if (res.name === "trace") {
-        for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
+        for (const a of e.args) this.elementExpr(a, scope);
         return T.void;
       }
       if (e.args.length !== 1 || e.args[0]!.kind === "Spread") {
         this.diags.error("X0601", `\`${res.name}()\` takes exactly 1 argument`, e.span);
-        for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
+        for (const a of e.args) this.elementExpr(a, scope);
         return CASTS[res.name]!;
       }
       this.valueExpr(e.args[0]!, scope);
@@ -5225,11 +5243,11 @@ class BodyChecker {
       }
       case "any":
       case "error":
-        for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
+        for (const a of e.args) this.elementExpr(a, scope);
         return callee.kind === "error" ? T.error : T.any;
       case "builtin":
         if (callee.name === "Function") {
-          for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
+          for (const a of e.args) this.elementExpr(a, scope);
           return T.any;
         }
         break;
@@ -5244,11 +5262,11 @@ class BodyChecker {
         }
         this.diags.error("X0380", `\`${callee.info.decl.name.name}(x)\` casts are not supported`, e.span)
           .help(`use \`x as ${callee.info.decl.name.name}\`, which gives \`null\` if the value has another type`);
-        for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
+        for (const a of e.args) this.elementExpr(a, scope);
         return { kind: "class", info: callee.info };
     }
     this.diags.error("X0602", `\`${typeToString(callee)}\` is not callable`, e.callee.span);
-    for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
+    for (const a of e.args) this.elementExpr(a, scope);
     return T.error;
   }
 
@@ -5912,7 +5930,7 @@ class BodyChecker {
     const given = args.map((a, i) => (types[i] ? typeToString(types[i]!) : a.kind === "Function" ? "function" : a.kind === "Array" ? "array literal" : a.kind === "Object" ? "object literal" : "…"));
     const d = this.diags.error("X0604", `no overload of \`${name}\` accepts (${given.join(", ")})`, at, "no matching overload");
     for (const c of cands) d.note(`\`${name}${signatureText(c.decl)}\``);
-    for (const a of args) if (literal(a)) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
+    for (const a of args) if (literal(a)) this.elementExpr(a, scope);
     for (const a of args) this.preTyped.delete(a);
     return undefined;
   }
@@ -5980,7 +5998,7 @@ class BodyChecker {
   /** `super(...)`: only as the first statement of a constructor of a class with a superclass. */
   private superCallExpr(e: A.Expr & { kind: "Call" }, scope: Scope): Type {
     const dynamicArgs = () => {
-      for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
+      for (const a of e.args) this.elementExpr(a, scope);
     };
     if (e !== this.superCall) {
       const where = this.method?.isConstructor ? "must be the first statement of the constructor" : "is only allowed in a constructor";
@@ -6110,7 +6128,7 @@ class BodyChecker {
     }
     e.args.forEach((a, i) => {
       if (a.kind === "Spread") {
-        this.valueExpr(a.arg, scope);
+        this.spreadSource(a, scope);
         return;
       }
       const p = i < sig.params.length && !sig.params[i]!.rest ? sig.params[i] : rest;
@@ -6128,7 +6146,7 @@ class BodyChecker {
   private newExpr(e: A.Expr & { kind: "New" }, scope: Scope): Type {
     const t = e.callee;
     const dynamicArgs = () => {
-      for (const a of e.args) this.valueExpr(a.kind === "Spread" ? a.arg : a, scope);
+      for (const a of e.args) this.elementExpr(a, scope);
     };
     if (t.kind === "TypeName" && t.name.length === 1) {
       const name = t.name[0]!.name;

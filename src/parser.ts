@@ -1597,7 +1597,10 @@ export class Parser {
 
   private parseSpreadOrExpr(): A.Expr {
     const start = this.tok.span.start;
-    if (this.eat("...")) return { kind: "Spread", arg: this.parseAssign(), span: this.sp(start) };
+    if (this.eat("...")) {
+      const nullable = !!this.eat("?");
+      return { kind: "Spread", arg: this.parseAssign(), ...(nullable && { nullable }), span: this.sp(start) };
+    }
     return this.parseAssign();
   }
 

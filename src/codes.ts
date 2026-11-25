@@ -128,7 +128,7 @@ export const CODES: Record<string, CodeInfo> = {
     "if (value is Int?) {}", "if (value is Int) {}"),
   X0396: c("impossible type test", "The value's static type can never be the tested type."),
   X0397: c("unnecessary test or cast", "The value already has this type, so the `is` test is true (unless null) and the `as` cast does nothing."),
-  X0398: c("value may be null", "A `T?` value (`Int?`, an optional shape member, `Map.get(…)`) can be `null`, so it can't be used in arithmetic or for its members directly. Give a default with `??`, check it with `if (var x:T = …)`, or use `?.`.",
+  X0398: c("value may be null", "A `T?` value (`Int?`, an optional shape member, `Map.get(…)`) can be `null`, so it can't be used in arithmetic or for its members directly. Give a default with `??`, check it with `if (var x:T = …)`, or use `?.` (`...?` to spread).",
     "var total:Int = counts.get('a') + 1", "var total:Int = (counts.get('a') ?? 0) + 1"),
 
   // ---- names and members ----

@@ -115,6 +115,7 @@ const cases: [string, string, string, number?][] = [
   ["if (x is Dog && y as Cat != null) {}", "is", "keyword.operator.expression.xenon"],
   ["trace(x ?? y, a?.b, ...rest)", "?.", "keyword.operator.optional.xenon"],
   ["trace(x ?? y, a?.b, ...rest)", "...", "keyword.operator.spread.xenon"],
+  ["trace(...?rest)", "...?", "keyword.operator.spread.xenon"],
   ["if (x == undefined) return", "undefined", "constant.language.undefined.xenon"],
   ["defer cleanup()", "defer", "keyword.control.flow.xenon"],
   ["trace(worker.defer())", "defer", "entity.name.function.call.xenon"],

@@ -251,7 +251,7 @@ The error for `name` explains the JavaScript behaviour (`''` is false too) and o
 | update | `++ --` |
 | conditional | `cond ? a : b` |
 | type | `is as typeof` |
-| other | `delete await nameof unconst`, spread `...`, ranges `..` `..=` |
+| other | `delete await nameof unconst`, spread `...` (`...?` skips a null), ranges `..` `..=` |
 
 Precedence is JavaScript's. The differences in meaning:
 

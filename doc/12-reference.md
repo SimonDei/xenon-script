@@ -222,7 +222,7 @@ logical assign &&= ||= ??=
 update         ++  --
 member         .  ?.
 conditional    ? :
-spread/range   ...  ..  ..=
+spread/range   ...  ...?  ..  ..=
 type           is  as  typeof  (expr : Type)
 other          delete  await  nameof  unconst  void
 references     Type::member

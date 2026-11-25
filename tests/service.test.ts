@@ -689,6 +689,13 @@ test("null safety by default: hover shows T?, and the editor reports null errors
   expect([...legacy.diagnostics()].flatMap(([, d]) => d.map((x) => x.code))).not.toContain("X0398");
 });
 
+test("hover on a generic member keeps a nullable return under null safety (Array<Row>.at is Row?)", () => {
+  const text = "typedef Row = { name:String }\n\npublic class Main {\n  public function Main() {\n    var rows:Array<Row> = []\n    var r = rows.at(0)\n    trace(r)\n  }\n}\n";
+  const p = project({ "Main.xn": text });
+  expect((p.hover("Main.xn", offset(text, "at(0)"))!.contents as string)).toContain("function Array.at(index:Int):Row?\n");
+  expect((p.hover("Main.xn", offset(text, "r = rows"))!.contents as string).split("\n")[1]).toBe("r:Row?");
+});
+
 test("hover on an unannotated callback parameter shows the type it takes from context", () => {
   const text = "public class Main {\n  public function Main() {\n    var words:Array<String> = ['a', 'bb']\n    var n:Array<Int> = words.map(s => s.length)\n    trace(n)\n  }\n}\n";
   const p = project({ "Main.xn": text });

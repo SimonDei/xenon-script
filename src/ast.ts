@@ -325,7 +325,8 @@ export type Expr =
   | { kind: "Array"; elements: Expr[]; span: Span }
   | { kind: "Comprehension"; clauses: ComprehensionClause[]; value: Expr; span: Span }
   | { kind: "Object"; props: ObjectProp[]; span: Span }
-  | { kind: "Spread"; arg: Expr; span: Span }
+  /** `...arg`; `...?arg` (`nullable`) spreads nothing when `arg` is null. */
+  | { kind: "Spread"; arg: Expr; nullable?: boolean; span: Span }
   | { kind: "Member"; object: Expr; name: Ident; optional: boolean; span: Span }
   /** `Type::member`: an unbound member value whose first parameter is the receiver. */
   | { kind: "PropertyReference"; owner: Expr; name: Ident; span: Span }

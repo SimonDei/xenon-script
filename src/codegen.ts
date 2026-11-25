@@ -1834,6 +1834,8 @@ class ModuleGen {
         return { code: `{ ${props.join(", ")} }`, prec: P.primary };
       }
       case "Spread":
+        // `...?x` → `...(x ?? [])`: spreading `null` throws in JavaScript.
+        if (e.nullable) return { code: `...(${this.wrap(this.expr(e.arg), P.bitor)} ?? [])`, prec: P.assign };
         return { code: `...${this.wrap(this.expr(e.arg), P.assign)}`, prec: P.assign };
       case "Member": {
         // Inherited statics are addressed through their declaring class: in JS, `Dog.count++`

@@ -666,7 +666,7 @@
         },
         {
           "name": "keyword.operator.spread.xenon",
-          "match": "\\.\\.\\."
+          "match": "\\.\\.\\.\\??"
         },
         {
           "name": "keyword.operator.range.xenon",

@@ -20,7 +20,7 @@ import { defaultLibFilePath } from "./dts.ts";
 import { CONTEXTUAL_KEYWORDS, KEYWORDS } from "./lexer.ts";
 import { TYPED_GLOBALS } from "./globals.ts";
 import { SourceFile, type Span, spanText } from "./source.ts";
-import { boundsOf, boundsText, hasConstView, isSubclass, memberTypeIn, nonNull, type MethodType, type ShapeMember, type ShapeType, stdClassOf, supertypes, type Type, type TypeParamInfo, typeToString } from "./types.ts";
+import { boundsOf, withNullSafety, boundsText, hasConstView, isSubclass, memberTypeIn, nonNull, type MethodType, type ShapeMember, type ShapeType, stdClassOf, supertypes, type Type, type TypeParamInfo, typeToString } from "./types.ts";
 
 /** Options of the virtual TypeScript project. Xenon references may be `null`: no strict null checks. */
 export const TS_OPTIONS: ts.CompilerOptions = {
@@ -513,7 +513,16 @@ export class XenonProject {
 
   // ---- hover ----
 
+  /** Hover, signature help and completions re-substitute types (`Array<Row>.at` → `Row?`): under the project's null safety, as the checker did. */
+  private typed<R>(fn: () => R): R {
+    return withNullSafety(this.settings.nullSafety !== false, fn);
+  }
+
   hover(path: string, offset: number): Hover | undefined {
+    return this.typed(() => this.hoverAt(path, offset));
+  }
+
+  private hoverAt(path: string, offset: number): Hover | undefined {
     const a = this.analyze();
     const ast = this.astOf(a, path);
     if (!ast) return undefined;
@@ -913,6 +922,10 @@ export class XenonProject {
 
   /** Inside a call's parentheses: the callee's signatures and the parameter at the cursor. */
   signatureHelp(path: string, offset: number): SignatureHelp | undefined {
+    return this.typed(() => this.signatureHelpAt(path, offset));
+  }
+
+  private signatureHelpAt(path: string, offset: number): SignatureHelp | undefined {
     const text = this.sources.get(path);
     if (text === undefined) return undefined;
     // `f(1, ` with nothing after the comma yet doesn't parse: fill in a placeholder argument.
@@ -1071,6 +1084,10 @@ export class XenonProject {
   // ---- completion ----
 
   completions(path: string, offset: number): CompletionItem[] {
+    return this.typed(() => this.completionsAt(path, offset));
+  }
+
+  private completionsAt(path: string, offset: number): CompletionItem[] {
     const text = this.sources.get(path);
     if (text === undefined) return [];
     let start = offset;
