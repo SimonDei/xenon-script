@@ -186,6 +186,14 @@ their `edits`.
 Source maps point back to `.xn` files. Node can use them with `--enable-source-maps`; `xenon run`
 maps stack frames itself.
 
+## Vite
+
+[`packages/vite-plugin-xenon`](../packages/vite-plugin-xenon) lets Vite serve and bundle a Xenon
+program: `plugins: [xenon()]` in `vite.config.ts`, and `<script type="module">import "virtual:xenon";</script>`
+in `index.html` to start it. The plugin compiles the project of `xenon.json` (with its dependencies)
+as a whole, serves each `.xn` file as a module, shows compile errors in Vite's overlay and reloads
+the page when a `.xn` file changes. Run Vite with Bun (`bunx --bun vite`). See its README.
+
 ## VS Code extension
 
 The extension in [`../packages/vscode-xenon`](../packages/vscode-xenon) runs the compiler's language

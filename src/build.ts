@@ -6,6 +6,7 @@ import { entryFile } from "./codegen.ts";
 import { renderAll, renderSummary } from "./diagnostics.ts";
 import type { SemicolonStyle } from "./parser.ts";
 import type { Span } from "./source.ts";
+import { DependencyError, dependencyList, mergedGlobals, resolveDependencies } from "./project.ts";
 
 export interface Config {
   src: string;
@@ -39,6 +40,104 @@ export interface Config {
   globals: Record<string, string>;
   /** Statement endings: `"semicolons": "always" | "never" | "any"` / `--semicolons` (default `any`). */
   semicolons: SemicolonStyle;
+}
+
+/** A problem with the project file (`xenon.json`) or what it names. */
+export class ProjectError extends Error {}
+
+/** `xenon.json` as written (every field optional and unchecked; `resolveConfig` checks them). */
+export type ProjectJson = Partial<Record<keyof Config, unknown>> & { dependencies?: unknown };
+
+/** Settings given another way (command-line flags, a plugin's options); they win over `xenon.json`. */
+export interface ConfigOverrides {
+  src?: string;
+  out?: string;
+  main?: string;
+  target?: string;
+  bundle?: boolean;
+  maxErrors?: number;
+  denyWarnings?: boolean;
+  sourceMaps?: boolean;
+  nullSafety?: boolean;
+  semicolons?: string;
+  color?: boolean;
+  format?: "pretty" | "json";
+  quiet?: boolean;
+}
+
+/** Reads `xenon.json`; `undefined` when there is none. */
+export async function readProjectJson(path: string): Promise<ProjectJson | undefined> {
+  const file = Bun.file(path);
+  if (!(await file.exists())) return undefined;
+  try {
+    return await file.json();
+  } catch (e) {
+    throw new ProjectError(`invalid ${relative(process.cwd(), path)}: ${(e as Error).message}`);
+  }
+}
+
+async function isDirectory(path: string): Promise<boolean> {
+  const { stat } = await import("node:fs/promises");
+  return stat(path).then((s) => s.isDirectory(), () => false);
+}
+
+/**
+ * A project's settings: `xenon.json` (at `projectPath`, in the folder `root`) with the overrides
+ * applied and the defaults filled in, checked, with its `"dependencies"` resolved into `sources`
+ * and `globals`. Throws a `ProjectError` saying what's wrong.
+ */
+export async function resolveConfig(project: ProjectJson, root: string, projectPath: string, o: ConfigOverrides = {}): Promise<Config> {
+  const where = relative(process.cwd(), projectPath) || "xenon.json";
+  const target = o.target ?? (project.target as string | undefined) ?? "js";
+  if (target !== "js" && target !== "ts") throw new ProjectError("--target must be js or ts");
+  const bundle = o.bundle ?? !!project.bundle;
+  if (bundle && target === "ts") throw new ProjectError("--bundle writes JavaScript: it can't be combined with --target ts");
+  if (project.library === true && bundle) throw new ProjectError('a library ("library": true in xenon.json) has no main class to bundle from: bundle the program that uses it');
+  const config: Config = {
+    src: o.src ?? (project.src as string | undefined) ?? "src",
+    sources: (project.sources as string[] | undefined) ?? [],
+    library: project.library === true,
+    out: o.out ?? (project.out as string | undefined) ?? "out",
+    main: o.main ?? (project.main as string | undefined) ?? "Main",
+    color: o.color ?? false,
+    format: o.format ?? "pretty",
+    maxErrors: o.maxErrors ?? Number(project.maxErrors ?? 50),
+    denyWarnings: o.denyWarnings ?? !!project.denyWarnings,
+    quiet: o.quiet ?? false,
+    sourceMaps: o.sourceMaps ?? project.sourceMaps !== false,
+    target,
+    bundle,
+    nullSafety: o.nullSafety ?? project.nullSafety !== false,
+    globals: (project.globals as Record<string, string> | undefined) ?? {},
+    semicolons: (o.semicolons ?? project.semicolons ?? "any") as Config["semicolons"],
+  };
+  if (!["always", "never", "any"].includes(config.semicolons)) {
+    throw new ProjectError(`${o.semicolons !== undefined ? "--semicolons" : '"semicolons" in xenon.json'} must be always, never or any`);
+  }
+  const sources = config.sources as unknown;
+  if (!Array.isArray(sources) || sources.some((s) => typeof s !== "string" || s === "")) {
+    throw new ProjectError('"sources" in xenon.json lists further source folders, e.g. ["../ui-lib/src"]');
+  }
+  for (const s of config.sources) {
+    if (!(await isDirectory(resolve(root, s)))) throw new ProjectError(`source folder not found: ${s} (in "sources" of ${where})`);
+  }
+  const globals = config.globals as unknown;
+  if (typeof globals !== "object" || globals === null || Array.isArray(globals) || Object.values(globals).some((v) => typeof v !== "string" || v === "")) {
+    throw new ProjectError('"globals" in xenon.json maps package names to global names, e.g. { "pizzip": "PizZip" }');
+  }
+  // `"dependencies"`: other projects (libraries) whose source folders are compiled with this one.
+  try {
+    const deps = resolveDependencies(root, dependencyList(project.dependencies, where), { nullSafety: config.nullSafety, globals: config.globals });
+    for (const d of deps) {
+      if (!(await isDirectory(d.src))) throw new ProjectError(`dependency ${d.name} has no source folder ${relative(process.cwd(), d.src)}`);
+    }
+    config.sources = [...config.sources, ...deps.map((d) => d.src)];
+    config.globals = mergedGlobals(config.globals, deps);
+  } catch (e) {
+    if (e instanceof DependencyError) throw new ProjectError(e.message);
+    throw e;
+  }
+  return config;
 }
 
 /**

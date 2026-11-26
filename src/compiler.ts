@@ -6,16 +6,25 @@ import { type Diagnostic, DiagnosticBag } from "./diagnostics.ts";
 import { type JsDeclarations, jsDeclarations } from "./dts.ts";
 import { BUILTIN_TYPES, withNullSafety } from "./types.ts";
 import { parseFile, type SemicolonStyle } from "./parser.ts";
-import { preludeFiles } from "./prelude/files.ts" with { type: "macro" };
+import { preludeFiles as inlinedPrelude } from "./prelude/files.ts" with { type: "macro" };
+import { preludeFiles } from "./prelude/files.ts";
 import { SourceFile, type SourceRoot, type Span } from "./source.ts";
 
 /** Package of the built-in prelude; reserved for the compiler. */
 export const PRELUDE_PACKAGE = "xenon";
 /**
  * The prelude: runtime classes (`Prelude.xn`) and the standard library's native declarations
- * (`std/`), inlined at build time (`preludeFiles` runs as a Bun macro).
+ * (`std/`), inlined at build time (`preludeFiles` runs as a Bun macro). Bun runs no macros in
+ * code from `node_modules` (the compiler inside an installed package, such as the Vite plugin):
+ * there the call isn't replaced, and the files are read when the compiler loads.
  */
-export const PRELUDE: SourceInput[] = preludeFiles();
+export const PRELUDE: SourceInput[] = (() => {
+  try {
+    return inlinedPrelude();
+  } catch {
+    return preludeFiles();
+  }
+})();
 
 export interface SourceInput {
   /** Path relative to the source root, using `/` (determines the expected package). */

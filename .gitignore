@@ -19,6 +19,16 @@ tests/.lsp-bundle/
 tests/.dts-local/
 tests/.bundle-out/
 tests/.build-project/
+tests/.sources-projects/
+tests/.dependencies-projects/
+tests/.static-imports-out/
+tests/.static-imports-project/
+tests/.attributed-private-out/
+tests/.attributed-private-ts/
+tests/.custom-elements-ts/
+tests/.grouped-types-ts/
+packages/vite-plugin-xenon/test/.projects/
+tests/.short-getters-ts/
 
 # code coverage
 coverage/

@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 import { join, relative, resolve } from "node:path";
-import { build, type Config, runCommand } from "./build.ts";
-import { DependencyError, dependencyList, mergedGlobals, resolveDependencies } from "./project.ts";
+import { build, type Config, type ProjectJson, ProjectError, readProjectJson, resolveConfig, runCommand } from "./build.ts";
 import { explain } from "./codes.ts";
 import { watchProject } from "./watch.ts";
 
@@ -74,72 +73,42 @@ async function loadConfig(args: string[]): Promise<{
 
   let projectPath = resolve((flags.get("project") as string | undefined) ?? "xenon.json");
   if (flags.has("project") && (await isDirectory(projectPath))) projectPath = join(projectPath, "xenon.json");
-  const projectFile = Bun.file(projectPath);
-  let project: Partial<Config> & { dependencies?: unknown } = {};
-  if (await projectFile.exists()) {
-    try {
-      project = await projectFile.json();
-    } catch (e) {
-      throw new UsageError(`invalid ${relative(process.cwd(), projectPath)}: ${(e as Error).message}`);
-    }
-  } else if (flags.has("project")) {
-    throw new UsageError(`project file not found: ${projectPath}`);
+  let project: ProjectJson = {};
+  try {
+    const json = await readProjectJson(projectPath);
+    if (json) project = json;
+    else if (flags.has("project")) throw new UsageError(`project file not found: ${projectPath}`);
+  } catch (e) {
+    if (e instanceof ProjectError) throw new UsageError(e.message);
+    throw e;
   }
   const root = resolve(projectPath, "..");
 
   const colorFlag = (flags.get("color") as string | undefined) ?? "auto";
   if (!["auto", "always", "never"].includes(colorFlag)) throw new UsageError("--color must be auto, always or never");
-  const target = (flags.get("target") as string | undefined) ?? project.target ?? "js";
-  if (target !== "js" && target !== "ts") throw new UsageError("--target must be js or ts");
-  const bundle = flags.has("bundle") || !!project.bundle;
-  if (bundle && target === "ts") throw new UsageError("--bundle writes JavaScript: it can't be combined with --target ts");
-  if (project.library === true && bundle) throw new UsageError('a library ("library": true in xenon.json) has no main class to bundle from: bundle the program that uses it');
   const format = (flags.get("format") as string | undefined) ?? "pretty";
   if (format !== "pretty" && format !== "json") throw new UsageError("--format must be pretty or json");
-
-  const config: Config = {
-    src: (flags.get("src") as string) ?? project.src ?? "src",
-    sources: project.sources ?? [],
-    library: project.library === true,
-    out: (flags.get("out") as string) ?? project.out ?? "out",
-    main: (flags.get("main") as string) ?? project.main ?? "Main",
-    color: colorFlag === "always" || (colorFlag === "auto" && !!process.stderr.isTTY && !process.env.NO_COLOR),
-    format,
-    maxErrors: Number(flags.get("max-errors") ?? project.maxErrors ?? 50),
-    denyWarnings: flags.has("deny-warnings") || !!project.denyWarnings,
-    quiet: flags.has("quiet"),
-    sourceMaps: !flags.has("no-source-maps") && project.sourceMaps !== false,
-    target,
-    bundle,
-    // On unless turned off: `--no-null-safety` or `"nullSafety": false` (`--null-safety` is accepted, the default).
-    nullSafety: flags.has("no-null-safety") ? false : flags.has("null-safety") || project.nullSafety !== false,
-    globals: project.globals ?? {},
-    semicolons: ((flags.get("semicolons") as string | undefined) ?? project.semicolons ?? "any") as Config["semicolons"],
-  };
-  if (!["always", "never", "any"].includes(config.semicolons)) {
-    throw new UsageError(`${flags.has("semicolons") ? "--semicolons" : '"semicolons" in xenon.json'} must be always, never or any`);
-  }
-  const sources = config.sources as unknown;
-  if (!Array.isArray(sources) || sources.some((s) => typeof s !== "string" || s === "")) {
-    throw new UsageError('"sources" in xenon.json lists further source folders, e.g. ["../ui-lib/src"]');
-  }
-  for (const s of config.sources) {
-    if (!(await isDirectory(resolve(root, s)))) throw new UsageError(`source folder not found: ${s} (in "sources" of ${relative(process.cwd(), projectPath)})`);
-  }
-  const globals = config.globals as unknown;
-  if (typeof globals !== "object" || globals === null || Array.isArray(globals) || Object.values(globals).some((v) => typeof v !== "string" || v === "")) {
-    throw new UsageError('"globals" in xenon.json maps package names to global names, e.g. { "pizzip": "PizZip" }');
-  }
-  // `"dependencies"`: other projects (libraries) whose source folders are compiled with this one.
+  const flag = (name: string) => flags.get(name) as string | undefined;
+  let config: Config;
   try {
-    const deps = resolveDependencies(root, dependencyList(project.dependencies, relative(process.cwd(), projectPath) || "xenon.json"), { nullSafety: config.nullSafety, globals: config.globals });
-    for (const d of deps) {
-      if (!(await isDirectory(d.src))) throw new UsageError(`dependency ${d.name} has no source folder ${relative(process.cwd(), d.src)}`);
-    }
-    config.sources = [...config.sources, ...deps.map((d) => d.src)];
-    config.globals = mergedGlobals(config.globals, deps);
+    config = await resolveConfig(project, root, projectPath, {
+      src: flag("src"),
+      out: flag("out"),
+      main: flag("main"),
+      target: flag("target"),
+      bundle: flags.has("bundle") || undefined,
+      maxErrors: flag("max-errors") === undefined ? undefined : Number(flag("max-errors")),
+      denyWarnings: flags.has("deny-warnings") || undefined,
+      sourceMaps: flags.has("no-source-maps") ? false : undefined,
+      // On unless turned off: `--no-null-safety` or `"nullSafety": false` (`--null-safety` is accepted, the default).
+      nullSafety: flags.has("no-null-safety") ? false : flags.has("null-safety") ? true : undefined,
+      semicolons: flag("semicolons"),
+      color: colorFlag === "always" || (colorFlag === "auto" && !!process.stderr.isTTY && !process.env.NO_COLOR),
+      format,
+      quiet: flags.has("quiet"),
+    });
   } catch (e) {
-    if (e instanceof DependencyError) throw new UsageError(e.message);
+    if (e instanceof ProjectError) throw new UsageError(e.message);
     throw e;
   }
   // `--src` names the folder of the .xn files; a project folder there is a mix-up with `--project`.
