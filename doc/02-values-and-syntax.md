@@ -400,13 +400,16 @@ trace(counter.double, counter.label)
 ```
 
 A body can also be one expression, as for class methods. They compile to JavaScript methods,
-getters, and setters. `this` is the object itself (untyped, like in a `function` expression); an
-arrow function inside keeps the same `this`. A getter needs a return type unless it is written `=>
-expr` (`label` is a `String`), a setter takes one typed parameter, and neither can be `async`
-(methods can: `async function save():Promise<Void> { … }`). A getter and a setter with the same name
-pair up; any other repeated name is an error. Against a typedef, a getter fits a `final` member
-(`final area:Int`); a member that is written also needs a setter. A spread (`{ ...counter }`) copies
-a getter's current value, as in JavaScript.
+getters, and setters. `this` is the object itself, typed as the literal (or as the typedef it is
+checked against): `this.count` is an `Int`, and the editor completes the members. Members the
+literal doesn't have are dynamic rather than errors, since code like Alpine adds its own
+(`this.$store`). An arrow function inside keeps the same `this`; a `function` expression has its
+own, untyped one. A getter needs a return type unless it is written `=> expr` (`label` is a
+`String`), a setter takes one typed parameter, and neither can be `async` (methods can: `async
+function save():Promise<Void> { … }`). A getter and a setter with the same name pair up; any other
+repeated name is an error. Against a typedef, a getter fits a `final` member (`final area:Int`); a
+member that is written also needs a setter. A spread (`{ ...counter }`) copies a getter's current
+value, as in JavaScript.
 
 ## Destructuring
 

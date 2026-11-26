@@ -145,6 +145,8 @@ export interface ShapeType {
   parts?: ShapeType[];
   /** `const { … }`: a read-only view. */
   constView?: boolean;
+  /** `this` in an object literal's methods: members it doesn't list are dynamic (`*`), not errors. */
+  open?: boolean;
   alias?: string;
   aliasArgs?: Type[];
   typedef?: TypedefInfo;

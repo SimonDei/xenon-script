@@ -2649,6 +2649,12 @@ class Env {
   }
 }
 
+/** An object literal's members with its methods and accessors last, so their bodies see the values' types. */
+function functionsLast(props: A.ObjectProp[]): A.ObjectProp[] {
+  const isFn = (p: A.ObjectProp) => p.kind === "Accessor" || (p.kind === "Prop" && !!p.method);
+  return [...props.filter((p) => !isFn(p)), ...props.filter(isFn)];
+}
+
 /** The expression of a body written `=> expr` (a block holding one `return`). */
 function returnedExpr(body: A.Block | A.Expr | undefined): A.Expr | undefined {
   if (body?.kind !== "Block" || body.body.length !== 1) return undefined;
@@ -2979,6 +2985,10 @@ class BodyChecker {
   private beforeSuper = false;
   /** Nesting depth of `function(){}` expressions (dynamic `this`) around the current code. */
   private dynamicThis = 0;
+  /** `this` in the method or accessor of an object literal being checked: the literal's shape. */
+  private objectThis?: Type;
+  /** The `this` of each object literal function, set before its literal's members are checked. */
+  private readonly thisOf = new Map<A.FunctionNode, Type>();
   /** Checking a field initializer (no enclosing method). */
   private fieldInit = false;
   /** Signatures of hoisted local functions. */
@@ -4644,7 +4654,8 @@ class BodyChecker {
           this.diags.error("X0736", "`this` can't be used before `super(...)` returns", e.span);
           return T.error;
         }
-        if (this.dynamicThis > 0) return T.any; // `function(){}` has a dynamic `this`
+        // `function(){}` has a dynamic `this`; an object literal's methods have the literal.
+        if (this.dynamicThis > 0) return this.objectThis ?? T.any;
         if (this.isStatic) {
           this.diags.error("X0411", "`this` can't be used in a static context", e.span);
           return T.error;
@@ -4931,7 +4942,8 @@ class BodyChecker {
 
   private objectLiteral(e: A.Expr & { kind: "Object" }, scope: Scope) {
     this.checkObjectMembers(e);
-    for (const p of e.props) {
+    this.bindThis(e, this.ownShape(e, scope));
+    for (const p of functionsLast(e.props)) {
       if (p.kind === "Accessor") {
         this.valueExpr(p.fn, scope);
       } else if (p.kind === "Prop") {
@@ -4945,6 +4957,67 @@ class BodyChecker {
         const r = this.env.result.resolutions.get(ident);
         if (r) this.env.result.resolutions.set(p, r);
       }
+    }
+  }
+
+  /** Makes `self` the `this` of the literal's methods and accessors (not of nested `function`s, which have their own). */
+  private bindThis(e: A.Expr & { kind: "Object" }, self: Type) {
+    for (const p of e.props) {
+      if (p.kind === "Accessor") this.thisOf.set(p.fn, self);
+      else if (p.kind === "Prop" && p.method && p.value.kind === "Function") this.thisOf.set(p.value, self);
+    }
+  }
+
+  /**
+   * The `this` of an object literal that isn't checked against a shape: its own members, typed when
+   * first used (values are checked before methods, so methods see their types). A getter without a
+   * type is typed from its expression on demand. Other members are dynamic (`open`).
+   */
+  private ownShape(e: A.Expr & { kind: "Object" }, scope: Scope): ShapeType {
+    const members = new Map<string, ShapeMember>();
+    const setters = new Set(e.props.flatMap((p) => (p.kind === "Accessor" && p.accessor === "set" ? [p.key.name] : [])));
+    const put = (name: string, readonly: boolean, type: () => Type) => {
+      let cached: Type | undefined;
+      members.delete(name);
+      members.set(name, { name, optional: false, readonly, type: () => (cached ??= type()) });
+    };
+    const known = (x: A.Expr) => this.env.result.exprTypes.has(x);
+    for (const p of e.props) {
+      if (p.kind === "Shorthand") put(p.name.name, false, () => widen(this.shorthandTypes.get(p) ?? T.any));
+      else if (p.kind === "Prop" && "name" in p.key) {
+        const value = p.value;
+        if (p.method && value.kind === "Function") put(p.key.name, false, () => (this.env.result.exprTypes.get(value) ?? this.fnSignature(value, false)));
+        // Not checked yet (a later value used from a method's default parameter, say): dynamic.
+        else put(p.key.name, false, () => (known(value) ? this.inferredType(value) : T.any));
+      } else if (p.kind === "Accessor" && p.accessor === "get") {
+        const fn = p.fn;
+        put(p.key.name, !setters.has(p.key.name), () => this.objectGetterType(fn, scope));
+      } else if (p.kind === "Accessor" && !members.has(p.key.name)) {
+        const fn = p.fn;
+        put(p.key.name, false, () => (fn.params[0]?.type ? this.resolveT(fn.params[0].type, this.scope) : T.any));
+      }
+    }
+    return { kind: "shape", members, open: true };
+  }
+
+  private readonly inferringGetters = new Set<A.FunctionNode>();
+  /** An object literal getter's type, through `this`: declared, already checked, or typed from its expression. */
+  private objectGetterType(fn: A.FunctionNode, scope: Scope): Type {
+    if (fn.returnType) return this.resolveT(fn.returnType, this.scope);
+    const checked = this.env.result.exprTypes.get(fn);
+    if (checked?.kind === "method") return checked.ret;
+    if (this.inferringGetters.has(fn)) return T.any; // uses itself: dynamic
+    this.inferringGetters.add(fn);
+    const declared = this.declared.length;
+    const disposables = new Map(this.disposables);
+    try {
+      const { result } = this.diags.speculate(() => this.fnExpr(fn, scope));
+      return result.ret;
+    } finally {
+      this.inferringGetters.delete(fn);
+      this.declared.length = declared;
+      this.disposables = disposables;
+      this.env.result.exprTypes.delete(fn); // checked for real with its literal
     }
   }
 
@@ -5208,6 +5281,7 @@ class BodyChecker {
           const t = obj.constView ? constOf(m.type()) : m.type();
           return m.optional ? nullableOf(t) : t;
         }
+        if (obj.open) return T.any; // `this.$store` in an Alpine component: added at runtime
         const root = this.env.rootMember(name);
         if (root) return this.rootMemberUse(e, root);
         const d = this.diags.error("X0426", `no member \`${name}\` on \`${typeToString(obj)}\``, e.name.span, "unknown member");
@@ -5483,6 +5557,8 @@ class BodyChecker {
    */
   private objectAgainstShape(e: A.Expr & { kind: "Object" }, shape: ShapeType, scope: Scope) {
     this.checkObjectMembers(e);
+    // `this` is the object the shape describes (and, as in an Alpine component, whatever is added to it).
+    this.bindThis(e, { ...shape, open: true });
     const given = new Set<string>();
     const unknown: A.Ident[] = [];
     const accessors = new Map<string, { get?: A.Ident; set?: A.Ident }>();
@@ -5563,7 +5639,8 @@ class BodyChecker {
   /** A fresh object literal against `Record<String, V>`: every value is a `V` (any keys). */
   private objectAgainstRecord(e: A.Expr & { kind: "Object" }, value: Type, scope: Scope) {
     this.checkObjectMembers(e);
-    for (const p of e.props) {
+    this.bindThis(e, this.ownShape(e, scope));
+    for (const p of functionsLast(e.props)) {
       if (p.kind === "SpreadProp") {
         const t = this.valueExpr(p.arg, scope);
         if (!assignable(t, recordOf(value)) && !(t.kind === "builtin" && t.name === "Object")) {
@@ -5812,8 +5889,11 @@ class BodyChecker {
     const contextRet = !f.returnType && context && f.body.kind === "Block";
     // An object literal's getter written `=> expr` without a type takes the expression's type.
     const inferredFrom = f.exprBody && !f.returnType && !f.async && !contextRet ? returnedExpr(f.body) : undefined;
-    const saved = { method: this.method, targets: this.targets, deferBody: this.deferBody, beforeSuper: this.beforeSuper, superCall: this.superCall, constMethod: this.constMethod };
-    if (!f.arrow) this.constMethod = undefined; // a `function` expression has its own `this`
+    const saved = { method: this.method, targets: this.targets, deferBody: this.deferBody, beforeSuper: this.beforeSuper, superCall: this.superCall, constMethod: this.constMethod, objectThis: this.objectThis };
+    if (!f.arrow) {
+      this.constMethod = undefined; // a `function` expression has its own `this`
+      this.objectThis = this.thisOf.get(f);
+    }
     const asyncAt = span(f.span.file, f.span.start, f.span.start);
     // An async callback where the result is ignored (`setTimeout(async () => { … })`): its body returns nothing.
     const voidContext = f.async && contextRet && sig.ret.kind === "void";
