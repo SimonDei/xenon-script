@@ -36,7 +36,7 @@ error[X0850]: the getter `one` needs a return type
   --> object-members.xn:24:20
    |
 24 |       function get one() { return 1; },                     // X0850: a getter needs a return type
-   |                    ^^^ add `:Type` after the parentheses
+   |                    ^^^ add `:Type` after the parentheses, or write it `=> expr`
 
 error[X0205]: a getter takes no parameters
   --> object-members.xn:25:24

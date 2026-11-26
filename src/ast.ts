@@ -308,6 +308,8 @@ export interface FunctionNode {
   returnType?: TypeNode;
   /** Arrow functions may have an expression body. */
   body: Block | Expr;
+  /** An object literal's method or accessor written `=> expr` (its body is a block returning it). */
+  exprBody?: boolean;
   span: Span;
 }
 

@@ -378,17 +378,17 @@ comprehension even if no iteration reached an `await`.
 
 ### Methods and accessors in object literals
 
-An object literal can have methods and accessors, written like a class's with the `function`
-keyword:
+An object literal can have methods and accessors, written like a class's (`get`/`set`, or
+`function get`/`function set`):
 
 ```actionscript check
 var counter = {
   count: 0,
-  function get double():Int { return this.count * 2 },
-  function set value(n:Int):Void { this.count = n },
-  function get value():Int { return this.count },
+  get double():Int { return this.count * 2 },
+  set value(n:Int) { this.count = n },
+  get value():Int { return this.count },
   function bump(by:Int):Int { this.count += by; return this.count },
-  function get label():String => $'count {this.count}'
+  get label() => $'count {this.count}'
 }
 counter.bump(2)
 counter.value = 5
@@ -401,11 +401,12 @@ trace(counter.double, counter.label)
 
 A body can also be one expression, as for class methods. They compile to JavaScript methods,
 getters, and setters. `this` is the object itself (untyped, like in a `function` expression); an
-arrow function inside keeps the same `this`. A getter needs a return type, a setter takes one typed
-parameter, and neither can be `async` (methods can: `async function save():Promise<Void> { … }`). A
-getter and a setter with the same name pair up; any other repeated name is an error. Against a
-typedef, a getter fits a `final` member (`final area:Int`); a member that is written also needs a
-setter. A spread (`{ ...counter }`) copies a getter's current value, as in JavaScript.
+arrow function inside keeps the same `this`. A getter needs a return type unless it is written `=>
+expr` (`label` is a `String`), a setter takes one typed parameter, and neither can be `async`
+(methods can: `async function save():Promise<Void> { … }`). A getter and a setter with the same name
+pair up; any other repeated name is an error. Against a typedef, a getter fits a `final` member
+(`final area:Int`); a member that is written also needs a setter. A spread (`{ ...counter }`) copies
+a getter's current value, as in JavaScript.
 
 ## Destructuring
 

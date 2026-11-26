@@ -601,7 +601,7 @@ test("hover shows the standard library's constexpr members and inline constants 
   const first = (needle: string) => (p.hover("Main.xn", offset(text, needle, 1))!.contents as string).split("\n")[1];
   expect(first("trim")).toBe("constexpr function String.trim():String");
   expect(first("floor")).toBe("static constexpr function Math.floor(x:Float):Float");
-  expect(first("length")).toBe("constexpr function get String.length():Int");
+  expect(first("length")).toBe("constexpr get String.length():Int");
   expect(first("PI")).toBe("static inline const Math.PI:Float");
   expect(first("split")).toBe("function String.split(separator:String):Array<String>");
   expect(first("replace")).toBe("constexpr function String.replace(pattern:String, replacement:String):String");
@@ -856,7 +856,7 @@ interface ISized { function get size():Int }
   const p = project({ "Main.xn": text });
   const labels = p.completions("Main.xn", offset(text, "x.name", 2)).map((i) => i.label);
   expect(labels).toEqual(expect.arrayContaining(["name", "size"]));
-  expect(p.hover("Main.xn", offset(text, "x.size", 3))!.contents).toContain("function get ISized.size():Int");
+  expect(p.hover("Main.xn", offset(text, "x.size", 3))!.contents).toContain("get ISized.size():Int");
   expect(p.hover("Main.xn", offset(text, "both", 1))!.contents).toContain("both<T extends INamed & ISized>(x:T):String");
 });
 

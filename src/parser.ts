@@ -724,6 +724,8 @@ export class Parser {
     }
 
     if (this.is("function")) return this.parseMethod(modifiers, start, className);
+    // `get total():Float => …`: an accessor without `function`.
+    if (this.startsShortAccessor()) return this.parseMethod(modifiers, start, className, true);
 
     if (this.is("~")) {
       // The old form `public ~Name()`: destructors are declared with `function`, like constructors.
@@ -753,11 +755,12 @@ export class Parser {
   }
 
   /** `function name<T>(…):R { … }` (or without a body), after its modifiers. */
-  private parseMethod(modifiers: A.Modifiers, start: number, className: string): A.Method {
-    this.advance();
+  private parseMethod(modifiers: A.Modifiers, start: number, className: string, short = false): A.Method {
+    if (!short) this.advance();
     if (this.is("~")) return this.parseDestructor(modifiers, start);
     let accessor: "get" | "set" | undefined;
-    if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword")) {
+    if (short) accessor = this.advance().value as "get" | "set";
+    else if ((this.isIdent("get") || this.isIdent("set")) && (this.peekTok().kind === "ident" || this.peekTok().kind === "keyword")) {
       accessor = this.advance().value as "get" | "set";
     }
     let name: A.Ident;
@@ -1878,34 +1881,28 @@ export class Parser {
     return next.kind === "ident" || next.kind === "keyword";
   }
 
-  /**
-   * `get area():T {…}` or `get function area():T {…}`: an accessor written the JavaScript way. Nothing is
-   * consumed here.
-   */
-  private misplacedAccessor(): { accessor: "get" | "set"; reversed: boolean } | undefined {
-    if (!(this.isIdent("get") || this.isIdent("set"))) return undefined;
+  /** `get total(` / `set total(` (an accessor without `function`). Nothing is consumed. */
+  private startsShortAccessor(): boolean {
+    if (!(this.isIdent("get") || this.isIdent("set"))) return false;
     const next = this.peekTok();
     const afterName = this.tokens[this.i + 2];
-    const named = (t: Token | undefined) => !!t && (t.kind === "ident" || t.kind === "keyword");
-    const accessor = this.tok.value as "get" | "set";
-    if (this.is("function", next) && named(afterName)) return { accessor, reversed: true };
-    if (named(next) && !this.is("function", next) && !!afterName && this.is("(", afterName)) return { accessor, reversed: false };
-    return undefined;
+    return (next.kind === "ident" || next.kind === "keyword") && !this.is("function", next) && !!afterName && this.is("(", afterName);
   }
 
-  /** Reports a misplaced accessor with a fix, and parses it anyway so the editor keeps the literal's types. */
-  private parseMisplacedAccessor(found: { accessor: "get" | "set"; reversed: boolean }): A.ObjectProp {
+  /** `get function area():T {…}`: both forms at once. Nothing is consumed. */
+  private reversedAccessor(): boolean {
+    if (!(this.isIdent("get") || this.isIdent("set"))) return false;
+    const afterName = this.tokens[this.i + 2];
+    return this.is("function", this.peekTok()) && !!afterName && (afterName.kind === "ident" || afterName.kind === "keyword");
+  }
+
+  /** Reports `get function name`, and parses it anyway so the editor keeps the literal's types. */
+  private parseReversedAccessor(): A.ObjectProp {
     const word = this.advance();
-    const next = this.tok;
-    if (found.reversed) {
-      this.diags.error("X0100", `\`${word.value}\` comes after \`function\``, cover(word.span, next.span), "wrong order")
-        .help(`write \`function ${word.value}\``, [{ span: cover(word.span, next.span), text: `function ${word.value}` }]);
-      this.advance(); // `function`
-    } else {
-      this.diags.error("X0100", `an accessor in an object literal starts with \`function\``, cover(word.span, next.span), "missing `function`")
-        .help(`write \`function ${word.value} ${next.value}\``, [{ span: span(this.file, word.span.start, word.span.start), text: "function " }]);
-    }
-    return this.parseObjectFunction(found.accessor, word.span.start);
+    const fn = this.advance(); // `function`
+    this.diags.error("X0100", `\`${word.value}\` and \`function\` together`, cover(word.span, fn.span), "one of them is enough")
+      .help(`write \`${word.value} ${this.tok.value}\``, [{ span: span(this.file, word.span.end, fn.span.end), text: "" }]);
+    return this.parseObjectFunction(word.value as "get" | "set", word.span.start);
   }
 
   /** A method or accessor of an object literal: `[async] function [get|set] name(params)[:T] { … }`. */
@@ -1924,14 +1921,16 @@ export class Parser {
     const typeParams = this.typeParamList();
     const params = this.parseParams();
     const returnType = this.eat(":") ? this.parseType() : undefined;
-    // `function get total():Int => rows.length`: an expression body, as for class methods.
+    // `get total():Int => rows.length`: an expression body, as for class methods.
     let body: A.Block;
+    let exprBody = false;
     if (this.eat("=>")) {
       const bodyStart = this.tok.span.start;
       const expr = this.parseAssign();
       body = { kind: "Block", body: [exprBodyStatement(expr, returnType, accessor, false, isAsync)], span: this.sp(bodyStart) };
+      exprBody = true;
     } else body = this.parseBlock();
-    const fn: A.FunctionNode = { kind: "Function", arrow: false, async: isAsync, typeParams, params, returnType, body, span: this.sp(start) };
+    const fn: A.FunctionNode = { kind: "Function", arrow: false, async: isAsync, typeParams, params, returnType, body, ...(exprBody ? { exprBody } : {}), span: this.sp(start) };
     if (accessor) return { kind: "Accessor", accessor, key, fn, span: this.sp(start) };
     return { kind: "Prop", key, value: fn, method: true, span: this.sp(start) };
   }
@@ -1956,8 +1955,11 @@ export class Parser {
         props.push({ kind: "Prop", key: { kind: "StringKey", value: key }, value: this.parseAssign(), span: this.sp(pStart) });
       } else if (this.startsObjectFunction()) {
         props.push(this.parseObjectFunction());
-      } else if (this.misplacedAccessor()) {
-        props.push(this.parseMisplacedAccessor(this.misplacedAccessor()!));
+      } else if (this.startsShortAccessor()) {
+        const word = this.advance();
+        props.push(this.parseObjectFunction(word.value as "get" | "set", word.span.start));
+      } else if (this.reversedAccessor()) {
+        props.push(this.parseReversedAccessor());
       } else {
         const name = this.memberName();
         if (this.eat(":")) props.push({ kind: "Prop", key: name, value: this.parseAssign(), span: this.sp(pStart) });

@@ -212,7 +212,7 @@ function memberText(m: MemberSig): string {
   const final = decl.kind === "Method" && decl.modifiers.final ? "final " : "";
   const ce = decl.kind === "Method" && (decl.modifiers.consteval ? "consteval " : decl.modifiers.constexpr ? "constexpr " : "");
   if (m.kind === "method" && m.type.kind === "method") return `${st}${abstract}${final}${ce}function ${owner}.${signature(m.type, m.name)}`;
-  if (m.kind === "accessor") return `${st}${abstract}${final}${ce}function get ${owner}.${m.name}():${typeToString(m.type)}`;
+  if (m.kind === "accessor") return `${st}${abstract}${final}${ce}get ${owner}.${m.name}():${typeToString(m.type)}`;
   const kw = m.readonly === "const" ? "const" : m.readonly === "final" ? "final" : "var";
   const inline = m.decl.modifiers.inline ? "inline " : "";
   return `${st}${inline}${kw} ${owner}.${m.name}:${typeToString(m.type)}`;

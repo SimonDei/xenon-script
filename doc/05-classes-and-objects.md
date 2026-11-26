@@ -150,11 +150,13 @@ written:
 class Temperature {
   private var celsius:Float = 0
 
-  public function get fahrenheit():Float => celsius * 9 / 5 + 32
+  public get fahrenheit():Float => celsius * 9 / 5 + 32
 
-  public function set fahrenheit(value:Float):Void {
+  public set fahrenheit(value:Float) {
     celsius = (value - 32) * 5 / 9
   }
+
+  public get freezing() => celsius <= 0 // a `Bool`, from the expression
 }
 
 public class Main {
@@ -170,9 +172,15 @@ public class Main {
 212
 ```
 
+An accessor is `get name()` or `set name(value:T)`; the longer `function get name()` means the same.
+A getter written `=> expr` may leave out its type and take the expression's, like a local variable
+(`freezing` is a `Bool`); with a block body it needs one. A getter whose expression uses itself,
+directly or through other getters without a type, can't be typed that way (X0908). When the getter
+has a setter, the setter's type is the property's.
+
 A getter without a setter is read-only (assigning it is X0504); a setter without a getter can't be
-read (X0506). A setter can be less visible than its getter (`public function get width()` with
-`private function set width(…)`), never more (X0212).
+read (X0506). A setter can be less visible than its getter (`public get width()` with
+`private set width(…)`), never more (X0212).
 
 ### Properties with accessors
 

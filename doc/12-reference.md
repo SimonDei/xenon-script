@@ -103,7 +103,7 @@ syntax.
 
 | Word | Context |
 |---|---|
-| `get`, `set` | member accessors, in classes and object literals (`function get name()`) |
+| `get`, `set` | member accessors, in classes and object literals (`get name()`, also `function get name()`) |
 | `operator` | operator method names |
 | `from` | JavaScript import clause |
 | `of` | `for … of` |

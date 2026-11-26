@@ -485,6 +485,7 @@ export function check(files: A.XenonFile[], classes: Map<string, ClassInfo>, typ
   for (const file of files) env.collectFunctions(file, scopes.get(file)!);
   for (let i = 0; i < env.pendingShapeMembers.length; i++) env.pendingShapeMembers[i]!.type();
   for (const scope of scopes.values()) env.resolveStaticImports(scope);
+  env.inferGetters();
   for (const info of infos) if (!info.file.file.prelude) env.checkTypedefLeaks(info);
   for (const info of infos) env.checkOverrides(info);
   for (const info of infos) env.checkImplements(info);
@@ -2187,8 +2188,13 @@ class Env {
       const prev = info.members.get(m.name.name);
 
       if (m.kind === "Method" && m.accessor) {
+        // `get total() => …`: the type comes from the expression (or from the setter of the pair).
+        const infer = m.accessor === "get" && !m.returnType && !!m.exprBody && !!m.body && !isNative(info) && !info.decl.isInterface;
+        const pairedSetter = prev?.kind === "accessor" && !prev.decl2 && (prev.decl as A.Method).accessor === "set" && prev.isStatic === isStatic;
         const valueType = m.accessor === "get"
-          ? (m.returnType ? this.resolveType(m.returnType, scope, false, this.memberParams(info, m)) : this.untypedReturn(m.name, m.span, m.body, "getter"))
+          ? (m.returnType ? this.resolveType(m.returnType, scope, false, this.memberParams(info, m))
+            : infer ? (pairedSetter ? prev!.type : T.any)
+            : this.untypedReturn(m.name, m.span, m.body, "getter"))
           : m.params[0]?.type ? this.resolveType(m.params[0].type, scope, false, this.memberParams(info, m)) : this.untyped(m.name.span, "setter parameter");
         if (m.accessor === "get" && m.params.length > 0) this.diags.error("X0205", "getters can't have parameters", m.params[0]!.span);
         if (m.accessor === "set" && m.params.length !== 1) this.diags.error("X0206", "setters take exactly one parameter", m.name.span);
@@ -2206,7 +2212,8 @@ class Env {
               .secondary(getter.name.span, `\`${visibilityOf(getter)}\``)
               .note("a property can be read where it can be written: make the getter at least as visible");
           }
-          const getterType = m.accessor === "get" ? valueType : prev.type;
+          // An inferred getter paired with a setter takes the setter's type.
+          const getterType = m.accessor === "get" ? valueType : this.lazyGetters.delete(prev) ? valueType : prev.type;
           const setterType = m.accessor === "set" ? valueType : prev.type;
           // A JavaScript property may take another type than it gives, as in TypeScript's DOM typings
           // (`get style():CSSStyleProperties` / `set style(cssText:String)`); own classes may not.
@@ -2224,11 +2231,13 @@ class Env {
           this.duplicate(m, prev);
           continue;
         }
-        info.members.set(m.name.name, {
+        const sig: MemberSig = {
           name: m.name.name, owner: info, decl: m, isStatic, kind: "accessor", type: valueType,
           typeSpan: m.accessor === "get" ? m.returnType?.span : m.params[0]?.type?.span,
           readonly: m.accessor === "get" ? "getter" : undefined,
-        });
+        };
+        if (infer) this.inferLater(sig, info, scope, m);
+        info.members.set(m.name.name, sig);
         continue;
       }
 
@@ -2539,6 +2548,51 @@ class Env {
     return T.any;
   }
 
+  /** Getters whose type comes from their expression (`get total() => …`), until it is known. */
+  readonly lazyGetters = new Set<MemberSig>();
+  /** Set once every class's members are collected: from then on a getter's expression can be typed. */
+  private gettersReady = false;
+
+  /**
+   * Makes `sig.type` the type of the getter's expression, worked out when first asked for (a getter
+   * may use another one declared later, or in another class). Assigning `sig.type` settles it.
+   */
+  inferLater(sig: MemberSig, info: ClassInfo, scope: FileScope, m: A.Method) {
+    let state: Type | "busy" | undefined;
+    let cyclic = false;
+    this.lazyGetters.add(sig);
+    Object.defineProperty(sig, "type", {
+      enumerable: true,
+      configurable: true,
+      get: (): Type => {
+        if (state === "busy") {
+          cyclic = true;
+          return T.any;
+        }
+        if (state) return state;
+        if (!this.gettersReady || !this.lazyGetters.has(sig)) return T.any;
+        state = "busy";
+        // The getter's body is checked (and reported) with the class; this only asks for its type.
+        const { result } = this.diags.speculate(() => new BodyChecker(this, info, scope).getterType(m));
+        if (cyclic) {
+          this.diags.error("X0908", `the type of \`${m.name.name}\` depends on itself`, m.name.span, "its expression uses it, directly or through other getters")
+            .help(`give it a type: \`get ${m.name.name}():Type => …\``);
+          state = T.any;
+        } else if (state === "busy") state = result;
+        return state;
+      },
+      set: (t: Type) => {
+        state = t;
+      },
+    });
+  }
+
+  /** Works out every inferred getter's type (after all members are known, before bodies are checked). */
+  inferGetters() {
+    this.gettersReady = true;
+    for (const sig of this.lazyGetters) void sig.type;
+  }
+
   /** Untyped return value: the fix-it goes after the parameter list. */
   untypedReturn(name: A.Ident, fnSpan: Span, body: A.Block | A.Expr | undefined, what = "return type"): Type {
     const text = fnSpan.file.text;
@@ -2593,6 +2647,13 @@ class Env {
     const own = m.kind === "Method" ? this.typeParamsOf(m) : [];
     return paramScope(m.modifiers.static ? [] : info.typeParams, own);
   }
+}
+
+/** The expression of a body written `=> expr` (a block holding one `return`). */
+function returnedExpr(body: A.Block | A.Expr | undefined): A.Expr | undefined {
+  if (body?.kind !== "Block" || body.body.length !== 1) return undefined;
+  const stmt = body.body[0]!;
+  return stmt.kind === "Return" ? stmt.value ?? undefined : undefined;
 }
 
 /** Looks a member up on a class and its Xenon superclasses (implementations only, no interfaces). */
@@ -3067,6 +3128,18 @@ class BodyChecker {
       check(m, m.kind === "Field" ? "Field" : "Method", m.kind === "Field" ? "a field" : "a method");
     }
     this.isStatic = false;
+  }
+
+  /** The type of a getter written `=> expr` without one: its expression's (diagnostics are the caller's to drop). */
+  getterType(m: A.Method): Type {
+    const value = returnedExpr(m.body);
+    if (!value) return T.any;
+    this.isStatic = !!m.modifiers.static;
+    this.tparams = this.env.memberParams(this.info, m);
+    this.constMethod = m.isConst && !this.isStatic ? m.name.name : undefined;
+    this.method = { ret: T.any, isConstructor: false, name: m.name.name, async: false, consteval: false, asyncAt: m.name.span };
+    this.valueExpr(value, new Scope(undefined, assignmentWrites(m.body!)));
+    return this.inferredType(value);
   }
 
   run() {
@@ -4828,7 +4901,7 @@ class BodyChecker {
         if (fn.async) this.diags.error("X0761", "accessors can't be `async`", fn.span);
         if (p.accessor === "get") {
           if (fn.params.length > 0) this.diags.error("X0205", "a getter takes no parameters", fn.params[0]!.span);
-          if (!fn.returnType) this.diags.error("X0850", `the getter \`${key.name}\` needs a return type`, key.span, "add `:Type` after the parentheses");
+          if (!fn.returnType && !fn.exprBody) this.diags.error("X0850", `the getter \`${key.name}\` needs a return type`, key.span, "add `:Type` after the parentheses, or write it `=> expr`");
         } else {
           if (fn.params.length !== 1) this.diags.error("X0206", "a setter takes exactly one parameter", fn.params[1]?.span ?? key.span);
           else if (!fn.params[0]!.type) this.diags.error("X0850", `the parameter of the setter \`${key.name}\` needs a type`, fn.params[0]!.span);
@@ -5737,6 +5810,8 @@ class BodyChecker {
   private fnExpr(f: A.FunctionNode, scope: Scope, context?: MethodType): MethodType {
     const sig = this.fnSigs.get(f) ?? this.fnSignature(f, false, context);
     const contextRet = !f.returnType && context && f.body.kind === "Block";
+    // An object literal's getter written `=> expr` without a type takes the expression's type.
+    const inferredFrom = f.exprBody && !f.returnType && !f.async && !contextRet ? returnedExpr(f.body) : undefined;
     const saved = { method: this.method, targets: this.targets, deferBody: this.deferBody, beforeSuper: this.beforeSuper, superCall: this.superCall, constMethod: this.constMethod };
     if (!f.arrow) this.constMethod = undefined; // a `function` expression has its own `this`
     const asyncAt = span(f.span.file, f.span.start, f.span.start);
@@ -5765,7 +5840,11 @@ class BodyChecker {
         inner.declare(p.name.name, { type: pt, kind: p.final ? "final" : "param", nameSpan: p.name.span, typeSpan: p.type?.span });
         if (!p.type) this.env.result.bindingTypes.set(p.name, pt); // `e => …`: the type from context, for hover
       });
-      if (f.body.kind === "Block") {
+      if (inferredFrom) {
+        // `get total() => rows.length`: the type of the expression.
+        this.valueExpr(inferredFrom, inner);
+        bodyRet = this.inferredType(inferredFrom);
+      } else if (f.body.kind === "Block") {
         this.block(f.body, inner);
         if (bodyRet.kind !== "void" && !isDynamic(bodyRet) && completes(f.body)) {
           const close = span(f.body.span.file, f.body.span.end - 1, f.body.span.end);
@@ -5793,6 +5872,7 @@ class BodyChecker {
     let ret: Type;
     if (voidContext) ret = this.env.promiseOf(T.void);
     else if (f.returnType || contextRet) ret = sig.ret;
+    else if (inferredFrom) ret = bodyRet;
     else if (f.body.kind === "Block") ret = f.async ? this.env.promiseOf(T.any) : T.any;
     else ret = f.async ? this.env.promiseOf(bodyRet) : bodyRet;
     return { kind: "method", params: sig.params, ret };

@@ -123,7 +123,7 @@ package shop {
       items.push(item)
     }
 
-    public function get total():Float => items.reduce((sum, i) => sum + i.price, 0.0)
+    public get total():Float => items.reduce((sum, i) => sum + i.price, 0.0)
 
     public function summary():String {
       return $'{items.length} items, {total.toFixed(2)} in total'
@@ -146,7 +146,7 @@ A few things to notice:
   `#private` fields.
 - **`Array<Item>`** is a typed array: `push` only takes `Item`s, and `reduce`'s callback knows that
   `i` is an `Item` without being told.
-- **`function get total()`** is a getter, used like a field: `total.toFixed(2)`.
+- **`get total()`** is a getter, used like a field: `total.toFixed(2)`.
 - **`$'…'`** is a template string; `{…}` inserts a value.
 - **`Main.xn` imports `shop.Cart`**; files in the same package see each other without imports.
 

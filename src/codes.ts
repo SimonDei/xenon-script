@@ -379,6 +379,8 @@ export const CODES: Record<string, CodeInfo> = {
     "function rename(c:const Cart):Void { c.name = 'x' }", "function rename(c:Cart):Void { c.name = 'x' }"),
   X0906: c("invalid `unconst`", "`unconst(value)` takes exactly one expression: the value whose `const` is removed."),
   X0907: c("`unconst` without effect", "`unconst` removes `const` from a value's type; this value isn't `const`, so it does nothing."),
+  X0908: c("getter type depends on itself", "A getter written `get name() => expr` without a type takes the type of its expression. When that expression uses the getter itself, directly or through other getters without a type, there is nothing to start from: give one of them a type.",
+    "public get a() => b + 1\npublic get b() => a * 2", "public get a():Int => b + 1\npublic get b() => a * 2"),
   X0905: c("non-const use through a `const` view", "Through a `const T` value only `const` methods and getters can be used: others might change the object. Mark the method `const` if it doesn't change anything.",
     "class Cart { public function count():Int { … } }\nfunction f(c:const Cart):Int => c.count()", "class Cart { public function count():Int const { … } }\nfunction f(c:const Cart):Int => c.count()"),
 };

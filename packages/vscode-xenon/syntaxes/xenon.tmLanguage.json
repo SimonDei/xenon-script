@@ -44,6 +44,9 @@
           "include": "#function-declaration"
         },
         {
+          "include": "#accessor-declaration"
+        },
+        {
           "include": "#destructor"
         },
         {
@@ -505,6 +508,17 @@
           "name": "storage.type.property.xenon"
         },
         "3": {
+          "name": "entity.name.function.xenon"
+        }
+      }
+    },
+    "accessor-declaration": {
+      "match": "\\b(get|set)\\s+([A-Za-z_$][\\w$]*)(?=\\s*\\()",
+      "captures": {
+        "1": {
+          "name": "storage.type.property.xenon"
+        },
+        "2": {
           "name": "entity.name.function.xenon"
         }
       }
